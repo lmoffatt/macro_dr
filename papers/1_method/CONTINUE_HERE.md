@@ -20,7 +20,7 @@
   from `1c2ae6f` by a search path, so a new algorithm joins by itself when its files land.
 - **Fig 3** built on regenerated dumps (engine `0ffbda7`, **seed now fixed** at 20260722; it was `0`,
   i.e. irreproducible). Its **Fig 3—figure supplement 1** (the per-step Fisher, ex-Fig 4) is built too;
-  NR and NMR stay in the dumps and out of the panels, which is what lets that supplement keep its
+  NR and INR stay in the dumps and out of the panels, which is what lets that supplement keep its
   ratio-row argument.
 - **Fig 4** built: **R against IR over the design space** (`Figure_4.pdf` long, `Figure_4_short_variant.pdf`),
   with four supplements. The old IR-only "where IR stops being faithful" figure was **merged into Fig 4's

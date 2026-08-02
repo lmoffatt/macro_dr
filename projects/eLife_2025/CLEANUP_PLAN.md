@@ -83,7 +83,7 @@ Files:
 - `figure_1_likelihood_diagnostic.csv`
 - `figure_1_likelihood_diagnostic_IR.csv`
 - `figure_1_likelihood_diagnostic_IRV.csv`
-- `figure_1_likelihood_diagnostic_MNR.csv`
+- `figure_1_likelihood_diagnostic_MNR.csv`  <!-- 2026-07-31: the defective build; the fixed member writes _INR -->
 - `figure_1_likelihood_diagnostic_MNRV.csv`
 - `figure_1_likelihood_diagnostic_MR.csv`
 - `figure_1_likelihood_diagnostic_MRV.csv`

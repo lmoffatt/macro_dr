@@ -142,7 +142,9 @@ for i in "${!NCHS[@]}"; do
         micro_MR)     recursive=true;  averaging=1 ; taylor=false ; micro=true  ; family=1 ;;
         micro_IR)     recursive=true;  averaging=2 ; taylor=false ; micro=true  ; family=1 ;;
         nonlinearsqr) recursive=false; averaging=1 ; taylor=false ; micro=false ; family=2 ;;
-        *) echo "[dispatch] unknown algorithm '$algo' (want nonlinearsqr, or macro_{NR,R,INR,MR,IR,IRT} / micro_{R,MR,IR})" >&2; exit 1 ;;
+        # av=0: LSE on the instantaneous conductance (P_half * g), NR's mean model.
+        nonlinearsqr_g) recursive=false; averaging=0 ; taylor=false ; micro=false ; family=2 ;;
+        *) echo "[dispatch] unknown algorithm '$algo' (want nonlinearsqr / nonlinearsqr_g, or macro_{NR,R,INR,MR,IR,IRT} / micro_{R,MR,IR})" >&2; exit 1 ;;
     esac
 
     case "$nnoise" in                    # label -> current_noise (vnoise = label / 1000)

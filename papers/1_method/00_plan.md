@@ -1,5 +1,11 @@
 # Paper 1 (method): plan
 
+> **Label note 2026-07-31.** Every `NMR`/`MNR` below is the non-recursive interval member, now
+> named **`INR`** (the published `MacroINR`). `NMR` alone now denotes the *defective build* that
+> omitted the `N·ms` interval-variance term between `a3e0a89` and `1f7138b`, so any measured
+> statement about it here is about that build and not about the method
+> (`../_program/nomenclature.md`).
+
 > Updated: 2026-07-20. This is **paper 1**, the method paper of the three-paper program
 > (`../_program/program.md`). It owns the interval-likelihood closure: given that you will compute a
 > likelihood, what must it condition on? Roster `R`, `MR`, `VR`, `IR`.

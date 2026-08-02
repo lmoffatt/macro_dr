@@ -1,0 +1,194 @@
+---
+title: "Figure 4—figure supplement (number pending) — does the interval you would quote contain the truth? Coverage of the nominal 95% region"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+NUMBER PENDING, as for the other rebuilt supplements.
+
+WHAT IT IS, AND WHY IT IS NOT ANOTHER MAP. Every figure on the design plane reports a RATIO: how
+far the reported second moment is from the delivered one. This one reports the thing a reader can
+act on, which is a probability: if you ran this experiment and quoted the error bar your own fit
+hands you, how often would the truth be inside it?
+
+The statistic is the squared Mahalanobis distance of each fit from the TRUTH, in the metric of
+that fit's OWN Fisher information:
+
+    d2_k = (theta_hat_k - theta_true)' F_k (theta_hat_k - theta_true)
+
+which is chi-squared with six degrees of freedom if the reported covariance is right. The
+coverage plotted is the fraction of fits with d2_k below the 95th percentile of that reference.
+Every fit in the cloud carries its own 6x6 Fisher, so this is not an aggregate standing in for an
+experiment: it is the experiment, repeated.
+
+TWO ROWS, AND THE GAP BETWEEN THEM IS THE BIAS. Row A centres on the truth, which is what a
+confidence interval claims to contain, so it carries the bias and the variance together. Row B
+centres on the cloud's own mean, which removes the bias by construction and leaves only the
+question the plane figures ask. A member that sits at 0.95 in B and at zero in A is precisely
+calibrated about the wrong point.
+
+THE LINE TYPE IS HOW MUCH YOU POOL, and it is the axis this figure exists for. At group size 100
+the estimate comes from a hundred recordings, so its standard error is ten times smaller than a
+single recording's while any bias is exactly where it was. Pooling therefore buys precision and
+spends coverage, and the two curves show the exchange rate. The cloud carries group sizes 10 and
+100 at every cell, 1000 and 100 fits respectively, so a coverage carries about +-1.4 and +-2.2 per
+cent of binomial error.
+
+THE HORIZONTAL LINE IS 0.95 and it is the only reference that matters: a member on it is honest at
+that design point, whatever its distortion says.
+
+WHAT IT IS BUILT FROM. The MLE clouds at noise label 0.1, all seven acquisition intervals, the
+four members that have them (INR has one cloud cell so far and is absent). CONVERGED FITS ONLY:
+`Convergence_Status_Code` is emitted per fit and nothing in this project filtered on it until now.
+It matters where the interval is short — in the highest-count cloud, 99 of 1000 fits at
+Delta*k_off = 0.05 sat at the 100-iteration cap — and the fraction kept is printed per cell on the
+render log.
+
+theta_true is in no CSV and is written down in the code: in log10 of the natural units, k_on 10,
+k_off 100, unitary current 1, baseline 1, N_ch the cell's, and the instrumental noise THE LABEL
+OVER A THOUSAND. That last one is the trap this project documents, and getting it wrong shifts
+sigma_noise by 0.3 in log10 and quietly ruins every distance.
+
+LSE CARRIES ITS OWN TRUTH VECTOR AND ITS OWN DEGREES OF FREEDOM. nonlinearsqr indexes its own four
+parameters and they do not line up with the macro ones: its index 2 is the baseline and its 3 is
+the channel number, where the macro members have the unitary current and the noise scale. So its
+d2 is over a FOUR-dimensional space against chi-squared with four degrees of freedom, and its
+theta_true is written separately. The first render of this figure used the macro vector for it and
+put LSE flat at zero in row A for a reason that had nothing to do with least squares. The
+comparison across members is like for like as a probability and not as a distance, and the caption
+has to say so.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+suppressMessages({ library(data.table); library(ggplot2) })
+```
+
+```{r data}
+# ---- source data, built once and written as CSV, like the plane figures ------------------------
+SRC <- "../figure_4_source_data/figure_4_source_data_coverage.csv"
+ALGOS <- c(nonlinearsqr = "LSE", macro_NR = "NR", macro_R = "R", macro_IR = "IR")
+NCHS  <- c(10, 100, 1000, 10000)
+Z     <- "0.1"
+.pre  <- function(a) if (a == "nonlinearsqr") "figure_3_LSE_" else "figure_3_G_"
+
+cloud_file <- function(a, n) {
+  f <- Sys.glob(file.path("../data", "*",
+    sprintf("%snch_%d_nsim_10000_%s_noise_%s_mle_cloud_runs.csv", .pre(a), n, a, Z)))
+  if (length(f)) f[1] else NA_character_
+}
+
+stamp <- local({
+  fs <- na.omit(unlist(lapply(names(ALGOS), function(a) vapply(NCHS, function(n) cloud_file(a, n), ""))))
+  i  <- file.info(c(fs, "figure_4_supplement_coverage.Rmd"))
+  sprintf("# figure_4 coverage | clouds=%d bytes=%.0f newest=%.0f", length(fs),
+          sum(i$size, na.rm = TRUE), max(as.numeric(i$mtime), na.rm = TRUE))
+})
+
+cover_cell <- function(a, n) {
+  f <- cloud_file(a, n); if (is.na(f)) return(NULL)
+  d <- fread(f, skip = 1, showProgress = FALSE)
+  # theta_true PER MEMBER, because nonlinearsqr indexes its own four parameters and they do not
+  # line up: its 2 is the baseline and its 3 is the channel number, where the macro members have
+  # the unitary current and the noise scale. Read off `param_name` in the files. Using the macro
+  # vector for LSE put its truth for N_ch at log10(noise/1000) and drove its coverage to zero for
+  # a reason that had nothing to do with the algorithm.
+  th0 <- if (a == "nonlinearsqr")
+           c(`0` = 1, `1` = 2, `2` = 0, `3` = log10(n))
+         else
+           c(`0` = 1, `1` = 2, `2` = 0, `3` = log10(as.numeric(Z) / 1000), `4` = 0,
+             `5` = log10(n))
+  out <- list()
+  for (gs in sort(unique(d$group_size))) for (dlt in sort(unique(d$interval_in_tau))) {
+    cv <- d[variable == "Convergence_Status_Code" & group_size == gs & interval_in_tau == dlt]
+    ok <- if (nrow(cv)) cv$sample_index[cv$value == 0] else NULL
+    TH <- d[variable == "Model_Parameters_Hat" & group_size == gs & interval_in_tau == dlt &
+            (is.null(ok) | sample_index %in% ok),
+            .(sample_index, param_index, value)]
+    if (!nrow(TH)) next
+    nfit <- uniqueN(TH$sample_index); if (nfit < 20) next
+    P <- uniqueN(TH$param_index)
+
+    FI <- d[variable == "Gaussian_Fisher_Information" & group_size == gs &
+            interval_in_tau == dlt & sample_index %in% TH$sample_index,
+            .(sample_index, param_index, param_col, value)]
+
+    for (centre in c("truth", "mean")) {
+      ref <- if (centre == "truth") th0[as.character(sort(unique(TH$param_index)))] else
+             TH[, mean(value), by = param_index][order(param_index)]$V1
+      dv <- copy(TH)[, dev := value - ref[match(param_index, sort(unique(TH$param_index)))]]
+      # d2 = sum_ij dev_i F_ij dev_j, as two joins instead of one matrix per fit
+      z <- merge(FI, dv[, .(sample_index, param_index, di = dev)],
+                 by = c("sample_index", "param_index"))
+      z <- merge(z, dv[, .(sample_index, param_col = param_index, dj = dev)],
+                 by = c("sample_index", "param_col"))
+      d2 <- z[, sum(value * di * dj), by = sample_index]$V1
+      out[[length(out) + 1]] <- data.table(
+        algo = a, nch = n, gs = gs, dlt = dlt, centre = centre, p = P, nfit = nfit,
+        conv = if (nrow(cv)) mean(cv$value == 0) else NA_real_,
+        cover = mean(d2 <= qchisq(0.95, P), na.rm = TRUE))
+    }
+  }
+  rbindlist(out)
+}
+
+fresh <- file.exists(SRC) && identical(readLines(SRC, n = 1), stamp)
+if (fresh) {
+  cat("coverage: source CSV is current, reading it\n")
+  CV <- as.data.table(read.csv(SRC, skip = 1))
+} else {
+  cat("coverage: sweeping the clouds\n")
+  CV <- rbindlist(lapply(names(ALGOS), function(a)
+    rbindlist(lapply(NCHS, function(n) {
+      r <- cover_cell(a, n)
+      if (!is.null(r)) cat(sprintf("  %-14s N_ch %-6d fits %4d  converged %.2f\n",
+                                   a, n, r$nfit[1], r$conv[1]))
+      r
+    }))))
+  dir.create(dirname(SRC), showWarnings = FALSE, recursive = TRUE)
+  writeLines(stamp, SRC)
+  suppressWarnings(write.table(CV, SRC, sep = ",", row.names = FALSE, col.names = TRUE,
+                               append = TRUE, qmethod = "double"))
+}
+CV[, lab := factor(ALGOS[algo], levels = unname(ALGOS))]
+CV[, nchf := factor(sprintf("N[ch]==%d", nch), levels = sprintf("N[ch]==%d", NCHS))]
+CV[, row := factor(ifelse(centre == "truth", "A~~centred~on~the~truth",
+                          "B~~centred~on~the~cloud~mean"))]
+```
+
+```{r plot, fig.width = 7.0, fig.height = 4.4}
+PAL <- c(LSE = "#7F7F7F", NR = "#D6604D", R = "#4393C3", IR = "#053061")
+g <- ggplot(CV, aes(dlt, cover, colour = lab, linetype = factor(gs))) +
+  geom_hline(yintercept = 0.95, colour = "grey40", linewidth = .3) +
+  geom_line(linewidth = .45) + geom_point(size = .7) +
+  facet_grid(row ~ nchf, labeller = label_parsed) +
+  scale_x_log10(breaks = c(.01, .1, 1), labels = c("0.01", "0.1", "1")) +
+  scale_y_continuous(limits = c(0, 1), breaks = c(0, .5, .95),
+                     labels = c("0", "0.5", "0.95")) +
+  scale_colour_manual(values = PAL, name = NULL) +
+  scale_linetype_manual(values = c(`10` = "22", `100` = "solid"),
+                        name = "recordings\npooled") +
+  labs(x = expression(Delta %.% k[off]),
+       y = "fraction of fits whose nominal 95% region contains the reference") +
+  theme_bw(base_size = 8, base_family = "Helvetica") +
+  theme(panel.grid.minor = element_blank(), legend.position = "right",
+        legend.key.size = unit(9, "pt"), strip.text = element_text(size = 7),
+        axis.title = element_text(size = 8), axis.text = element_text(size = 7),
+        legend.text = element_text(size = 7), legend.title = element_text(size = 7))
+g
+ggsave("Figure_4_supplement_coverage.pdf", g, width = 7.0, height = 4.4)
+cat(sprintf("Figure_4_supplement_coverage.pdf: 7.00 x 4.40 in, %d cells\n",
+            nrow(CV) / 2))
+```
+
+```{r numbers}
+# the headline, as a table, so the caption never has to be read off the lines
+knitr::kable(dcast(CV[centre == "truth" & abs(dlt - 1) < 1e-9], lab + gs ~ nch,
+                   value.var = "cover"), digits = 3,
+             caption = "coverage centred on the truth, Delta*k_off = 1")
+knitr::kable(dcast(CV[centre == "mean" & abs(dlt - 1) < 1e-9], lab + gs ~ nch,
+                   value.var = "cover"), digits = 3,
+             caption = "the same, centred on the cloud mean")
+```

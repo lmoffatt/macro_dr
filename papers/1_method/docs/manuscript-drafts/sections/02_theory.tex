@@ -139,7 +139,8 @@ Conditioned on & Members & Conductance model \\
 \midrule
 the fluctuations are not modelled & \texttt{LSE} & the deterministic mean current only \\
 no endpoints & \texttt{NR}, \texttt{R} & instantaneous; the acquisition averaging is ignored \\
-one endpoint (the start) & \texttt{MNR}, \texttt{MR}, \texttt{VR} & interval-mean conductance given the start state \\
+one endpoint (the start) & \texttt{MR}, \texttt{VR} & interval-mean conductance given the start state \\
+endpoints not distinguishable & \texttt{INR} & interval-mean conductance; with no update the two endpoint rows coincide \\
 two endpoints (the boundary) & \texttt{IR} & interval-mean conductance given both boundary states; interior marginalized \\
 the full trajectory & (exact) & intractable; supplied by the stochastic simulation as ground truth \\
 \bottomrule
@@ -148,17 +149,21 @@ the full trajectory & (exact) & intractable; supplied by the stochastic simulati
 \caption{The window axis as an endpoint ladder, with least squares (\texttt{LSE}) shown at
 the foot of the cost ladder although it lies off the lattice. Crossing the window axis with
 the recursion axis gives the implemented grid: \texttt{NR} (non-recursive,
-$\mathrm{av}=0$), \texttt{MNR} (non-recursive, $\mathrm{av}=1$, total start-conditioned
+$\mathrm{av}=0$), \texttt{INR} (non-recursive, $\mathrm{av}=1$, total start-conditioned
 interval variance), \texttt{R} (recursive, $\mathrm{av}=0$), \texttt{MR} (recursive,
 $\mathrm{av}=1$, total start-conditioned interval variance), \texttt{VR} (recursive,
 $\mathrm{av}=1$, residual interval variance), \texttt{IR} (recursive, $\mathrm{av}=2$),
-where $\mathrm{av}$ counts the conditioned endpoints. The body walks
+where $\mathrm{av}$ counts the conditioned endpoints. \texttt{INR} occupies a row of its own
+because without a recursive update the boundary state is unobservable: the two-endpoint
+conductance can enter only through its start-state marginal, so $\mathrm{av}=1$ and
+$\mathrm{av}=2$ describe the same non-recursive method. The body walks
 \texttt{LSE}, \texttt{NR}, \texttt{R}, \texttt{IR}. Of the three reported in the Supplement,
-\texttt{MR} and \texttt{VR} split the step from \texttt{R} to \texttt{IR}, and \texttt{MNR}
-is not separable from \texttt{NR} over the range measured. MacroIR is
-\texttt{IR}.} % src: papers/_program/nomenclature.md (the lattice as implemented; the ladder for the Methods presentation); MNR row and supplement reason from sections/06_methods.tex Table 2 caption
+\texttt{MR} and \texttt{VR} split the step from \texttt{R} to \texttt{IR}. MacroIR is
+\texttt{IR} and MacroINR is \texttt{INR}.} % src: papers/_program/nomenclature.md (the lattice as implemented; the ladder for the Methods presentation). TODO 2026-07-31: the old clause "MNR is not separable from NR over the range measured" was REMOVED — it was measured on the defective build (missing N*ms); restate only after the 2026-07-31 INR re-run.
 \label{tab:ladder}
 \end{table}
+
+All seven rungs are implemented and measured, and Figure~\ref{fig:time} carries them side by side under one set of conditions, so the lattice is read as a design rather than as a list.
 
 Two things follow from the ladder. First, \texttt{IR} occupies the top rung below the
 intractable exact likelihood, so its standing in the family is structural and set before

@@ -1,0 +1,251 @@
+---
+title: "Figure 4—figure supplement (number pending) — the boundary-conditioned filter alone: how far its reported covariance is from the empirical one, interval by interval"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+NUMBER PENDING, as for the other rebuilt supplements.
+
+WHY A FIGURE FOR ONE MEMBER. The four-member ratio figure has to give each column its own vertical
+scale, because least squares reaches a factor a hundred and the boundary-conditioned filter never
+leaves 0.8 to 1.4. That buys visibility and costs comparability: heights cannot be read across
+columns there. With IR alone the scale is SHARED by every panel, so a cell can be compared with any
+other cell, which is the whole point of dedicating a figure to it. And the freed column axis goes
+to the acquisition interval, all seven of them, instead of the three a shared figure can carry.
+
+WHAT IS PLOTTED, and it is the ratio and not the quantile-quantile. For each fit, the squared
+Mahalanobis distance from the cloud mean divided by the chi-squared quantile it should have sat at:
+
+    d2_k / chi2_p(k/(n+1))
+
+A calibrated covariance is a HORIZONTAL LINE AT ONE. A covariance wrong by a constant factor is a
+horizontal line at that factor, read straight off the axis. A wrong SHAPE -- a distribution that is
+not chi-squared however it is scaled -- is the only thing that tilts the line. The quantile-quantile
+version of the same data spends the panel on a 45-degree line and hides departures of ten per cent;
+here they are the whole picture. The sibling figures carry the conventional rendering for a reader
+who expects it.
+
+DASHED IS WHAT IR REPORTS, its Fisher covariance; SOLID is the distortion-corrected sandwich. Both
+are the aggregate matrices from the battery at the same cell, divided by the group size because the
+cloud is a group of a hundred recordings and the battery matrix is per recording.
+
+THE GREY BAND IS THE NULL, simulated per panel at this panel's own n and six degrees of freedom.
+It is WIDE here, and that is the honest consequence of a hundred fits per curve: the ratio of a
+single order statistic to its expectation wanders a long way even when everything is right. A
+curve inside the band has said nothing. Read the BODY of the distribution, on the left, where the
+band is narrow and there are dozens of points behind every value; the right-hand end is four points
+and belongs to the band.
+
+WHAT THE FIGURE IS FOR. IR is the member the paper argues is calibrated, so this is where that
+claim is most exposed. If its dashed curve sits on one across the plane, the claim holds without
+the correction; where it does not, the correction has to carry it, and the solid curve says
+whether it does.
+
+POOLED OVER THE SIX NOISE LEVELS, and that is the difference between this figure saying something
+and saying nothing. Its first version inherited the four-member figure's fixed noise of 0.1, which
+was there because least squares has clouds at no other level; IR has SIX at every channel count,
+0.05 to 10, so five sixths of its data were being left on disk. Pooling them is licit for the same
+reason pooling the intervals is: d2 is chi-squared with six degrees of freedom whatever the cell,
+so the reference does not move and the samples can be sorted together. It takes each panel from a
+hundred fits to about six hundred and narrows the null band by a factor of two and a half, which is
+what turns "inside the band" from a statement about the sample size into a statement about IR.
+
+The cost is the usual one for pooling and the table at the foot guards it: if IR were calibrated at
+low noise and not at high, the pooled curve would show their average and hide the difference. The
+per-noise medians are printed so that cannot pass unnoticed.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+suppressMessages({ library(data.table); library(ggplot2) })
+```
+
+```{r data}
+# This notebook does its OWN sweep rather than reading the four-member source data, because that
+# one is built at a single noise level for a reason that does not apply here. Written as CSV with
+# the same stamp discipline as everything else in the set.
+SRC   <- "../figure_4_source_data/figure_4_source_data_qq_IR.csv"
+A     <- "macro_IR"
+# the small counts are in the sweep too: the second render is about them
+NCHS  <- c(5, 10, 20, 50, 100, 1000, 10000)
+NCH_MAIN  <- c(10, 100, 1000, 10000)   # the decade ladder, the first render
+NCH_SMALL <- c(5, 10, 20, 50)          # the few-channel corner, the zoom
+ZS    <- c("0.05", "0.1", "0.2", "0.5", "1", "10")
+GS    <- 100
+COV   <- c(reported = "Probit_statistics_Gaussian_Fisher_Covariance",
+           sandwich = "Probit_statistics_Gaussian_Distortion_Corrected_Covariance")
+.f <- function(n, z, kind)
+  Sys.glob(file.path("../data", "*",
+                     sprintf("figure_3_G_nch_%d_nsim_10000_%s_noise_%s_%s.csv", n, A, z, kind)))
+
+stamp <- local({
+  fs <- unlist(lapply(NCHS, function(n) unlist(lapply(ZS, function(z)
+    c(.f(n, z, "mle_cloud_runs"), .f(n, z, "battery_pool_G"))))))
+  i <- file.info(c(fs, "figure_4_supplement_qq_IR.Rmd"))
+  sprintf("# figure_4 qq IR | files=%d bytes=%.0f newest=%.0f", length(fs),
+          sum(i$size, na.rm = TRUE), max(as.numeric(i$mtime), na.rm = TRUE))
+})
+
+ir_cell <- function(n, z) {
+  fc <- .f(n, z, "mle_cloud_runs"); fb <- .f(n, z, "battery_pool_G")
+  if (!length(fc) || !length(fb)) return(NULL)
+  d <- fread(fc[1], skip = 1, showProgress = FALSE)
+  b <- fread(fb[1], skip = 1, showProgress = FALSE)
+  rbindlist(lapply(sort(unique(d$interval_in_tau)), function(dlt) {
+    cv <- d[variable == "Convergence_Status_Code" & group_size == GS & interval_in_tau == dlt]
+    ok <- if (nrow(cv)) cv$sample_index[cv$value == 0] else NULL
+    TH <- d[variable == "Model_Parameters_Hat" & group_size == GS & interval_in_tau == dlt &
+            (is.null(ok) | sample_index %in% ok)]
+    if (!nrow(TH)) return(NULL)
+    W <- dcast(TH, sample_index ~ param_index, value.var = "value")
+    M <- as.matrix(W[, -1]); if (nrow(M) < 20) return(NULL)
+    pid <- as.integer(colnames(M)); P <- length(pid)
+    C <- sweep(M, 2, colMeans(M), "-")
+    rbindlist(lapply(names(COV), function(k) {
+      g <- b[component_path == COV[[k]] & statistic == "value" & probit == "mean" &
+             abs(interval_in_tau - dlt) < 1e-9 & param_index %in% pid & param_col %in% pid]
+      if (!nrow(g)) { cat(sprintf("    SKIP N_ch %d noise %s Delta %g %s: no rows\n",
+                                  n, z, dlt, k)); return(NULL) }
+      S <- matrix(NA_real_, P, P)
+      S[cbind(match(g$param_index, pid), match(g$param_col, pid))] <- g$value
+      if (anyNA(S)) { cat(sprintf("    SKIP N_ch %d noise %s Delta %g %s: gaps\n",
+                                  n, z, dlt, k)); return(NULL) }
+      Si <- try(solve(S / GS), silent = TRUE)
+      if (inherits(Si, "try-error")) { cat(sprintf("    SKIP N_ch %d noise %s Delta %g %s: singular\n",
+                                                   n, z, dlt, k)); return(NULL) }
+      data.table(nch = n, z = z, dlt = dlt, cov = k, p = P,
+                 d2 = rowSums((C %*% Si) * C))
+    }))
+  }))
+}
+
+if (file.exists(SRC) && identical(readLines(SRC, n = 1), stamp)) {
+  cat("qq IR: source CSV is current, reading it\n")
+  D <- as.data.table(read.csv(SRC, skip = 1))
+} else {
+  cat("qq IR: sweeping IR's clouds over six noise levels\n")
+  D <- rbindlist(lapply(NCHS, function(n) rbindlist(lapply(ZS, function(z) {
+    r <- ir_cell(n, z)
+    if (!is.null(r)) cat(sprintf("  N_ch %-6d noise %-5s  %d values\n", n, z, nrow(r)))
+    r
+  }))))
+  dir.create(dirname(SRC), showWarnings = FALSE, recursive = TRUE)
+  writeLines(stamp, SRC)
+  suppressWarnings(write.table(D, SRC, sep = ",", row.names = FALSE, col.names = TRUE,
+                               append = TRUE, qmethod = "double"))
+}
+
+# POOL over the noise levels: sort the combined sample per (N_ch, Delta, covariance) and give it
+# the chi-squared quantiles of its own length.
+QALL <- D[, .(emp = sort(d2), p = p[1]), by = .(nch, dlt, cov)]
+QALL[, theo := qchisq(ppoints(.N), p[1]), by = .(nch, dlt, cov)]
+DLTS <- sort(unique(QALL$dlt))
+Q <- QALL[nch %in% NCH_MAIN]
+NCHS <- NCH_MAIN
+Q[, nchf := factor(sprintf("N[ch]==%d", nch), levels = sprintf("N[ch]==%d", NCHS))]
+Q[, dltf := factor(sprintf("Delta==%g", dlt), levels = sprintf("Delta==%g", DLTS))]
+
+set.seed(1)
+BAND <- Q[cov == "sandwich", {
+  n <- .N; M <- replicate(2000, sort(rchisq(n, p[1])))
+  th <- qchisq(ppoints(n), p[1])
+  .(theo = th, lo = apply(M, 1, quantile, .025) / th, hi = apply(M, 1, quantile, .975) / th)
+}, by = .(nch, nchf, dlt, dltf)]
+NF <- Q[cov == "sandwich", .(n = .N), by = .(nchf, dltf)]
+cat(sprintf("IR: %d panels, %d to %d fits each (pooled over %d noise levels)\n",
+            nrow(NF), min(NF$n), max(NF$n), length(ZS)))
+```
+
+```{r plot, fig.width = 7.0, fig.height = 4.6}
+mk_band <- function(QQ) { set.seed(1); QQ[cov == "sandwich", {
+  n <- .N; M <- replicate(2000, sort(rchisq(n, p[1]))); th <- qchisq(ppoints(n), p[1])
+  .(theo = th, lo = apply(M, 1, quantile, .025) / th, hi = apply(M, 1, quantile, .975) / th)
+}, by = .(nch, nchf, dlt, dltf)] }
+
+g <- ggplot(Q[theo > 1], aes(theo, emp / theo, linetype = cov)) +
+  geom_ribbon(data = BAND[theo > 1], aes(x = theo, ymin = lo, ymax = hi),
+              inherit.aes = FALSE, fill = "grey85", colour = NA) +
+  geom_hline(yintercept = 1, colour = "#1A9850", linewidth = .35) +
+  geom_line(linewidth = .4, colour = "#08306B") +
+  facet_grid(nchf ~ dltf, labeller = label_parsed) +
+  scale_x_log10(breaks = c(1, 5, 20)) +
+  scale_y_log10(breaks = c(0.5, 1, 2, 4)) +
+  coord_cartesian(ylim = c(0.35, 5)) +
+  scale_linetype_manual(values = c(reported = "22", sandwich = "solid"), name = NULL) +
+  labs(x = expression("theoretical quantile, " * chi[6]^2 * " (log)"),
+       y = expression("empirical " * d^2 * " over theoretical (log)")) +
+  theme_bw(base_size = 8, base_family = "Helvetica") +
+  theme(panel.grid.minor = element_blank(), legend.position = "bottom",
+        legend.key.size = unit(9, "pt"), strip.text = element_text(size = 7),
+        axis.text = element_text(size = 6.5), axis.title = element_text(size = 8),
+        legend.text = element_text(size = 7))
+g
+ggsave("Figure_4_supplement_qq_IR.pdf", g, width = 7.0, height = 4.6)
+```
+
+```{r small, fig.width = 7.0, fig.height = 4.6}
+# THE FEW-CHANNEL CORNER, ZOOMED. Same quantity, same pooling, four rows of small channel counts
+# and a vertical range of 0.75 to 1.35 instead of 0.35 to 5. This is where the paper expects the
+# boundary-conditioned filter to degrade -- the occupancy closure is worst when the binomial has
+# few channels to be normal about -- so it is where a departure of ten per cent is worth seeing,
+# and on the full-range axis ten per cent is a line width.
+#
+# N_ch 5 HAS ONE NOISE LEVEL, not six, so its row pools about a hundred fits per panel against the
+# six hundred of the rows below it, and its null band is correspondingly wider. The band is
+# simulated per panel so it carries that difference itself; the row is not comparable to the others
+# by eye without reading the band.
+#
+# CURVES ARE CLIPPED at the panel edge here, which the full-range render does not do. That is the
+# price of the zoom and it is only paid in the extreme quantiles, where the band is wide and
+# nothing can be concluded anyway.
+QS <- QALL[nch %in% NCH_SMALL]
+QS[, nchf := factor(sprintf("N[ch]==%d", nch), levels = sprintf("N[ch]==%d", NCH_SMALL))]
+QS[, dltf := factor(sprintf("Delta==%g", dlt), levels = sprintf("Delta==%g", DLTS))]
+BS <- mk_band(QS)
+NS <- QS[cov == "sandwich", .(n = .N), by = .(nchf, dltf)]
+cat(sprintf("IR small: %d panels, %d to %d fits each\n", nrow(NS), min(NS$n), max(NS$n)))
+
+gs <- ggplot(QS[theo > 1], aes(theo, emp / theo, linetype = cov)) +
+  geom_ribbon(data = BS[theo > 1], aes(x = theo, ymin = lo, ymax = hi),
+              inherit.aes = FALSE, fill = "grey85", colour = NA) +
+  geom_hline(yintercept = 1, colour = "#1A9850", linewidth = .35) +
+  geom_line(linewidth = .4, colour = "#08306B") +
+  facet_grid(nchf ~ dltf, labeller = label_parsed) +
+  scale_x_log10(breaks = c(1, 5, 20)) +
+  scale_y_log10(breaks = c(0.8, 0.9, 1, 1.1, 1.25)) +
+  coord_cartesian(ylim = c(0.75, 1.35)) +
+  scale_linetype_manual(values = c(reported = "22", sandwich = "solid"), name = NULL) +
+  labs(x = expression("theoretical quantile, " * chi[6]^2 * " (log)"),
+       y = expression("empirical " * d^2 * " over theoretical (log)")) +
+  theme_bw(base_size = 8, base_family = "Helvetica") +
+  theme(panel.grid.minor = element_blank(), legend.position = "bottom",
+        legend.key.size = unit(9, "pt"), strip.text = element_text(size = 7),
+        axis.text = element_text(size = 6.5), axis.title = element_text(size = 8),
+        legend.text = element_text(size = 7))
+gs
+ggsave("Figure_4_supplement_qq_IR_small.pdf", gs, width = 7.0, height = 4.6)
+
+knitr::kable(dcast(QS[theo > 1 & theo < qchisq(0.90, 6),
+                      .(ratio = median(emp / theo)), by = .(nch, dlt, cov)],
+                   dlt ~ nch + cov, value.var = "ratio"), digits = 3,
+             caption = "median d2/chi2 over the body, IR at few channels")
+```
+
+```{r numbers}
+# the median ratio over the BODY of the distribution, where the band is narrow: one number per cell
+body <- Q[theo > 1 & theo < qchisq(0.90, 6),
+          .(ratio = median(emp / theo)), by = .(nch, dlt, cov)]
+knitr::kable(dcast(body, dlt ~ nch + cov, value.var = "ratio"), digits = 3,
+             caption = "median d2/chi2 over the body, IR, pooled over the six noise levels")
+
+# THE GUARD ON THE POOLING: the same median resolved BY noise. If these disagree, the pooled curve
+# is an average of unlike things and the figure has to be split.
+pn <- D[, .(emp = sort(d2), p = p[1]), by = .(nch, z, cov)]
+pn[, theo := qchisq(ppoints(.N), p[1]), by = .(nch, z, cov)]
+knitr::kable(dcast(pn[theo > 1 & theo < qchisq(0.90, 6) & cov == "reported",
+                      .(ratio = median(emp / theo)), by = .(nch, z)],
+                   z ~ nch, value.var = "ratio"), digits = 3,
+             caption = "the same, resolved by noise level (reported covariance): the pooling guard")
+```

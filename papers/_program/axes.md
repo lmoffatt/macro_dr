@@ -39,7 +39,7 @@ Band A is gating-dominated and finely resolved (expect IR); band B is gating-dom
 
 ## 4) Methods
 - **Method zero**, off the lattice: `nonlinearsqr` (display `LSE`), classical nonlinear least squares on the mean current, `family_approximation = 2`, its own dispatcher `dispatch_figure_3_LSE.sh`.
-- **The five likelihood approximations:** `NR`, `NMR`, `R`, `MR`, `IR`. Drop the Taylor variance-correction variants (MNRV/MRV/IRV — cut, taylor=false). Naming: MNR → NMR.
+- **The five likelihood approximations:** `NR`, `INR`, `R`, `MR`, `IR`. Drop the Taylor variance-correction variants (MNRV/MRV/IRV — cut, taylor=false). Naming: settled on `INR` 2026-07-31, which is also the published spelling; `MNR` and `NMR` were earlier spellings of it, and `NMR` alone now denotes the defective build that omitted the interval-variance term (`nomenclature.md`).
 - The label `nonlinearsqr` must appear verbatim end to end (`.macroir` axis label → CSV `algorithm` cell → R `ALGOS` entry); any mismatch silently drops the rows, the same failure class as the MNR/NMR bug.
 - LSE needs two parameters `Fixed` that the others leave free: `unitary_current` (the amplitude ridge, N and g are unidentifiable from the mean alone) and `Current_Noise` (a pure-variance direction, so its score row is identically zero and the Fisher would be singular). Details in `theory/macroir/notes/nonlinearsqr_lse_plan.md` §7.
 

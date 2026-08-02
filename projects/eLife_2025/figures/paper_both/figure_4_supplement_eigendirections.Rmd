@@ -1,0 +1,204 @@
+---
+title: "Figure 4—figure supplement (number pending) — the distortion matrix tested direction by direction against the cloud of estimates"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+NUMBER PENDING, as for the other rebuilt supplements.
+
+WHAT THIS IS FOR, and it is the figure the Mahalanobis ones cannot be. A squared Mahalanobis
+distance sums over every parameter direction, so it reports the AVERAGE of the distortion matrix's
+eigenvalues and nothing else. Measured for IR at ten channels: the eigenvalues run 1.687, 1.138,
+1.053, 0.999, 0.936, 0.827 -- a factor two between the best-behaved direction and the worst -- and
+their average is 1.11. One direction whose error bar is too small by a factor sqrt(1.687) = 1.30
+becomes an eleven per cent effect once it is divided by six, which is half a band width. The
+quantile-quantile figures were therefore not contradicting the maps; they were the wrong
+instrument, and this is the right one.
+
+THE IDENTITY BEING TESTED. Whiten the cloud with the Fisher the algorithm reports,
+Z = F^(1/2)(theta_hat - theta_bar). If the estimator's true covariance is the sandwich
+F^-1 J F^-1, then
+
+    Cov(Z) = F^(1/2) F^-1 J F^-1 F^(1/2) = F^(-1/2) J F^(-1/2) = IDM
+
+exactly. So the whitened cloud's covariance IS the distortion matrix, and projecting it onto the
+IDM's own eigenvectors must give back the IDM's eigenvalues. That is a six-number prediction per
+cell, from the model, against six measurements, from the simulations, with nothing fitted between
+them.
+
+WHAT A PANEL SHOWS. One point per (noise level, eigendirection): the eigenvalue the battery's
+distortion matrix predicts on the horizontal axis, the variance the whitened cloud actually has
+along that direction on the vertical. Six noise levels times six directions is thirty-six points
+spanning roughly 0.7 to 1.7, which is a calibration plot and not a single comparison. On the
+identity means the distortion matrix is right; the spread around it is what a hundred fits per
+cloud can resolve, and the grey guide is that: plus and minus two standard errors of a variance,
+sqrt(2/n), around the identity.
+
+WHY THE NOISE LEVELS ARE POINTS AND NOT PANELS. Their eigenvectors differ, so they cannot be
+pooled into one curve; but each contributes six independent (prediction, measurement) pairs at its
+own place on the axis, which is exactly what a calibration plot wants. Fixing the noise would
+leave six points per panel and no range.
+
+THE WORST DIRECTION HAS A COMPOSITION, and it is printed in the table at the foot rather than
+drawn, because it is a vector and the panel is already carrying thirty-six points. At ten channels
+and the longest interval it is k_off -0.87, N_ch -0.42, i +0.25: almost pure closing rate pulling
+against the channel number, which is the N*i ridge seen from the parameter side. That is the
+combination whose error bar is too small by thirty per cent, and no per-parameter map can name it
+because a map reports coordinates and this is a rotation.
+
+A HUNDRED FITS PER CLOUD, group size 100, converged fits only. The standard error of an empirical
+variance is then sqrt(2/99) = 14 per cent, which is the width of the guide. Individual points are
+not conclusive; thirty-six of them lying along the identity are.
+
+GROUP SIZE 10 WOULD GIVE A THOUSAND FITS AND IS NOT USED, and this was tested rather than assumed.
+Median measured-over-predicted at the two group sizes, same cells:
+
+    N_ch 10, noise 0.1     1.033 (gs 10)   1.018 (gs 100)
+    N_ch 10, noise 1       1.116           0.964
+    N_ch 20, noise 1       1.050           1.001
+    N_ch 100, noise 1      1.028           0.983
+
+With six thousand values against seven hundred the median carries about two per cent, so 1.116
+against 0.964 is a seven-sigma disagreement and not sampling. The bias runs one way, three to
+twelve per cent upward, and grows as channels are removed: at ten recordings per estimate the MLE
+has not reached the regime the sandwich describes and its cloud is wider than the asymptotics
+predict. Three times the resolution bought with a systematic artefact the size of the effect is
+not a trade worth making. The project's own warning about small group sizes at few channels is
+about a sign reversal in the channel-number direction; this is a second face of it, on a quantity
+that is blind to the mean.
+
+THE ROWS ARE THE FEW-CHANNEL CORNER, 10 to 100, and not the decade ladder. Above a thousand
+channels IR's distortion is gone -- the predicted eigenvalues span 0.85 to 1.24 -- so the
+horizontal axis has no range and the calibration plot degenerates: the first version measured a
+regression slope of 0.6 there, which is a statement about the lever arm and not about the model.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+suppressMessages({ library(data.table); library(ggplot2) })
+```
+
+```{r data}
+SRC  <- "../figure_4_source_data/figure_4_source_data_eigendirections.csv"
+A    <- "macro_IR"
+# the few-channel corner, which is where there is distortion to predict at all: at a thousand
+# channels and above the predicted eigenvalues collapse into 0.85 to 1.24 and the plot has no
+# lever arm left, so those rows measured a regression slope of 0.6 that says nothing about the
+# model and everything about the range.
+NCHS <- c(10, 20, 50, 100)
+ZS   <- c("0.05", "0.1", "0.2", "0.5", "1", "10")
+GS   <- 100
+PN   <- c("k_on", "k_off", "i", "sigma", "base", "N_ch")
+IDMP <- "Probit_statistics_Likelihood_Gaussian_Information_Distortion"
+FCVP <- "Probit_statistics_Gaussian_Fisher_Covariance"
+.f <- function(n, z, kind)
+  Sys.glob(file.path("../data", "*",
+                     sprintf("figure_3_G_nch_%d_nsim_10000_%s_noise_%s_%s.csv", n, A, z, kind)))
+
+stamp <- local({
+  fs <- unlist(lapply(NCHS, function(n) unlist(lapply(ZS, function(z)
+    c(.f(n, z, "mle_cloud_runs"), .f(n, z, "battery_pool_G"))))))
+  i <- file.info(c(fs, "figure_4_supplement_eigendirections.Rmd"))
+  sprintf("# figure_4 eigendirections | files=%d bytes=%.0f newest=%.0f", length(fs),
+          sum(i$size, na.rm = TRUE), max(as.numeric(i$mtime), na.rm = TRUE))
+})
+
+# symmetric square root, used to whiten the cloud with the reported Fisher
+sqrtm <- function(S) { e <- eigen((S + t(S)) / 2, symmetric = TRUE)
+                       e$vectors %*% diag(sqrt(pmax(e$values, 0))) %*% t(e$vectors) }
+
+eig_cell <- function(n, z) {
+  fc <- .f(n, z, "mle_cloud_runs"); fb <- .f(n, z, "battery_pool_G")
+  if (!length(fc) || !length(fb)) return(NULL)
+  d <- fread(fc[1], skip = 1, showProgress = FALSE)
+  b <- fread(fb[1], skip = 1, showProgress = FALSE)
+  mat <- function(cp, dl, pid) {
+    g <- b[component_path == cp & statistic == "value" & probit == "mean" &
+           abs(interval_in_tau - dl) < 1e-9 & param_index %in% pid & param_col %in% pid]
+    if (!nrow(g)) return(NULL)
+    S <- matrix(NA_real_, length(pid), length(pid))
+    S[cbind(match(g$param_index, pid), match(g$param_col, pid))] <- g$value
+    if (anyNA(S)) NULL else S
+  }
+  rbindlist(lapply(sort(unique(d$interval_in_tau)), function(dl) {
+    cv <- d[variable == "Convergence_Status_Code" & group_size == GS & interval_in_tau == dl]
+    ok <- if (nrow(cv)) cv$sample_index[cv$value == 0] else NULL
+    TH <- d[variable == "Model_Parameters_Hat" & group_size == GS & interval_in_tau == dl &
+            (is.null(ok) | sample_index %in% ok)]
+    if (!nrow(TH)) return(NULL)
+    W <- dcast(TH, sample_index ~ param_index, value.var = "value")
+    M <- as.matrix(W[, -1]); if (nrow(M) < 20) return(NULL)
+    pid <- as.integer(colnames(M))
+    Fc <- mat(FCVP, dl, pid); Id <- mat(IDMP, dl, pid)
+    if (is.null(Fc) || is.null(Id)) {
+      cat(sprintf("    SKIP N_ch %d noise %s Delta %g: matrix missing\n", n, z, dl)); return(NULL) }
+    # Cov(Z) = IDM exactly, with Z the cloud whitened by the GROUP's reported Fisher
+    Z  <- sweep(M, 2, colMeans(M), "-") %*% sqrtm(solve(Fc / GS))
+    e  <- eigen((Id + t(Id)) / 2, symmetric = TRUE)
+    pr <- Z %*% e$vectors
+    top <- e$vectors[, 1]
+    data.table(nch = n, z = z, dlt = dl, rank = seq_along(e$values), nfit = nrow(M),
+               pred = e$values, obs = apply(pr, 2, var),
+               top_lab = paste(sprintf("%s%+.2f", PN[pid + 1], top), collapse = " "))
+  }))
+}
+
+if (file.exists(SRC) && identical(readLines(SRC, n = 1), stamp)) {
+  cat("eigendirections: source CSV is current, reading it\n")
+  E <- as.data.table(read.csv(SRC, skip = 1))
+} else {
+  cat("eigendirections: sweeping\n")
+  E <- rbindlist(lapply(NCHS, function(n) rbindlist(lapply(ZS, function(z) {
+    r <- eig_cell(n, z)
+    if (!is.null(r) && nrow(r)) cat(sprintf("  N_ch %-6d noise %-5s  %d directions\n",
+                                            n, z, nrow(r)))
+    r
+  }))))
+  dir.create(dirname(SRC), showWarnings = FALSE, recursive = TRUE)
+  writeLines(stamp, SRC)
+  suppressWarnings(write.table(E, SRC, sep = ",", row.names = FALSE, col.names = TRUE,
+                               append = TRUE, qmethod = "double"))
+}
+DLTS <- sort(unique(E$dlt))
+E[, nchf := factor(sprintf("N[ch]==%d", nch), levels = sprintf("N[ch]==%d", NCHS))]
+E[, dltf := factor(sprintf("Delta==%g", dlt), levels = sprintf("Delta==%g", DLTS))]
+cat(sprintf("%d points over %d panels, %d fits per cloud\n", nrow(E),
+            uniqueN(E[, .(nch, dlt)]), round(mean(E$nfit))))
+```
+
+```{r plot, fig.width = 7.0, fig.height = 4.6}
+GUIDE <- data.table(x = seq(0.5, 2.2, length.out = 100))
+GUIDE[, `:=`(lo = x * (1 - 2 * sqrt(2 / 99)), hi = x * (1 + 2 * sqrt(2 / 99)))]
+g <- ggplot(E, aes(pred, obs)) +
+  geom_ribbon(data = GUIDE, aes(x = x, ymin = lo, ymax = hi), inherit.aes = FALSE,
+              fill = "grey85", colour = NA) +
+  geom_abline(slope = 1, intercept = 0, colour = "#1A9850", linewidth = .35) +
+  geom_point(aes(colour = factor(rank)), size = .7, alpha = .85) +
+  facet_grid(nchf ~ dltf) +
+  scale_x_log10(breaks = c(0.7, 1, 1.5)) + scale_y_log10(breaks = c(0.7, 1, 1.5, 2)) +
+  coord_cartesian(xlim = c(0.6, 2.0), ylim = c(0.55, 2.4)) +
+  scale_colour_manual(values = c("#08306B", "#2171B5", "#6BAED6",
+                                 "#BDBDBD", "#FDAE61", "#D73027"),
+                      name = "direction,\nworst first") +
+  labs(x = "eigenvalue the distortion matrix predicts",
+       y = "variance the whitened cloud has") +
+  theme_bw(base_size = 8, base_family = "Helvetica") +
+  theme(panel.grid.minor = element_blank(), legend.position = "right",
+        legend.key.size = unit(8, "pt"), strip.text = element_text(size = 6.5),
+        axis.text = element_text(size = 6.5), axis.title = element_text(size = 8),
+        legend.text = element_text(size = 6.5), legend.title = element_text(size = 6.5))
+g
+ggsave("Figure_4_supplement_eigendirections.pdf", g, width = 7.0, height = 4.6)
+```
+
+```{r numbers}
+fit <- E[, .(n = .N, slope = coef(lm(log(obs) ~ log(pred)))[2],
+             med_ratio = median(obs / pred)), by = .(nch)]
+knitr::kable(fit, digits = 3,
+             caption = "prediction against measurement: a slope of one and a ratio of one mean the distortion matrix is right")
+
+knitr::kable(unique(E[rank == 1 & dlt == 1, .(nch, z, worst = round(pred, 3), top_lab)]),
+             caption = "the worst direction and its composition, at the longest interval")
+```

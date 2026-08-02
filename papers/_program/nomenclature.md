@@ -23,7 +23,7 @@ hanging from it** (`program.md` §1):
 
 - **Root: do you model the gating fluctuations at all?** `LSE` (classical nonlinear least squares on
   the mean current) answers no. In the engine it is `family_approximation = 2`; it carries the same two
-  knob settings as `MNR` and is distinguished only by that third flag. **It has no
+  knob settings as `INR` and is distinguished only by that third flag. **It has no
   compositional name**, because it is a different kind of object, named for what it is.
   **Corrected 2026-07-28:** this used to read "no rung and no gloss", which is now misleading in the
   one place it matters. `LSE` is the bottom rung of the cost ladder the paper walks and it is the
@@ -41,35 +41,59 @@ says how the single-channel conductance is treated within an interval.
 |-------|-----------|-----|---|
 | `NR`  | false     | 0   | — |
 | `R`   | true      | 0   | — |
-| `MNR` | false     | 1   | total (**= the published `MacroINR`**; supplement member) |
+| `INR` | false     | 1   | total (**= the published `MacroINR`**; supplement member) |
+| `NMR` | false     | 1   | **none — the defective implementation, see below** |
 | `MR`  | true      | 1   | total |
 | `VR`  | true      | 1   | residual |
 | `IR`  | true      | 2   | residual (+ boundary gain) |
 
-**`MNR` (false, 1, total), and the bridge, settled 2026-07-29.** `MNR` **is** `MacroINR`, the
-published control of Comm Biol 2025. The name parses as **I**nterval (the averaged conductance,
-`av = 1`) + **N**on-**R**ecursive, so the `I` is the conductance prefix and not `IR`'s
-boundary-conditioned `I`.
-**Spelling fixed 2026-07-29: the label is `MNR`, not `NMR`.** The compositional rule is that the
-`N` modifies the `R`, so `NR` is the non-recursive base and a conductance prefix attaches to it as a
-unit: `M` + `NR` = `MNR`. That is the same parse as the published `MacroINR` = `I` + `NR`, which is
-the paragraph above. `NMR` would read as `N` + `MR`, putting the negation on `MR` instead, which is
-not how the family is built. Corrected in the manuscript (`02_theory.tex` Table 1,
-`06_methods.tex` Table 2 and its caption) and here. **The data key stays `macro_NMR`**: it is what
-the dispatch scripts accept and what every produced file in `figures/data/` carries, so renaming it
-would orphan the freeze. The Methods caption says so. **This closes the "open item: the MacroINR bridge" that stood at the foot of
-this file**, which suspected the bridge was wrong; it is right, and the Comm Biol Introduction's
-"ignores time averaging" is loose prose for "does not do IR's boundary-conditioned interval
-treatment", not a claim about the `av` flag.
+**`INR` (false, 1, total) is the published `MacroINR`, the Comm Biol 2025 control.** Two readings of
+the `I` are available and **they name the same algorithm**, which is why the bridge needs no
+lawyering. Read compositionally it is **I**nterval (the averaged conductance, `av = 1`) +
+**N**on-**R**ecursive, the conductance prefix on the non-recursive base. Read as `IR`'s
+boundary-conditioned `I` it is the non-recursive member of the `IR` family. **Those coincide**: the
+end state is unobservable without an update, so `gmean_ij` can only enter through its row marginal
+`gmean_i` (`legacy/qmodel.h:1666`, `gmean_i = gtotal_ij · u`), and `(recursive=false, av=1)` and
+`(recursive=false, av=2)` are the same code path, branching only on `averaging > 0`. **This closes
+the "open item: the MacroINR bridge" at the foot of this file** on much stronger ground than the
+2026-07-29 parse argument it replaces: it does not matter which `I` was meant. The Comm Biol
+Introduction's "ignores time averaging" is loose prose for "does not do `IR`'s boundary-conditioned
+interval treatment", not a claim about the `av` flag.
 
-Its membership was briefly recorded as dropped on 2026-07-28 for "no literature attribution", which is
-false: it carries the published demonstration that model ranking is sensitive to the likelihood
-approximation. What is true is that it is **numerically indistinguishable from `NR`** on the freeze.
-**Settled 2026-07-29: it goes to the supplement with `MR` and `VR`** (`decisions.md` §2).
+**`NMR` is a second-class citizen and it is kept on purpose: a badly implemented algorithm that
+exists** (Luciano, 2026-07-31). It is `INR` minus the `N·ms` term, the variance of the interval-mean
+conductance given the start state. The regression entered at `a3e0a89` (2025-12-02), which split the
+algo-state computation into recursive and non-recursive copies; the copy re-implemented the variance
+without `ms` and accepted-and-ignored the `variance` flag, although every dispatch script passes
+`variance_approximation = 1`. Fixed at `1f7138b` (2026-07-31). So `NMR` names exactly what ran in that
+window, and it is **not** `MacroINR`: the submitted Comm Biol source
+(`macro_dr_submission` `b4a0e28`) adds the term in the same place, gated on `variance` alone.
+
+**The data key `macro_NMR` is therefore not a legacy spelling, it is a different algorithm.** Every
+file in `figures/data/` carrying `macro_NMR` was produced by the defective engine; `macro_INR` marks
+the corrected one, and the `.Rmd` readers tell them apart by that label. Do not sweep `macro_NMR` out
+of the data or the readers. (Line 1 of every produced CSV is the git hash, so the two are also
+separable by provenance.)
+
+**What `NMR` measures, and what it does not.** `NMR` is **numerically indistinguishable from `NR`** on
+the freeze, and that now has a mechanism rather than being a coincidence: with `ms` gone, the only
+things left separating them are `g → gmean_i` and `P_half → P`. **Do not carry that forward as
+"the interval-mean conductance buys nothing without recursion"** — that sentence was measuring the
+code as written.
+
+**Answered 2026-08-01: `INR` is NOT indistinguishable from `NR`, in either moment.** The re-run is
+`figures/data/1f7138b/` (17 cells at `nsim` 10⁴). At noise 0.1, N_ch 10⁴, on `k_off`, information
+distortion total / sample / correlation: `NR` 78.9 / 47.2 / 21.2 against `INR` 22.2 / 1.00 / 22.1. And
+median |bias| over every cell and interval, in `N_ch`: `NR` 0.099 against `INR` 0.003 log10. So the
+`N·ms` term is what carries the first moment and the per-sample fidelity, and what it leaves behind is
+pure correlation distortion, which only recursion removes. Recompute:
+`papers/1_method/decisions/recompute/d3_interval_vs_recursion_2x2.py`; roster consequence: Q-5 in
+`papers/1_method/decisions.md`.
 
 The suffix (`N` / `R`) is the occupancy axis: non-recursive or recursive. The prefix is the
 conductance axis: none for the instantaneous conductance, `M` for the mean conductance, `I` for the
-interval-conditioned (boundary) mean conductance.
+interval-conditioned (boundary) mean conductance, which above the non-recursive base collapses onto
+the mean conductance.
 
 **`VR` opens a third axis: the form of the interval variance.** `MR` and `VR` share `(recursive, av) =
 (true, 1)` and differ only in whether the interval variance is the total per-start-state form or the
@@ -137,12 +161,18 @@ point stands; what is retired is stating a one-band result as a global verdict.
 |---|---|---|
 | the gating fluctuations are not modelled | `LSE` | the deterministic mean current only |
 | no endpoints | `NR`, `R` | instantaneous; the averaging is ignored |
-| one endpoint (the start) | `MNR`, `MR`, `VR` | interval-mean given the initial state (`VR` uses the residual variance) |
+| one endpoint (the start) | `MR`, `VR` | interval-mean given the initial state (`VR` uses the residual variance) |
+| endpoints not distinguishable | `INR` | interval-mean; with no update the two endpoint columns coincide |
 | two endpoints (the boundary) | `IR` | interval-mean given both boundary states; interior marginalized |
 | the full trajectory | (exact) | intractable; the stochastic simulation supplies it as ground truth |
 
 `IR` is the top rung below intractability. **The body walks `LSE → NR → R → IR`**, a monotone ladder
 of cost; `MR` and `VR` split the R → IR step and live in a supplement (`program.md` §1).
+
+`INR` gets its own row rather than sitting with `MR` and `VR`, because it does not condition on one
+endpoint *by choice*: without a gain the question does not apply to it, which is the degeneracy in the
+lattice table above. `NMR` is not on this ladder at all — it is `INR` with the interval variance
+dropped, so it does not model the conductance the row claims.
 
 ## The regions of the usage map
 
@@ -179,10 +209,14 @@ between them free. This is static condensation, or the spatial Markov property, 
 It is **not** a transition state in the mechanistic sense (a short-lived conformational intermediate).
 Avoid the word *transition* anywhere near it (`project_boundary_state_naming`).
 
-## ~~Open item: the `MacroINR` bridge~~ CLOSED 2026-07-29
+## ~~Open item: the `MacroINR` bridge~~ CLOSED 2026-07-29, re-grounded 2026-07-31
 
-The bridge `MNR = MacroINR` is **correct**. See the lattice table above for the parse and for why the
-Comm Biol phrase "ignores time averaging" does not contradict `av = 1`. The suspicion recorded here
-until 2026-07-29 (that a published name carrying an `I` would misname a start-conditioned method) read
-the `I` as `IR`'s boundary-conditioned `I`; in the published name it is the interval-mean conductance
-prefix, which is exactly what `av = 1` is.
+The bridge `INR = MacroINR` is **correct**, and the argument no longer rests on a parse. Both readings
+of the `I` name the same algorithm, because without an update the boundary conditioning is
+unobservable; see the lattice table above. The suspicion recorded here until 2026-07-29 (that a
+published name carrying an `I` would misname a start-conditioned method) assumed the two readings were
+in conflict. They are not.
+
+What the 2026-07-29 closure got wrong is a different thing: it identified the *implementation in this
+repo* with `MacroINR`. That implementation was missing the `N·ms` term and is now called `NMR`. The
+bridge holds for `INR`, the fixed one.

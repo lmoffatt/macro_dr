@@ -1,5 +1,10 @@
 # Update plan, 2026-07-28
 
+> **BANNER 2026-07-31.** Every `NMR` in this work order is the **defective build** (missing the `N·ms`
+> interval-variance term); the corrected member is `INR` (`nomenclature.md`). The open question at the
+> end — "is NMR in the programme?" — is settled twice over: yes as `INR`, a supplement member, and
+> separately `NMR` survives as the name of the defective build so the freeze stays legible.
+
 > **This is a work order, not a fact owner.** It settles nothing. Every decision it points at is
 > settled in the file named beside it. Delete this document when the last batch lands.
 >

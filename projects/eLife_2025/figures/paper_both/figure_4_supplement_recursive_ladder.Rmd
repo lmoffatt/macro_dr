@@ -1,0 +1,118 @@
+---
+title: "Figure 4—figure supplement (number pending) — the same plane for the recursive ladder: R, MR, VR, IR"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+NUMBER PENDING, as for the other rebuilt supplements; the set is numbered once it is known. The
+supplements written against the superseded figure are parked in
+`../in_progress/figure_4_supplements_20260731/`.
+
+WHAT IT IS. Figure 4, unchanged in every respect except the roster: the same two moments on the
+same shared factor scale, the same rows pinned to the union, the same two line families, the same
+nesting moment > member > parameter. What changes is which members hold the columns. Here they
+are the four rungs INSIDE the recursive family, in the order figure_3.Rmd walks them:
+
+    R    Recursive           recursion alone, one instant per interval
+    MR   Mean Recursive      conditions on the interval MEAN, one interval end
+    VR   Variance Recursive  removes the between-endpoint variance, still one end
+    IR   Interval Recursive  conditions on BOTH ends, and restores it in the gain
+
+R and IR are in the body figure and are carried here on purpose: without them MR and VR would be
+two columns with nothing to be measured against, and with them the reader sees the whole step R
+to IR and where the two intermediate rungs actually fall inside it.
+
+16 columns rather than the body's 18 (no LSE, which fits with the unitary current held fixed and
+so has no N_ch column, and four full members instead of four and a half). Fewer columns means a
+LARGER cell and a TALLER figure, since the isotropy ties them: 0.181 in per decade against the
+body's 0.157, 1.31 mm of cell against 1.14, and 7.40 x 6.63 in of page against 7.40 x 5.85.
+
+WHAT IT SHOWS. Measured at noise 0.1, medians over the seven intervals:
+
+                        N_ch:      10       100      1000     10000
+    distortion, k_off   R        1.425    1.487    1.481    1.456
+                        MR       1.448    1.778    1.777    1.942
+                        VR       1.361    1.484    1.516    1.589
+                        IR       1.367    1.127    1.025    1.006
+    distortion, N_ch    R        0.844    1.130    1.267    1.297
+                        MR       1.027    1.534    1.678    1.712
+                        VR       0.957    1.361    1.480    1.516
+                        IR       0.826    0.912    0.960    0.983
+    bias in N_ch        R      +0.1335  +0.1513  +0.1396  +0.1387
+                        MR     +0.1748  +0.1570  +0.1850  +0.1949
+                        VR     +0.0564  +0.0699  +0.1200  +0.1259
+                        IR     +0.0080  -0.0023  -0.0010  +0.0003
+
+THE RUNGS DO NOT INTERPOLATE, and that is the whole point of the figure. Going from R to IR is an
+improvement of a factor 1.45 in the k_off distortion; the two rungs in between are not at 1.3 and
+1.15, they are ABOVE R. MR is worse than R in every column of every block here: 1.94 against 1.46
+at N_ch 1e4, 1.71 against 1.30 in the channel number, and a bias of +0.195 against +0.139. VR
+recovers part of it and stays above R in the second moment (1.59) while being the best of the
+three in the first (+0.126). So conditioning on ONE interval end and stopping there costs
+something, and adding the variance correction without restoring it in the update recovers the
+mean and not the covariance. The distance from R to IR lives in the GAIN, not in the variance
+model, and this is the plane-wide version of that claim.
+
+CAUTION, two of them.
+
+  The ordering depends on the measure. `figure_3.Rmd` reports MR 1.63 against R 1.17 on the
+  ellipse-area measure at its own cell and puts VR worse still; here, on the per-parameter
+  distortion medianed over the intervals at noise 0.1, VR sits BELOW MR. Both are true of what
+  they measure. Whatever ends up in a caption has to name the measure and the cell, not just the
+  ordering.
+
+  MR's and VR's failure is not a coding error. It is the closure: MR carries the TOTAL conductance
+  variance per start state, where IR carries the residual variance conditioned on both ends, so
+  the between-endpoint spread that IR resolves through the boundary cross-covariance in the gain
+  is instead dumped into the observation noise. A centred MR that fixed the calibration would be
+  IR.
+
+COVERAGE, and it is ragged on purpose. R and IR carry the full staircase, to noise 1e7 at N_ch
+1e4; MR has three levels (0.1, 1, 10) and VR two (0.1, 1) at each channel count. Because the rows
+are pinned to the union, those two members show as short bands with grey above, which is what
+"not swept" should look like and is the reason this figure is not quietly like-for-like. About 40
+per cent of the panel area is grey as it stands. VR falls under `MIN_CONTOUR_LEVELS` and is drawn
+as tiles rather than as a two-row contour, which would be a linear ramp wearing the clothes of a
+field. Both revert on their own as the runs land, with no edit here.
+
+The alternative, which is NOT what this file does: pin the rows to the common grid instead of the
+union, i.e. show all four members over the two decades where all four were measured. That gives a
+7.40 x 3.15 in figure with no grey at all and a genuinely like-for-like comparison, at the price
+of hiding how much less of the plane MR and VR cover. It is one line (YLIM) if the coverage stops
+being a moving target.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+```{r common, include=FALSE}
+# The recursive family, cheapest rung first. No LSE and no NR/INR: this figure is about what
+# happens INSIDE the recursion, and the open-loop members answer a different question, which is
+# the body figure's.
+FIG4_ALGOS     <- c("macro_R", "macro_MR", "macro_VR", "macro_IR")
+FIG4_ALGO_LAB  <- c(macro_R = "R", macro_MR = "MR", macro_VR = "VR", macro_IR = "IR")
+FIG4_DATA_DIRS <- c("../data/1c2ae6f", "../data/87889e6", "../data/0ffbda7", "../data/1f7138b")
+source("figure_4_common.R")
+source("figure_4_layout.R")
+```
+
+```{r sides}
+# The same two sides as the body figure, read the same way, so a column here can be laid against
+# a column there without a conversion: bias at theta_sim from battery_sim_G, distortion at
+# theta_pool from battery_pool_G, both as a log10 factor on the shared scale.
+SIDES <- list(
+  list(lab = "distortion-induced bias", letter = "A",
+       data = bias,                                  zf = function(x) x$Bconf),
+  list(lab = "information distortion",  letter = "B",
+       data = dplyr::filter(stat, comp == "total"),  zf = function(x) log10(x$Dconf)))
+```
+
+```{r render, fig.width = 7.4, fig.height = 6.63}
+# 16 columns, so per_row is NOT the body's. MEASURED, not solved: a synthetic render of this same
+# layout at 16 columns puts 0.204 at x 0.1817, y 0.1807, 99.5 per cent isotropic
+# (tmp/calib_fig4.R, tmp/measure_fig4.py). The cell comes out 1.32 mm, wider than the body's 1.14.
+fig4_render(SIDES, per_row = 0.204, out = "Figure_4_supplement_recursive_ladder.pdf")
+```

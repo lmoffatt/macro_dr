@@ -1,0 +1,172 @@
+% APPENDIX 1. The systematic member-by-member specification. The Theory section carries the
+% narrative (two closures, the ladder, the two structural differences) and points here for the
+% formulas; this file carries the complete cycle with the three switches, so that a reader can
+% reconstruct any member without reading the code.
+% src: theory/macroir/docs/Macro_IR/macroir_derivation.tex (the canonical derivation: bilinear
+%      tilde 740-768 and its closed form 880-941; vector tilde 1148-1165)
+% src: legacy/qmodel.h:4498-4602 (the implemented cycle: the av=0 pre-propagation 4498-4512,
+%      the two gSg forms 4525-4537, the variance-form switch 4543-4576, the two gains 4594-4602)
+% NOT sourced from theory/macroir/docs/Macro_IR/MacroIR_tilde.md, which its own header marks as
+% predating the corrected normalization.
+
+\appendix
+\setcounter{equation}{0}
+\renewcommand{\theequation}{A\arabic{equation}}
+
+\begin{appendixbox}
+\section*{The interval update, member by member}
+
+The Theory section gives the cycle for the boundary-conditioned member and names the two
+places where the others differ. This appendix writes every member out in one template, so
+that each is fixed by three switches on a single set of equations.
+
+\subsection*{Objects computed once per interval}
+
+All members share the quantities built from the rate matrix $\mathbf{Q}$ and the recording
+filter for a window of length $\Delta$: the transition matrix $\mathbf{P}(\Delta)$; the
+boundary-conditioned single-channel moments $\overline{\Gamma}_{i_0\to i_t}$ and
+$\overline{V}_{i_0\to i_t}$; the start-conditioned mean conductance $\bar{\bm{\gamma}}_0$ of
+Eq.~\ref{eq:gammabar}; the start-conditioned interval variance
+$\bm{\sigma}^2_{\bar{\gamma}_0}$; and, for the members that ignore the acquisition
+averaging, the instantaneous per-state conductance vector $\bm{\gamma}$. Two matrices
+collect the boundary weights,
+\begin{equation}
+  G_{i_0 i_t} \;=\; \overline{\Gamma}_{i_0\to i_t}\,P_{i_0\to i_t}(\Delta),
+  \qquad
+  H_{i_0 i_t} \;=\; \overline{\Gamma}^2_{i_0\to i_t}\,P_{i_0\to i_t}(\Delta).
+  \label{eq:GH}
+\end{equation}
+
+\subsection*{The tilde operator}
+
+The tilde is a lift, a modulation and a collapse. An object carried on the $K$ states is
+lifted to the $K^2$ boundary pairs $(i_0,i_t)$, multiplied there by the interval weights
+$\overline{\Gamma}$, $\overline{V}$ and $\mathbf{P}(\Delta)$, and summed back down over the
+pair index. Its two specializations are the ones the likelihood needs. The bilinear tilde is
+the scalar of Eq.~\ref{eq:tilde}, which contracts the boundary covariance twice. The vector
+tilde is the gain,
+\begin{equation}
+  \mathbf{g} \;=\; \widetilde{\bm{\gamma}^\top\bm{\Sigma}}
+  \;=\; \mathbf{P}(\Delta)^\top\bigl(\bm{\Sigma}_0-\mathrm{diag}(\bm{\mu}_0)\bigr)\bar{\bm{\gamma}}_0
+  \;+\; \mathbf{G}^\top\bm{\mu}_0,
+  \label{eq:vector-tilde}
+\end{equation}
+which contracts it once and leaves a $K$-vector, the cross-covariance between the occupancy
+at the end of the window and the interval current. Both are evaluated in $K\times K$
+arithmetic; the $K^2\times K^2$ boundary covariance is never built.
+
+\subsection*{One cycle, three switches}
+
+Every member on the lattice runs the same four steps on each window: propagate the occupancy
+Gaussian (Eqs.~\ref{eq:mu-prop} and~\ref{eq:sig-prop}), predict the observation
+(Eqs.~\ref{eq:ypred} and~\ref{eq:pred-var}), update by the scalar Kalman correction
+(Eqs.~\ref{eq:mu-post} and~\ref{eq:sig-post}), and either carry the posterior to the next
+window or discard it. Three switches fix which member is being run.
+
+\paragraph{Switch 1: the window, $\mathrm{av}\in\{0,1,2\}$.} It selects the conductance
+object, and with it the second term of the predictive variance and the gain. At
+$\mathrm{av}=0$ the observation is treated as an instantaneous sample: the occupancy is
+propagated to the sampling point first, the conductance is $\bm{\gamma}$, and
+\begin{equation}
+  \widetilde{\bm{\gamma}^\top\bm{\Sigma}\bm{\gamma}} \;\to\; \bm{\gamma}^\top\bm{\Sigma}\bm{\gamma},
+  \qquad
+  \mathbf{g} \;\to\; \mathbf{P}(\Delta)^\top\bm{\Sigma}\,\bm{\gamma}.
+  \label{eq:av0}
+\end{equation}
+At $\mathrm{av}=1$ the same two expressions hold with $\bar{\bm{\gamma}}_0$ in place of
+$\bm{\gamma}$: the conductance is conditioned on the state at the window's start, but the
+contraction is still an ordinary quadratic form on the $K$ states. At $\mathrm{av}=2$ the
+conductance is conditioned on both endpoints and the two expressions become the tildes,
+Eq.~\ref{eq:tilde} and Eq.~\ref{eq:vector-tilde}. The step from $\mathrm{av}=1$ to
+$\mathrm{av}=2$ therefore does two things at once: it replaces $\bm{\Sigma}_0$ by
+$\bm{\Sigma}_0-\mathrm{diag}(\bm{\mu}_0)$ and adds the boundary term ($\bm{\mu}_0^\top
+\mathbf{H}\mathbf{1}$ in the variance, $\mathbf{G}^\top\bm{\mu}_0$ in the gain). The
+subtracted diagonal is not a second approximation: the within-channel part it removes is
+already inside the boundary term, and dropping the subtraction would count it twice.
+
+\paragraph{Switch 2: recursion.} A recursive member carries
+$(\bm{\mu}^{\mathrm{post}}, \bm{\Sigma}^{\mathrm{post}})$ into the next window. A
+non-recursive one discards it and propagates the next window's predictive from the initial
+condition, so its log-likelihood factorizes over windows. The switch changes no formula
+above; it changes only what is fed to the next one.
+
+\paragraph{Switch 3: the interval variance, total or residual.} It selects the third term of
+Eq.~\ref{eq:pred-var}, which is present only when the acquisition averaging is modelled at
+all ($\mathrm{av}\ge 1$):
+\begin{equation}
+  \bigl(\bm{\sigma}^2_{\bar{\gamma}_0}\bigr)_{i_0} =
+  \begin{cases}
+    \sum_{i_t} P_{i_0\to i_t}(\Delta)\bigl[\overline{V}_{i_0\to i_t}
+      + \bigl(\overline{\Gamma}_{i_0\to i_t}-(\bar{\gamma}_0)_{i_0}\bigr)^2\bigr]
+      & \text{total,}\\[4pt]
+    \sum_{i_t} P_{i_0\to i_t}(\Delta)\,\overline{V}_{i_0\to i_t}
+      & \text{residual.}
+  \end{cases}
+  \label{eq:variance-form}
+\end{equation}
+The two differ by the spread of the interval mean across end states, which is
+Eq.~\ref{eq:mr-vr}. The switch is free only at $\mathrm{av}=1$. At $\mathrm{av}=2$ the
+residual form is forced whatever the flag says, for the same reason the diagonal is
+subtracted in switch~1: the between-endpoint spread is already carried by the boundary term,
+so the total form would count it twice. % src: legacy/qmodel.h:4557 (averaging==2 || variance_form==residual selects the residual branch)
+
+\subsection*{The members}
+
+% Non-floating: a float inside appendixbox's mdframed can escape the frame.
+\begin{center}
+\begin{tabularx}{\linewidth}{@{}lccl>{\raggedright\arraybackslash}X@{}}
+\toprule
+Member & $\mathrm{av}$ & recursive & interval variance & what it is \\
+\midrule
+\texttt{NR}  & 0 & no  & --- & instantaneous samples, windows independent \\
+\texttt{R}   & 0 & yes & --- & instantaneous samples, posterior carried forward \\
+\texttt{INR} & 1 & no  & total & \texttt{NR} with the window average restored \\
+\texttt{MR}  & 1 & yes & total & \texttt{R} with the window average restored \\
+\texttt{VR}  & 1 & yes & residual & \texttt{MR} with switch~3 flipped, gain unchanged \\
+\texttt{IR}  & 2 & yes & residual (forced) & \texttt{VR} with the boundary terms restored \\
+\bottomrule
+\end{tabularx}
+\captionof{table}{The six members of the lattice as settings of the three switches. Reading down the
+last column, each row differs from an earlier one in exactly one switch, which is what makes
+the ladder measurable one step at a time. \texttt{IR} is MacroIR; \texttt{INR} is the
+MacroINR of \citet{moffatt2025bayesian}. The data keys under which each is
+dispatched are in Table~\ref{tab:family}.}
+\label{tab:appendix-members}
+\end{center}
+
+One consequence of the two switches acting together is worth stating, because it is easy to
+read the table as saying otherwise. \texttt{MR} and \texttt{IR} predict the \emph{same} total
+variance. Expanding the total form of Eq.~\ref{eq:variance-form} and using
+$\sum_{i_t}P_{i_0\to i_t}(\Delta)=1$ and $\sum_{i_t}P_{i_0\to i_t}(\Delta)\overline{\Gamma}_{i_0\to i_t}
+=(\bar{\gamma}_0)_{i_0}$,
+\begin{equation}
+  \bm{\mu}_0^\top\bm{\sigma}^2_{\bar{\gamma}_0}\big|_{\text{total}}
+  \;=\;
+  \bm{\mu}_0^\top\bm{\sigma}^2_{\bar{\gamma}_0}\big|_{\text{residual}}
+  \;+\; \bm{\mu}_0^\top\mathbf{H}\mathbf{1}
+  \;-\; \bar{\bm{\gamma}}_0^\top\mathrm{diag}(\bm{\mu}_0)\,\bar{\bm{\gamma}}_0,
+  \label{eq:mr-ir-identity}
+\end{equation}
+and the two extra pieces are exactly what switch~1 moves from the third term of
+Eq.~\ref{eq:pred-var} into the second when $\mathrm{av}$ goes from $1$ to $2$. The
+decompositions differ, the sum does not. What does change between the two members is the
+gain, and that is the whole of the \texttt{MR}-to-\texttt{IR} difference.
+
+Two of the six pairs isolate a single algebraic change and are the ones the Results use.
+Stepping \texttt{MR} to \texttt{VR} flips switch~3 and touches nothing else, so it measures
+what the variance form alone is worth. Stepping \texttt{VR} to \texttt{IR} restores the
+boundary terms in both the variance and the gain and leaves the variance form where it
+already was, so it measures what conditioning on the second endpoint alone is worth. The two
+steps together are the \texttt{R}-to-\texttt{IR} gap.
+
+\subsection*{Least squares, which is off the lattice}
+
+Classical nonlinear least squares has no setting of the three switches. It propagates the
+mean occupancy alone, $\bm{\mu}^{\mathrm{prop}} = \mathbf{P}(\Delta)^\top\bm{\mu}_0$, with no
+covariance and no update, predicts $\bar{y}^{\mathrm{pred}}$ from Eq.~\ref{eq:ypred}, and
+assigns one constant variance to every residual, fitted as the residual sum of squares over
+the number of samples. Neither term of Eq.~\ref{eq:pred-var} that depends on the gating
+survives, and there is no gain, so no occupancy object is ever conditioned on the data. It
+is the anchor of the comparison rather than a member of the family.
+
+\end{appendixbox}

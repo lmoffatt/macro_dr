@@ -1,40 +1,75 @@
 # Figure 4 caption
 
-**Figure 4. What conditioning on the interval buys, across the design space: the recursive filter R against the interval-conditioned filter IR, in both moments of the estimate.**
+Written 2026-07-31 against the merged figure (`figure_4.Rmd`, `Figure_4.pdf`). It replaces the
+caption for the superseded R-vs-IR map, whose notebook is archived at
+`../archive/figure_4_SUPERSEDED_20260730.Rmd`. Nothing from that version survives here, including
+its (A) (B) (C), which now collide with the two letters this figure uses. The numbers it quoted
+were printed by chunks that no longer exist; do not carry any of them forward without re-measuring.
 
-The published recursive filters treat each sample as instantaneous. Figure 2 measured what conditioning the interval-averaged conductance on both interval endpoints buys, at one operating point; this figure measures it over the design space. R (Recursive) is the literature anchor, IR (Interval Recursive) is the fully conditioned filter, and the two are placed in adjacent rows so the comparison is read down a column rather than across the figure. IR is also an approximation and must fail somewhere, so where its own rows depart from calibration is where paper 1 locates that failure.
+**Figure 4. The design plane: how wrong each member's report is, in both moments, on one scale.**
 
-The plane is the same throughout. Columns are the channel number N_ch, on a base-10 log scale across the four channel counts 10, 100, 1000 and 10000, because N_ch is the quantity a preparation gives the experimenter, whereas the acquisition interval is a design choice and the instrumental noise is set by the rig. Within a panel the horizontal axis is the acquisition interval in units of the closing time, Δ·k_off, over the seven values swept inside every simulated cell, and the vertical axis is the instrumental noise, given as the dimensionless label used in the run (the physical Current_Noise is that label divided by 1000). The noise axis is the raw label, not the label divided by N_ch: the gating variance grows with N_ch, so the same instrumental noise means a different fraction of the total in each column, and dividing it out would assume the channel-scaling the figure is built to measure. Cells that were not run are drawn grey, so an unrun cell is distinct from a calibrated one, which is white. Colour in (B) and (C) is shrunk to the bound of the 95% bootstrap interval nearest the null value, so a cell whose interval covers the null is drawn white and every coloured departure is significant at 95%, with the value shown being the conservative bound.
+Ten thousand recordings are simulated at every cell of the design grid and scored by each member of
+the cost ladder. (**A**) The distortion-induced bias, evaluated at the simulation truth
+$\theta_{\mathrm{sim}}$: how far the estimate is displaced. (**B**) The information distortion,
+evaluated at the pooled optimum $\theta_{\mathrm{pool}}$, where the score vanishes by construction
+so that the comparison is not contaminated by a displaced gradient: how far the uncertainty each
+member reports is from the uncertainty it delivers.
 
-**(A) Grouped maximum-likelihood distributions at three design points, what each algorithm reports and what the estimates do.** Each grey point is one maximum-likelihood estimate (MLE) of log10 k_off and log10 N_ch, fitted jointly to a group of 100 simulated recordings. R is the top row of each pair, IR the bottom, at the same design point, so the two clouds can be compared by eye. Three 95% ellipses are drawn at the cloud mean: the empirical covariance of the estimates (grey), the covariance the algorithm reports from its own Gaussian Fisher information (orange, dashed), and the distortion-corrected sandwich covariance (blue, dotted). Three markers carry the first moment: the cross is the true value, the filled circle the mean of the estimates, and the open circle the truth plus the bias the distortion theory predicts, so the two circles coinciding means the theory predicts the shift it finds. Each panel is windowed symmetrically about the truth. The pair (k_off, N_ch) is shown because these two directions carry distortions of opposite sign, which makes a reported ellipse wrong in shape as well as in size.
+**Layout.** Columns nest twice, member and then parameter, the closing rate $k_{\mathrm{off}}$ and
+the channel number $N_{\mathrm{ch}}$. Least squares holds one column in each half: its
+four-parameter configuration fixes the unitary current and the noise level at the simulated values
+(Methods), so a channel-number comparison against it would not be like for like. Rows are the
+channel count from $10$ to $10^4$, each given a height proportional to the range of instrumental
+noise the sweep reaches at that count, so a decade of noise is the same distance in every row.
+Inside a panel the horizontal axis is the sampling interval in units of the closing time constant,
+$\Delta/\tau$, and the vertical axis the dimensionless instrumental noise. One decade is the same
+physical distance on both axes everywhere in the figure, so the shape of a field can be read as a
+shape.
 
-The two coloured numbers in each panel are per-axis ratios of variance, empirical over reported, one per parameter. They are variances, to match the colour scale of (C); the eye measures an ellipse in standard deviations, so the visible width ratio is their square root, and a variance ratio of 1.3 is a reported interval about 14% too narrow. A ratio whose own interval covers one is printed in grey rather than in the scale's colour. The three points are **1, distorted** (N_ch 10, Δ·k_off = 0.01), **2, biased** (N_ch 10, Δ·k_off = 1) and **3, faithful** (N_ch 10000, Δ·k_off = 0.1), all at noise 0.1. At point 3 the two algorithms separate cleanly: R reports intervals 1.61 and 1.30 times too narrow in k_off and N_ch (the empirical spread exceeds the reported one), and its cloud sits displaced from the truth, while IR reads 0.90 and 0.93, its clouds centred and its reported ellipse matching the empirical.
+**Colour** is shared by the two halves: the factor by which the member's report is wrong, on a
+scale centred on one, so pale is right and saturated is wrong in either direction. What a factor
+means differs between the halves, and the difference is not cosmetic. In **A** it is a factor on
+the parameter, so $2$ says the estimate is out by a factor of two. In **B** it is a ratio of
+variances, so $2$ says the reported error bar is $\sqrt 2$, about $40\%$, too narrow. Blue is the
+conservative direction in both. The scale is clipped at $10^{\pm 3}$, which touches $22$ of $3276$
+cells, twenty of them the open-loop member, where being wrong by $10^3$ and by $10^{12}$ say the
+same thing.
 
-One limitation of this panel is stated plainly. The ellipse compares the covariance of an estimate against the reported covariance, which is the sandwich marginalised over the other parameters, whereas (C) compares the score covariance against the Fisher information without marginalising and without fitting anything. They are different quantities and the ellipse is the milder of the two, and with 100 fits a variance carries about 14% relative uncertainty of its own. The ellipse is the panel's referent for the maps, not their re-measurement, and where the two disagree the value in (C) is the one to quote.
+**Lines carry two codes, and neither borrows from the other.** Colour says which quantity the line
+cuts: dark hairlines cut the colour field itself, white lines on a dark casing cut the
+distortion-corrected standard error, which answers a different question, whether the parameter can
+be measured at all rather than whether the error bar is honest. White rather than a second hue
+because the field is red and blue, so hue would fail for red-green colour blindness exactly where
+the lines matter most, while luminance survives every kind of colour vision and greyscale. Dash
+says which criterion: solid is a factor $1.15$ and dashed a factor $2$, the two thresholds used
+throughout, so the four lines are two criteria on two quantities rather than four things to learn.
+Both criteria are edges of the colour bands by construction, which is why the dark pair needs no
+key: the bar names them where they sit.
 
-**(B) The distortion-induced bias**, the shift the distortion theory predicts for each parameter, in log10 units (a bias of 0.03 is a factor of 10^0.03, that is a 7% error). It is evaluated at the true parameter, because a bias evaluated at the optimum is zero by construction. R carries a large, flat bias in the channel number: its median over the seven intervals is 0.126, 0.148, 0.138 and 0.138 log10 across N_ch 10, 100, 1000 and 10000, close to a 40% error that does not shrink with channel count. IR's is at or near zero in every cell. Both algorithms' bias in k_off is near zero. The fraction of the plane where the bootstrap interval excludes zero runs 0.71 to 1.00 for R in the N_ch direction, against a fraction that falls from 0.33 at N_ch 10 to zero for IR.
+**Reading it.** The left half is pale over most of the plane and the right half is not, and because
+both are on one scale that comparison is legitimate rather than an impression: the estimates land
+close to the truth in places where the uncertainty reported with them is badly wrong. Within each
+half the members are ordered by cost and the saturation falls with it. The boundary-conditioned
+member is the only one pale across most of the plane in both moments, and where it is not is the
+few-channel, low-noise corner in which the occupancy Gaussian is misspecified.
 
-**(C) The information distortion**, the ratio between the variance the score actually has and the variance the algorithm's Gaussian Fisher information claims, evaluated at the pooled optimum. Above one (red) the reported interval is too narrow, below one (blue) too wide. **More channels do not rescue R.** Its k_off distortion is a flat floor, with median over the intervals of 1.37, 1.44, 1.44 and 1.42 across the four channel counts, while IR converges to one (1.32, 1.10, 1.00, 1.00). Its N_ch direction crosses from conservative to over-confident, 0.87, 1.10, 1.23 and 1.26, and keeps growing, while IR converges (0.85, 0.94, 0.99, 1.00). The two agree at N_ch 10 and diverge from there, so the last column carries the most information, not the least. The fraction of the plane departing by at least 15% reaches 0.81 for R's k_off and 0.71 for its N_ch at N_ch 10000, against zero for IR in both.
+## Sources
 
-**Raising the noise cures R only at few channels.** Read across the noise levels not shown separately here (supplement 4 resolves them): R's k_off distortion at noise 1 is 1.05, 1.21, 1.32 and 1.36 across the four channel counts, and at noise 10 it is 1.01, 1.05, 1.24 and 1.18. The distortion starts small when the instrumental noise dominates the few-channel gating variance, then re-emerges as N_ch grows, because the gating variance it distorts grows with N_ch. There is no channel count at which more instrumental noise leaves R calibrated.
+- `figure_4.Rmd` (layout, the shared factor scale, the two line codes, the clipping count, and the
+  isotropy constraint that fixes the height from the width)
+- `figure_4_common.R` (`EXCLUDE_ROWS` for the least-squares column, `nch_noise_span` for the row
+  heights, `CRIT_SOL` / `CRIT_DSH` for the two criteria)
+- `../../NOISE_AXIS_UNITS.md` (the dimensionless noise is one tenth of the swept label; the axis
+  applies the conversion on display only, the data are untouched)
+- `papers/1_method/docs/manuscript-drafts/sections/06_methods.tex` (the two least-squares
+  configurations and the two anchors)
 
-The corner cell of the N_ch row, R at N_ch 10000 and Δ·k_off = 1, is drawn grey rather than in the scale colour, at all three noise levels. There the direction is not identified: the Gaussian Fisher covariance is ill-conditioned for both algorithms (its condition number is about 10^5 for R and larger for IR, whose predicted bias is nonetheless near zero), so a displacement that costs almost no likelihood is amplified into a large parameter shift for R and not for IR, a bias of about −2.8 log10 and a distortion below the plotted range. A cell is greyed only where its value falls off the scale and the condition number exceeds 3×10^4, which in this data is that corner alone; the condition number is high across the whole N_ch = 10000 column, so it cannot be the criterion by itself. The sign and the presence of the effect are meaningful; the magnitude there is not.
+## Open, and it belongs to the figure rather than to the caption
 
-A short variant of this figure (Figure_4_short_variant.pdf) shows one direction per moment, the bias in N_ch and the distortion in k_off, the direction that carries each moment's failure. The full five-parameter maps of both moments, which show the distortion is diffuse across parameters for R and confined to two directions for IR, are in **Figure 4—figure supplement 1** (bias) and **Figure 4—figure supplement 2** (distortion). The mechanism behind R's flat floor, that the distortion is the correlation between successive intervals rather than a per-sample error, is measured in **Figure 4—figure supplement 3** (the decomposition on k_off) and generalised across parameters and noise in **Figure 4—figure supplement 4**.
-
-The true values are the opening rate k_on = 10, the closing rate k_off = 100, the unitary current i = 1, and N_ch as labelled per column. Fisher and corrected covariances are the Gaussian-Fisher family. In (A) they are evaluated at the pooled estimate and scaled by the reciprocal of the group size (100 recordings), so they are comparable to the empirical spread of the cloud; in (C) the distortion is evaluated at the pooled optimum without marginalising. The instrumental noise throughout the maps is the label 0.1 (physical Current_Noise 1e-4) unless a noise dependence is stated.
-
-<!-- Source: projects/eLife_2025/figures/paper/figure_4.Rmd (renamed 2026-07-22 from figure_4_R_IR.Rmd;
-     the R-vs-IR figure that merged the former IR-only Figure 5). Body figure = the `long` version,
-     Figure_4.pdf; Figure_4_short_variant.pdf is the one-direction-per-block variant.
-     (A) mle_cloud_runs at group_size 100 for the three design points, plus battery_pool_G for the
-         reported and corrected ellipses, and battery_sim_G for the predicted-bias marker.
-     (B) battery_sim_G, anchored at theta_sim (bias at theta_pool is zero by construction).
-     (C) battery_pool_G, anchored at the optimum theta_pool.
-     Gaussian anchor throughout (_G files). R's noise 1 and 10 resolve from figures/data/87889e6,
-     everything else from figures/data/1c2ae6f, by a search path; each CSV stamps its own engine hash.
-     Every number above is printed by the notebook's ellipses and caption-numbers chunks on each knit;
-     re-read them after a re-render rather than copying these forward.
-     The pending diagonal cells (constant relative noise r = 0.01, 0.1, 1) that would complete the
-     calibration frontier are listed in papers/1_method/decisions.md; the maps render on the ragged
-     grid until they land, with unrun cells grey. -->
+The two halves are put on one scale and asked to be compared, but a factor on the parameter and a
+ratio of variances are not the same kind of quantity, which is why the colour paragraph has to
+spend three sentences saying so. Plotting the square root of the distortion would put all three
+quantities in the figure, including the standard error the white lines cut, into one unit and
+retire those sentences. The notebook header carries the cell counts that would change. Until it is
+decided, the caption states the difference in words rather than letting the shared scale imply it
+away.

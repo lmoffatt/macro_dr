@@ -53,7 +53,7 @@ ANCHOR <- "gaussian"
 # grouping and the FILE is the provenance record. Each algorithm resolves to the first directory
 # holding a complete set for it.
 if (ANCHOR == "gaussian") {
-  DATA_DIRS <- c("../data/1c2ae6f", "../data/0ffbda7")
+  DATA_DIRS <- c("../data/1f7138b", "../data/1c2ae6f", "../data/0ffbda7", "../data/87889e6")
   FILE_PRE <- "figure_3_G_"; BAT_SUF <- "_G"; COMP_PRE <- "Gaussian_"
 } else if (ANCHOR == "numeric") {
   DATA_DIRS <- "../data/433ed13"
@@ -73,17 +73,26 @@ REP_INTERVAL <- 0.1
 # A-strict roster: paper 1 measures the recursive ladder only (papers/1_method/decisions.md).
 # VR is listed here on purpose. It has no battery/cloud data at any anchor yet, so it is dropped
 # below WITH A MESSAGE rather than silently; the day the grid run lands it appears by itself.
-ROSTER   <- c("macro_R","macro_MR","macro_VR","macro_IR")
-ALGO_LAB <- c(macro_NR="NR", macro_NMR="MNR", macro_R="R", macro_MR="MR",
-              macro_VR="VR", macro_IR="IR")
+# the full seven-rung ladder; LSE resolves from its own file prefix (see .pre below)
+# macro_INR, not macro_NMR: the latter is the build that lost the N*ms term between a3e0a89 and
+# 1f7138b and is a different algorithm, not an older spelling (nomenclature.md). 1f7138b leads the
+# search path so the corrected member resolves from the run made for this figure.
+ROSTER   <- c("nonlinearsqr","macro_NR","macro_INR","macro_R","macro_MR","macro_VR","macro_IR")
+# NMR and INR are two DIFFERENT algorithms, not two spellings: NMR is the build that lost the
+# N*ms term between a3e0a89 and 1f7138b, INR is the corrected one (nomenclature.md). Both keys
+# stay so the readers can tell them apart; the ROSTER above says which one is drawn.
+ALGO_LAB <- c(nonlinearsqr="LSE", macro_NR="NR", macro_NMR="NMR", macro_INR="INR",
+              macro_R="R", macro_MR="MR", macro_VR="VR", macro_IR="IR")
 
-PARAM_IDX <- c(on = 0, off = 1, unitary_current = 2, Num_ch_mean = 5)
+PARAM_IDX <- c(on = 0, off = 1, unitary_current = 2, Current_Noise = 3, Num_ch_mean = 5)
 # plotmath-parseable labels (rendered as proper subscripted math on axes and strips)
 PARAM_LAB <- c(on = "log[10]~k[on]", off = "log[10]~k[off]",
-               unitary_current = "log[10]~i", Num_ch_mean = "log[10]~N[ch]")
+               unitary_current = "log[10]~i", Current_Noise = "log[10]~sigma",
+               Num_ch_mean = "log[10]~N[ch]")
 ORD <- c("on","off","unitary_current","Num_ch_mean")
 TRUTH <- c(on = log10(10), off = log10(100),
-           unitary_current = log10(1), Num_ch_mean = log10(REP_NCH))
+           unitary_current = log10(1), Current_Noise = log10(as.numeric(REP_NOISE)/1000),
+           Num_ch_mean = log10(REP_NCH))
 
 cov_scale <- 1 / REP_GROUP
 near_int  <- function(x) abs(x - REP_INTERVAL) < 1e-9
@@ -402,26 +411,66 @@ corner_plot <- function(algo, title = NULL) {
 }
 ```
 
-```{r plot, fig.width = 7.0, fig.height = 9.5}
-rowA1 <- pair_plot("on", "off") + labs(tag = "A")
-# same 5 algorithms as row 1 (columns aligned) -> drop the repeated strip headers on row 2
-rowA2 <- pair_plot("Num_ch_mean", "unitary_current") +
-  theme(strip.text = element_blank(), strip.background = element_blank())
-# strip the corner's legend so guides="collect" keeps ONE copy (Part A's); otherwise the
-# slightly different glyph sizes (linewidth .7 vs .6) make collect emit two duplicate legends.
-corner <- corner_plot("macro_IR", title = "IR") + labs(tag = "B") +
-  guides(colour = "none", linetype = "none", shape = "none")
+```{r plot}
+library(grid)
+# Figure 2 is Part A only: the seven-rung ladder across the columns, one parameter pair per row.
+# The corner (Part B) moved out of the body figure; corner_plot() above still builds it for the
+# supplement. Layout rule: the panel size is MEASURED, not guessed. Panel width follows from the
+# column count and the plot's own non-panel width; each row's height is then that width (square
+# panels) plus that row's own overhead. Nothing is centred, so no white gaps appear.
+W <- 7.0
 
-# No figure title/subtitle: per eLife author guidance the title and full legend live in
-# the manuscript text, not baked into the image. Only panel lettering (A, B) stays.
-# Sized to eLife full page width (~19 cm). Part A: two pair-rows; Part B: IR corner.
-g2 <- (rowA1 / rowA2 / corner) +
-  plot_layout(heights = c(1, 1, 2.6), guides = "collect") &
-  theme(legend.position = "bottom", legend.box = "horizontal",
+# Non-panel space is panel space not spent: strips, tick labels, ticks and axis titles all run
+# small so the panels keep what is freed.
+# eLife requires every character to be at least 7 pt AT FINAL PRINTED SIZE. That floor is an input
+# to the layout, not a polish step: the panel size below is whatever the width leaves once the axis
+# labels, tick labels, strips and axis titles have taken theirs, so the type sizes are set first and
+# the panels take what is left. Authored at 7 pt, not at 6.6 relying on the 6.1% enlargement that
+# \includegraphics[width=\linewidth] applies inside fullwidth: an explicit width would break that.
+PT <- 7
+DIET <- theme(panel.spacing.x = unit(6, "pt"), panel.spacing.y = unit(4, "pt"),
+              plot.margin = margin(1, 1, 1, 1),
+              axis.text = element_text(size = PT), axis.title = element_text(size = PT),
+              axis.ticks.length = unit(1.4, "pt"),
+              legend.text = element_text(size = PT),
+              strip.text = element_text(size = PT, margin = margin(1.2, 1.2, 1.2, 1.2)))
+
+# LSE holds the unitary current and the noise level Fixed AT THE SIMULATED VALUES, so it has no
+# cloud in any pair that involves them: its estimates would sit exactly on a line and the area
+# ratio the panel reports would be 0/0. The cell stays, to keep the columns aligned, and says so.
+NOLSE <- setdiff(ALGOS, "nonlinearsqr")
+note_cell <- function(px, py, lab) {
+  d <- data.frame(algo = factor(ALGO_LAB["nonlinearsqr"], levels = ALGO_LV),
+                  x = unname(TRUTH[px]), y = unname(TRUTH[py]))
+  geom_text(data = d, aes(x = x, y = y), label = lab, size = PT/.pt, colour = "grey45",
+            lineheight = 1.05, inherit.aes = FALSE)
+}
+
+r1 <- pair_plot("on", "off", ALGOS) + labs(tag = "A") + DIET
+r2 <- pair_plot("Num_ch_mean", "unitary_current", NOLSE) +
+      note_cell("Num_ch_mean", "unitary_current", "i fixed\nat the truth") + DIET
+r3 <- pair_plot("Current_Noise", "Num_ch_mean", NOLSE) +
+      note_cell("Current_Noise", "Num_ch_mean", "sigma fixed\nat the truth") + DIET
+
+geom_of <- function(p) {
+  g <- ggplotGrob(p); pr <- grep("^panel", g$layout$name)
+  rr <- sort(unique(g$layout$t[pr])); cc <- sort(unique(g$layout$l[pr]))
+  list(nr = length(rr), nc = length(cc),
+       oh = sum(convertHeight(g$heights[-rr], "in", valueOnly = TRUE)),
+       ow = sum(convertWidth(g$widths[-cc], "in", valueOnly = TRUE)))
+}
+gm <- lapply(list(r1, r2, r3), function(p) geom_of(p + theme(legend.position = "none")))
+pw <- (W - gm[[1]]$ow) / gm[[1]]$nc                       # square panel side, in inches
+
+g2 <- (r1 / r2 / r3) +
+  plot_layout(heights = unit(vapply(gm, function(z) pw + z$oh, 0), "in"), guides = "collect") &
+  theme(legend.position = "bottom", legend.box = "horizontal", legend.title = element_blank(),
         legend.margin = margin(0, 0, 0, 0), legend.spacing.x = unit(5, "pt"),
-        legend.text = element_text(size = 8.5), legend.key.size = unit(10, "pt"))
+        legend.text = element_text(size = PT), legend.key.size = unit(10, "pt"))
+H <- sum(convertHeight(patchwork::patchworkGrob(g2)$heights, "in", valueOnly = TRUE))
+cat(sprintf("figure_2: panel %.3f in, figure %.2f x %.2f in\n", pw, W, H))
 g2
-ggsave("Figure_2.pdf", g2, width = 7.0, height = 9.5)
+ggsave("Figure_2.pdf", g2, width = W, height = H)
 ```
 
 ```{r diagnostics-table}
@@ -442,7 +491,8 @@ diag_pair <- function(px, py) {
       mutate(emp_over_Fisher = empirical / Fisher)
   })
 }
-bind_rows(diag_pair("on", "off"), diag_pair("Num_ch_mean", "unitary_current"))
+bind_rows(diag_pair("on", "off"), diag_pair("Num_ch_mean", "unitary_current"),
+          diag_pair("Current_Noise", "Num_ch_mean"))
 
 # IR unbiasedness check: empirical mean - truth per param (should be ~0)
 pts %>% filter(algorithm == "macro_IR") %>%

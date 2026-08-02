@@ -49,7 +49,8 @@ column is ragged: **never pair a 100-sim cell with a 10⁴-sim cell**, in either
 distortion scalars carry a Jensen bias in n_sims and the comparison manufactures a difference.
 
 **Bookkeeping correction owed:** the old decision log records `87889e6` as "micro, out of scope". It
-now holds both these micro runs and the macro D-0 fill (NR, NMR, R, MR at noise 0.1/1/10), and paper 1
+now holds both these micro runs and the macro D-0 fill (NR, NMR, R, MR at noise 0.1/1/10 — that `NMR`
+is the defective build, superseded by `INR`, `nomenclature.md`), and paper 1
 will cite one cell from it. Multi-commit provenance is already accepted (each CSV self-stamps its
 engine hash), so this is a bookkeeping fix, not a policy change.
 

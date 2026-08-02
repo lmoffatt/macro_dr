@@ -1,0 +1,503 @@
+---
+title: "Figure 4 — the design plane: what each member's report is worth, both moments on one scale"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+REPLACES the R-vs-IR comparative map of the same name (archived 2026-07-30 as
+`../archive/figure_4_SUPERSEDED_20260730.Rmd`), and supersedes the stacked pair
+`figure_4_bias.Rmd` + `figure_4_distortion.Rmd`, which produced two files 20.2 and 20.9 in tall
+that could not be a display item at any scale.
+
+WHAT IT IS. One figure, two halves, lettered A (bias) and B (distortion). Columns nest three
+deep: moment, then member, then parameter (k_off | N_ch). Rows are the channel count, each row
+given a height proportional to the range of instrumental noise the sweep reaches at that count,
+so a decade of noise is the same physical distance in every row. LSE holds one column per half:
+its unitary current is Fixed, so a channel-number comparison against it is not like for like
+(EXCLUDE_ROWS). The letter sits inside the moment's own label bar, at its left end, so it costs
+no height; the three header bars (moment, member, parameter) stand `BOX_GAP` apart, which is two
+thirds of the gap between members, so the nesting is read down as well as across.
+
+CAPTION IS STALE. `Figure_4_caption.md` still describes the superseded R-vs-IR figure, down to
+its own (A) (B) (C), which now collide with the letters here. It needs rewriting against this
+figure, and the numbers in it were printed by a notebook that no longer exists.
+
+ISOTROPIC. One decade is the same distance on both axes (0.212 in). That is a constraint, not a
+by-product: the figure's height is not a free parameter, it follows from the width. With W of
+panel width over n columns of 2 decades each, the scale is W/(2n) and the height is that times
+the summed noise span of the rows. The frontier is `sum(decades_y)/n_cols = 2*H/W`; at 27.2
+decades over 14 columns it lands on a page, and that is why the roster is what it is. Widening
+the panels means dropping columns, nothing else.
+
+Until 2026-07-30 the constraint was declared and not met, by 22 per cent: x ran at 0.148 in per
+decade and y at 0.180, and neither was the 0.216 the file claimed. Three separate causes, all of
+them layout accounting rather than design:
+
+  - patchwork's `plot_spacer()` keeps the default 5.5 pt margin on EVERY side, so the six
+    zero-width spacers between the members cost 11 pt apiece however small `GAPA` was set. The
+    gap is now a stated number of points, `GAP_PT`. The same margin ran vertically, and a row
+    takes the widest margin among its plots, so the single spacer holding the two halves apart
+    was also putting 11 pt of white under every row it sat in: that, and not any setting of the
+    labels, was the space under the moment bars, under the member bars, and above the x titles.
+    The rows are flush now and what separates them is `BOX_GAP`.
+  - an axis title is a FIXED width, and patchwork reserves the widest fixed left offset in a
+    composition on EVERY row of it, so the colour bar's label, three rows below the maps, was
+    holding 1.4 in away from all of them. It is now a plot with a width in column units,
+    `CB_TITLE_W`, which is the device Luciano used in the Nature-submission figures.
+  - the five layout heights are null units, so `PER_ROW` was never the realized y scale but
+    about 0.83 of it, the rest going to the fixed rows. It is now calibrated against a measured
+    render; see the note where it is set.
+  - and one that made the axis WRONG rather than merely uneven, found 2026-07-31: each block
+    sized its rows from its own noise range, so IR, which sweeps down to 0.05 where the others
+    start at 0.1, carried 27.204 decades in the height the rest used for 26.000. The single
+    drawn axis was therefore right for six blocks and out by up to a factor 2 for two of them.
+    Pinned to the union now; see YLIM. It is also what makes the isotropy true for the whole
+    figure instead of for IR alone, since 27.204 is the span PER_ROW was always solved against.
+
+The first two were taking 1.9 of the 7.4 in across, the vertical half of the first another 0.4
+down. Columns went from 0.296 to 0.424 in, so the maps carry 44 per cent more width than they
+did, and at 7.39 by 7.27 in the two axes agree to 0.1 per cent: 0.2121 across, 0.2124 down.
+Everything here was measured off the PDF, not read off the code, which is how the 0.216 survived.
+Any row added below the maps changes the split and PER_ROW has to be re-solved: it has been, for
+the moment bar, for the key row, and for every margin touched on the way.
+
+ONE SHARED SCALE. The bias is read as a FACTOR on the parameter (10^Bconf), not as a log10
+displacement, so both halves are log10(factor) centred on 0 and take the same breaks and the same
+palette. That makes the two halves directly comparable, which two separate scales did not: the
+left half being pale and the right half being red now means something. Clipped at 10^+-3, which
+is 22 cells of 3276 (10 bias, 12 distortion; 20 of them NR and 2 R), where "wrong by 10^3" and
+"wrong by 10^12" say the same thing. Recounted 2026-07-31; the file said 18 and fifteen NR, from
+an earlier scale.
+
+NOT SETTLED, and it is the figure's central claim. The two halves are put on one scale and told
+to be comparable, but they are not the same kind of quantity: the bias is a factor on the
+PARAMETER and the distortion is a ratio of VARIANCES. A 2 on the left says the answer is out by
+100 per cent; a 2 on the right says the error bar is 41 per cent too narrow, since the width goes
+as the square root. The unified line code makes this worse rather than better, because 1.15 now
+reads as the same mark on both halves and is not the same severity. Note that the third quantity
+in the figure, the standard error the white lines cut, is ALREADY a factor on the parameter. Two
+of the three are commensurable and the distortion fill is the odd one out; plotting sqrt(Dconf)
+would put all three in one unit. Cells past a factor 2 would go from 320 to 235 of 1638, and past
+1.15 from 574 to 463. Luciano's call, and it should be made before the caption is written.
+
+The bands are declared as FACTORS (`SH_FAC`) and the two validity criteria are members: 1.15 and
+2, mirrored. So the iso-lines run ALONG a colour boundary rather than cutting a band, the bar
+carries 1.15 and 2 as printed labels, and the lines need no legend of their own. Before
+2026-07-30 the edges were a round log10 ladder that missed both criteria, and a line crossing the
+middle of a band looked like an error. Anything that changes `SH_FAC` has to keep the two
+criteria in it or that goes back.
+
+THE LINES CARRY TWO CODES, one per dimension, and neither borrows from the other.
+
+  COLOUR says WHICH QUANTITY. Dark cuts the fill, the factor by which the report is wrong. White,
+  cored on a dark casing, cuts the distortion-corrected standard error: can the parameter be
+  measured at all, as opposed to whether the error bar is honest, which is what the colour of the
+  field says. White rather than a second hue because the fill is a red-blue diverging scale, so
+  hue would fail for red-green colour blindness at the red end where the lines matter most;
+  luminance works for every kind of colour vision and in greyscale.
+
+  DASH says WHICH CRITERION. Solid is a factor 1.15, dashed is a factor 2, in both families and
+  on both moments. So "the report is wrong by more than 1.15" and "the error bar is wider than
+  1.15" are the same mark on two quantities, and the four lines are two criteria times two
+  quantities rather than four separate things to memorise.
+
+Until 2026-07-30 the white pair ran 2 solid and 1.1 dashed, which inverted the dash code against
+the dark pair and set a threshold, 1.1, matching nothing else in the figure. Both pairs now come
+from `CRIT_SOL` and `CRIT_DSH`, which are the criteria `figure_4_common.R` declares. CONSEQUENCE,
+accepted: the factor-2 standard error is the frontier Figure 6 draws, and here it is now the
+dashed line rather than the solid one. The two figures still agree on the value.
+
+The dark pair are hairlines and always sit on a colour boundary, by construction (see SH_FAC), so
+they need no key: the bar names them where they sit. The dashed of each pair is drawn heavier
+than its solid, because a broken line of equal width reads as fainter than it is.
+
+Two silent losses, both found 2026-07-30 and both fixed. The bar's tick marks had never appeared:
+`cbar()` placed them with `match(v, lin)`, which demands an exact band edge and drops anything
+else without a word, and `figure_4_common.R` warns about exactly that. The iso-lines had never
+been drawn either: `figure_4_bias.Rmd` and `figure_4_distortion.Rmd` passed them to mapblock() as
+`iso_sol` / `iso_dsh`, and merging those two files into this one rewrote the block from scratch
+without them. The ticks are interpolated now, so a mark lands wherever its value falls, whether or
+not the scale was built around it.
+
+AXES ARE DIMENSIONLESS. Interval as Delta/tau, noise as the instrumental noise over one channel
+time constant in units of i^2. Tick values are linear and typeset (10^4, never 1e+04).
+
+OPEN ITEM (2026-07-30): the noise axis divides the swept label by 10, per
+`../../NOISE_AXIS_UNITS.md`, which states that the label is ten times the dimensionless noise.
+Luciano flagged a possible factor-10 error in this display and it is NOT resolved. If the
+document has the factor inverted, fix the document first: it is the source the rest of the figure
+set will follow when the dimensionless axis is propagated.
+
+STILL OPEN: the field is drawn with `geom_contour_filled`, which interpolates and so does not
+paint the outer half-cell ring; a rectangle version was tried and rejected as harder to read.
+Isolated single cells at the top of some NR panels are estimation noise, not structure.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+```{r common, include=FALSE}
+source("figure_4_common.R")
+```
+
+```{r helpers}
+# Typeset numbers: 10^4, never 1e+04. Returns strings to be parsed.
+fmtnum <- function(v) vapply(v, function(x) {
+  if (!is.finite(x)) return("")
+  if (x == 0) return("0")
+  sg <- if (x < 0) "-" else ""; a <- abs(x)
+  e  <- round(log10(a)); ispow <- isTRUE(all.equal(a, 10^e, tolerance = 0.02))
+  if (a >= 1000 || a <= 0.001) {
+    if (ispow) sprintf("%s10^%d", sg, e)
+    else sprintf("%s%g %%*%% 10^%d", sg, signif(a / 10^e, 2), e)
+  } else {
+    # two significant figures everywhere except near 1, where the bands are 0.971 / 1.03 and two
+    # digits would collapse them onto each other. The window has to reach 1.35, or the criteria
+    # themselves print as 1.2 and 1.4 while the lines on the maps sit at 1.15 and 2
+    paste0(sg, format(signif(a, if (a > 0.7 && a < 1.45) 3 else 2),
+                      trim = TRUE, scientific = FALSE))
+  }
+}, "")
+
+# Colour bar with the tick labels alternating below / above, which doubles the room each one has
+# and is what lets the crowded tail hold 7 pt type. Its title is NOT an axis title: see cbtitle.
+cbar <- function(pal, edge_lab, lin, sol = numeric(0), dsh = numeric(0)) {
+  n <- length(pal)
+  # Where a value sits along the bar. This USED to be `match(v, lin) - 0.5`, which demands that
+  # every mark be an exact band edge and drops it silently otherwise: figure_4_common.R warns
+  # about it in as many words, and it still bit, because this figure feeds the marks declared
+  # against DIST_LIN to the merged scale SH_L, where log10(0.87) is not an edge. Both criteria
+  # vanished without a message. Interpolating puts a mark wherever its value falls.
+  pos <- function(v) stats::approx(lin, seq(0.5, n + 0.5, 1), v, rule = 2)$y
+  mkx <- c(
+    if (length(dsh)) list(annotate("segment", x = pos(dsh), xend = pos(dsh), y = .5, yend = 1.5,
+                                   colour = "grey25", linewidth = .35, linetype = "dashed")),
+    if (length(sol)) list(annotate("segment", x = pos(sol), xend = pos(sol), y = .5, yend = 1.5,
+                                   colour = "black", linewidth = .5)))
+  ed <- data.frame(pos = seq(0.5, n + 0.5, 1), lab = as.character(edge_lab),
+                   stringsAsFactors = FALSE)
+  ed$below <- seq_len(nrow(ed)) %% 2 == 1
+  PT <- 7 * 0.3527
+  ggplot(data.frame(x = seq_len(n)), aes(x, 1, fill = factor(x))) +
+    geom_tile(colour = "grey92", linewidth = .15) + mkx +
+    scale_fill_manual(values = pal, guide = "none") +
+    annotate("segment", x = ed$pos[ed$below], xend = ed$pos[ed$below], y = .5, yend = .32,
+             colour = "grey55", linewidth = .3) +
+    annotate("segment", x = ed$pos[!ed$below], xend = ed$pos[!ed$below], y = 1.5, yend = 1.68,
+             colour = "grey55", linewidth = .3) +
+    annotate("text", x = ed$pos[ed$below], y = 0.10, label = ed$lab[ed$below],
+             size = PT, vjust = 1, family = "Helvetica", parse = TRUE) +
+    annotate("text", x = ed$pos[!ed$below], y = 1.90, label = ed$lab[!ed$below],
+             size = PT, vjust = 0, family = "Helvetica", parse = TRUE) +
+    scale_x_continuous(expand = c(0, 0)) +
+    coord_cartesian(ylim = c(-0.35, 2.35), clip = "off") +
+    theme_void(base_family = "Helvetica") +
+    theme(plot.margin = margin(2, 4, 1, 0))
+}
+
+# The colour bar's title, as its own plot rather than an axis title. An axis title is a FIXED
+# width, and patchwork hands every row in a composition the widest fixed left offset in it: this
+# one label, plus the 46 pt margin that used to hold the bar clear of it, was reserving 1.8 of
+# the 7.4 inches on every row of maps, for a legend three rows down. Priced in the same column
+# units as everything else it costs what it is worth. The right margin is what keeps the leftmost
+# tick of the bar, which overhangs its own left edge by half a label, off the last word.
+cbtitle <- function(s) ggplot() + theme_void(base_family = "Helvetica") +
+  annotate("text", x = 1, y = .5, label = s, size = 7 * 0.3527, hjust = 1, lineheight = .9) +
+  coord_cartesian(xlim = c(0, 1), ylim = c(0, 1), clip = "off") +
+  theme(plot.margin = margin(0, 16, 0, 0))
+
+# Key for the lines drawn on the maps. TWO families, and they are not interchangeable: the
+# iso-distortion contours are plain dark hairlines on the fill, the standard-error contours are
+# white cored on a dark casing so they survive the saturated end of the scale. Each sample takes
+# the linewidths and the dash pattern blk() actually draws, and sits on a chip of the tone its
+# family is meant to be read against: the white core would vanish into the page otherwise, and
+# it is the casing, not the core, that a reader sees where the fill is pale.
+linekey <- function(labs, cased, chip, dash, x2 = .32, sz = 7) {
+  ent <- function(x0, lab, dashed) {
+    lt <- if (dashed) dash else "solid"
+    c(list(annotate("rect", xmin = x0, xmax = x0 + .05, ymin = .12, ymax = .88,
+                    fill = chip, colour = NA)),
+      if (cased)
+        list(annotate("segment", x = x0, xend = x0 + .05, y = .5, yend = .5, colour = "grey10",
+                      linewidth = if (dashed) .70 else .85, linetype = lt),
+             annotate("segment", x = x0, xend = x0 + .05, y = .5, yend = .5, colour = "white",
+                      linewidth = if (dashed) .35 else .45, linetype = lt))
+      else
+        list(annotate("segment", x = x0, xend = x0 + .05, y = .5, yend = .5,
+                      colour = if (dashed) "grey25" else "black",
+                      linewidth = if (dashed) .22 else .30, linetype = lt)),
+      list(annotate("text", x = x0 + .062, y = .5, label = lab, size = sz * 0.3527,
+                    hjust = 0, family = "Helvetica")))
+  }
+  ggplot() + ent(0, labs[1], FALSE) + ent(x2, labs[2], TRUE) +
+    coord_cartesian(xlim = c(0, 1), ylim = c(0, 1), clip = "off") +
+    theme_void(base_family = "Helvetica") + theme(plot.margin = margin(4, 0, 0, 0))
+}
+
+# `gap` is the space below the box, and it is the ONLY thing setting the distance to the row
+# under it: the rows sit flush otherwise (see hsp).
+boxed <- function(lab, sz, fill, panel = NULL, gap = 0) ggplot() +
+  annotate("rect", xmin = 0, xmax = 1, ymin = 0, ymax = 1, fill = fill, colour = "grey20",
+           linewidth = .28) +
+  annotate("text", x = .5, y = .5, label = lab, size = sz * 0.3527, fontface = "bold",
+           family = "Helvetica") +
+  (if (is.null(panel)) NULL else
+     annotate("text", x = .012, y = .5, label = panel, size = (sz + 1.5) * 0.3527, hjust = 0,
+              fontface = "bold", family = "Helvetica")) +
+  scale_x_continuous(expand = c(0, 0)) + scale_y_continuous(expand = c(0, 0)) +
+  theme_void() + theme(plot.margin = margin(0, 0, gap, 0))
+
+txt <- function(s, sz = 8, top = 0, bot = 0) ggplot() + theme_void(base_family = "Helvetica") +
+  annotate("text", x = .5, y = .5, label = s, size = sz * 0.3527) +
+  theme(plot.margin = margin(top, 0, bot, 0)) +
+  coord_cartesian(xlim = c(0, 1), ylim = c(0, 1), clip = "off")
+
+# A spacer whose width is written down, and whose HEIGHT costs nothing. patchwork's own
+# plot_spacer() keeps the default 5.5 pt plot margin on every side, so a spacer asked for zero
+# width still costs 11 pt across; six of them between the members were spending 0.9 in of the 7.4
+# on white, and no knob in this file reached it. The vertical half of the same margin was worse,
+# because a row's margin is the widest one among its plots: the single spacer holding the two
+# halves apart was therefore putting 11 pt of white under EVERY row it appeared in, which is what
+# stood the moment labels off the member labels and those off the parameter strips. The rows are
+# flush now and the space between them is whatever `boxed(gap =)` asks for.
+hsp <- function(pt) ggplot() + theme_void() +
+  theme(plot.margin = margin(0, pt / 2, 0, pt / 2))
+```
+
+```{r scale-and-se}
+# Distortion-corrected standard error: same file and same anchor as the distortion that colours
+# the map, so the white contours and the colour field are commensurable.
+sedat <- readcell("battery_pool_G") %>%
+  dplyr::filter(component_path == "Probit_statistics_Gaussian_Distortion_Corrected_Covariance",
+                param_index == param_col, param_index %in% PIDX[PARAM_LONG],
+                statistic == "value", probit == "mean") %>%
+  dplyr::group_by(algo, noise, Num_ch, interval_in_tau, param_index) %>%
+  dplyr::summarise(v = mean(value), .groups = "drop") %>%
+  dplyr::filter(is.finite(v), v > 0) %>%
+  dplyr::mutate(sev = sqrt(v), lx = log10(interval_in_tau), ly = log10(as.numeric(noise)),
+                param = names(PIDX)[match(param_index, PIDX)])
+
+# SHARED LIMITS, one range per N_ch row for EVERY block, taken as the union over the members.
+# Without this the axis is quantitatively wrong for one of them. `facet_grid(space = "free_y")`
+# sizes each row from the range of the block it is in, and patchwork then gives every block the
+# same total height, so a member whose sweep reaches a noise the others never ran gets its own
+# noise scale. IR runs down to 0.05 where LSE, NR and R start at 0.1: 27.204 decades against
+# 26.000, a 4.6 per cent difference, and only ONE y axis is drawn for the eight blocks. Measured
+# on the PDF before the fix, IR's row boundaries sat 2 px below everyone else's, and the tick
+# printed 0.05 landed on 0.0275 of IR's data, a factor 1.8 out, growing to a factor 2 at the foot
+# of each row. Pinned to the union, a member with no cell at 0.05 shows empty there, which is
+# what "not run" should look like, instead of stretching its rows to hide it.
+#
+# It also makes the isotropy calibration true for the whole figure rather than for IR alone:
+# every block now carries the 27.204 decades that `nch_noise_span` already assumed, so PER_ROW
+# needs no re-solving.
+XLIM <- range(c(bias$lx, stat$lx))
+YLIM <- dplyr::bind_rows(dplyr::select(bias, Num_ch, ly),
+                         dplyr::select(dplyr::filter(stat, comp == "total"), Num_ch, ly)) %>%
+  dplyr::filter(Num_ch %in% NCHS) %>%
+  dplyr::group_by(Num_ch) %>%
+  dplyr::summarise(lo = min(ly), hi = max(ly), .groups = "drop")
+
+# Y_BRK's lowest break IS the shared floor, so once the limits are pinned it prints on the very
+# edge of every row, hard against the top label of the row below. Drop it: a tick on a flush panel
+# edge names a value the reader can already see and costs a collision. It also costs width, since
+# "0.005" is the widest label on the axis and the axis is a fixed left offset for every row.
+YB <- Y_BRK[Y_BRK > min(YLIM$lo)]
+
+# The scale is declared as FACTORS and the two validity criteria are MEMBERS of it, so an
+# iso-line falls exactly on a colour boundary instead of cutting a band in half. That is also
+# why the criteria need no key of their own: the bar labels them, 1.15 and 2, and the line sits
+# on the label. The ladder is geometric in log10, each step about 2.2 times the last, so the fine
+# structure near 1 that resolves IR survives and the coarse tail to 10^3 is what it was.
+#
+# The magnitudes come from figure_4_common.R so the bar, the maps and the supplements cannot
+# drift apart, but the pair is MIRRORED here rather than taken as declared: DIST_SOL is
+# c(0.87, 1.15) and 0.87 is a rounded 1/1.15, off by 0.0002 in log10. That rounding is free on a
+# scale whose edges it never has to hit, and not free here, where the low criterion IS an edge.
+CRIT_SOL <- max(DIST_SOL)   # 1.15, strict, ALWAYS solid
+CRIT_DSH <- max(DIST_DSH)   # 2,    loose,  ALWAYS dashed
+SH_FAC <- c(1.03, 1.07, CRIT_SOL, 1.35, CRIT_DSH, 5, 10, 100, 1000)
+SH_L   <- c(rev(-log10(SH_FAC)), log10(SH_FAC))
+SH_PAL <- bandcols(SH_L)
+SH_LAB <- fmtnum(10^SH_L)
+# cutting the fill, so mirrored: wrong by 1.15 either way
+ISO_SOL <- c(-1, 1) * log10(CRIT_SOL)
+ISO_DSH <- c(-1, 1) * log10(CRIT_DSH)
+
+# The standard error takes THE SAME two criteria and the same style code, so the two readings are
+# comparable number for number: "the report is wrong by more than 1.15" against "the error bar is
+# wider than 1.15". Until 2026-07-30 this pair was 2 solid and 1.1 dashed, which inverted the code
+# against the fill's lines and put a number, 1.1, that matched nothing else in the figure.
+# CONSEQUENCE, deliberate: the factor-2 line is the frontier Figure 6 draws, and here it is now
+# the dashed one. The two figures still agree on the value; only the weight differs.
+SE_SOL <- log10(CRIT_SOL)
+SE_DSH <- log10(CRIT_DSH)
+
+PARS   <- c("off", "Num_ch_mean")
+PSHORT <- c(off = "k[off]", Num_ch_mean = "N[ch]")
+
+# the row variable is named once, on the top row, and carries only the number below it
+nchstrip <- function(nchs) {
+  lab <- vapply(sort(nchs), function(n) {
+    e <- round(log10(n)); if (e == 1) "10" else sprintf("10^%d", e) }, "")
+  lab[1] <- sprintf('atop("N"[ch], %s)', lab[1]); lab
+}
+```
+
+```{r block}
+# One block per (moment, member): its own ggplot, faceted parameter x N_ch. The member's own box
+# is drawn separately and composed above it, because facet_grid with two column variables does
+# not span and patchwork gives exact control.
+blk <- function(a, moment, nchs, ylab, ystrip, xlab) {
+  keep <- setdiff(PARS, EXCLUDE_ROWS$param[EXCLUDE_ROWS$algo == a])
+  d <- (if (moment == "bias") bias else stat) %>%
+    dplyr::filter(algo == a, param %in% keep, Num_ch %in% nchs)
+  if ("comp" %in% names(d)) d <- dplyr::filter(d, comp == "total")
+  have <- PARS[PARS %in% unique(d$param)]
+  if (!length(have)) return(NULL)
+  zf <- if (moment == "bias") function(x) x$Bconf else function(x) log10(x$Dconf)
+  nlev <- sort(unique(d$Num_ch)); strip <- nchstrip(nlev)
+  mk <- function(x) x %>% dplyr::mutate(
+    nchf = factor(vapply(Num_ch, function(n) strip[match(n, nlev)], ""), levels = strip),
+    pf   = factor(PSHORT[param], levels = PSHORT[have]))
+  d   <- mk(d) %>% dplyr::mutate(zz = pmin(pmax(zf(.data), min(SH_L)), max(SH_L)))
+  sed <- mk(sedat %>% dplyr::filter(algo == a, param %in% have, Num_ch %in% nchs))
+  # the union range of every member, pinned into this block; see YLIM
+  lim <- mk(YLIM %>% dplyr::filter(Num_ch %in% nchs) %>%
+              dplyr::reframe(Num_ch = rep(Num_ch, 2), ly = c(lo, hi)) %>%
+              tidyr::crossing(param = have) %>%
+              dplyr::mutate(lx = rep(XLIM, length.out = dplyr::n())))
+  g <- ggplot(d, aes(lx, ly, z = zz)) +
+    geom_contour_filled(breaks = SH_L) +
+    geom_blank(data = lim, aes(lx, ly), inherit.aes = FALSE) +
+    scale_fill_manual(values = SH_PAL, drop = FALSE, guide = "none") +
+    # The two validity criteria as iso-lines of the fill itself, the same pair the colour bar
+    # ticks, so a reader can trace where a panel crosses them without counting bands. They were
+    # drawn by `figure_4_bias.Rmd` and `figure_4_distortion.Rmd` through mapblock(iso_sol=,
+    # iso_dsh=); merging those two files into this one rewrote the block from scratch and left
+    # them behind. Put back 2026-07-30. ONE pair serves both halves, where the stacked pair
+    # needed two (BIAS_SOL in log10 against DIST_SOL as a ratio), because here both halves are
+    # already the same log10 factor: that is what the shared scale buys. Both levels are band
+    # EDGES (see SH_FAC), so each line runs along its own colour boundary. The dashed one carries
+    # more weight than the solid: a broken line of the same width reads as fainter than it is.
+    geom_contour(breaks = ISO_DSH, colour = "grey25", linewidth = .38,
+                 linetype = "dashed") +
+    geom_contour(breaks = ISO_SOL, colour = "black", linewidth = .3) +
+    geom_point(size = .04, colour = "grey35", alpha = .3) +
+    # The standard error, same two criteria and same style code as the lines above: solid is
+    # 1.15, dashed is 2. What separates the two families is COLOUR, not dash. Dark cuts the fill,
+    # white cuts the error, and a reader who has learnt "dashed means a factor 2" carries it from
+    # one to the other instead of having to unlearn it.
+    geom_contour(data = sed, aes(lx, ly, z = sev), breaks = SE_SOL,
+                 colour = "grey10", linewidth = .85, inherit.aes = FALSE) +
+    geom_contour(data = sed, aes(lx, ly, z = sev), breaks = SE_SOL,
+                 colour = "white", linewidth = .45, inherit.aes = FALSE) +
+    geom_contour(data = sed, aes(lx, ly, z = sev), breaks = SE_DSH,
+                 colour = "grey10", linewidth = .8, linetype = "22", inherit.aes = FALSE) +
+    geom_contour(data = sed, aes(lx, ly, z = sev), breaks = SE_DSH,
+                 colour = "white", linewidth = .42, inherit.aes = FALSE, linetype = "22") +
+    facet_grid(nchf ~ pf, labeller = label_parsed, scales = "free_y", space = "free_y") +
+    # expand = 0 is what actually closes the gap between adjacent maps: the default 5% per side
+    # is painted panel background, so two flush panels still show 10% of empty between the data.
+    scale_x_continuous(breaks = log10(c(.01, .1, 1)), expand = c(0, 0),
+                       labels = if (xlab) c("0.01", "", "1") else c("", "", "")) +
+    # the swept label is ten times the dimensionless noise (NOISE_AXIS_UNITS.md); display only
+    scale_y_continuous(breaks = YB, expand = c(0, 0),
+                       labels = parse(text = fmtnum(10^YB / 10))) +
+    labs(x = NULL, y = if (ylab) "dimensionless instrumental noise" else NULL) +
+    theme_bw(base_size = 8, base_family = "Helvetica") +
+    theme(panel.background = element_rect(fill = "grey85", colour = NA),
+          panel.grid.minor = element_blank(), panel.spacing = unit(0, "pt"),
+          legend.position = "none",
+          axis.text.x = element_text(size = 7), axis.text.y = element_text(size = 7),
+          axis.title.y = if (ylab) element_text(size = 8, margin = margin(r = 1))
+                         else element_blank(),
+          strip.text.x = element_text(size = 7, margin = margin(2.5, 0, 2.5, 0)),
+          strip.text.y = if (ystrip) element_text(size = 7, angle = 0, lineheight = .9,
+                                                  margin = margin(0, 2.5, 0, 2.5))
+                         else element_blank(),
+          plot.margin = margin(0, 0, 0, 0)) +
+    # blanking the ticks is not enough: axis.ticks.length is still reserved, 2.75 pt of dead
+    # space at the left edge of every block but the first
+    (if (!ylab) theme(axis.text.y = element_blank(), axis.ticks.y = element_blank(),
+                      axis.ticks.length.y = unit(0, "pt")) else NULL)
+  list(g = g, n = length(have))
+}
+```
+
+```{r render, fig.width = 7.4, fig.height = 7.27}
+# PER_ROW is a nominal knob, NOT the realized scale: the five layout heights below are null
+# units, so the panels get their share of what is left after every fixed row (strips, tick
+# labels, the colour bar) has taken its inches. Measured on the PDF, the map row resolves to
+#   panel_height = (H - F) * hC/(hC + 0.86) - 0.185        [hC = PER_ROW * 27.2 decades]
+# with F the composition's total fixed height and 0.185 the parameter strip inside the map row.
+# PER_ROW is that inverted for a y scale equal to the measured x scale, 0.2121 in per decade.
+# F is NOT a constant of the design: it was 0.919 while the rows still carried the spacer's
+# margins, 0.389 once they came out. Any row, strip or margin that changes moves it, so re-render
+# once, measure the panel band and the strip off the PDF, refit F, and re-solve.
+PER_ROW <- 0.2275  # nominal inches per decade; realized 0.212, the same as x. See the header
+GAPA    <- 0.0     # gap between members, in column units (grows with the panels)
+GAP_PT  <- 5.5     # gap between members, fixed part, in points: half of what plot_spacer() cost
+HALF_PT <- 11      # gap between the two moments, in points
+BOX_GAP <- 0.66 * GAP_PT   # under a label box: moment to member, member to the parameter strips.
+                           # Two thirds of the distance between members, so the vertical breaks
+                           # read as subordinate to the horizontal ones rather than competing
+CB_TITLE_W <- 2.6  # the colour bar's title, in the same column units as the maps
+
+half <- function(moment, nchs, first_overall, last_overall) {
+  bs <- lapply(seq_along(ALGOS), function(j)
+    blk(ALGOS[j], moment, nchs,
+        ylab   = first_overall && j == 1,
+        ystrip = last_overall  && j == length(ALGOS),
+        xlab   = j == 1))
+  ok <- !vapply(bs, is.null, logical(1)); bs <- bs[ok]
+  gs <- list(); ws <- numeric(0); hs <- list()
+  for (i in seq_along(bs)) {
+    if (i > 1) { gs <- c(gs, list(hsp(GAP_PT))); ws <- c(ws, GAPA)
+                 hs <- c(hs, list(hsp(GAP_PT))) }
+    gs <- c(gs, list(bs[[i]]$g)); ws <- c(ws, bs[[i]]$n)
+    hs <- c(hs, list(boxed(ALGO_LAB[ALGOS[ok][i]], 7, "grey85", gap = BOX_GAP)))
+  }
+  list(g = gs, w = ws, h = hs)
+}
+
+hb <- half("bias", NCHS, TRUE,  FALSE)
+hd <- half("dist", NCHS, FALSE, TRUE)
+W  <- c(hb$w, 0.30, hd$w)
+HW <- c(sum(hb$w), 0.30, sum(hd$w))
+
+ttl  <- wrap_plots(list(boxed("distortion-induced bias", 8, "grey92", "A", BOX_GAP),
+                        hsp(HALF_PT),
+                        boxed("information distortion", 8, "grey92", "B", BOX_GAP)),
+                   nrow = 1, widths = HW)
+hrow <- wrap_plots(c(hb$h, list(hsp(HALF_PT)), hd$h), nrow = 1, widths = W)
+row  <- wrap_plots(c(hb$g, list(hsp(HALF_PT)), hd$g), nrow = 1, widths = W)
+xrow <- wrap_plots(list(txt("dimensionless sampling interval", top = 2, bot = 4), hsp(HALF_PT),
+                        txt("dimensionless sampling interval", top = 2, bot = 4)), nrow = 1, widths = HW)
+cb   <- wrap_plots(list(cbtitle("factor by which\nthe report is wrong"),
+                        cbar(SH_PAL, SH_LAB, SH_L,
+                             sol = ISO_SOL, dsh = ISO_DSH)),
+                   nrow = 1, widths = c(CB_TITLE_W, sum(W) - CB_TITLE_W))
+# Only the standard error gets a key. The iso-distortion lines do not need one: their levels are
+# edges of the colour scale, so the bar names them where the line sits.
+fac  <- function(v) sprintf("a factor %g", v)
+krow <- wrap_plots(list(cbtitle("distortion-corrected\nstandard error"),
+                        linekey(fac(c(CRIT_SOL, CRIT_DSH)),
+                                cased = TRUE, chip = "grey62", dash = "22")),
+                   nrow = 1, widths = c(CB_TITLE_W, sum(W) - CB_TITLE_W))
+
+ANC <- c(ttl = 0.22, hrow = 0.20, xrow = 0.10, cb = 0.34, krow = 0.22)
+hC  <- PER_ROW * sum(vapply(NCHS, nch_noise_span, numeric(1)))
+g   <- ttl / hrow / row / xrow / cb / krow +
+  plot_layout(heights = c(ANC[["ttl"]], ANC[["hrow"]], hC,
+                          ANC[["xrow"]], ANC[["cb"]], ANC[["krow"]]))
+H   <- hC + sum(ANC)
+g
+ggsave("Figure_4.pdf", g, width = 7.4, height = H)
+cat(sprintf(paste("Figure_4.pdf: 7.40 x %.2f in, %d + %d columns, PER_ROW %.4f nominal",
+                  "(0.212 in per decade realized, on both axes; measured, not derived)\n"),
+            H, round(sum(hb$w)), round(sum(hd$w)), PER_ROW))
+```

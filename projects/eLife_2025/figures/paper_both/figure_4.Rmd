@@ -1,0 +1,289 @@
+---
+title: "Figure 4 — the design plane: what each member's report is worth, both moments on one scale"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+FIVE MEMBERS SINCE 2026-07-31: LSE / NR / INR / R / IR, in cost-ladder order. The four-member
+version of this file is `../archive/figure_4_SUPERSEDED_20260731.Rmd`, with its render beside it;
+before that, the R-vs-IR comparative map of the same name is `figure_4_SUPERSEDED_20260730.Rmd`
+in the same folder, and the stacked pair `figure_4_bias.Rmd` + `figure_4_distortion.Rmd` that
+both of them replaced is still here, superseded. The promotion changed the roster and two knobs;
+everything else is the four-member file unaltered: same data, same scale, same lines, same rows,
+same grammar.
+
+THE MACHINERY IS NOT HERE ANY MORE. `figure_4_layout.R` holds the composition, extracted verbatim
+the same day, because two supplements now stand on the same plane and three copies of a 400-line
+layout drift within a week. What was a `moment` there is a SIDE here: a half is
+`list(lab, letter, data, zf)` and nothing else, so a notebook that wants the same figure over a
+different quantity declares two of those and is finished. What stays in this file is the roster,
+the two sides, and `per_row`, which is the one knob that cannot be shared because it depends on
+how many columns the composition carries.
+
+WHY THE FIFTH MEMBER FITS. The width is fixed at 7.4 in and the isotropy is a constraint, so the
+panel band's height is not free: with 27.204 decades of noise down the rows and 7 sampling
+intervals across a column, panel_height = 95.2 x cell_width, both in inches. Pick one and the
+other follows. So MORE columns is a SHORTER figure with a THINNER cell, and the roster is limited
+by how narrow a cell still reads, not by the height. Measured off both PDFs at 300 dpi, by
+masking the grey20 panel borders and taking the panel width and the panel band:
+
+    members/half   columns   x in/decade   y in/decade   isotropy   cell     page
+        3.5          14        0.2067        0.2037       98.6 %   1.50 mm  7.40 x 7.27
+        4.5          18        0.1567        0.1527       97.5 %   1.14 mm  7.40 x 5.85
+
+There is no arrangement of five members at the old cell size: it would ask 0.0606 x 7 x 18 = 7.64
+in of panels against the 5.64 the page leaves. The four rows stay exactly proportional to the
+noise each N_ch reaches (0.1528 / 0.1529 / 0.1527 / 0.1526 in per decade), so what the promotion
+cost is a point of isotropy, not the row grammar.
+
+TWO MEASUREMENTS THAT DISAGREE WITH THE OLD HEADER, and the discrepancy is worth knowing before
+anyone re-solves anything. That header claimed 0.2121 across and 0.2124 down for the four-member
+figure. Measured on its own PDF the same way as above, it is 0.2067 and 0.2037. The gap on x is
+0.153 in over 14 columns, which is exactly HALF_PT, the 11 pt hole between the two moments: the
+claimed x scale looks like it counted that hole as panel. If so the old figure was 98.6 per cent
+isotropic and not 99.9, and this one inherits the same accounting.
+
+PER_ROW, RE-SOLVED AND THEN MEASURED. The layout heights are null units, so PER_ROW is a nominal
+knob and has to be re-solved whenever the split changes. The first render at 18 columns used
+0.1755, from the calibration the old header carries, and measured 0.1527 down against 0.1567
+across: 2.5 per cent short. 0.179 is that corrected, and it is not an extrapolation any more:
+`tmp/calib_fig4.R` renders the same layout from synthetic cells, which have the same geometry
+because the split depends only on the column count and the row spans, and `tmp/measure_fig4.py`
+puts 0.179 at x 0.1567, y 0.1562, 99.7 per cent. A new column count costs one round of three
+candidates and no data at all. Nothing here is read off the code any more, which is how the
+four-member file carried a wrong scale for weeks.
+
+INR IS ONE NOISE LEVEL SO FAR, and the figure shows that honestly. `../data/1f7138b` holds noise
+0.1 at all four N_ch, both batteries, run at the commit that restored the interval conductance
+variance to the non-recursive path. One y value cannot be contoured, so those cells are drawn as
+tiles one decade tall — the same device `figure_4_common.R` already uses for the unidentified
+marker — and the two iso-line families do not draw on that block either, since a contour needs
+two rows as well. Both revert on their own as the sweep lands: nothing here has to be undone. The
+rest of the column is empty because the rows are pinned to the union, which is what "not run"
+should look like.
+
+INR IS NOT THE `macro_NMR` ON DISK. Those runs are the build whose non-recursive path dropped
+N*ms, the variance of the interval-mean conductance given the start state; the commit message of
+1f7138b says no run in figures/data carries it. The defective build DIVERGES with the channel
+count the way NR does (k_off distortion 106 at N_ch 1e4 against NR's 79); INR does not (22, flat).
+That is why the 2026-07-29 decision to send it to the supplement, on the ground that it duplicated
+NR, was reading the bug.
+
+WHAT THE FIFTH COLUMN IS FOR. NR is the non-recursive path without the interval variance and INR
+is the same path with it, so the pair isolates the interval term from the recursion, and with R
+and IR the four make the 2x2 of (recursion x interval). Measured at noise 0.1, medians over the
+seven intervals, from the cells this file reads:
+
+                       N_ch:      10       100      1000     10000
+    bias in N_ch       NR     +0.0876  +0.0868  +0.0859  +0.0865
+                       INR    -0.0035  +0.0068  +0.0016  +0.0013
+                       R      +0.1335  +0.1513  +0.1396  +0.1387
+                       IR     +0.0080  -0.0023  -0.0010  +0.0003
+    distortion, k_off  NR      23.798   17.322   32.199   78.912
+                       INR     29.653   23.906   22.087   22.165
+                       R        1.425    1.487    1.481    1.456
+                       IR       1.367    1.127    1.025    1.006
+    distortion, N_ch   NR      16.573   44.343   91.625  564.159
+                       INR      9.145   10.466    9.937   10.152
+                       R        0.844    1.130    1.267    1.297
+                       IR       0.826    0.912    0.960    0.983
+
+The interval term removes the bias and stops the divergence; the recursion brings the level down
+to order one; only the two together calibrate. Note the honest cost: at few channels INR is
+slightly WORSE than NR in k_off, 29.7 against 23.8, and that goes on the map like everything else.
+
+TYPE SIZE, since the roster is what pushes on it. Nothing here scales with the panels: every size
+is declared in points, so the promotion moved no type at all. Read out of the PDF with `mutool
+draw -F stext`, this figure carries 239 glyphs at 7 pt (members, axis text, strips, colour bar),
+139 at 8 (moment bars, axis titles) and 2 at 9.5 (the panel letters). It also carries 57 at 5 pt,
+and those are every plotmath subscript and exponent: the "off" of k_off, the "ch" of N_ch, the
+exponents of 10^2, 10^3, 10^4 and the 10^-3 on the bar. R draws a sub/superscript at about 0.7 of
+its base, so a 7 pt label yields a 5 pt subscript, under eLife's 7 pt floor. This is NOT new — the
+four-member render carries 24 glyphs at 5 pt for the same reason — but it is unresolved. A 7 pt
+subscript needs a 10 pt base, and "k_off" at 10 pt is 0.30 in against a 0.31 in column, so it does
+not fit at 18 columns and barely fits at 14. The choices are to accept 5 pt knowing production may
+flag it, or to take the subscripts out of the strips.
+
+ROSTER OVERRIDE, and why the default was NOT flipped. `figure_4_common.R` reads FIG4_ALGOS /
+FIG4_ALGO_LAB / FIG4_DATA_DIRS if they exist and falls back to the four-member roster otherwise.
+This figure declares them; the default is left alone deliberately, because every supplement that
+sources the same file (6, 7, 8, 9, 10, 11) would then grow an INR row that has one noise level and
+therefore cannot be contoured, i.e. would render as an empty row until the sweep lands. FLIP THE
+DEFAULT once INR has its staircase, and look at those six then. Until it is flipped the variables
+stay set for the rest of the R session, so knit one notebook per session.
+
+REPLACES, in order: the four-member figure of this name (2026-07-31,
+`../archive/figure_4_SUPERSEDED_20260731.Rmd`); the R-vs-IR comparative map before it (2026-07-30,
+`../archive/figure_4_SUPERSEDED_20260730.Rmd`); and the stacked pair `figure_4_bias.Rmd` +
+`figure_4_distortion.Rmd`, which produced two files 20.2 and 20.9 in tall that could not be a
+display item at any scale.
+
+WHAT IT IS. One figure, two halves, lettered A (bias) and B (distortion). Columns nest three
+deep: moment, then member, then parameter (k_off | N_ch). Rows are the channel count, each row
+given a height proportional to the range of instrumental noise the sweep reaches at that count,
+so a decade of noise is the same physical distance in every row. LSE holds one column per half:
+its unitary current is Fixed, so a channel-number comparison against it is not like for like
+(EXCLUDE_ROWS). The letter sits inside the moment's own label bar, at its left end, so it costs
+no height; the three header bars (moment, member, parameter) stand `BOX_GAP` apart, which is two
+thirds of the gap between members, so the nesting is read down as well as across.
+
+CAPTION IS STALE. `Figure_4_caption.md` still describes the superseded R-vs-IR figure, down to
+its own (A) (B) (C), which now collide with the letters here. It needs rewriting against this
+figure, and the numbers in it were printed by a notebook that no longer exists.
+
+ISOTROPIC. One decade is the same distance on both axes (0.212 in). That is a constraint, not a
+by-product: the figure's height is not a free parameter, it follows from the width. With W of
+panel width over n columns of 2 decades each, the scale is W/(2n) and the height is that times
+the summed noise span of the rows. The frontier is `sum(decades_y)/n_cols = 2*H/W`; at 27.2
+decades over 14 columns it lands on a page, and that is why the roster is what it is. Widening
+the panels means dropping columns, nothing else.
+
+Until 2026-07-30 the constraint was declared and not met, by 22 per cent: x ran at 0.148 in per
+decade and y at 0.180, and neither was the 0.216 the file claimed. Three separate causes, all of
+them layout accounting rather than design:
+
+  - patchwork's `plot_spacer()` keeps the default 5.5 pt margin on EVERY side, so the six
+    zero-width spacers between the members cost 11 pt apiece however small `GAPA` was set. The
+    gap is now a stated number of points, `GAP_PT`. The same margin ran vertically, and a row
+    takes the widest margin among its plots, so the single spacer holding the two halves apart
+    was also putting 11 pt of white under every row it sat in: that, and not any setting of the
+    labels, was the space under the moment bars, under the member bars, and above the x titles.
+    The rows are flush now and what separates them is `BOX_GAP`.
+  - an axis title is a FIXED width, and patchwork reserves the widest fixed left offset in a
+    composition on EVERY row of it, so the colour bar's label, three rows below the maps, was
+    holding 1.4 in away from all of them. It is now a plot with a width in column units,
+    `CB_TITLE_W`, which is the device Luciano used in the Nature-submission figures.
+  - the five layout heights are null units, so `PER_ROW` was never the realized y scale but
+    about 0.83 of it, the rest going to the fixed rows. It is now calibrated against a measured
+    render; see the note where it is set.
+  - and one that made the axis WRONG rather than merely uneven, found 2026-07-31: each block
+    sized its rows from its own noise range, so IR, which sweeps down to 0.05 where the others
+    start at 0.1, carried 27.204 decades in the height the rest used for 26.000. The single
+    drawn axis was therefore right for six blocks and out by up to a factor 2 for two of them.
+    Pinned to the union now; see YLIM. It is also what makes the isotropy true for the whole
+    figure instead of for IR alone, since 27.204 is the span PER_ROW was always solved against.
+
+The first two were taking 1.9 of the 7.4 in across, the vertical half of the first another 0.4
+down. Columns went from 0.296 to 0.424 in, so the maps carry 44 per cent more width than they
+did, and at 7.39 by 7.27 in the two axes agree to 0.1 per cent: 0.2121 across, 0.2124 down.
+Everything here was measured off the PDF, not read off the code, which is how the 0.216 survived.
+Any row added below the maps changes the split and PER_ROW has to be re-solved: it has been, for
+the moment bar, for the key row, and for every margin touched on the way.
+
+ONE SHARED SCALE. The bias is read as a FACTOR on the parameter (10^Bconf), not as a log10
+displacement, so both halves are log10(factor) centred on 0 and take the same breaks and the same
+palette. That makes the two halves directly comparable, which two separate scales did not: the
+left half being pale and the right half being red now means something. Clipped at 10^+-3, which
+is 22 cells of 3276 (10 bias, 12 distortion; 20 of them NR and 2 R), where "wrong by 10^3" and
+"wrong by 10^12" say the same thing. Recounted 2026-07-31; the file said 18 and fifteen NR, from
+an earlier scale.
+
+NOT SETTLED, and it is the figure's central claim. The two halves are put on one scale and told
+to be comparable, but they are not the same kind of quantity: the bias is a factor on the
+PARAMETER and the distortion is a ratio of VARIANCES. A 2 on the left says the answer is out by
+100 per cent; a 2 on the right says the error bar is 41 per cent too narrow, since the width goes
+as the square root. The unified line code makes this worse rather than better, because 1.15 now
+reads as the same mark on both halves and is not the same severity. Note that the third quantity
+in the figure, the standard error the white lines cut, is ALREADY a factor on the parameter. Two
+of the three are commensurable and the distortion fill is the odd one out; plotting sqrt(Dconf)
+would put all three in one unit. Cells past a factor 2 would go from 320 to 235 of 1638, and past
+1.15 from 574 to 463. Luciano's call, and it should be made before the caption is written.
+
+The bands are declared as FACTORS (`SH_FAC`) and the two validity criteria are members: 1.15 and
+2, mirrored. So the iso-lines run ALONG a colour boundary rather than cutting a band, the bar
+carries 1.15 and 2 as printed labels, and the lines need no legend of their own. Before
+2026-07-30 the edges were a round log10 ladder that missed both criteria, and a line crossing the
+middle of a band looked like an error. Anything that changes `SH_FAC` has to keep the two
+criteria in it or that goes back.
+
+THE LINES CARRY TWO CODES, one per dimension, and neither borrows from the other.
+
+  COLOUR says WHICH QUANTITY. Dark cuts the fill, the factor by which the report is wrong. White,
+  cored on a dark casing, cuts the distortion-corrected standard error: can the parameter be
+  measured at all, as opposed to whether the error bar is honest, which is what the colour of the
+  field says. White rather than a second hue because the fill is a red-blue diverging scale, so
+  hue would fail for red-green colour blindness at the red end where the lines matter most;
+  luminance works for every kind of colour vision and in greyscale.
+
+  DASH says WHICH CRITERION. Solid is a factor 1.15, dashed is a factor 2, in both families and
+  on both moments. So "the report is wrong by more than 1.15" and "the error bar is wider than
+  1.15" are the same mark on two quantities, and the four lines are two criteria times two
+  quantities rather than four separate things to memorise.
+
+Until 2026-07-30 the white pair ran 2 solid and 1.1 dashed, which inverted the dash code against
+the dark pair and set a threshold, 1.1, matching nothing else in the figure. Both pairs now come
+from `CRIT_SOL` and `CRIT_DSH`, which are the criteria `figure_4_common.R` declares. CONSEQUENCE,
+accepted: the factor-2 standard error is the frontier Figure 6 draws, and here it is now the
+dashed line rather than the solid one. The two figures still agree on the value.
+
+The dark pair are hairlines and always sit on a colour boundary, by construction (see SH_FAC), so
+they need no key: the bar names them where they sit. The dashed of each pair is drawn heavier
+than its solid, because a broken line of equal width reads as fainter than it is.
+
+Two silent losses, both found 2026-07-30 and both fixed. The bar's tick marks had never appeared:
+`cbar()` placed them with `match(v, lin)`, which demands an exact band edge and drops anything
+else without a word, and `figure_4_common.R` warns about exactly that. The iso-lines had never
+been drawn either: `figure_4_bias.Rmd` and `figure_4_distortion.Rmd` passed them to mapblock() as
+`iso_sol` / `iso_dsh`, and merging those two files into this one rewrote the block from scratch
+without them. The ticks are interpolated now, so a mark lands wherever its value falls, whether or
+not the scale was built around it.
+
+AXES ARE DIMENSIONLESS. Interval as Delta/tau, noise as the instrumental noise over one channel
+time constant in units of i^2. Tick values are linear and typeset (10^4, never 1e+04).
+
+OPEN ITEM (2026-07-30): the noise axis divides the swept label by 10, per
+`../../NOISE_AXIS_UNITS.md`, which states that the label is ten times the dimensionless noise.
+Luciano flagged a possible factor-10 error in this display and it is NOT resolved. If the
+document has the factor inverted, fix the document first: it is the source the rest of the figure
+set will follow when the dimensionless axis is propagated.
+
+STILL OPEN: the field is drawn with `geom_contour_filled`, which interpolates and so does not
+paint the outer half-cell ring; a rectangle version was tried and rejected as harder to read.
+Isolated single cells at the top of some NR panels are estimation noise, not structure.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+```{r common, include=FALSE}
+# The roster, declared BEFORE the source so figure_4_common.R picks it up; its defaults are the
+# four-member ones and are untouched. Order is the cost ladder, and INR sits where it belongs:
+# the interval term without the recursion, between the member that has neither and the one that
+# has only the recursion. ../data/1f7138b is appended last, so it only ever supplies files the
+# three frozen dirs do not have, which today is macro_INR and nothing else.
+FIG4_ALGOS     <- c("nonlinearsqr", "macro_NR", "macro_INR", "macro_R", "macro_IR")
+FIG4_ALGO_LAB  <- c(nonlinearsqr = "LSE", macro_NR = "NR", macro_INR = "INR",
+                    macro_R = "R", macro_IR = "IR")
+FIG4_DATA_DIRS <- c("../data/1c2ae6f", "../data/87889e6", "../data/0ffbda7", "../data/1f7138b")
+source("figure_4_common.R")
+```
+
+```{r layout, include=FALSE}
+# Every line of the composition -- the helpers, the shared scale, the standard error the white
+# lines cut, the block, the assembly -- moved to figure_4_layout.R on 2026-07-31, when the second
+# and third notebook on this layout appeared. What is left here is what makes THIS figure this
+# figure: the roster above, the two sides below, and the one knob that is not shared.
+source("figure_4_layout.R")
+```
+
+```{r sides}
+# The two halves. `data` is what the block draws and `zf` reads the fill out of it, so a half is
+# fully specified here and the block has nothing left to decide. The bias comes from battery_sim_G
+# anchored at theta_sim (at the optimum it is zero by construction, because the score vanishes);
+# the distortion from battery_pool_G at theta_pool. Both are read as a log10 FACTOR on the same
+# scale, which is what lets the two halves be compared rather than merely juxtaposed.
+SIDES <- list(
+  list(lab = "distortion-induced bias", letter = "A",
+       data = bias,                                  zf = function(x) x$Bconf),
+  list(lab = "information distortion",  letter = "B",
+       data = dplyr::filter(stat, comp == "total"),  zf = function(x) log10(x$Dconf)))
+```
+
+```{r render, fig.width = 7.4, fig.height = 5.95}
+# 0.179 nominal, MEASURED: x 0.1567, y 0.1562, 99.7 per cent isotropic, off a synthetic render of
+# this same layout at 18 columns (tmp/calib_fig4.R, tmp/measure_fig4.py). 0.1755 was 97.5.
+fig4_render(SIDES, per_row = 0.179, out = "Figure_4.pdf")
+```

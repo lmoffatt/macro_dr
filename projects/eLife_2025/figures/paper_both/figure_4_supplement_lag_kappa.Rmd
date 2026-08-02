@@ -1,0 +1,138 @@
+---
+title: "Figure 4—figure supplement (number pending) — two things the plane says without a parameter: the memory left in the residual, and how near-singular the Fisher is"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+NUMBER PENDING, as for the other rebuilt supplements. Replaces the draft
+`figure_4_supplement_residuals.Rmd` of 2026-07-31, which paired the residual's memory with its
+variance; the variance is recorded at the foot of this note and is one side away from being drawn
+again.
+
+WHAT IT IS. Two panels over the same plane, all seven members, one column each, 14 columns:
+
+  A  tau_int   the integrated autocorrelation of the standardized residual (patch - y_mean) /
+               sqrt(y_var), in normalized Sokal / Kish form. Null 1 for a white residual. It counts
+               how many intervals the likelihood effectively has for every interval it believes it
+               has, and it is computed from the DATA against the fitted mean and variance, with no
+               parameter, no derivative and no likelihood comparison.
+  B  kappa     the condition number of the Gaussian Fisher: lambda_max / lambda_min. Null 1 for a
+               design that determines every direction equally. It says whether the experiment
+               PINS the parameters at all, which is a different question from whether the error
+               bar is honest.
+
+They are together because they are the two questions a reader asks that Figure 4 does not answer,
+and because both are scalars per cell with no parameter index, so each costs one column per member
+and the two of them fill the width at a 1.38 mm cell — wider than the body figure's 1.14.
+
+TWO BARS, NOT ONE, and this is the first figure in the set to need it. Everywhere else the
+quantities are commensurable and share the scale by construction, which is what makes a colour mean
+one thing across the whole set. Here they are not: tau_int runs from 1.00 to 9.3 and kappa from
+360 to 4.9e7. On one scale the finer of the two would sit inside a single band in every cell. So
+side A takes the one-sided sequential scale with the set's own criteria, 1.15 and 2, which here
+read as "the likelihood is over-counting its data by 15 per cent" and "by a factor two"; side B
+takes decade bands with the one mark it has, 3e4, which is the ill-conditioning threshold this
+project already used when the maps still greyed cells out. Neither borrows the other's colours and
+neither borrows the diverging scale's, so nothing on this page can be confused with a distortion.
+
+WHAT IT SHOWS. Medians over the seven intervals at noise 0.1:
+
+                  N_ch:      10       100      1000     10000
+    tau_int       LSE      8.684    9.233    9.325    9.286
+                  NR       7.856    8.611    3.010    1.337
+                  INR      8.170    9.051    9.160    9.199
+                  R        1.140    1.284    1.346    1.373
+                  MR       1.308    1.633    1.773    1.816
+                  VR       1.218    1.455    1.515    1.536
+                  IR       1.038    1.011    1.001    1.005
+    kappa         LSE      709      5300     5.29e5   4.88e7
+                  NR       738      1312     1.59e4   7.06e5
+                  INR      647      1203     1.13e4   1.13e5
+                  R        537      417      1451     1.49e4
+                  MR       454      414      2172     2.22e4
+                  VR       414      359      1786     1.82e4
+                  IR       434      373      985      1.01e4
+
+PANEL A IS THE DEGREES-OF-FREEDOM ARGUMENT, in the data. Least squares and the two open-loop
+members leave about nine intervals of memory for every interval they count, so they behave as
+though they had nine times more independent observations than the recording supplies; the
+recursive filter leaves 1.3, the one-endpoint pair 1.5 to 1.8, and the boundary-conditioned filter
+1.00. That ordering is the same one every likelihood-level figure reports, obtained without any of
+the likelihood-level machinery, which is why this panel is worth its width.
+
+READ NR WITH CARE, and the caption must say so. Its memory FALLS with the channel count, to 1.34
+at ten thousand, which alone would read as a residual gone white and a likelihood gone honest. It
+has not: NR's predicted variance is 29.6 times too large there (see the foot of this note), and an
+inflated denominator whitens a normalized residual whatever structure it had. The two panels of
+this figure do not catch that; the r^2/n side does, which is the argument for restoring it.
+
+PANEL B IS NOT A RESTATEMENT OF PANEL A, and the numbers show it. The condition number grows with
+the channel count for every member, but it separates them by four orders of magnitude at ten
+thousand channels: 4.9e7 for least squares against 1.0e4 for the boundary-conditioned filter, with
+the rest ordered in between exactly as the cost ladder is. So the members that condition better
+also leave a better-posed problem, which is a claim about the DESIGN and not about calibration.
+It has to be read as a separate reading and not as a mask: over the shared grid the condition
+number and the distortion are close to orthogonal (Spearman 0.25 overall, and NEGATIVE for IR, for
+which worse conditioning goes with better calibration). Cells exist that are well-conditioned and
+miscalibrated, and cells exist that are ill-posed and perfectly honest.
+
+THE THIRD SIDE, one line away. r^2/n, the mean squared standardized residual over the number of
+intervals the recording holds, null 1: it is 1.000 for LSE, INR, R and IR at every channel count
+and 3.710 and 29.643 for NR at a thousand and ten thousand. That is the same divergence its
+per-sample distortion shows (47) and its analytic-against-numerical Fisher shows (0.55), visible
+in the raw data. Two cautions travel with it: r2_std is emitted as the SUM over the recording's
+intervals, so the divisor is the NUMBER OF INTERVALS, 10 / interval_in_tau, and not the emitted
+`count`, which is 10000 and is the number of simulations; and the LSE 1.000 is a TAUTOLOGY, since
+the classical fit marginalises its noise scale and standardizes the residual by a variance fitted
+to that very residual.
+
+MR AND VR HAVE THREE AND TWO NOISE LEVELS and INR has one, so those columns are short bands with
+grey above, and anything under MIN_CONTOUR_LEVELS is drawn as tiles. All of it fills in as the
+runs land, with no edit here.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+```{r common, include=FALSE}
+# All seven: neither quantity needs a parameter, so every member costs one column, and seven of
+# them fill the width at a legible cell where five would leave the figure too tall.
+FIG4_ALGOS     <- c("nonlinearsqr", "macro_NR", "macro_INR", "macro_R", "macro_MR",
+                    "macro_VR", "macro_IR")
+FIG4_ALGO_LAB  <- c(nonlinearsqr = "LSE", macro_NR = "NR", macro_INR = "INR", macro_R = "R",
+                    macro_MR = "MR", macro_VR = "VR", macro_IR = "IR")
+FIG4_DATA_DIRS <- c("../data/1c2ae6f", "../data/87889e6", "../data/0ffbda7", "../data/1f7138b")
+# The inner level is the QUANTITY. Each side's data carries only its own, so each member gets one
+# column per side and the strip names what is in it.
+FIG4_PARS   <- c("lag", "kappa")
+FIG4_PSHORT <- c(lag = "tau[int]", kappa = "kappa")
+source("figure_4_common.R")
+source("figure_4_layout.R")
+```
+
+```{r sides}
+# Both quantities come out of the shared source data (figure_4_data.R), which swept them in the
+# same pass as everything else, so this notebook reads three small CSVs and no battery file.
+lk <- dplyr::filter(.fig4_src$scal, algo %in% ALGOS, param %in% c("lag", "kappa"),
+                    is.finite(v), v > 0)
+
+SIDES <- list(
+  list(lab = "memory left in the standardized residual", letter = "A",
+       data = dplyr::filter(lk, param == "lag"), zf = function(x) log10(x$v),
+       scale = modifyList(SCALE_ONESIDED,
+                          list(title = "intervals per interval,\nas a factor"))),
+  list(lab = "conditioning of the Gaussian Fisher", letter = "B",
+       data = dplyr::filter(lk, param == "kappa"), zf = function(x) log10(x$v),
+       scale = SCALE_KAPPA))
+```
+
+```{r render, fig.width = 7.4, fig.height = 6.64}
+# 14 columns over two sides, no key row and no white contours: a standard error is not defined for
+# a quantity with no parameter. per_row 0.2126, measured at x 0.1908, y 0.1908 (tmp/calib_fig4.R
+# case 14x2nokey), cell 1.38 mm.
+fig4_render(SIDES, per_row = 0.2126, out = "Figure_4_supplement_lag_kappa.pdf",
+            se_lines = FALSE, key = FALSE)
+```

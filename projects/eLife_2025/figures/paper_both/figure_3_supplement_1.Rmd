@@ -1,37 +1,97 @@
 ---
-title: "Figure 3—figure supplement 1 — per-step information vs score variance, and their calibration, across the 5 macro algorithms and 4 parameters"
+title: "Figure 3—figure supplement 1 — per-step information against score variance, all four identified parameters"
 author: "Luciano Moffatt"
 date: "`r Sys.Date()`"
 output: html_document
 ---
 
 <!--
-TIME-RESOLVED, PER-PARAMETER second-Bartlett check. For each of the four identified parameters
-(k_on, k_off, i, N_ch) two stacked rows, four approximation columns (R, MR, VR, IR): the recursive
-ladder, so recursion is held fixed and only the interval conditioning varies.
+REVIVED, NOT REWRITTEN (Luciano, 2026-07-31). This is the archived
+`figure_3_supplements_superseded_20260731/figure_3_supplement_2.Rmd` brought back on its own layout,
+which the archive README already named as the candidate to start from. A first attempt at this
+supplement put the four parameters as four COLOURS inside the parent's panels and was rejected on
+sight: four curves and four ribbons in a 1.3 in panel is unreadable, and the two amplitude
+parameters overlie during the pulse so one of them is simply invisible.
 
-  INFO row (log10 y): the per-step Gaussian Fisher information diagonal E[I_t] (blue) and the
-    score variance Var(s_t) (orange). They coincide wherever the filter is calibrated; both
-    vanish off-agonist and (k_on / N_ch, recursive filters) in the decay, while i keeps a
-    conductance-noise floor.
-  LOG J/F row (linear, null 0): the per-step calibration log10(Var(s_t)/E[I_t]) with a 90%
-    bootstrap CI over the 1000 recordings. A calibrated filter sits on 0 at every step. The
-    per-step diagonal is roughly calibrated for all algorithms; the J != F that separates them
-    lives in the CROSS-time score correlation (Figure 3 rows E and F), not here. THIS FIGURE IS THE
-    PREMISE, Figure 3 is the consequence: per step everyone reports its information correctly, so
-    the accumulated failure cannot be a per-sample modelling error.
+THE LAYOUT RULE THE WHOLE ARCHIVED SET OBEYS, and the reason it works: PARAMETER IS A ROW,
+ALGORITHM IS A COLUMN, and no panel ever carries more than two series. All three archived
+four-parameter figures are built that way -- this one, `Figure_S_score_acf_allparams.pdf` and
+`Figure_S_score_mean.pdf` -- and none of them is crowded. The parent figure can afford colour for
+the parameter because it draws two; a supplement that draws four cannot, and has to spend rows
+instead. Rows are the cheap axis here: eLife sets no height limit, so 11 in of page is free while
+panel width is not.
 
-Reads the same 5 ensemble CSVs figures/data/figure_3_time_dlik_{NR,MR,IR,R,NMR}.csv (each ~1 GB,
-1000 sims; cell N_ch=100, Current_Noise=1e-4, interval=0.1 tau) ONCE each. Per step:
-  I_t,kk = (d y_mean/d theta_k)^2 / y_var + 0.5 (d y_var/d theta_k)^2 / y_var^2   (Gaussian FIM
-diagonal, validated: sum_t I_t reproduces the dumped global FIM to machine precision); the score
-s_t,k is the stored d logL_t/d theta_k. Time axis in milliseconds. The data-file key "NMR" is the
-algorithm shown to readers as "MNR". A point is shown wherever the per-step FIM is non-zero
-(F > 1e-6); genuine zeros (sensitivity = 0, ratio 0/0) are dropped. The writer emits every
-evolution row TWICE (a segment-blank copy + a segment_index=0 copy, identical values); collapsed
-by mean per (sim, sample).
+FOUR PARAMETER BANDS, each two rows, over all seven members: LSE / NR / INR / R / MR / VR / IR.
+  INFO row (log10 y, no null): the per-step Gaussian Fisher information F_t = E[I_t] in blue and the
+    score variance J_t = Var(s_t) in orange. They coincide wherever the member is calibrated per
+    step, so the row is read as "do the two curves lie on each other", and it doubles as the map of
+    WHERE in the recording each parameter is measured at all.
+  LOG J/F row (linear, null 0, half height): log10(Var(s_t)/E[I_t]) with its bootstrap interval. A
+    per-step-calibrated member sits on 0 at every step.
+The pairing is deliberate and is why the info row has no null line: the ratio row is the test, the
+info row is the magnitude the test is made of. Margins couple each pair (small gap inside a band,
+larger gap between bands), inherited from the archived file.
 
-RENDER: reads ~5 GB, too heavy for a laptop; run where figures/data/ resolves.
+WHAT THE FIGURE IS FOR, one objection: the body draws its score rows for k_off and N_ch, and three
+sentences in the manuscript are about the other two. All three now land here.
+  - Results and Discussion quote the per-step median log10(J_t/F_t) on k_on for all four members.
+    Until this figure existed those numbers came from a notebook archived on 2026-07-31 and no
+    longer a display item: numbers in the body with no figure behind them. The ratio rows are that
+    statistic, and they reproduce the archived values to five decimals from the digests.
+  - Results and Discussion claim the information about three parameters dies at the washout. The
+    info rows are that claim, and they do not support it as written -- see MEASURED, below.
+  - Diagnostics leaves a quantity undefined where the anchor is near-singular and points here for
+    where that happens. That is the k_on and N_ch bands after the washout.
+
+MEASURED 2026-07-31, AND IT DOES NOT MATCH THE SENTENCE THAT CITES THIS FIGURE. Mean F_t over the
+washout window as a fraction of its value during the pulse, and over the last ten intervals (t
+90-100 ms, three to four decay constants after the agonist is removed):
+
+  member  parameter   F_wash/F_pulse   F over the last ten intervals
+  IR      k_on            0.0039              7.9e-44
+  IR      N_ch            0.0050              1.4e-21
+  IR      i               0.028               0.66
+  IR      k_off           0.655               1.13
+
+k_on and N_ch reach the numerical floor; the unitary current does not. It falls by a factor of
+thirty-six and levels at the same order as k_off, and the two survivals are of different kinds: 81%
+of what k_off keeps comes from the mean, the shape of the decay it governs, while 71% of what i
+keeps comes from the variance, the gating fluctuation of the few channels still open. N_ch's is
+99.6% mean-borne and it is that mean derivative that vanishes, because conditioned on the past the
+predicted current is the open count the filter already carries times i. The manuscript names the
+unitary current with the dying pair in two places, flagged there as TODO and not edited here.
+
+THE INFO ROW RUNS DOWN TO THE MASK, where the archived version stopped at 1e-3 and let the cliff
+leave the panel. For IR the channel-number information runs 55.4, 10.5, 0.357, 1.67e-2, 6.9e-4,
+2.8e-5, 1.05e-6 over six intervals after the washout, so its last point above the mask sits ON the
+floor: with the axis ending there, the fall is seen to terminate rather than to be cut, and a reader
+can tell a masked point from a clipped one.
+
+LEAST SQUARES CARRIES NO N_ch BAND, by exclusion and not by absence of data, which is the parent's
+rule (`figure_3.Rmd`, and `EXCLUDE_ROWS` in `figure_4_common.R`). With the gating fluctuations
+unmodelled the channel count and the unitary current enter only through their product, and this
+figure MEASURES that rather than assuming it: F_t over the pulse is 1076.55 for both, to every digit.
+The panel is not left empty, which would read as a rendering failure; it carries the one-line reason.
+
+A STRUCTURAL FACT THE FOUR-PARAMETER VIEW MAKES VISIBLE. In the least-squares column the ratio row
+is the SAME curve in all four bands (median log10 = 0.183889 in every one). With one constant
+variance the per-interval score is (y - mu) dmu/dtheta / sigma^2 and its information is
+(dmu/dtheta)^2 / sigma^2, so the parameter cancels out of the ratio and what is left is the true
+residual variance over the assumed one. Least squares therefore fails at the per-step level, and in
+a way that measures its homoscedastic premise and nothing about any parameter -- a different failure
+mode from the recursive family's, which is cross-time and only appears once the intervals are
+summed. This is the data-level heteroscedasticity of the parent's row B, read at the score level.
+
+CHANGES FROM THE ARCHIVED FILE, all four for consistency with the parent rather than preference:
+  - reads the digests written by figure_3_digest.R (37 MB) instead of four ~1 GB dumps;
+  - B = 400 percentile bootstrap replicates and 95% intervals, the figure_3 family convention,
+    against the archived 200 and 90%;
+  - the info row ends at the mask, as above;
+  - the N_ch exclusion for least squares, which postdates the archived file (2026-07-30).
+
+DATA: figures/data/digest/figure_3_digest_{LSE,NR,INR,R,MR,VR,IR}.rds. Cell N_ch = 100, Current_Noise = 1e-4,
+interval = 0.1 tau, 1000 recordings, seed 20260722. Every number the caption quotes is printed by
+the caption-numbers chunk on each knit and is never read off the plot.
 -->
 
 ```{r setup, include=FALSE}
@@ -39,57 +99,65 @@ knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 library(tidyverse)
 library(data.table)
 library(patchwork)
-# Roster = the likelihood family that IS per-step calibrated: NR (correct per-interval marginal
-# variance, open loop), R, IR. LSE is deliberately OUT of THIS figure — its flat sigma_hat^2
-# miscalibrates PER STEP (Var(s_t)/F_t = Var(y_t)/sigma_hat^2 breathes, same for all params), which
-# would contradict this figure's premise; that story is figure_3_supplement_2 and figure_3 panel B.
-ALGOS <- c("NR", "R", "IR")                          # data-file keys
-ALAB  <- c(NR = "NR", NMR = "MNR", R = "R", MR = "MR", VR = "VR", IR = "IR")  # display (NMR -> MNR)
-FULL  <- c(NR = "Non-Recursive", NMR = "Mean Non-Recursive", R = "Recursive",
-           MR = "Mean Recursive", VR = "Variance Recursive", IR = "Interval Recursive")
-LEAD  <- ALGOS[1]     # leftmost column: carries the y title, the row titles and the panel tags
-PIDX  <- c(0, 1, 2, 5)                               # on, off, unitary_current, Num_ch_mean
-PLAB  <- c("k[on]", "k[off]", "i", "N[ch]")          # plotmath row labels
-PTTL  <- list(bquote(k[on] * "  (opening rate)"), bquote(k[off] * "  (closing rate)"),
-              bquote(i * "  (unitary current)"),    bquote(N[ch] * "  (channel number)"))
-FLOOR  <- 1e-6                                        # show wherever the per-step FIM is non-zero
-B      <- 200                                        # bootstrap replicates over recordings
-YLIM   <- c(-0.5, 0.5)                               # log-ratio (log J/F) linear zoom, null 0
-YCURVE <- c(1e-3, 1e3)                               # common log y-range for the two info curves
 ```
 
 ```{r read}
-col1  <- function(d) d[, .(v = mean(value)), by = .(simulation_index, sample_index)]
-col1p <- function(d) d[, .(v = mean(value)), by = .(simulation_index, sample_index, param_index)]
+# ALL SEVEN, widened from the body's four on 2026-07-31 once macro_INR had run. The reason is
+# INR itself: it passes every per-interval check in the paper and fails only the accumulated one,
+# so the rows of THIS figure are where it belongs. MR and VR come with it because they are what
+# makes its number mean something -- both are recursive, both cost more, and both are WORSE here
+# (per-step median log10(J_t/F_t) of -0.229 and -0.135 against INR's +0.007). Per-interval
+# calibration is not monotone along the cost ladder, and with those two columns missing a reader
+# would assume it is. NMR, the build that lost the interval-variance term, is not drawn anywhere.
+ALGOS <- c("LSE", "NR", "INR", "R", "MR", "VR", "IR")
+ALAB  <- c(LSE = "LSE", NR = "NR", INR = "INR", R = "R", MR = "MR", VR = "VR", IR = "IR")
+# Wrapped at seven columns. A one-line subtitle is fine at four columns and 1.5 in per panel; at
+# 0.9 in "Interval Non-Recursive" is wider than its column and runs into its neighbours.
+FULL  <- c(LSE = "Least\nSquares", NR = "Non-\nRecursive", INR = "Interval Non-\nRecursive",
+           R = "Recursive", MR = "Mean\nRecursive", VR = "Variance\nRecursive",
+           IR = "Interval\nRecursive")
+LEAD  <- ALGOS[1]                            # leftmost column carries the y titles and the tags
+XTTL  <- ALGOS[ceiling(length(ALGOS) / 2)]   # the one column that carries the x title: the middle
 
-read_si <- function(a) {
-  dt <- fread(sprintf("../data/figure_3_time_dlik_%s.csv", a), skip = 1, showProgress = FALSE)
-  yv  <- col1 (dt[component_path == "y_var"  & calculus == "primitive"  & !is.na(sample_index)])
-  dym <- col1p(dt[component_path == "y_mean" & calculus == "derivative" & param_index %in% PIDX & !is.na(sample_index)])
-  dyv <- col1p(dt[component_path == "y_var"  & calculus == "derivative" & param_index %in% PIDX & !is.na(sample_index)])
-  sco <- col1p(dt[component_path == "logL"   & calculus == "derivative" & param_index %in% PIDX & !is.na(sample_index)])
-  setnames(yv, "v", "yv"); setnames(dym, "v", "dym"); setnames(dyv, "v", "dyv"); setnames(sco, "v", "s")
-  tm <- unique(dt[!is.na(step_middle) & !is.na(sample_index), .(sample_index, t = step_middle, agonist)])
-  rm(dt); gc(verbose = FALSE)
-  X <- merge(merge(dym, dyv, by = c("simulation_index", "sample_index", "param_index")),
-             sco, by = c("simulation_index", "sample_index", "param_index"))
-  X <- merge(X, yv, by = c("simulation_index", "sample_index"))
-  X[, I := dym^2 / yv + 0.5 * dyv^2 / yv^2]           # per-step Gaussian FIM diagonal
-  list(si = X[, .(algo = a, param_index, simulation_index, sample_index, s, I)], tm = tm)
-}
+PIDX  <- c(0L, 1L, 2L, 5L)                   # k_on, k_off, unitary_current, Num_ch_mean
+PLAB  <- c("k[on]", "k[off]", "i", "N[ch]")
+PTTL  <- list(bquote(k[on] * "  (opening rate)"), bquote(k[off] * "  (closing rate)"),
+              bquote(italic(i) * "  (unitary current)"), bquote(N[ch] * "  (channel number)"))
 
-raw  <- lapply(ALGOS, read_si)
-SI   <- rbindlist(lapply(raw, `[[`, "si"))
-tmap <- raw[[1]]$tm
-tmap[, t := t * 1000]                                # step_middle seconds -> ms
+FLOOR <- 1e-6      # absolute information mask; below it the derivatives are floating-point noise
+B     <- 400       # bootstrap replicates over recordings, the figure_3 family convention
+YLIM  <- c(-1, 1)  # log-ratio zoom; LSE breathes to about +0.4 and down past -1 in its tail
+YCURVE <- c(FLOOR, 1e4)   # info row: from the mask to the top, so the washout cliff terminates
+
+# THE EXCLUSION, and it is the parent's (figure_3.Rmd:145). Least squares does not model the gating
+# fluctuations, the only thing separating the channel count from the unitary current, so its N_ch
+# curve is its i curve. Measured in the caption chunk, not assumed.
+EXCL <- data.table(algo = "LSE", param = "N[ch]")
+
+dg <- setNames(lapply(ALGOS, function(a) {
+  f <- sprintf("../data/digest/figure_3_digest_%s.rds", a)
+  if (!file.exists(f)) stop("missing digest for ", a, ": run figure_3_digest.R ", a)
+  readRDS(f)
+}), ALGOS)
+
+SI <- rbindlist(lapply(ALGOS, function(a)
+  as.data.table(dg[[a]]$param)[param_index %in% PIDX,
+    .(algo = a, param_index, simulation_index, sample_index, s, dm, dv, I)]))
+tmap <- unique(as.data.table(dg[[ALGOS[1]]]$scalar)[, .(sample_index, t, agonist)])[order(sample_index)]
+SI[, param := factor(PLAB[match(param_index, PIDX)], levels = PLAB)]
+SI[, algo  := factor(algo, levels = ALGOS)]
+SI_ALL <- copy(SI)                            # kept whole: the degeneracy check needs the dropped band
+SI <- SI[!EXCL, on = .(algo, param)]
 ```
 
 ```{r compute-bootstrap}
-set.seed(1)
+set.seed(20260731)
 cMean <- function(M) colMeans(M, na.rm = TRUE)
 cVar  <- function(M) { n <- colSums(!is.na(M)); m <- colMeans(M, na.rm = TRUE)
                        (colMeans(M * M, na.rm = TRUE) - m^2) * n / (n - 1) }
 
+# One resampling loop per (member, parameter). The ratio is resampled WHOLE, cVar(S)/cMean(I), so it
+# carries the correlation between the score and its own information rather than treating F as known.
 facet_ratio <- function(d) {
   Sm  <- as.matrix(dcast(d, simulation_index ~ sample_index, value.var = "s")[, -1])
   Im  <- as.matrix(dcast(d, simulation_index ~ sample_index, value.var = "I")[, -1])
@@ -102,89 +170,165 @@ facet_ratio <- function(d) {
   }
   lrep <- log10(reps); lrep[!is.finite(lrep)] <- NA
   data.table(sample_index = smp, F = Ft, lr = log10(ratio),
-             lo = apply(lrep, 2, quantile, 0.05, na.rm = TRUE),
-             hi = apply(lrep, 2, quantile, 0.95, na.rm = TRUE))
+             lo = apply(lrep, 2, quantile, 0.025, na.rm = TRUE),
+             hi = apply(lrep, 2, quantile, 0.975, na.rm = TRUE))
 }
 
-R <- SI[, facet_ratio(.SD), by = .(algo, param_index)]
-R <- merge(R, tmap, by = "sample_index")
-R <- R[is.finite(lr) & F > FLOOR]                    # drop only genuine zeros (0/0)
-R[, `:=`(algo  = factor(algo, levels = ALGOS),
-         param = factor(PLAB[match(param_index, PIDX)], levels = PLAB))]
+R <- merge(SI[, facet_ratio(.SD), by = .(algo, param)], tmap, by = "sample_index")
+R <- R[is.finite(lr) & F > FLOOR]              # drop only genuine zeros (the 0/0 steps)
+
+# The two raw magnitude curves of the info row. Same mask, so the two rows of a band stop together.
+curves <- melt(SI[, .(FIM = mean(I), score_var = var(s)), by = .(algo, param, sample_index)],
+               measure.vars = c("FIM", "score_var"), variable.name = "quantity",
+               value.name = "val")
+curves <- merge(curves[is.finite(val) & val > FLOOR], tmap[, .(sample_index, t)], by = "sample_index")
+curves[, quantity := factor(quantity, levels = c("FIM", "score_var"))]
 ```
 
-```{r curves-data}
-# The two raw info curves (no ratio, no 0/0): per-step FIM diagonal E[I_t] and score variance
-# Var(s_t), which coincide where the filter is calibrated.
-agg <- SI[, .(FIM = mean(I), score_var = var(s)), by = .(algo, param_index, sample_index)]
-agg <- merge(agg, tmap[, .(sample_index, t)], by = "sample_index")
-curves <- melt(agg, measure.vars = c("FIM", "score_var"),
-               variable.name = "quantity", value.name = "val")
-curves <- curves[is.finite(val) & val > FLOOR]
-curves[, `:=`(algo  = factor(algo, levels = ALGOS),
-              param = factor(PLAB[match(param_index, PIDX)], levels = PLAB),
-              quantity = factor(quantity, levels = c("FIM", "score_var")))]
+```{r caption-numbers}
+# --- the numbers the caption and the manuscript quote (LINT-SRC), computed from the digests in this
+#     session; nothing is carried forward from the archived notebook.
+cat("\n=== Figure 3 supplement 1 caption numbers (n_simulations =",
+    uniqueN(SI$simulation_index), "| members:", paste(ALGOS, collapse = ", "), ") ===\n")
+on  <- tmap[agonist > 0, sample_index]
+off <- tmap[agonist == 0 & sample_index > max(on), sample_index]
+cat(sprintf("agonist on over samples %d-%d (t %.1f-%.1f ms); washout window %d samples\n",
+            min(on), max(on), tmap[sample_index == min(on), t],
+            tmap[sample_index == max(on), t], length(off)))
+
+# THE RATIO ROWS: the statistic Results and Discussion quote, and how often the interval covers 0.
+tab <- R[, .(n_steps = .N, median_log10_JF = median(lr), frac_CI_covers_0 = mean(lo <= 0 & hi >= 0)),
+         by = .(algo, param)]
+setorder(tab, param, algo)
+cat("\nratio rows -- per-step calibration over the informative steps:\n")
+print(as.data.frame(tab), digits = 3, row.names = FALSE)
+cat(sprintf("overall fraction of (step, member, parameter) whose interval covers 0: %.3f\n",
+            R[, mean(lo <= 0 & hi >= 0)]))
+
+# THE INFO ROWS: the washout claim, as a number. The mask is not applied here, since the whole point
+# is how far below it the two dying parameters go.
+WASH <- SI[, .(F = mean(I)), by = .(algo, param, sample_index)][
+  , .(F_pulse = mean(F[sample_index %in% on]), F_wash = mean(F[sample_index %in% off]),
+      F_last10 = mean(F[sample_index %in% tail(off, 10)])), by = .(algo, param)]
+WASH[, ratio_wash_over_pulse := F_wash / F_pulse]
+setorder(WASH, algo, param)
+cat("\ninfo rows -- per-step information across the washout:\n")
+print(as.data.frame(WASH), digits = 3, row.names = FALSE)
+
+# WHY the two survivors survive differently: k_off through the mean, i through the variance. The
+# decomposition F_t = (dmu)^2/v + (dv)^2/2v^2 needs y_var, which lives on the scalar side of the
+# digest, so it is joined here rather than carried through the bootstrap.
+YV <- rbindlist(lapply(ALGOS, function(a)
+  as.data.table(dg[[a]]$scalar)[, .(algo = a, simulation_index, sample_index, y_var)]))
+DEC <- merge(SI, YV, by = c("algo", "simulation_index", "sample_index"))[
+  sample_index %in% tail(off, 10) & algo %in% c("R", "IR"),
+  .(F = mean(dm^2 / y_var + 0.5 * dv^2 / y_var^2),
+    share_from_mean = mean(dm^2 / y_var) / mean(dm^2 / y_var + 0.5 * dv^2 / y_var^2)),
+  by = .(algo, param)]
+setorder(DEC, algo, param)
+cat("\n  where the surviving information comes from, over the last ten intervals:\n")
+print(as.data.frame(DEC), digits = 3, row.names = FALSE)
+
+# THE TWO CROSS-CHECKS THIS FIGURE OWES THE MANUSCRIPT.
+lse <- SI_ALL[algo == "LSE", .(F_pulse = mean(I[sample_index %in% on])), by = param]
+cat(sprintf("\nLSE degeneracy: F_pulse for i = %.6g and for N_ch = %.6g (identical = %s)\n",
+            lse[param == "i", F_pulse], lse[param == "N[ch]", F_pulse],
+            isTRUE(all.equal(lse[param == "i", F_pulse], lse[param == "N[ch]", F_pulse]))))
+cat("LSE per-step median log10(J_t/F_t) by parameter (the parameter cancels, so these agree):\n  ",
+    paste(sprintf("%s %.6f", tab[algo == "LSE", param], tab[algo == "LSE", median_log10_JF]),
+          collapse = " | "), "\n")
+cat("\nquoted in the manuscript (04_results.tex:77, 05_discussion.tex:31), for comparison:\n",
+    " per-step median log10(J_t/F_t) on k_on: LSE +0.184, NR -0.038, R -0.181, IR +0.006\n",
+    " same on k_off: R -0.145, IR +0.033\n")
 ```
 
 ```{r layout, fig.width = 7.0, fig.height = 11}
 FIMc <- "#0072B2"; SCVc <- "#D55E00"; NUL <- "#009E73"; RATc <- "#D55E00"
 tr   <- range(tmap$t)
 agon <- tmap[agonist > 0]; x0 <- min(agon$t); x1 <- max(agon$t)
-# full-panel agonist band. On a log10 axis a negative floor is rejected (log10(<=0)=NaN drops the
-# rect), so the info rows need a tiny positive floor; the linear log-ratio rows go negative.
+# Full-panel agonist band. On a log10 axis a negative floor is rejected (log10(<=0) = NaN drops the
+# rect), so the info rows need a tiny positive floor; the linear ratio rows go negative.
+# AGONIST BAND, -Inf/Inf and not +-1e10 (fixed 2026-07-31). A rect 2e10 tall clipped to a window of
+# order one rasterises to NOTHING on a linear axis, so every LINEAR row of this figure was rendering
+# unshaded while the log rows were fine -- inconsistent shading inside one figure, which reads as
+# deliberate and was not. -Inf/Inf means "to the panel edge"; on a log axis it is NaN and the layer
+# is dropped, hence the tiny positive lower bound there instead.
 mkshade <- function(logr = FALSE) annotate("rect", xmin = x0, xmax = x1,
-                  ymin = if (logr) 1e-10 else -1e10, ymax = 1e10, fill = "grey85", alpha = .5)
+                  ymin = if (logr) 1e-300 else -Inf, ymax = Inf, fill = "grey85", alpha = .5)
 
 colhead <- function(k) ggplot() + theme_void() + ggtitle(ALAB[[k]], subtitle = FULL[[k]]) +
-  theme(plot.title = element_text(hjust = .5, size = 9), plot.subtitle = element_text(hjust = .5, size = 7))
+  theme(plot.title = element_text(hjust = .5, size = 9),
+        plot.subtitle = element_text(hjust = .5, size = 7))
 
 base <- function() theme_bw(base_size = 8)
 
-# mode = "info" -> log10 magnitude axis (fixed decade breaks, no null); "linear" -> signed axis,
-# 0 forced onto the ticks (the log J/F rows). y title only on NR; x numbers on every bottom-of-
-# block panel, x TITLE only ONCE, on the centre column (R).
-deco <- function(p, col, xr, ylim, yq, ttl = NULL, tag = NULL, bottom = FALSE, xlab = NULL, mode = "linear") {
+# mode "info" -> log10 magnitude axis, no null; "linear" -> signed axis with 0 forced onto the ticks.
+# y title only on LEAD; x numbers on every bottom-of-block panel, x TITLE once, on XTTL.
+deco <- function(p, col, xr, ylim, yq, ttl = NULL, tag = NULL, bottom = FALSE, xlab = NULL,
+                 mode = "linear") {
   if (mode == "info") {
-    p <- p + scale_y_log10(breaks = c(1e-2, 1, 100)) + coord_cartesian(xlim = xr, ylim = ylim)
+    p <- p + scale_y_log10(breaks = c(1e-4, 1, 1e4),
+                           labels = expression(10^-4, 1, 10^4)) +
+      coord_cartesian(xlim = xr, ylim = ylim)
   } else {
     brk <- pretty(ylim); brk <- sort(unique(c(0, brk))); brk <- brk[brk >= ylim[1] & brk <= ylim[2]]
     p <- p + scale_y_continuous(breaks = brk) + coord_cartesian(xlim = xr, ylim = ylim)
   }
   if (col == LEAD) p <- p + ylab(yq) + theme(axis.title.y = element_text(size = 8))
-  else p <- p + theme(axis.title.y = element_blank(), axis.text.y = element_blank(), axis.ticks.y = element_blank())
+  else p <- p + theme(axis.title.y = element_blank(), axis.text.y = element_blank(),
+                      axis.ticks.y = element_blank())
   if (bottom) {
-    if (col == "R") p <- p + xlab(xlab) + theme(axis.title.x = element_text(size = 8))
+    if (col == XTTL) p <- p + xlab(xlab) + theme(axis.title.x = element_text(size = 8))
     else p <- p + theme(axis.title.x = element_blank())
   } else p <- p + theme(axis.title.x = element_blank(), axis.text.x = element_blank())
   if (!is.null(tag)) p <- p + labs(tag = tag)
   if (!is.null(ttl)) p <- p + ggtitle(ttl) +
     theme(plot.title = element_text(hjust = 0, size = 8.5, face = "plain", margin = margin(b = 1)))
-  # tight coupling of each info/ratio pair: info gets a small BOTTOM margin, ratio a small TOP
-  # margin, so the pair sits together; the (larger) inter-parameter gap is kept on the far sides.
+  # Tight coupling of each info/ratio pair: the info panel takes a small bottom margin and the ratio
+  # panel a small top margin, so the pair reads as one band and the larger gap falls between bands.
   mrg <- if (mode == "info") margin(1.5, 3, 0.3, 3) else margin(0.3, 3, 1.5, 3)
   p + theme(panel.grid.minor = element_blank(), plot.margin = mrg)
 }
 
-# INFO row panel: the two curves (FIM diagonal blue / score variance orange), log10
+# THE EXCLUDED CELL IS A PANEL, NOT A HOLE, and it goes through the SAME `deco` as every other one.
+# Two reasons, the second learned the hard way. First, an empty box in a grid of thirty-two reads as
+# a rendering failure, which is the misreading the parent's note says the legend has to prevent; the
+# panel carries its reason instead. Second, the excluded cell is in the LEAD column, and in this
+# layout the LEAD panel is what carries the band's title, its letter tag, the y title and the y
+# numbers for the whole row. Replacing it with a theme_void() placeholder silently stripped all four
+# from the channel-number band, and the three columns beside it lost their y axis with it. Building
+# it as an ordinary panel with no data layers keeps the furniture and the grid regular.
+excluded <- function(a, p) any(EXCL$algo == a & EXCL$param == p)
+# Shortened for seven columns, where the four-column wording overran the panel and lost its first
+# line off the left edge. The panel says WHICH fact; the caption says why.
+EXCL_TXT <- "not separable\nfrom the\nunitary current"
+
 mk_info <- function(i, a, tag = NULL, bottom = FALSE) {
-  d <- curves[param == PLAB[i] & algo == a]
-  g <- ggplot(d, aes(t, val, colour = quantity)) + mkshade(TRUE) +
-    geom_line(linewidth = .4) +
-    scale_colour_manual(values = c(FIM = FIMc, score_var = SCVc), name = NULL,
-                        labels = expression(F[t] == E * "[" * I[t] * "]" ~ "(Fisher information)",
-                                            J[t] == Var(s[t]) ~ "(score variance)")) +
-    base()
+  ex <- excluded(a, PLAB[i])
+  g <- if (ex) {
+    ggplot() + mkshade(TRUE) +
+      annotate("text", x = mean(tr), y = 1, size = 6 / .pt, colour = "grey40", lineheight = .95,
+               label = EXCL_TXT) + base()
+  } else {
+    ggplot(curves[param == PLAB[i] & algo == a], aes(t, val, colour = quantity)) + mkshade(TRUE) +
+      geom_line(linewidth = .4) +
+      scale_colour_manual(values = c(FIM = FIMc, score_var = SCVc), name = NULL,
+                          labels = expression(F[t] == E * "[" * I[t] * "]" ~ "(Fisher information)",
+                                              J[t] == Var(s[t]) ~ "(score variance)")) +
+      base()
+  }
   deco(g, a, tr, YCURVE, "information", ttl = if (a == LEAD) PTTL[[i]] else NULL,
        tag = tag, bottom = bottom, xlab = "time (ms)", mode = "info")
 }
-# LOG J/F row panel: per-step calibration log10(Var(s_t)/E[I_t]) + 90% bootstrap CI, linear, null 0
 mk_ratio <- function(i, a, tag = NULL, bottom = FALSE) {
-  d <- R[param == PLAB[i] & algo == a]
-  g <- ggplot(d, aes(t, lr)) + mkshade(FALSE) +
-    geom_hline(yintercept = 0, colour = NUL, linewidth = .4) +
-    geom_ribbon(aes(ymin = lo, ymax = hi), fill = RATc, alpha = .25) +
-    geom_line(colour = RATc, linewidth = .4) + base()
-  deco(g, a, tr, YLIM, expression(log[10] ~ J[t] / F[t]), tag = tag, bottom = bottom, xlab = "time (ms)", mode = "linear")
+  ex <- excluded(a, PLAB[i])
+  g <- ggplot(if (ex) data.table(t = numeric(), lr = numeric())
+              else R[param == PLAB[i] & algo == a], aes(t, lr)) + mkshade(FALSE) +
+    geom_hline(yintercept = 0, colour = NUL, linewidth = .4)
+  if (!ex) g <- g + geom_ribbon(aes(ymin = lo, ymax = hi), fill = RATc, alpha = .25) +
+    geom_line(colour = RATc, linewidth = .4)
+  deco(g + base(), a, tr, YLIM, expression(log[10] ~ J[t] / F[t]), tag = tag, bottom = bottom,
+       xlab = "time (ms)", mode = "linear")
 }
 
 info_tags  <- c("A", "C", "E", "G")
@@ -193,23 +337,13 @@ panels <- list()
 for (i in seq_along(PLAB)) {
   for (a in ALGOS) panels <- c(panels, list(mk_info (i, a, tag = if (a == LEAD) info_tags[i]  else NULL)))
   for (a in ALGOS) panels <- c(panels, list(mk_ratio(i, a, tag = if (a == LEAD) ratio_tags[i] else NULL,
-                                                      bottom = (i == length(PLAB)))))
+                                                     bottom = (i == length(PLAB)))))
 }
 
-# --- numbers the caption quotes, printed so they are never read off the plot (LINT-SRC) ---
-# Per (algorithm, parameter): the median per-step log10(J/F) over the steps that carry information,
-# and the fraction of those steps whose 90% bootstrap interval covers 0 (i.e. is calibrated).
-.cap4 <- R[, .(median_log10_JF = median(lr),
-               frac_CI_covers_0 = mean(lo <= 0 & hi >= 0),
-               n_steps = .N), by = .(algo, param)]
-setorder(.cap4, param, algo)
-cat("\n=== Figure 4 caption numbers ===\n")
-print(as.data.frame(.cap4), digits = 3, row.names = FALSE)
-cat("overall fraction of (step, algo, param) whose CI covers 0:",
-    sprintf("%.3f\n", R[, mean(lo <= 0 & hi >= 0)]))
-
 g4 <- wrap_plots(c(lapply(ALGOS, colhead), panels), ncol = length(ALGOS),
-                 heights = c(0.10, rep(c(1, 0.5), length(PLAB))), guides = "collect") &  # ratio rows half-height
+                 heights = c(0.10, rep(c(1, 0.5), length(PLAB))), guides = "collect") &
       theme(legend.position = "bottom")
 ggsave("Figure_3_supplement_1.pdf", g4, width = 7.0, height = 11)
+cat(sprintf("wrote Figure_3_supplement_1.pdf: %d parameter bands x 2 rows, %d members, 7.0 x 11 in\n",
+            length(PLAB), length(ALGOS)))
 ```

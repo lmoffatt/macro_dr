@@ -26,7 +26,9 @@ set -eo pipefail
 
 HERE="$(dirname "$(readlink -f "$0")")"             # .../eLife_2025/ops/local
 BASE="$(readlink -f "$HERE/../../../..")"           # repo base (macro_dr)
-SCRIPT="$(readlink -f "$HERE/figure_3_mle.macroir")"
+# SCRIPT is overridable so the same runner drives the LSE-with-numerical-Fisher
+# variant: SCRIPT=figure_3_mle_LSE_numfisher.macroir FAMILY=2 N_ALGO=nonlinearsqr
+SCRIPT="$(readlink -f "$HERE/${SCRIPT:-figure_3_mle.macroir}")"
 
 # Local binary (the gcc-release build the user compiles). Override with BIN=…
 BIN="${BIN:-$(readlink -f "$BASE/build/gcc-release/macrodr_cli")}"
@@ -126,10 +128,13 @@ for i in "${!NCHS[@]}"; do
         macro_MR)  recursive=true;  averaging=1 ; taylor=false ; micro=false ;;
         macro_IR)  recursive=true;  averaging=2 ; taylor=false ; micro=false ;;
         macro_IRT) recursive=true;  averaging=2 ; taylor=true  ; micro=false ;;
+        # nonlinearsqr ignores recursive/averaging/taylor (the marginalized LSE mean has
+        # no recursion and no emission variance); the family flag is what selects it.
+        nonlinearsqr) recursive=false; averaging=0 ; taylor=false ; micro=false ;;
         micro_R)   recursive=true;  averaging=0 ; taylor=false ; micro=true ;;
         micro_MR)  recursive=true;  averaging=1 ; taylor=false ; micro=true ;;
         micro_IR)  recursive=true;  averaging=2 ; taylor=false ; micro=true ;;
-        *) echo "[local] unknown algorithm '$algo' (want macro_{NR,R,INR,MR,IR,IRT})" >&2; exit 1 ;;
+        *) echo "[local] unknown algorithm '$algo' (want macro_{NR,R,INR,MR,IR,IRT} or nonlinearsqr)" >&2; exit 1 ;;
     esac
 
     case "$nnoise" in
@@ -143,7 +148,7 @@ for i in "${!NCHS[@]}"; do
     axis_arg=$(printf -- '--axis_Nchanels = axis(name= "Num_ch", labels= ["%s"])' "$nch")
     num_arg=$( printf -- '--Num_ch = indexed_double_by(axis= axis_Nchanels, values=[%s])' "$nch")
     nsim_arg=$(printf -- '--n_simulations = get_number(n=%s)' "$nsim")
-    fp_arg=$(  printf -- '--filepath = "figures/data/figure_3_nch_%s_nsim_%s_%s_noise_%s"' "$nch" "$nsim" "$algo" "$nnoise")
+    fp_arg=$(  printf -- '--filepath = "figures/data/%snch_%s_nsim_%s_%s_noise_%s"' "${FP_PREFIX:-figure_3_}" "$nch" "$nsim" "$algo" "$nnoise")
     axis_noise_arg=$(printf -- '--axis_noise = axis(name= "noise_in_conductance_tau", labels= ["%s"])' "$nnoise")
     current_noise_arg=$(printf -- '--current_noise = indexed_double_by(axis= axis_noise, values=[%s])' "$vnoise")
     axis_algo_arg=$( printf -- '--algorithm_axis = axis(name= "algorithm", labels= ["%s"])' "$algo")
@@ -151,6 +156,12 @@ for i in "${!NCHS[@]}"; do
     averaging_arg=$( printf -- '--algo_averaging_approximation = indexed_int_by(axis= algorithm_axis, values=[%s])' "$averaging")
     taylor_arg=$( printf -- '--algo_taylor_approximation = indexed_bool_by(axis= algorithm_axis, values=[%s])' "$taylor")
     micro_arg=$( printf -- '--algo_micro_approximation = indexed_bool_by(axis= algorithm_axis, values=[%s])' "$micro")
+    # injected ONLY when asked for: the macro scripts do not define the name and must
+    # not receive it. FAMILY=2 selects nonlinearsqr in build_likelihood_function_with_family.
+    family_arg=""
+    if [ -n "${FAMILY:-}" ]; then
+      family_arg=$(printf -- '--algo_family_approximation = indexed_int_by(axis= algorithm_axis, values=[%s])' "$FAMILY")
+    fi
 
     # interval_in_tau grid (identical to figure_2/dirac). axis_interval precedes exp_n_*.
     axis_interval_arg=$(printf -- '--axis_interval = axis(name= "interval_in_tau", labels= ["1","0.5","0.2","0.1","0.05","0.02","0.01"])')
@@ -169,7 +180,7 @@ for i in "${!NCHS[@]}"; do
         "$axis_arg" "$num_arg" "$nsim_arg" "$fp_arg" \
         "$axis_noise_arg" "$current_noise_arg" \
         "$axis_algo_arg" "$recursive_arg" "$averaging_arg" "$taylor_arg" \
-        "$micro_arg" \
+        "$micro_arg" ${family_arg:+"$family_arg"} \
         "$axis_interval_arg" \
         "$exp_step_1_arg" "$exp_samp_1_arg" "$exp_step_2_arg" "$exp_samp_2_arg" \
         "$exp_step_3_arg" "$exp_samp_3_arg" \

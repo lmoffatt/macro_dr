@@ -790,8 +790,13 @@ the per-interval predictive moments (the averaging axis) govern the score bias, 
 counterexample that separates them: non-recursive, fitted to autocorrelated data, and **unbiased** — because
 its per-interval density is normalized with the correct moments, so E[s_t] = 0 exactly, autocorrelation or
 not. So the honest answer to Milescu's speculation is **no**: a non-filtering method need not be biased. It
-will, however, be over-confident. `[VERIFY: confirm NMR's unbiasedness on the final Gaussian run before
-this sentence is written; it is load-bearing.]`
+will, however, be over-confident. `[VERIFY: confirm the unbiasedness on the final Gaussian run before
+this sentence is written; it is load-bearing.]` **`[2026-07-31: the VERIFY is now mandatory and the
+earlier evidence is void.]`** Every `NMR` number on disk comes from a build that omitted the `N·ms`
+interval-variance term, so its per-interval density was **not** normalized with the correct moments —
+which is precisely the premise this argument rests on. The corrected member is `INR`
+(`papers/_program/nomenclature.md`) and it was re-run on 2026-07-31. Do not write the counterexample
+until it lands.
 
 ### II.5.3 The non-recursive members are independence composite likelihoods. Concede it.
 

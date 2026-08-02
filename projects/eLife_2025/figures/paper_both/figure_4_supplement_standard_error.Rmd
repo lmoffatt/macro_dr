@@ -1,0 +1,162 @@
+---
+title: "Figure 4—figure supplement (number pending) — what each member actually achieves: the distortion-corrected standard error, all five parameters"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+NUMBER PENDING, as for the other rebuilt supplements.
+
+WHAT IT IS. One quantity over the whole plane: the standard error each member DELIVERS, the square
+root of the diagonal of the distortion-corrected (sandwich) covariance, for all five parameters.
+
+THE NESTING IS TRANSPOSED against Figure 4's: the PARAMETER owns the block and the members sit
+side by side inside it (`outer = "param"`). Figure 4 nests member first because its question is
+what one member reports; here the question is how the members COMPARE on the same error, and that
+is answered by adjacency. With the members inside, the five columns of a block are five estimates
+of the same number and the eye does the comparison; with the members outside, comparing k_off
+across members means jumping over four other parameters each time. The column count is identical
+either way, 22, so the transposition is free: LSE is absent from three of the five blocks and
+present in two.
+
+WHY THE CORRECTED ONE AND NOT WHAT THE MEMBER REPORTS. The reported covariance is what the
+algorithm CLAIMS, and Figure 4's second moment spends its panels showing that claim to be wrong by
+up to 74x. The corrected one is the sandwich estimate of the estimator's true variance, so it is
+the only version in which a cross-member comparison is apples to apples: it says what each method
+actually achieves, not what it asserts. Same rule as Figure 5.
+
+A SEQUENTIAL SCALE, AND WHY THE SHARED ONE WAS WRONG HERE. Every other figure on this plane draws
+a quantity whose null is 1 and which can err in EITHER direction, so it takes a diverging scale
+with white at the null. A standard error cannot go below its null: 1 is a parameter known exactly
+and there is no "conservative" side to colour blue. Half of a diverging scale would be dead, and
+the eye would read the pale end as "calibrated" when here it means "measured". So this figure uses
+`SCALE_SE`: pale for a parameter pinned, dark for one barely determined, monotone in luminance so
+it survives greyscale and any colour vision.
+
+THE TWO CRITERIA ARE UNCHANGED, which is the point of keeping them: 1.15 and 2 are band EDGES and
+carry the same solid and dashed marks as everywhere else in the set. Here they read as "the error
+bar is 15 per cent of the parameter" and "the error bar is a factor two", which is exactly what the
+white contour pair meant on the body figure. Those white contours are turned off here
+(`se_lines = FALSE`): they would trace the boundary of the very field they sit on.
+
+THE BANDS REACH BELOW 1.02, and that is why this figure has a scale of its own, `SCALE_SE`, and
+does not share `SCALE_ONESIDED` with the autocorrelation panel. The useful range of a standard
+error goes down to a few per mil: the closing rate at ten thousand channels is 0.0016 to 0.0071 in
+log10 units, a factor 1.004 to 1.016, so a first edge at 1.02 painted that entire column one flat
+band and the figure lost exactly the comparison it exists to make.
+
+WHERE the extra cuts go was itself measured, and the first attempt had them in the wrong place.
+Cuts at 1.002 and 1.005 open nothing: only 11 of 5725 cells fall below 1.01 at all. What is
+populated is the band they were meant to split, (1.01, 1.02], which holds 217 of the 247 k_off
+cells at ten thousand channels, and the cut that splits THAT is 1.015 — 102 cells below it against
+231 below 1.02. So the ladder is 1.005 as a floor marker, then 1.01 and 1.015 doing the work.
+Nothing from 1.02 up moves, so this scale and `SCALE_ONESIDED` agree wherever they overlap and
+1.15 and 2 are members of both.
+
+One thing no scale will fix, and it is the result rather than a defect: at ten thousand channels
+k_off runs 1.0032 (MR) to 1.0187 (NR) across the seven members, all inside 1.5 per cent of each
+other. That column comes out nearly uniform because the members ARE nearly equal there.
+
+ABOVE THE TOP EDGE THE CELLS ARE GREY, NOT DARK, and that is a statement rather than a rendering
+choice. Measured over the source data, 608 of 5725 cells (10.6 per cent) exceed a factor 1000, they
+sit in the unitary current and the channel number for every member, and the largest is a factor
+10^19115: past a point the design simply does not determine the parameter and the sandwich is
+unbounded. Painting those the darkest band would say "very large", which is a claim about a number
+that has no scale; grey says "not measurable here", which is what is true.
+
+The grey is a TERMINAL BAND OF THE SCALE, not a layer of marks stamped over the field, and that is
+what makes it continuous: the same contour draws it, so its edge is exactly where the value
+crosses a factor 1000 and it joins up the way every other band does. A first attempt stamped one
+rectangle per off-scale cell and the result was a lattice of little blocks that read as data. As a
+band it also appears in the COLOUR BAR, at the far end past 10^3, where it explains itself without
+a second key.
+
+THE X AXIS IS DRAWN ONCE, bottom left, for the same reason the nesting was transposed. A ggplot
+scale belongs to every facet column of its block, so tick labels on a five-column block print five
+times and, with the panels flush, the "1" of one column lands on the "0.01" of the next. That never
+showed while the labelled block was LSE with its single column. All 22 columns carry the identical
+range, so one labelled axis serves them and the blocks keep their ticks without numbers.
+
+Below that the bands stay coarse from 2 up: the third quartile of the corrected standard error is
+a factor 1.9 for LSE and 200 for NR, and a scale that chased the tail would flatten everything
+below 2, which is where the comparison lives.
+
+WHAT THE FIGURE DROPS, and where to find it. An earlier draft of this file had two sides, the
+REPORTED standard error against the delivered one, and the contrast was the strongest single
+result in the set. It is recorded here so that dropping the panel does not drop the finding.
+Medians over the seven intervals at noise 0.1, in log10 units of the parameter:
+
+                       N_ch:      10       100      1000     10000
+    k_off  reported    LSE     0.0796   0.0236   0.0074   0.0023
+                       NR      0.0481   0.0183   0.0063   0.0020
+                       INR     0.0427   0.0151   0.0050   0.0016
+                       R       0.1634   0.0527   0.0167   0.0052
+                       IR      0.1707   0.0621   0.0198   0.0063
+           delivered   LSE     0.2172   0.0658   0.0207   0.0066
+                       NR      0.2106   0.0692   0.0219   0.0071
+                       INR     0.2129   0.0686   0.0217   0.0069
+                       R       0.1795   0.0615   0.0199   0.0063
+                       IR      0.1787   0.0614   0.0199   0.0063
+
+On the closing rate every member DELIVERS the same precision to within twelve per cent, and what
+separates them is entirely what they CLAIM: least squares understates by a factor 2.9, the
+open-loop pair by 3.5 and 4.3, the recursive filter by 1.2, and the boundary-conditioned one
+claims what it delivers. So on a rate the likelihood family does not buy a better estimate, it
+buys a truthful error bar. The ratio of the two blocks is the MARGINAL distortion,
+sqrt(diag(F^-1 J F^-1) / diag(F^-1)), which is not Figure 4's map, diag(F^-1/2 J F^-1/2): the
+marginal reading is systematically milder and the two must not be quoted as the same number.
+
+The channel-number direction says the opposite and is drawn here: the recursion buys real
+precision there, 0.075 and 0.070 against 0.291 and 0.223 at ten thousand channels, a factor four.
+A rate lives in the shape of the transient, which everyone gets; the count lives in the
+fluctuation amplitude, which an open-loop predictor throws away.
+
+LSE CARRIES TWO COLUMNS AND NOT FIVE, and the reason is not coverage. nonlinearsqr indexes its own
+four parameters and they do not line up with the macro ones: its index 2 is Current_Baseline and
+its 3 is Num_ch_mean, where the macro members have unitary_current and Current_Noise. Left alone,
+the shared index-to-name mapping would have drawn LSE's channel number inside the sigma_noise
+panel. Excluded in EXCLUDE_ROWS with the note; the like-for-like argument agrees, since LSE holds
+the unitary current fixed and has no free noise scale.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+```{r common, include=FALSE}
+FIG4_ALGOS     <- c("nonlinearsqr", "macro_NR", "macro_INR", "macro_R", "macro_IR")
+FIG4_ALGO_LAB  <- c(nonlinearsqr = "LSE", macro_NR = "NR", macro_INR = "INR",
+                    macro_R = "R", macro_IR = "IR")
+FIG4_DATA_DIRS <- c("../data/1c2ae6f", "../data/87889e6", "../data/0ffbda7", "../data/1f7138b")
+# all five, kinetic first, then the two amplitude directions, then the noise scale
+# with outer = "param" these name the BLOCKS, and the members become the columns inside each
+FIG4_PARS   <- c("on", "off", "unitary_current", "Current_Noise", "Num_ch_mean")
+FIG4_PSHORT <- c(on = "k[on]", off = "k[off]", unitary_current = "i",
+                 Current_Noise = "sigma[noise]", Num_ch_mean = "N[ch]")
+source("figure_4_common.R")
+source("figure_4_layout.R")
+```
+
+```{r sides}
+# One side. The diagonal of the corrected covariance, square-rooted, IS the fill: the scale is
+# log10 of a factor and a standard error in log10 units of the parameter already is one, so `zf`
+# is the identity on it and no transform is hidden anywhere.
+# From the shared source data: the standard error product is already the diagonal of the corrected
+# covariance, square-rooted, one row per (member, cell, interval, parameter).
+sedel <- dplyr::filter(.fig4_src$sedat, algo %in% ALGOS) %>% dplyr::rename(se = sev)
+
+SIDES <- list(
+  list(lab = "distortion-corrected standard error, in log10 units of the parameter",
+       letter = "A", data = sedel, zf = function(x) x$se,
+       # past the top edge the cell is greyed, not painted the end band: see the header
+       scale = SCALE_SE, grey_offscale = TRUE))
+```
+
+```{r render, fig.width = 7.4, fig.height = 5.24}
+# 22 columns, one side, no key row, PARAMETER outermost. per_row 0.1609, measured at x 0.1400,
+# y 0.1400 (tmp/calib_fig4.R case 22T). The cell comes out 1.02 mm, the narrowest in the set and
+# 10 per cent under the body figure's 1.14: five parameters across is what that costs.
+fig4_render(SIDES, per_row = 0.1609, out = "Figure_4_supplement_standard_error.pdf",
+            se_lines = FALSE, key = FALSE, outer = "param", drawn_axis = TRUE)
+```

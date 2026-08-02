@@ -59,7 +59,7 @@ Bridge 2 (MacroIR), minimalist context: two states, non-stationary. Goal: its va
 
 ## Two names to reconcile
 
-- Bridge 2 family: this paper uses NR, NMR, R, MR, IR; the published Comm Biol uses MacroIR and MacroINR. IR = MacroIR, NMR = MacroINR. Bridge the names so a reader coming from the published paper is not lost.
+- Bridge 2 family: this paper uses NR, INR, R, MR, IR; the published Comm Biol uses MacroIR and MacroINR. IR = MacroIR, INR = MacroINR. Bridge the names so a reader coming from the published paper is not lost. (`NMR`, in the data keys and the older records, is a defective build of `INR`, not a spelling of it — `nomenclature.md`.)
 - Bridge 3 has no settled name yet.
 
 

@@ -1,11 +1,36 @@
 ---
-title: "Figure 4—figure supplement 5 — the sandwich prediction against the empirical multivariate MLE distribution: a Mahalanobis Q-Q"
+title: "Figure 4—figure supplement (number pending) — the sandwich prediction against the empirical multivariate MLE distribution: a Mahalanobis Q-Q"
 author: "Luciano Moffatt"
 date: "`r Sys.Date()`"
 output: html_document
 ---
 
 <!--
+BROUGHT BACK 2026-08-01 from `../in_progress/figure_4_supplements_20260731/`, where the Figure 4
+supplements were parked when the body figure went to five members. Renamed off its old number,
+which the rebuilt set will assign in one pass. Its INTERNALS are untouched: it is not a figure on
+the Figure 4 plane, it uses no part of `figure_4_layout.R`, and nothing that changed in the plane
+figures reaches it.
+
+WHY IT IS IN THE SET AND NOT REPLACED BY A MAP. It is the only figure that puts the sandwich
+against the EMPIRICAL covariance, i.e. against the truth, and it is the reader-facing form of the
+whole second-moment claim: a coverage number. The per-parameter map version was considered and
+rejected on the arithmetic: at group size 100 a cell has 100 fits, so an empirical variance
+carries sqrt(2/99) = 14 per cent of sampling error and a standard error 7 per cent, against a
+validity criterion of 15 per cent, and the iso-lines would be separating signal from the noise of
+the estimate. Reducing all six directions and all the fits to one scalar with a known reference
+uses the same sample where it is powerful instead of where it is thin.
+
+WHAT IT WOULD TAKE TO WIDEN IT, measured on disk 2026-08-01. There are 283 cloud files, but only
+ONE carries 1000 fits: `figure_3_G_nch_10_nsim_100000_macro_IR_noise_0.05`, which is the cell this
+figure uses. Every other member and cell is nsim 10000, which at group size 100 gives 100 fits.
+The chi-squared reference is exact at any n, so those are valid Q-Qs; what suffers is resolution.
+The coverage number's binomial error goes from about 0.7 per cent at 1000 fits to 2.2 per cent at
+100, which is still far inside the gap this figure reports (0.914 under the Fisher covariance
+against 0.947 under the sandwich). So a small-multiples version over LSE / NR / R / IR at their
+existing cells is worth doing and is the next increment on this file. INR has NO cloud at all yet,
+so it would be the one member absent, and that has to be said rather than left as a gap.
+
 WHAT THIS SHOWS, and why it is the standard object. Figure 4's block A compares, per parameter axis,
 the empirical spread of the estimates against the covariance the algorithm reports (Fisher) and
 against the distortion-corrected sandwich. A per-axis ratio is a projection; the honest question is

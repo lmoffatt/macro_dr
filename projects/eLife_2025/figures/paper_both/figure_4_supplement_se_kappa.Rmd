@@ -1,0 +1,108 @@
+---
+title: "Figure 4—figure supplement (number pending) — is a wide error bar the same thing as an ill-conditioned design? The delivered standard error against the condition number"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+NUMBER PENDING, as for the other rebuilt supplements.
+
+THE QUESTION. The standard-error supplement shows where each member's error bar is wide, and
+greys the cells where it runs off any scale. This one asks whether that is the SAME statement as
+the design being ill-posed. They are not obviously the same: a parameter can be poorly determined
+because the experiment carries little information about it, or because it trades against another
+one along a near-null direction of the Fisher. The first is a wide error bar honestly earned; the
+second is a near-singular matrix, and it is the condition number that sees it.
+
+WHAT IT IS. Two sides on the plane, the same five members as the standard-error figure, parameter
+outermost as there:
+
+  A  the distortion-corrected standard error, for k_off, i and N_ch      13 columns
+  B  the condition number of the Gaussian Fisher, lambda_max/lambda_min   5 columns
+
+TWO BARS, because the two quantities are not commensurable: the standard error runs from a factor
+1.004 to past 1000 and the condition number from 360 to 4.9e7. Side A keeps `SCALE_SE`, with the
+set's 1.15 and 2 as band edges and the terminal grey band for cells past a factor 1000; side B
+takes decade bands with its one mark at 3e4, the ill-conditioning threshold this project already
+used when the maps still greyed cells out.
+
+WHY THREE PARAMETERS AND NOT FIVE. Six blocks over five members is 27 columns and a 0.80 mm cell,
+the narrowest anything in this set has been, and this figure is read cell against cell — the whole
+point is whether the grey of side A sits where side B is dark. At three it is 18 columns and 1.23
+mm, wider than the body figure's 1.14. What is dropped costs nothing here: k_on is a rate like
+k_off and adds no direction this question needs, and sigma_noise is the shared-null control that
+LSE does not have. Both are in the standard-error supplement, drawn there over all five.
+
+The three that stay are the ones the question is about. k_off is the rate, which stays measurable
+almost everywhere and acts as the control; i and N_ch are the amplitude pair that trade against
+each other along the N*i ridge, which is exactly the near-null direction a condition number is
+built to detect.
+
+WHAT TO LOOK FOR, and it is a comparison the figure can lose. If the two sides carried the same
+information, the grey of side A would fall exactly where side B has entered its dark decades, and
+one of the two panels would be redundant. Measured medians of the condition number over the seven
+intervals at noise 0.1:
+
+                N_ch:      10       100      1000     10000
+    LSE                   709      5300     5.29e5   4.88e7
+    NR                    738      1312     1.59e4   7.06e5
+    INR                   647      1203     1.13e4   1.13e5
+    R                     537       417      1451    1.49e4
+    IR                    434       373       985    1.01e4
+
+The condition number grows with the channel count for every member and separates them by four
+orders of magnitude at ten thousand, ordered exactly as the cost ladder is. Whether the standard
+error's grey follows that ordering is what the figure answers, and it is worth stating either way:
+if it does, ill-conditioning IS the mechanism behind the unmeasurable corner; if it does not,
+there are cells that are well-posed and still unmeasurable, which is a different and harder claim.
+Over the whole grid the condition number is close to orthogonal to the DISTORTION (Spearman 0.25,
+negative for IR), but the distortion is a question about honesty and the standard error is a
+question about size, so that result does not settle this one.
+
+LSE CARRIES ONE PARAMETER BLOCK AND THE CONDITION NUMBER. Its own four parameters are indexed
+differently (index 2 is Current_Baseline, index 3 is Num_ch_mean, where the macro members have the
+unitary current and the noise scale), so it is excluded from the amplitude blocks in EXCLUDE_ROWS;
+its condition number is a property of its own Fisher and is comparable.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+```{r common, include=FALSE}
+FIG4_ALGOS     <- c("nonlinearsqr", "macro_NR", "macro_INR", "macro_R", "macro_IR")
+FIG4_ALGO_LAB  <- c(nonlinearsqr = "LSE", macro_NR = "NR", macro_INR = "INR",
+                    macro_R = "R", macro_IR = "IR")
+FIG4_DATA_DIRS <- c("../data/1c2ae6f", "../data/87889e6", "../data/0ffbda7", "../data/1f7138b")
+# The blocks, in order: the rate as the control, then the amplitude pair, then the conditioning.
+# `kappa` is a block of side B only, and the three parameters are blocks of side A only, because a
+# block appears where its side's data has rows for it.
+FIG4_PARS   <- c("off", "unitary_current", "Num_ch_mean", "kappa")
+FIG4_PSHORT <- c(off = "k[off]", unitary_current = "i", Num_ch_mean = "N[ch]", kappa = "kappa")
+source("figure_4_common.R")
+source("figure_4_layout.R")
+```
+
+```{r sides}
+se3 <- dplyr::filter(.fig4_src$sedat, algo %in% ALGOS,
+                     param %in% c("off", "unitary_current", "Num_ch_mean")) %>%
+  dplyr::rename(se = sev)
+kap3 <- dplyr::filter(.fig4_src$scal, algo %in% ALGOS, param == "kappa", is.finite(v), v > 0)
+
+SIDES <- list(
+  list(lab = "the corrected standard error", letter = "A",
+       data = se3, zf = function(x) x$se, scale = SCALE_SE, grey_offscale = TRUE),
+  list(lab = "conditioning", letter = "B",
+       data = kap3, zf = function(x) log10(x$v),
+       # a five-column bar cannot carry the long title the lag/kappa figure uses
+       scale = modifyList(SCALE_KAPPA, list(title = "condition\nnumber"))))
+```
+
+```{r render, fig.width = 7.4, fig.height = 6.06}
+# 13 + 5 columns, parameter outermost, one drawn x axis, no key row (there are no white contours:
+# the standard error is the fill on one side and undefined on the other). per_row 0.1911, measured
+# at x 0.1696, y 0.1696 (tmp/calib_fig4.R case 18T2), cell 1.23 mm.
+fig4_render(SIDES, per_row = 0.1911, out = "Figure_4_supplement_se_kappa.pdf",
+            se_lines = FALSE, key = FALSE, outer = "param", drawn_axis = TRUE)
+```

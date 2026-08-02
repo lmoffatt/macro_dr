@@ -1,5 +1,11 @@
 # Figura S1: score medio por paso s̄ₜ(t), 1000 recordings
 
+> **Label note 2026-07-31.** Every `NMR`/`MNR` below is the non-recursive interval member, now
+> named **`INR`** (the published `MacroINR`). `NMR` alone now denotes the *defective build* that
+> omitted the `N·ms` interval-variance term between `a3e0a89` and `1f7138b`, so any measured
+> statement about it here is about that build and not about the method
+> (`../_program/nomenclature.md`).
+
 Análisis de `projects/eLife_2025/figures/archive/supplement/figure_3_bias_pub.Rmd`, salida `Figure_S_score_mean.pdf`.
 
 **Celda:** esquema C⇌O, N_ch = 100, Current_Noise = 1e-4 (la misma que Figura 2), interval_in_tau = 0.1, 1000 recordings independientes. Grilla de 100 pasos de tiempo, 40 de ellos bajo agonista (el "pulso").

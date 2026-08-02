@@ -45,47 +45,73 @@
   (single concentration jump). Both papers.
 - **Six methods on two levels.** Off the lattice: classical nonlinear least squares on the mean
   current, data key `nonlinearsqr`, display `LSE`, engine flag `family_approximation = 2`. On the
-  lattice: `NR`, `NMR`, `R`, `MR`, `VR`, `IR`. **Body: `LSE`, `NR`, `R`, `IR`. Supplement: `MR`, `VR`,
-  `NMR`** (`program.md` §1).
+  lattice: `NR`, `INR`, `R`, `MR`, `VR`, `IR`. **Body: `LSE`, `NR`, `R`, `IR`. Supplement: `MR`, `VR`,
+  `INR`** (`program.md` §1).
 - **LSE is not a rung of the family** (2026-07-20). In the dispatcher it carries the same two knob
-  settings as `NMR` (`recursive=false, averaging=1`) and differs only by the third flag.
+  settings as `INR` (`recursive=false, averaging=1`) and differs only by the third flag.
   The "one object with two knobs" framing is retired; the structure is a root question with the ladder
   hanging from it. **This does not make LSE peripheral** (§1): it is the root of the ladder and the
   paper's anchor.
-- **`NMR` goes to the SUPPLEMENT, with `MR` and `VR`** (Luciano, 2026-07-29). It is not dropped and it is not a body column. The 2026-07-20 drop, repeated on 2026-07-28, rested on a false premise:
+> **Renamed 2026-07-31: this entry's `NMR` is now `INR`.** `NMR` was retained as the name of a
+> *different* object, the defective implementation that omitted the `N·ms` interval-variance term
+> between `a3e0a89` and `1f7138b` and produced every `macro_NMR` file in the freeze. It is a
+> second-class citizen but a real one and it is not swept from the data (`nomenclature.md`). Read the
+> bullets below with that substitution, and see the 2026-07-31 amendment at the end of this entry:
+> the attribution and the bridge survive, the *measured* reason does not.
+
+- **`INR` goes to the SUPPLEMENT, with `MR` and `VR`** (Luciano, 2026-07-29). It is not dropped and it is not a body column. The 2026-07-20 drop, repeated on 2026-07-28, rested on a false premise:
   - The 2026-07-20 reason was "no literature attribution, no mechanistic role". **The first clause is
-    wrong and has been wrong the whole time.** `NMR` **is** `MacroINR`, and `MacroINR` is the
+    wrong and has been wrong the whole time.** `INR` **is** `MacroINR`, and `MacroINR` is the
     **published control** of Moffatt & Pierdominici-Sottile 2025 (Comm Biol), the method whose failure
     carries that paper's central methodological claim: *"Model ranking was sensitive to likelihood
     approximation: the control method (MacroINR) systematically underestimated evidence for schemes
     with conformational intermediates"*, and *"leading to systematically different evidence values
     (Supplementary Table S1)"*. That is attribution of the strongest kind: not a citation, a published
     demonstration.
-  - **The published-name bridge `NMR = MacroINR` is CORRECT** (Luciano, 2026-07-29), closing the open
-    item in `nomenclature.md`. `MacroINR` parses as **I**nterval (the averaged conductance, `av = 1`)
-    + **N**on-**R**ecursive, which is exactly `NMR`. The Comm Biol Introduction's phrase "ignores time
-    averaging" is loose prose for "does not do IR's boundary-conditioned interval treatment"; it is not
-    a statement about the `av` flag, and it must not be read as one.
-  - **What survives is the measured reason**: recomputed on the freeze, NMR is **numerically
+  - **The published-name bridge `INR = MacroINR` is CORRECT** (Luciano, 2026-07-29; re-grounded
+    2026-07-31), closing the open item in `nomenclature.md`. The 2026-07-29 argument was a parse:
+    `MacroINR` = **I**nterval (the averaged conductance, `av = 1`) + **N**on-**R**ecursive. The
+    stronger argument is that the parse does not matter, because without an update the boundary
+    conditioning is unobservable and both readings of the `I` name one algorithm. The Comm Biol
+    Introduction's phrase "ignores time averaging" is loose prose for "does not do IR's
+    boundary-conditioned interval treatment"; it is not a statement about the `av` flag.
+  - ~~**What survives is the measured reason**: recomputed on the freeze, NMR is **numerically
     indistinguishable from NR** (envelope 1.23 to 3.6 × 10⁴ against NR's 1.21 to 3.5 × 10⁴; 0 of 336
-    points within ±15% for both). Evidence in `../1_method/decisions/D-4_ranking_verdict.md` §5.
-  - **That redundancy is itself a result, not only a reason to cut.** If the interval-mean conductance
+    points within ±15% for both). Evidence in `../1_method/decisions/D-4_ranking_verdict.md` §5.~~
+  - ~~**That redundancy is itself a result, not only a reason to cut.** If the interval-mean conductance
     buys nothing without recursion, then recursion is the step that matters at the bottom of the ladder
-    and interval conditioning is the step that matters at the top. That is the ladder's shape, measured.
-  - **Settled: supplement.** Not a body column, because it duplicates `NR` there; not cut, because
-    cutting it costs the bridge to the paper's only real-data demonstration. In the supplement it is
-    named with its published attribution and measured beside `NR`, where the near-identity is the
-    finding. **This costs nothing to run:** NMR is already on `87889e6` at noise 0.1/1/10 across
-    N_ch 10 to 10⁴ at n_sims 10⁴, the same coverage as NR and MR, so any supplement panel that
-    carries MR can carry NMR unchanged.
+    and interval conditioning is the step that matters at the top. That is the ladder's shape, measured.~~
+  - **AMENDED 2026-07-31: the two struck bullets measured `NMR`, not `INR`.** The near-identity with
+    `NR` is real and it now has a mechanism: `NMR` omits the `N·ms` term, so only `g → gmean_i` and
+    `P_half → P` separate the two. It is therefore **not** evidence that the interval-mean conductance
+    buys nothing without recursion; it is evidence about an implementation. Nothing downstream may
+    restate the struck conclusion.
+  - **ANSWERED 2026-08-01: `INR` separates from `NR` in both moments, and the ladder's shape is not
+    what the struck bullet said.** Median |bias| in `N_ch`, log10: `INR` 0.003 against `NR` 0.099.
+    Information distortion on `k_off` at noise 0.1 / N_ch 10⁴, total / sample / correlation: `INR`
+    22.2 / 1.00 / 22.1 against `NR` 78.9 / 47.2 / 21.2. So the interval-mean conductance buys **the
+    first moment and the per-sample fidelity**, and what it leaves is pure correlation distortion,
+    which recursion removes. The two steps are not "the one that matters at the bottom" and "the one
+    that matters at the top" of a single ladder: they are **orthogonal margins of a 2×2 acting on
+    different moments**. Recompute: `../1_method/decisions/recompute/d3_interval_vs_recursion_2x2.py`.
+  - ~~**Settled: supplement.**~~ **REOPENED 2026-08-01 as Q-5** (`../1_method/decisions.md`), on the
+    result above: `INR` is the only member that isolates the window margin, and the body roster
+    `LSE, NR, R, IR` is three of the four cells of the factorial. Still not cut either way, because
+    cutting it costs the bridge to the paper's only real-data demonstration. **The "costs nothing to
+    run" note is dead:** the `87889e6` coverage at noise 0.1/1/10 across N_ch 10 to 10⁴ is `NMR` data,
+    so `INR` had to be re-run from scratch. It was, on 2026-07-31 (`figures/data/1f7138b/`, 17 cells),
+    together with the high-noise wing for `MR` and `VR`.
   - **This entry supersedes the "six methods" listing that stood two bullets above it until 2026-07-28**
     and contradicted it from within the same section. The count is **six**: LSE off the lattice, and
-    NR, NMR, R, MR, VR, IR on it, of which four are body members.
+    NR, INR, R, MR, VR, IR on it, of which four are body members. `NMR` is not a seventh method in the
+    paper's sense: it is a defective build of `INR`, named so the freeze stays legible.
 - **`VR` keeps its letter** (Luciano, 2026-07-28), closing the open item in `program.md` §9. It earned
   it: VR was predicted to come out over-confident and more so than MR, and it did. The `V`/Taylor
   collision warning in `nomenclature.md` still stands and Methods must carry the one sentence.
-- Naming standardized on **NMR** (scripts have used MNR) for the historical record only.
-  Published-name bridge: IR = MacroIR.
+- Naming standardized on **`INR`** (2026-07-31), which is also the published spelling; the scripts and
+  the engine-facing labels were swept the same day. Earlier records use `MNR` and `NMR`
+  interchangeably for what is now `INR`; `NMR` alone now denotes the defective build
+  (`nomenclature.md`). Published-name bridge: IR = MacroIR.
 - `nonlinearsqr` must appear **verbatim** end to end (`.macroir` label → CSV `algorithm` cell → R
   `ALGOS` entry). A mismatch silently drops rows, the same failure class as the MNR/NMR bug.
 
@@ -143,7 +169,9 @@ figure count; **Q-2** (MR and **VR** in main text or supplement, itself reopened
 "strawman" is a ranking word with no meaning on a map); **Q-3** (where the Fisher-to-zero result
 goes). Those two were `D-1` and `D-3` until 2026-07-21, when paper 1's open questions were relabelled
 `Q-n` to stop colliding with the `D-n` decision briefs; and it read "MR and NMR" until the same date,
-which was stale — NMR is dropped from the program (§2) and VR is the method in question.
+which was stale — VR is the method in question. (The parenthetical there also said the non-recursive
+interval member was dropped from the program; §2 settled the opposite, it is a supplement member, and
+since 2026-07-31 it is named `INR`.)
 
 **Working plan, not a decision — the Comm Biol erratum (gvar_i).** Program-level, so it stays here.
 Intent: disclose, done properly. **Decouple** the erratum (re-run at the same fidelity to isolate the
@@ -173,8 +201,10 @@ unmentioned.
   valid**. Sources and the replacement paragraph:
   `docs/bibliography/temporal_correlation_and_AR_errors_2026-07-28.md` and §A.10 of
   `docs/bibliography/MacroIR_prior_art_map.md`.
-- **"10 to 16" as the non-recursive overconfidence factor** → **10 to 15**, once NMR is dropped and
-  the anchor moves to the freeze (`D-4` §3). "14 to 21" was never the ellipse-area factor at all.
+- **"10 to 16" as the non-recursive overconfidence factor** → **10 to 15**, once the non-recursive
+  interval member leaves the panel and the anchor moves to the freeze (`D-4` §3). "14 to 21" was never
+  the ellipse-area factor at all. **Recheck after the 2026-07-31 re-run:** the number was computed
+  against `NMR`, and `INR` carries a larger predicted variance, so it may move.
 - **"Five algorithms" as the closed roster** → six methods on two levels (2026-07-20). LSE was
   previously present only as cited background describing what the field does; it is now a measured arm,
   in paper 2.

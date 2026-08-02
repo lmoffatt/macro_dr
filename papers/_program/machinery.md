@@ -139,6 +139,10 @@ which is the anisotropy the papers want to report.**
 | NMR | 10000 | 262.6 | 3.7% | 0.13 |
 | NR | 10000 | 224.4 | 9.1% | 0.20 |
 
+(The `NMR` row above, and the `NR/NMR` cells below, are the **defective build** that omitted the
+`N·ms` interval-variance term; the corrected member is `INR` — `nomenclature.md`, 2026-07-31.
+Recheck both after the re-run.)
+
 The reconstruction error tracks ‖Q − I‖ row by row, as predicted. It is **not** numerical noise and
 more bootstrap replicates will not remove it.
 

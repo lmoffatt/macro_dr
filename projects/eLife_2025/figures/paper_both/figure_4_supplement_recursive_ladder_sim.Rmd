@@ -1,0 +1,102 @@
+---
+title: "Figure 4—figure supplement (number pending), sim anchor — the recursive ladder with the distortion read at the simulation truth"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+WHAT THIS IS. `figure_4_supplement_recursive_ladder.Rmd` with one knob changed, `FIG4_ANCHOR <-
+"sim"`, exactly as `figure_4_sim.Rmd` is `figure_4.Rmd` with that knob. Same roster (R, MR, VR,
+IR), same 16 columns, same `per_row`, same scale, same lines. The distortion half is read from
+`battery_sim_G` instead of `battery_pool_G`; the bias half does not move, because it was always
+read at theta_sim and a pool-anchored bias is zero by construction.
+
+WHY IT MATTERS MORE HERE THAN IN THE BODY. The body figure's members split cleanly: IR, INR and
+LSE showed no anchor effect at all (median |log(GIDM_sim/GIDM_pool)| of 0.003 or less over the
+whole plane), R showed a large one, NR a moderate one, and the size tracked the misspecification
+bias. This supplement's roster is the OPPOSITE selection: R is the member with the largest anchor
+effect measured so far, and MR and VR carry biases of the same order (+0.18 and +0.13 in log10
+N_ch at noise 0.1, against R's +0.14 and IR's +0.0003). So three of the four columns here are
+members whose two anchors are known or expected to disagree, and the ladder claim is stated in
+pool-anchored numbers.
+
+THE CLAIM UNDER TEST. The pool-anchored file says the rungs do not interpolate: R to IR is a
+factor 1.45 in the k_off distortion and MR sits ABOVE R (1.94 against 1.46 at N_ch 1e4), with VR
+recovering part of it. If that ordering is an artefact of reading each member at its own displaced
+theta_pool, it changes; if it survives at a common anchor it is a property of the closures. Either
+answer is worth having, and only one of them is currently in the file.
+
+The comparison chunk at the bottom prints both anchors side by side for the four rungs, so the
+header table of the pool file can be read against this one line for line.
+
+WHAT DOES NOT CHANGE, and it is worth saying because it is the honest half of the argument. The
+BIAS half is identical in the two files, so everything the pool file says about the first moment
+stands untouched: MR's +0.195 against R's +0.139 against IR's +0.0003 is a theta_sim measurement
+already. If the second-moment ordering turns out to be anchor-dependent and the first-moment one
+is not, the ladder claim survives in the moment where it is cleanest.
+
+COVERAGE is the same ragged staircase as the pool file: R and IR to noise 1e7 at N_ch 1e4, MR at
+three levels and VR at two, rows pinned to the union so the unswept part shows as grey. VR falls
+under MIN_CONTOUR_LEVELS and draws as tiles. Nothing here changes that; it reverts as the runs
+land.
+
+CAVEAT CARRIED FROM THE BODY WORK. `Dconf` is the CI EDGE toward 1, not the point estimate, so a
+1.000 in any of these tables means "the 95 per cent interval brackets 1" and not "the distortion
+is one". The comparison chunk prints the point estimate `m` alongside for that reason.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+```{r common, include=FALSE}
+# Identical to the pool file, plus the anchor.
+FIG4_ALGOS     <- c("macro_R", "macro_MR", "macro_VR", "macro_IR")
+FIG4_ALGO_LAB  <- c(macro_R = "R", macro_MR = "MR", macro_VR = "VR", macro_IR = "IR")
+FIG4_DATA_DIRS <- c("../data/1c2ae6f", "../data/87889e6", "../data/0ffbda7", "../data/1f7138b")
+FIG4_ANCHOR    <- "sim"
+source("figure_4_common.R")
+source("figure_4_layout.R")
+```
+
+```{r sides}
+# `bias` is unchanged (always sim-anchored); `stat` is now the sim-anchored distortion.
+SIDES <- list(
+  list(lab = "distortion-induced bias", letter = "A",
+       data = bias,                                  zf = function(x) x$Bconf),
+  list(lab = "information distortion at the truth",  letter = "B",
+       data = dplyr::filter(stat, comp == "total"),  zf = function(x) log10(x$Dconf)))
+```
+
+```{r render, fig.width = 7.4, fig.height = 6.63}
+# 16 columns, same layout as the pool file, so the same measured per_row.
+fig4_render(SIDES, per_row = 0.204,
+            out = "Figure_4_supplement_recursive_ladder_sim.pdf")
+```
+
+```{r compare, echo=FALSE}
+# The two anchors line by line, in the shape of the pool file's header table: medians over the
+# seven intervals at noise 0.1. Dconf is what the map paints (CI edge toward 1); m is the point
+# estimate, which is what an ordering claim has to be made on.
+cmp <- .fig4_all$stat %>%
+  dplyr::filter(algo %in% ALGOS, comp == "total", noise == "0.1",
+                param %in% c("off", "Num_ch_mean")) %>%
+  dplyr::group_by(param, algo, Num_ch, anchor) %>%
+  dplyr::summarise(Dconf = median(Dconf), m = median(m), .groups = "drop") %>%
+  tidyr::pivot_wider(names_from = anchor, values_from = c(Dconf, m)) %>%
+  dplyr::mutate(algo = factor(ALGO_LAB[algo], levels = ALGO_LAB[ALGOS])) %>%
+  dplyr::arrange(param, algo, Num_ch)
+cat("\n=== the recursive ladder at both anchors, noise 0.1, median over the 7 intervals ===\n")
+cat("Dconf = CI edge toward 1 (what the map paints); m = the point estimate\n\n")
+print(as.data.frame(cmp), digits = 4, row.names = FALSE)
+
+# Does the ORDERING of the four rungs survive the anchor change? Reported per parameter and N_ch,
+# on the point estimate, because that is what the ladder claim is about.
+ord <- cmp %>% dplyr::group_by(param, Num_ch) %>%
+  dplyr::summarise(pool = paste(algo[order(m_pool)], collapse = " < "),
+                   sim  = paste(algo[order(m_sim)],  collapse = " < "),
+                   same = identical(order(m_pool), order(m_sim)), .groups = "drop")
+cat("\n=== ordering of the rungs, cheapest distortion first ===\n\n")
+print(as.data.frame(ord), row.names = FALSE)
+```

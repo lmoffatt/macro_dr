@@ -1,5 +1,13 @@
 # D-0: freeze commit and re-run scope — DECIDED 2026-07-15
 
+> **BANNER 2026-07-31.** Every `NMR` in this file is the **defective build** (missing the `N·ms`
+> interval-variance term, `a3e0a89` to `1f7138b`); the corrected member is `INR`
+> (`../../_program/nomenclature.md`). So the D-0 fill recorded here delivered `NMR` cells, not `INR`
+> cells: that coverage does **not** count towards the supplement, and `INR` was re-dispatched from
+> scratch on 2026-07-31 together with the high-noise wing for `MR` and `VR`. Point 3 below, "`NMR` is
+> dropped from the program", was already wrong on 2026-07-29 (it went to the supplement) and is now
+> doubly stale.
+
 > **Amended 2026-07-28.** Three things changed and none of them reopens the freeze.
 >
 > 1. **`433ed13` is the demo and no paper number may be quoted from it** (Luciano, 2026-07-28). The

@@ -66,6 +66,7 @@ wrong. **TO MOVE** = lives at the old path, belongs at the new one. **REWRITE+MO
 | `nomenclature.md` | the letters, their semantics, the data-key↔display-label map | REWRITE | the endpoint ladder needs the root question above it, and `VR` needs deciding |
 | `provenance.md` | which run made which data, what is reproducible, the seed sentinel, the n_sims/Jensen hazard | LIVE | was `docs/figure_provenance.md` |
 | `figures_system.md` | the cross-figure visual system: one algorithm→colour map, fonts, panel letters | REWRITE | was `figures/instructions.md`; open since March, every figure chose its own palette |
+| `figure_supplements_decision_guide.md` | the **rule** for how many supplements a parent carries and which vehicle each piece of overflow takes (supplement / appendix figure / repo) | LIVE | opened 2026-07-31 on a measured census of 1,079 eLife articles. Owns the rule and the per-figure worksheet only; the figure set itself stays in `1_method/decisions.md` |
 | `elife-author-instructions.md` | the verified eLife author requirements | LIVE | — |
 | `notation_map.md` | symbol↔code↔CSV notation | LIVE | — |
 | `sources.md` | which audio/chat is the source of record, and which wins when two disagree | LIVE | was `08_sources_audio_notes.md` |
@@ -124,6 +125,7 @@ Look the topic up here before writing.
 | Novelty, prior art, the Kalman concession, citations | `docs/bibliography/` (repo root, not under `_program/`) |
 | The repo boundary, the freeze, code availability | `_program/carve_plan.md` |
 | Everything a journal asks for on submission day | `_program/submission.md` |
+| How many figure supplements a parent carries, and supplement vs appendix vs repo | `_program/figure_supplements_decision_guide.md` |
 | Cross-paper settled decisions | `_program/decisions.md` |
 | Paper 1's thesis, scope, roster | `1_method/00_plan.md` |
 | The claim spine, constraints and verify lists of every section | `1_method/docs/manuscript-drafts/sections/README.md` |

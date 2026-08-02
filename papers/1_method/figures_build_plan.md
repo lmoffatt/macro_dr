@@ -61,7 +61,9 @@ brief, so a cold reader is not misled by the sections below:
    in `ALGOS` with no file on disk renders an empty column, silently.
 3. **Mis-grouping.** `figure_3.Rmd:160` splits the y-axis with `naive <- c("NR","NMR")` and a
    membership test; an unlisted VR falls into the *recursive* group by default. The companion vector
-   `recg` is declared and never read, so it cannot catch the mistake.
+   `recg` is declared and never read, so it cannot catch the mistake. **2026-07-31: that vector must
+   also gain the new `INR` key**, because the fixed member writes under `macro_INR` while `macro_NMR`
+   now marks the defective build; an unlisted `INR` would silently land in the recursive group.
 
 Seven other notebooks build the path directly and `read.csv`, which errors loudly on a missing file.
 Those are the safe ones. **Figure 1 is in the safe group** (`figure_1.Rmd:49`).
@@ -170,7 +172,7 @@ which is safe; a *misordering* of the two vectors silently relabels an entire co
 So the token to keep consistent is the file suffix, and the pair must be edited together.
 
 Naming: the figure-1 files use the *display* token, and they already carry one divergence (the
-mean-non-recursive file is `_MNR` while the notebook tag is `NMR`, `figure_1.Rmd:24-32`, inverted
+mean-non-recursive file is `_MNR` while the notebook tag is `NMR`, `figure_1.Rmd:24-32`, inverted (both superseded 2026-07-31: the script now writes `_INR` and `macro_INR`; `_MNR`/`macro_NMR` survive as the defective build's data, `../_program/nomenclature.md`), originally
 relative to run 2). Use `VR` for both; do not copy the divergence.
 
 Run: the existing local invocation against the already-built binary, from
@@ -178,7 +180,7 @@ Run: the existing local invocation against the already-built binary, from
 
 Two incidental defects found in the same read, neither blocking: `macro_NR` is built and never
 referenced (the NR diagnostic goes through a different overload with its own inline flags,
-`figure_1.macroir:99-102`), and NR/R are built with `variance_approximation = 0` while MNR/MR/IR use
+`figure_1.macroir:99-102`), and NR/R are built with `variance_approximation = 0` while INR/MR/IR use
 `1`. Neither is VR's business; both are worth a look before the figure is called final.
 
 ### F1-2 · The acceptance ladder — RUN 2026-07-21, and it changes a sentence in the paper
@@ -330,7 +332,7 @@ variance form). Verified against the DSL registration: `calc_dlikelihood_predict
 Figures 3, 4, S4 or S5 could be reproduced, and no algorithm could ever be added later without moving
 every other column. From this run on, adding a seventh algorithm leaves the other six untouched.
 
-**NR and NMR stay in the dump.** Only the panel roster drops to the recursive ladder. This costs
+**NR and INR stay in the dump.** Only the panel roster drops to the recursive ladder. This costs
 ~2.3 GB and buys two things: `figure_4.Rmd` and `figure_S4_S5.Rmd` keep working with no edit, and
 Figure 4's argument survives — its ratio rows exist to show the per-step identity holds for *everyone*,
 so with four recursive columns all sitting on zero there would be no contrast left.
@@ -346,7 +348,7 @@ there, against 61 GB free. It **overwrites the five existing dumps with a differ
 every number in Figures 3, 4, S4 and S5 moves by Monte-Carlo noise. The old numbers are not lost:
 they are quoted in `Figure_3_caption.md` and `Figure_4_caption.md`, which are in git. Two of them are
 known to change qualitatively and the captions must be rewritten, not patched: Figure 3 panel A's
-87-nat spread becomes ~10 nats once NR and NMR leave the panel, and the "e^87 times more probable"
+87-nat spread becomes ~10 nats once NR and INR leave the panel, and the "e^87 times more probable"
 sentence goes with it.
 
 ```

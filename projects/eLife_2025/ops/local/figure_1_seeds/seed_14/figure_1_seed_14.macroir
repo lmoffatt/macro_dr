@@ -1,0 +1,195 @@
+model = load_model("scheme_CO")
+
+# figure_2 canonical scheme_CO values; Current_Noise and Num_ch_mean are injected.
+parameter = create_parameters(
+   model = model,
+   parameters_info = [
+      {"on","Log10",10},
+      {"off","Log10",100},
+      {"unitary_current","Log10",1},
+      {"Current_Noise","Log10",0.0001},
+      {"Current_Baseline","Log10",1},  
+      {"Num_ch_mean","Log10", 20}])
+
+
+experiment = create_experiment(experiment_structure=[{1,100,0.0},{1,100,10.0},{1,100,10.0},{1,100,10.0},{1,100,10.0},{1,100,10.0}], 
+frequency_of_sampling = 50e3,
+initial_agonist = 0.0, 
+initial_time = 0.0)
+                                
+observations = set_observations(values_set= [0,0,0,0])
+
+par_tr = get_standard_parameter_transformed_values(parameter)
+
+ 
+model_str="scheme_CO"
+
+
+
+simulation_with_sub_intervals  = simulate_with_sub_intervals(model= model, parameters = par_tr, experiment = experiment,
+                         observations = observations, number_of_substeps = 250, seed = 14)
+
+simulation_file = write_csv(experiment= experiment, simulation=simulation_with_sub_intervals, number_of_substates=250,
+   path= "figures/data/figure_1_simulation")
+
+simulation = remove_intervals(simulation_with_sub_intervals)
+
+
+
+macro_NR = build_likelihood_function(model =model, 
+            adaptive_approximation = 0, recursive_approximation = 0, averaging_approximation = 0,
+            variance_approximation = 0, taylor_variance_correction = 0,
+            micro_approximation        = false, 
+            taylor_qdt_approximation   = false )
+
+macro_R = build_likelihood_function(model =model, 
+            adaptive_approximation = 0, recursive_approximation = 1, averaging_approximation = 0,
+            variance_approximation = 0, taylor_variance_correction = 0,
+            micro_approximation        = false, 
+            taylor_qdt_approximation   = false )
+
+macro_MNR = build_likelihood_function(model =model, 
+            adaptive_approximation = 0, recursive_approximation = 0, averaging_approximation = 1,
+            variance_approximation = 1, taylor_variance_correction = 0,
+            micro_approximation        = false, 
+            taylor_qdt_approximation   = false )
+
+macro_MR = build_likelihood_function(model =model, 
+            adaptive_approximation = 0, recursive_approximation = 1, averaging_approximation = 1,
+            variance_approximation = 1, taylor_variance_correction = 0,
+            micro_approximation        = false, 
+            taylor_qdt_approximation   = false )
+
+
+# VR sits between MR and IR on the ladder: MR's mean and gain (averaging = 1,
+# start-conditioned, no boundary cross-covariance) with IR's RESIDUAL predictive
+# variance instead of MR's total. MR -> VR is the variance step, VR -> IR the gain step.
+# It needs the family builder because the bool builder above does not expose the
+# variance form; family_approximation = 0 is macro, i.e. the same family as the others.
+# NOT a Taylor variant: the V of VR is unrelated to taylor_variance_correction, and
+# unrelated to the old figure_1_likelihood_diagnostic_{IRV,MRV,MNRV} files.
+macro_VR = build_likelihood_function_with_family(model =model,
+            adaptive_approximation = 0, recursive_approximation = 1, averaging_approximation = 1,
+            variance_approximation = 1, taylor_variance_correction = 0,
+            family_approximation        = 0,
+            variance_form_approximation = 1,
+            taylor_qdt_approximation   = false )
+
+macro_IR = build_likelihood_function(model =model,
+            adaptive_approximation = 0, recursive_approximation = 1, averaging_approximation = 2,
+            variance_approximation = 1 , taylor_variance_correction = 0,
+            micro_approximation        = false,
+            taylor_qdt_approximation   = false )
+
+# LSE (nonlinearsqr, family = 2): the off-lattice incumbent, non-recursive. Least squares on the mean
+# current with the noise scale marginalised out (variance_form = 0). In figure 1 it is drawn WITHOUT
+# a predictive band — just the mean joined to the measurement. Its per-interval diagnostic arm is
+# ROUTED in C++ (src/core/likelihood.cpp:913, nonlinearsqr_logLikelihoodDiagnostic), so this runs;
+# it only calls calc_likelihood_diagnostic below (not predictions/dlikelihood, which stay IR-only).
+lse = build_likelihood_function_with_family(model = model,
+            adaptive_approximation = 0, recursive_approximation = 0, averaging_approximation = 1,
+            variance_approximation = 1, taylor_variance_correction = 0,
+            family_approximation       = 2,
+            variance_form_approximation = 0,
+            taylor_qdt_approximation   = false )
+
+# TODO (when macro_IRT / macro_MRT are added to figure_1): the intra-interval
+# diagnostics for the IRT/MRT branch need to be wired before they show
+# meaningful per-frame snapshots here.
+#
+# Status: the IRT/MRT branch in legacy/qmodel.h:safely_calculate_Algo_State_recursive
+# computes the main outputs (P_mean, P_Cov, trust_coefficient, taylor_*) per
+# the rank-1 quasi-Laplace formulas in
+# theory/macroir/docs/Macro_IRT/macroirt_supplement.tex. But the dynamic-state
+# extras (d_GS, P_mean_t11_y0, P_mean_t10_y1, P_mean_t1_y1, P_cross_cov_0t_y1,
+# etc.) currently use standard-Kalman intermediates (chi, gS, gS0, GS) with
+# the IRT-derived alfa as placeholders -- see the TODO note in the kernel
+# block header.
+#
+# Figure_1's purpose is per-algorithm description, so it is the place where
+# IRT/MRT-specific intra-interval diagnostics matter. Before adding
+# macro_IRT/macro_MRT here:
+#   1. Derive IRT-analogs of the start-frame gain (gS0_v), joint-state gain
+#      matrix (GS_v), and the rank-1 cross-covariance downdate using vS and
+#      sm_factor instead of gS and N/r_y_var.
+#   2. Replace the placeholders in the kernel's IRT/MRT branch with the
+#      derived expressions.
+#   3. Then add macro_IRT/macro_MRT here and rerun figure_1.
+#
+# The likelihood/Fisher path (figure_2 via calc_dlikelihood_predictions) is
+# correct as-is because it uses only the main outputs. The placeholders only
+# affect the diagnostic snapshots produced via calc_likelihood_diagnostic.
+
+
+
+likelihood_diagnostic_NR = calc_likelihood_diagnostic(model =model, parameters=par_tr, experiment =experiment, 
+simulation = simulation,adaptive_approximation = 0, recursive_approximation = 0, averaging_approximation = 0,
+            variance_approximation = 0, taylor_variance_correction = 0,
+            micro_approximation        = false)
+
+diagnostic_file_NR = write_csv(experiment= experiment, simulation = simulation, likelihood = likelihood_diagnostic_NR,
+   path= "figures/data/figure_1_likelihood_diagnostic_NR")
+
+likelihood_diagnostic_R = calc_likelihood_diagnostic(likelihood_algorithm =macro_R, parameters=par_tr, experiment =experiment, 
+simulation = simulation)
+
+diagnostic_file_R = write_csv(experiment= experiment, simulation = simulation, likelihood = likelihood_diagnostic_R,
+   path= "figures/data/figure_1_likelihood_diagnostic_R")
+
+
+likelihood_diagnostic_MNR = calc_likelihood_diagnostic(likelihood_algorithm =macro_MNR, parameters=par_tr, experiment =experiment, 
+simulation = simulation)
+
+diagnostic_file_MNR = write_csv(experiment= experiment, simulation = simulation, likelihood = likelihood_diagnostic_MNR,
+   path= "figures/data/figure_1_likelihood_diagnostic_MNR")
+
+
+
+likelihood_diagnostic_MR = calc_likelihood_diagnostic(likelihood_algorithm =macro_MR, parameters=par_tr, experiment =experiment, 
+simulation = simulation)
+
+diagnostic_file_MR = write_csv(experiment= experiment, simulation = simulation, likelihood = likelihood_diagnostic_MR,
+   path= "figures/data/figure_1_likelihood_diagnostic_MR")
+
+
+
+likelihood_diagnostic_VR = calc_likelihood_diagnostic(likelihood_algorithm =macro_VR, parameters=par_tr, experiment =experiment,
+simulation = simulation)
+
+diagnostic_file_VR = write_csv(experiment= experiment, simulation = simulation, likelihood = likelihood_diagnostic_VR,
+   path= "figures/data/figure_1_likelihood_diagnostic_VR")
+
+
+
+likelihood_diagnostic_IR = calc_likelihood_diagnostic(likelihood_algorithm =macro_IR, parameters=par_tr, experiment =experiment,
+simulation = simulation)
+
+diagnostic_file_IR = write_csv(experiment= experiment, simulation = simulation, likelihood = likelihood_diagnostic_IR,
+   path= "figures/data/figure_1_likelihood_diagnostic_IR")
+
+
+
+likelihood_diagnostic_LSE = calc_likelihood_diagnostic(likelihood_algorithm =lse, parameters=par_tr, experiment =experiment,
+simulation = simulation)
+
+diagnostic_file_LSE = write_csv(experiment= experiment, simulation = simulation, likelihood = likelihood_diagnostic_LSE,
+   path= "figures/data/figure_1_likelihood_diagnostic_LSE")
+
+
+
+
+
+
+
+likelihood_predictions = calc_likelihood_predictions(likelihood_algorithm =macro_IR, parameters=par_tr, experiment =experiment, 
+            data = simulation)
+
+likelihood_predictions_file = write_csv(experiment= experiment, simulation = simulation, likelihood = likelihood_predictions,
+   path= "figures/data/figure_1_likelihood_predictions")
+
+
+dlikelihood_predictions = calc_dlikelihood_predictions(likelihood_algorithm =macro_IR, parameters=par_tr, experiment =experiment, 
+data = simulation)
+
+dlikelihood_file = write_csv(experiment= experiment, simulation = simulation, likelihood = dlikelihood_predictions, 
+   path= "figures/data/figure_1_dlikelihood_predictions")

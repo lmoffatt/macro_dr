@@ -1,5 +1,13 @@
 # D-4 — The calibration verdict
 
+> **BANNER 2026-07-31 — read before quoting any `NMR` number from this file.** Every `NMR` below is
+> the **defective build**: the non-recursive interval member with the `N·ms` interval-variance term
+> missing, which is what ran between `a3e0a89` and `1f7138b` and produced the `macro_NMR` data. The
+> corrected member is now `INR` (`../../_program/nomenclature.md`), it was re-run on 2026-07-31, and
+> **no `INR` number exists in this file**. In particular §5's near-identity with `NR` measures the
+> missing term, not the method, so it may not be restated as "the interval-mean conductance buys
+> nothing without recursion". The `NR`-only numbers are unaffected.
+
 > **Updated 2026-07-28, coverage corrected 2026-07-29.** Luciano's call: `433ed13` is the
 > numerical-Fisher demo, so every number that fed the paper's verdict has been recomputed on
 > **`1c2ae6f` + `87889e6` + `0ffbda7`** (the freeze, the D-0 fill, and the high-noise columns;
@@ -180,7 +188,10 @@ rate directions, a different measure of a different object.
 
 ---
 
-## 5. NMR: measurably redundant with NR, and published
+## 5. NMR: measurably redundant with NR, and published — VOID as evidence about the method (2026-07-31)
+
+> **The redundancy is a property of `NMR`, the defective build, and does NOT transfer to `INR`**
+> (2026-08-01). Read the strike-through at the foot of this section before citing anything in it.
 
 NMR was in the fill and is on `87889e6` at all three noise levels. Recomputed, it is
 **numerically indistinguishable from NR**: envelope 1.226 to 35 738 against NR's 1.209 to 35 358, and
@@ -192,10 +203,22 @@ the published control of Comm Biol 2025, whose systematic underestimation of the
 with conformational intermediates is that paper's central methodological claim. So what is measured
 here is redundancy with `NR`, not absence of a role.
 
-Read the other way, the redundancy is a **result**: the interval-mean conductance buys nothing without
+~~Read the other way, the redundancy is a **result**: the interval-mean conductance buys nothing without
 recursion, so recursion is the step that matters at the bottom of the ladder and interval conditioning
-is the step that matters at the top. `../../_program/decisions.md` §2 holds the three options and the
-standing recommendation (name it with its attribution, measure it once in a supplement beside `NR`).
+is the step that matters at the top.~~ **STRUCK 2026-08-01. The redundancy was the bug.** Everything
+above measures `NMR`, the build missing the `N·ms` interval-variance term, and the section title's
+"measurably redundant with NR" holds for `NMR` and for nothing else. The corrected `INR`
+(`figures/data/1f7138b/`, 17 cells at `nsim` 10⁴) separates from `NR` in both moments: median |bias|
+in `N_ch` 0.003 against 0.099 log10, and `k_off` information distortion at noise 0.1 / N_ch 10⁴ of
+22.2 / 1.00 / 22.1 (total / sample / correlation) against 78.9 / 47.2 / 21.2. **The interval-mean
+conductance buys the first moment and the per-sample fidelity**; what it leaves is pure correlation
+distortion, and that is recursion's job. So the two steps are orthogonal margins acting on different
+moments, not two ends of one ladder. Recompute: `recompute/d3_interval_vs_recursion_2x2.py`; roster
+consequence: Q-5 in `../decisions.md`. `../../_program/decisions.md` §2 holds the options.
+
+**Still owed from this section, and not answered by that script:** §3's ×10–15 overconfidence factor
+and the `N_ch²` conditioning scaling are standard-error and Fisher-spectrum statistics, both computed
+against `NMR`. Rerun D-4's own recipe on `macro_INR` before either enters the paper.
 
 ---
 

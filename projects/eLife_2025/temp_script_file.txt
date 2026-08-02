@@ -10,7 +10,7 @@
 # 300 simulations: the IR-vs-naive contrast is LARGE (naive autocorr ~0.2-0.4, ratio != 1),
 # so 300 suffices; bump to 1000 later (re-run) for the tight IR=1.000 precision.
 #
-# Output: figures/data/figure_3_time_dlik_{NR,R,NMR,MR,IR}.csv
+# Output: figures/data/figure_3_time_dlik_{NR,R,INR,MR,IR}.csv
 #   per (simulation_index, sample_index): primitive r_std / y_mean / y_var + patch_current,
 #   and the per-step SCORE d logL_t/d theta (logL calculus=="derivative" rows).
 # The `algorithm` column is added in R from the filename.
@@ -70,14 +70,14 @@ dlik_R = calc_dlikelihood_predictions(likelihood_algorithm = macro_R, parameters
 file_R = write_csv(experiment = experiment, simulations = simulations, likelihood = dlik_R,
    path = "figures/data/figure_3_time_dlik_R")
 
-# ---- macro_NMR  (recursive=0, averaging=1) ----
-macro_NMR = build_likelihood_function(model = model, adaptive_approximation = 0,
+# ---- macro_INR  (recursive=0, averaging=1) ----
+macro_INR = build_likelihood_function(model = model, adaptive_approximation = 0,
    recursive_approximation = 0, averaging_approximation = 1, variance_approximation = 1,
    taylor_variance_correction = 0, micro_approximation = false, taylor_qdt_approximation = false)
-dlik_NMR = calc_dlikelihood_predictions(likelihood_algorithm = macro_NMR, parameters = par_tr,
+dlik_INR = calc_dlikelihood_predictions(likelihood_algorithm = macro_INR, parameters = par_tr,
    experiment = experiment, data_series = simulations)
-file_NMR = write_csv(experiment = experiment, simulations = simulations, likelihood = dlik_NMR,
-   path = "figures/data/figure_3_time_dlik_NMR")
+file_INR = write_csv(experiment = experiment, simulations = simulations, likelihood = dlik_INR,
+   path = "figures/data/figure_3_time_dlik_INR")
 
 # ---- macro_MR  (recursive=1, averaging=1) ----
 macro_MR = build_likelihood_function(model = model, adaptive_approximation = 0,

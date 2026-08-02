@@ -14,27 +14,68 @@
 - **The comparison anchor is least squares** (2026-07-28). MacroR has essentially no uptake, so a
   paper pitting one unused algorithm against another is unsellable. The paper compares **the method
   everyone uses** against the new one and shows what more is available and where.
-- **Body roster: `LSE`, `NR`, `R`, `IR`**, faceted by N_ch. A monotone ladder of cost: fit the mean
+- **Body roster: `LSE`, `NR`, `R`, `IR`**, faceted by N_ch. As a ladder of cost it reads: fit the mean
   and discard the fluctuations → use the gating variance without a filter → filter on instantaneous
   samples → condition on the interval. Reading LSE against IR answers "do you need a likelihood?";
   reading R against IR answers "what does conditioning buy?".
-- **Supplement roster: `MR`, `VR`, `NMR`** (2026-07-29). `MR` and `VR` split the R → IR step and carry
-  the mechanism. `NMR` is the published `MacroINR`, the control of Comm Biol 2025, and it sits beside
-  `NR` because the two are numerically indistinguishable — which is the finding, not a redundancy to
-  hide: **the interval-mean conductance buys nothing without recursion**, so recursion is the step
-  that matters at the bottom of the ladder and interval conditioning the step that matters at the top.
+- **The four macro members are also a 2×2, and since 2026-08-01 that is the reading that carries the
+  mechanism.** Interval window × recursion: `NR` neither, `INR` window only, `R` recursion only, `IR`
+  both. **Each margin moves a different moment**, which the ladder ordering hides because it presents
+  one axis. Measured on the corrected `INR` run at `1f7138b`; the table and its provenance are
+  `decisions/recompute/d3_interval_vs_recursion_2x2.py` (Luciano stated the decomposition from the
+  2026-08-01 audio; the numbers below are the recompute).
+  - **The window fixes the first moment. Recursion does not, and alone it makes it worse.** Median
+    |bias| over every cell and interval on disk, log10: in `N_ch` / `i`, `NR` 0.099 / 0.085, `R`
+    0.110 / 0.101, `MR` 0.120 / 0.103, against `INR` 0.003 / 0.003 and `IR` 0.002 / 0.001. `VR` sits
+    between at 0.058 / 0.066. `k_off` is unbiased for every member (≤ 0.002). So the bias is an
+    **amplitude-pair** effect of a quarter to a third, it does not shrink with N_ch, and the only two
+    members free of it are the two that carry the interval window.
+  - **Recursion fixes the second moment, and the window does not — beyond the per-sample part.**
+    Information distortion at noise
+    0.1, N_ch 10⁴, on `k_off` (total / sample / correlation): `NR` 78.9 / 47.2 / 21.2, `INR` 22.2 /
+    1.00 / 22.1, `R` 1.46 / 1.00 / 1.47, `IR` 1.01 / 1.01 / 1.00. **`INR`'s distortion is
+    all correlation** — total and correlation agree to the third digit, and they do so across the
+    whole noise fan, which is Luciano's "toda la distorsión se da a nivel de la correlación" as a
+    measurement. The window does buy the *sample* part (`NR` 47.2 → `INR` 1.00 at N_ch 10⁴), so
+    "the window buys nothing without recursion" was false in both moments.
+  - **One end is worse than none, which is the sharp form of the both-ends claim.** `MR` against `R`
+    on `k_off` at N_ch 10⁴: total 1.94 against 1.46, correlation 2.00 against 1.47; and in `N_ch`
+    bias 0.120 against 0.110. Conditioning the interval mean on the start state alone degrades both
+    moments relative to not conditioning at all, and only conditioning on both ends closes it
+    (`IR` 1.01, bias 0.002). This is the measured version of "si condicionás a uno solo, todo da mal".
+  - **`LSE` is unbiased too and fails the same way `INR` does**, which is why the first moment cannot
+    carry the paper's argument: 0.001 in both parameters it fits, and a distortion of 13.3 on `k_off`
+    at N_ch 10⁴ that is 14.1 correlation and 0.95 sample. LSE and INR are the same story about the
+    second moment told at different cost.
+- **Supplement roster: `MR`, `VR`, `INR`** (2026-07-29; `NMR` → `INR` 2026-07-31). `MR` and `VR` split
+  the R → IR step and carry the mechanism. `INR` is the published `MacroINR`, the control of Comm Biol
+  2025.
+  - **`INR`'s job is now known, and it is a body job, not a supplement job — REOPENED, Luciano's
+    call** (2026-08-01). The old reading (it sits beside `NR` because the two are numerically
+    indistinguishable, stated as *the interval-mean conductance buys nothing without recursion*) is
+    **dead**: that measurement was made on `NMR`, the build missing the `N·ms` interval-variance term,
+    so the near-identity had a mechanism and was never evidence about the method. The corrected `INR`
+    separates from `NR` in both moments (numbers above), and it is the only member that isolates the
+    window margin. **The body roster question Q-1/Q-2 is therefore reopened**: `LSE, NR, R, IR` is
+    three of the four cells of the factorial, and adding `INR` completes it at the cost of one column.
+    Do not restate the old conclusion anywhere.
   - **`VR` keeps its name** (2026-07-28, `../_program/nomenclature.md`), displayed as "Variance
     Recursive". It is the control that turns "MR's problem is the gain, not the variance" from algebra
     into measurement, and it fired. **Do not describe it as "MR→VR changes only the variance, VR→IR
     only the gain":** the predictive variance divides the gain, so the variance step moves the update
     too, and IR's *total* predicted variance is algebraically equal to MR's
     (`figures_build_plan.md` §F1-2).
-  - **`NMR` is a supplement member, not dropped** (2026-07-29). The old "no literature attribution"
+  - **`INR` is a supplement member, not dropped** (2026-07-29). The old "no literature attribution"
     reason was false: it is `MacroINR` in print. See `../_program/decisions.md` §2.
-  - **The supplement panels carry the FULL LATTICE, all six** (Luciano, 2026-07-29): `NR`, `NMR`, `R`,
+  - **`NMR` is kept as a named object, second class but real** (Luciano, 2026-07-31): the defective
+    implementation that ran between `a3e0a89` and `1f7138b` and produced every `macro_NMR` file in the
+    freeze. It is not a legacy spelling of `INR` and must not be swept out of the data or the `.Rmd`
+    readers. Whether it also earns a *column* — `NMR` beside `INR` is a direct read-out of what the
+    interval-variance term does — is an open figure call, not settled here.
+  - **The supplement panels carry the FULL LATTICE, all six** (Luciano, 2026-07-29): `NR`, `INR`, `R`,
     `MR`, `VR`, `IR`. Not the three demoted members alone. They are *defined* by their position
     relative to the body members, so a panel without `R` and `IR` cannot state "MR is worse than R,
-    VR worse still, IR closes it", and a panel without `NR` cannot show NMR's near-identity at all.
+    VR worse still, IR closes it", and a panel without `NR` cannot place `INR` against the rung below.
     Three consequences, all favourable: `figure_1_all.Rmd` already renders exactly those six columns,
     so this is columns added to existing scripts and not a new figure; the columns shared with the body
     are a free consistency check, because a body and a supplement that disagree on `NR` or `IR` means a
@@ -85,8 +126,16 @@ reader who is currently using least squares.
 overconfidence is dead. **Trap while sweeping:** the caption was already refreshed from 87 nats to
 10.4 once NR and NMR left the panel (`figures_build_plan.md` §321, §349), so restoring the routing
 without checking reinstates a superseded number. And the overconfidence factor is now **10 to 15**,
-not 10 to 16, once NMR is dropped and the anchor moves to the freeze
+not 10 to 16, once the non-recursive interval member leaves the panel and the anchor moves to the
+freeze — and **recheck it after the 2026-07-31 re-run**, since it was computed against `NMR`, the
+build missing the `N·ms` term
 (`decisions/D-4_ranking_verdict.md` §3).
+**Status 2026-08-01: the re-run has landed** (`figures/data/1f7138b/`, `macro_INR` at 17 cells, plus
+`macro_VR`) **and the recheck is still owed.** What the re-run settles is the information distortion
+and the bias, recomputed in `decisions/recompute/d3_interval_vs_recursion_2x2.py`. The overconfidence
+factor is a **different statistic** — the empirical-over-Fisher standard-error ratio — so nothing above
+may be updated from that script. Recheck it with D-4's own recipe against `macro_INR`, and note that
+the answer will not be a small correction: `INR`'s distortion is 22 where `NMR`'s pooled with `NR`.
 
 ## Fig 1 = the four-column ladder LSE, NR, R, IR
 
@@ -351,6 +400,23 @@ probably because their validity was never characterised. This paper characterise
 without bias or distortion above **[threshold pending, D-J]** is MacroIR; and where the records carry
 no autocorrelation, least squares is just as good.
 
+**Amended 2026-08-01, and the amendment is a division of labour, not a ranking** (Luciano, audio
+2026-08-01 08:47). "The only method without bias **or** distortion" fuses two failures that the
+measurement separates and that a referee will separate anyway. The three arms, each with what it can
+and cannot deliver:
+- **least squares** carries no meaningful bias in what it fits (0.001 log10), but it holds the unitary
+  current Fixed, so the amplitude pair reaches it only through the product, and its own error bar is
+  distorted by an order of magnitude (13.3 on `k_off`, essentially all correlation);
+- **`INR`** returns the amplitudes unbiased (0.003) at a wider error than the recursive members, and
+  its reported error is distorted by the same order (22.2, all correlation). So it buys the estimate
+  and not the interval;
+- **`IR`** is the only member whose reported error can be believed (1.01).
+Two different failures — *cannot estimate it* and *cannot tell you how well it estimated it* — and the
+abstract should carry both, in that order. This does not change what was swept or measured; it changes
+which sentence the results are packed into. The live prose is
+`docs/manuscript-drafts/sections/00_abstract.tex` and it has its own rules file; do not rewrite it from
+this paragraph without reading them.
+
 **Introduction, five moves.** (1) Independence of residuals is the foundational assumption of least
 squares, and violating it costs you the degrees-of-freedom count. (2) Markov chains model temporal
 dependence while still yielding constants universal to the whole record, and they tie biophysical
@@ -366,12 +432,34 @@ same rates that generate the mean. See
 `docs/bibliography/temporal_correlation_and_AR_errors_2026-07-28.md` for the sourced version and for
 Lei et al. 2020, who tried exactly this on ion-channel data.
 
-**Discussion, three points.** (1) MacroIR is calibrated over almost the whole measured plane, so one
+**Discussion, four points.** (1) MacroIR is calibrated over almost the whole measured plane, so one
 could simply always use it. (2) Where it fails: few channels, and telegraph (non-Gaussian) noise.
 **Flag: "telegraph" appears nowhere under `papers/`, no simulator capability exists on any freeze
 commit, and no cell has been run.** This is the only new claim in the set with zero data behind it;
-either run it or demote it to an argument with a citation. (3) Why the intermediates fail: you need
-the double conditioning at both interval ends, conditioning on the start alone contributes nothing.
+either run it or demote it to an argument with a citation. (3) Why the intermediates fail — **rewritten
+2026-08-01, the old version was measurably false.** It used to read "you need the double conditioning
+at both interval ends, conditioning on the start alone contributes nothing". Conditioning on the start
+alone contributes the **first moment**: it removes the amplitude bias entirely (`INR` 0.003 log10
+against `NR` 0.099 in N_ch) and drives the per-sample distortion to one. What it does not touch is the
+**second moment**, and that is the whole point: `INR`'s distortion is pure correlation, ~22 on `k_off`,
+flat in N_ch and unmoved by the window. Recursion is what removes it, and only recursion conditioned
+on **both** ends removes it completely — one end (`MR`, 1.94) is worse than none (`R`, 1.46).
+So the sentence to write is *the window restores the mean, the recursion restores the variance, and
+the recursion has to see both ends of the interval because that is where the information crosses from
+one interval to the next.* Numbers: the roster block above, and
+`decisions/recompute/d3_interval_vs_recursion_2x2.py`.
+(4) **The bootstrap concession, and it has to be made in print** (Luciano, audio 2026-07-29). An
+experimenter who does not need the conductance can fit by least squares and get an error bar by
+resampling, and there is nothing wrong with that: an empirical error incorporates sources of
+variability an internal one does not, so in that sense it is better. This concedes the "trustworthy
+error bar" half of the ordering result to anyone willing to resample, and it must be conceded before a
+referee does it — the route is in this literature already (Moffatt & Hume 2007 bootstrap; Stepanyuk
+2011 bootstraps a filter it calls Kalman). What survives the concession, and is the argument to make
+there: a resampled interval cannot separate **variability between recordings** from the **stochastic
+error of the method on one recording**, so it cannot tell you whether two currents differ because the
+rates differ or because the channel counts do. That separation needs an internal, calibrated error, it
+is the second of the three advantages in the 2026-07-29 audio, and it is a capability statement — see
+the closer's own scope note in `docs/manuscript-drafts/sections/00_abstract.tex` §1(g).
 
 **The risk to fix before the abstract is written, not after review.** The region map's largest region
 is sold on the unitary conductance and the channel count, and `introduction.md:43` already concedes
@@ -400,3 +488,10 @@ the manuscript-production briefs in `decisions/`, and the two registers used to 
 text or supplement — "strawman" is retired, so re-decide on the map footing); **Q-3** (resolved: the Fisher-to-zero result is Fig 3—figure supplement 1); the figure count is
 settled at five body figures plus supplements (the six-figure gate is moot); the title (three live
 versions, `docs/manuscript-drafts/sections/README.md`).
+
+**Q-5, opened 2026-08-01: does `INR` join the body roster?** The corrected run makes it the only
+member that isolates the interval-window margin, and `LSE, NR, R, IR` is three of the four cells of a
+2×2 whose fourth cell is `INR` (see "What this paper is" above). Adding it costs one column in Figs 1,
+2 and 4 and turns the ladder reading into the factorial reading; leaving it in the supplement keeps the
+cost-ladder narrative and forces the mechanism argument to be made in prose against a supplement panel.
+Interacts with Q-1 and Q-2, which is why all three should be decided in one pass. **Luciano's call.**

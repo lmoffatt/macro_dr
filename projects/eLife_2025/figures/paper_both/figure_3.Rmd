@@ -1,63 +1,101 @@
 ---
-title: "Figure 3 — the calibration cascade: from the residual to the accumulated score information"
+title: "Figure 3 — the calibration cascade in time, over the whole implemented family"
 author: "Luciano Moffatt"
 date: "`r Sys.Date()`"
 output: html_document
 ---
 
 <!--
-CURATED single-figure alternative that merges the essential rows of Figure 3 (residual, data
-level) and Figure 4 (score, inference level) into one calibration CASCADE, reading the same 5
-ensemble CSVs figures/data/figure_3_time_dlik_{NR,R,NMR,MR,IR}.csv (each ~1 GB, 1000 sims; cell
-N_ch=100, Current_Noise=1e-4, interval=0.1 tau) ONCE each. Time axis in milliseconds.
+THE BODY FIGURE, PROMOTED 2026-07-31 from Figure 3--figure supplement 1, which this file was until
+that day. It carries ALL SEVEN members of the lattice, in cost-ladder order: LSE, NR, INR, R, MR,
+VR, IR.
 
-ONE OUTPUT: Figure_3.pdf, 7.0 x 7.5 in. Settled 2026-07-30 after comparing four candidates (six
-rows against seven, one parameter against two); the three that lost were deleted rather than left
-behind as dead code, so what remains builds the chosen figure and nothing else.
+WHY SEVEN AND NOT FOUR (Luciano, 2026-07-31). The body used to walk four and this file widened it,
+and holding two figures apart for the sake of two columns stopped making sense once every column
+was carrying a claim the paper already makes in prose. Read as a factorial on the two switches,
+interval averaging x recursion, the seven are not a ladder but a design in which each member answers
+one question:
+  NR   neither ingredient          r^2 1.153  X    accumulated 13.6  X
+  INR  interval averaging alone    r^2 0.9995 v    accumulated 20.8  X
+  R    recursion alone             r^2 0.782  X    accumulated  1.07 v
+  IR   both                        r^2 0.999  v    accumulated  1.08 v
+A double dissociation: the interval average repairs the data level and does nothing for the
+accumulation, the recursion repairs the accumulation and does nothing for the data level, and only
+the two together repair both. LSE sits outside the lattice, as the classical baseline.
 
-ROSTER: four columns, the cost ladder LSE -> NR -> R -> IR (this paragraph used to say five
-columns NR/MNR/R/MR/IR, which predates the merged roster).
+MR AND VR ARE THE OTHER HALF OF THE ARGUMENT and are not decoration (Luciano, 2026-07-31). They say
+that conditioning on ONE interval end is not enough, which is not obvious: MR is WORSE than R on the
+ellipse-area measure, 1.63 against 1.17, so the intermediate rung does not interpolate between the
+two ends of the step it sits in; and VR, which removes the between-endpoint variance without
+restoring it in the gain, is worse still. The whole distance from R to IR is therefore in the update
+and not in the variance (Discussion sec. 25).
 
-PARAMETERS: two, k_off and N_ch, one colour each, on the score rows; rows A and B are
-parameter-free and neutral grey. The calibration is close to parameter-independent, which is why
-one representative parameter used to be enough, but the INFORMATION is not, which is what the F_t
-row is about. N_ch is not drawn in the least-squares column (see the note at SC).
+READ EACH PANEL AGAINST THE GREEN LINE, NOT AGAINST ANOTHER COLUMN (Luciano, 2026-07-31). An earlier
+version drew each class-B member over the member it is one step from, in grey. It was dropped: the
+three comparisons it carried turned out to be small differences between two curves that both fail,
+and a number in the caption states those better than a pale overlay does. What each panel claims is
+that the member is or is not calibrated, and the calibrated value is drawn. The claim the figure
+makes as a whole is that the family fails and IR is the exception, which is why IR is a column.
 
-Rows A-F are TIME (agonist shading), row G is LAG at the very bottom. The Fisher row sits between
-the data rows and the inference rows because it is a PRECONDITION, not a step in the cascade: there
-is no point asking whether the reported information is honest before establishing that there is
-information, and for how long.
-  A predicted & observed current   (one example recording: the data + the filter's prediction band;
-    the ENSEMBLE-MEAN total logL over recordings +/- SE annotated per column: recursive ~ -145,
-    naive ~ -230, an ~87-nat gap: the data is ~e^87 more probable under the recursive/conditional filters)
-  B residual variance  mean_t[r_t^2] ~ 1   (data 2nd moment; r_t=(patch-y_mean)/sqrt(y_var))
-  C per-step Fisher information  F_t   (where in the recording each parameter is measured at all;
-    the N_ch information dies when the agonist is washed out, the k_off information does not)
-  D score bias, standardized  sbar_t/sqrt(Fbar_t) ~ 0   (inference 1st moment; dimensionless, so
-    two parameters with different units can share one axis)
-  E per-interval information ratio  Var_recordings(s_t)/mean_recordings(F_t) ~ 1
-    (inference 2nd moment, LOCAL: the sampling-distortion information; F_t = dmu^2/v + 0.5 dv^2/v^2)
-  F accumulated information ratio  Var(sum s_t)/sum F_t = J_T/F_T ~ 1
-    (inference 2nd moment, GLOBAL: the score correlation accumulates -> the overconfidence of
-     Figure 2; the naive pair diverges, the recursive trio stays near 1)
-  G score autocorrelation (lag) ~ 0   (the temporal memory that MAKES F diverge)
+TWO-BLOCK Y SCALE ON ROWS B, D, F AND G, exactly the rows figure_3 splits, and for the same reason:
+the open-loop members fail by a factor of twenty and the recursive ones by twenty percent, so one
+axis cannot show both. On a shared scale the four recursive columns of the accumulated row collapse
+onto the reference line and the MR-and-VR-against-IR difference, the number this figure exists for,
+disappears. Rows A, C and E stay shared, where the magnitudes are comparable and a split would only
+cost width. The supplements inherit this choice of which rows split rather than making their own, so they can
+be read row for row against this figure.
 
-The story: the prediction is miscalibrated in variance (B); there is information at all only over
-part of the recording, and for how long depends on the parameter (C); the score is biased (D); the
-information identity holds per interval (E ~ 1) but the accumulated identity fails (F diverges)
-exactly BECAUSE the score carries temporal memory (G).
+ROWS: the cascade, from the filter output through the residual to the accumulated score.
+  A predicted & observed current   (one example recording, the same one in every column; the
+    annotation is the ensemble-mean total logL, and read across the row it is the whole cost ladder)
+  B residual variance  mean_t[r_t^2] ~ 1
+  C per-step Fisher information  F_t   (no null: this row says WHERE each parameter is measured, and
+    the shape being the same in all six columns is the claim that it belongs to the measurement)
+  D score bias, standardized  sbar_t/sqrt(Fbar_t) ~ 0
+  E per-interval information ratio  Var(s_t)/F_t ~ 1
+  F accumulated information ratio  Var(sum s_t)/sum F_t ~ 1
+  G autocorrelation (lag) ~ 0, THREE series (Luciano, 2026-07-31): the
+    score for each parameter in its colour, and the parameter-free standardized RESIDUAL in neutral.
+Rows A and B are parameter-free and drawn neutral; C to G carry k_off and N_ch, one colour each.
+N_ch earns its place on row C, where it is the parameter whose information dies when the agonist is
+washed out while k_off's does not, and on rows E and F, where VR fails harder on N_ch than on k_off.
 
-SYSTEMATIC CONVENTION: any non-negative quantity (a variance or a ratio of variances) is on a
-log10 y-axis with the reference value (1) always on the ticks; signed quantities (current, bias,
-ACF) are linear with 0 forced onto the ticks. The Fisher row is the exception: log10(F_t) on a
-linear axis, because it never passes near 1 and forcing 1 onto its ticks would be meaningless.
-Rows B, E and F use a separate scale per block (naive LSE/NR | recursive R/IR); E is shared (~1).
-BANDS: every band in the figure is a nonparametric bootstrap over the 1000 recordings, B = 400
-replicates, percentile interval. One convention throughout, so that comparing band widths across
-rows compares one kind of object. The single exception is row A, whose band is not an uncertainty
-at all but the filter's own predictive +-1 sd for the one example recording.
+INR REPLACED NMR 2026-07-31, and it is a different algorithm and not a relabel. `NMR` on disk is the
+DEFECTIVE build that lost the N*ms interval-variance term to a refactor in a3e0a89, restored in
+1f7138b; `macro_INR` is the method as published. Luciano ran it for this figure, so the column is
+now the method rather than the broken build. The old dump is kept and its digest still builds, so
+the two can be compared, but nothing in the paper draws it.
 
-RENDER: reads 5 GB, too heavy for a laptop; run where figures/data/ resolves.
+WHAT THE FIX BUYS, AND WHAT IT DOES NOT, measured on the new run and the reason this column earns
+its place. Restoring the interval variance repairs the DATA level completely: the mean squared
+standardized residual is 0.9995 for INR against 1.3491 for the defective build and 1.1526 for NR,
+and 0.9989 for IR, so on row B the non-recursive interval member is as well calibrated as the
+boundary-conditioned filter. It repairs nothing at the INFERENCE level: the accumulated information
+ratio is 20.8, worse than NR's 13.6, and the lag-one score autocorrelation is 0.868 against NR's
+0.864. The likelihood is also 14.8 nats better than NR's.
+That dissociation is the point. Diagnostics states that the residual check and the information check
+fail independently, and that a member can pass the first and violate the second by an order of
+magnitude. INR is that member: it passes the data-level check as well as IR does and misreports its
+information by a factor of twenty. Nothing else in the paper demonstrates the claim; every other
+member fails both checks together or passes both.
+
+WIDTH, MEASURED ON Figure_3.pdf RATHER THAN ESTIMATED. The four body panels are 1.312 in each and
+the fixed furniture eats 1.75 of the 7.0 in: 0.81 the left axis block, 0.30 the gap carrying the
+second block's y axis, 0.08 per inter-column gap, 0.47 the rotated row-title strip. That furniture
+does not scale with the column count, so six columns with all of it would leave 0.85 in per panel
+and SEVEN leave about 0.72. Past four columns the row-title strip therefore goes to the caption and
+the letters alone stay (see STRIP at the layout chunk), which buys back the 0.47 and lands the
+panels near 0.79 in at seven columns. Measure the rendered PDF rather than trusting this arithmetic;
+it is where the last two adjustments came from.
+
+TWO SWITCHES, both at the read chunk, both named in the output file so variants coexist:
+  PSEL    which parameters the score rows carry
+  ROSTER  "family" (this figure) or "steps" (the superseded three-column version with the grey
+          reference, kept runnable so the comparison can be re-made rather than re-argued)
+
+DATA: the digests written by figure_3_digest.R, not the dumps. Seven members at ~9 to 16 MB each
+instead of seven dumps at ~1 GB, so this renders on a laptop in about a minute. Cell: N_ch = 100,
+Current_Noise = 1e-4, interval = 0.1 tau, 1000 recordings, seed 20260722.
 -->
 
 ```{r setup, include=FALSE}
@@ -68,522 +106,556 @@ library(patchwork)
 ```
 
 ```{r read}
-# Merged-paper roster: the cost ladder LSE -> NR -> R -> IR (the recursive-mechanism ladder R/MR/VR/IR
-# is a supplement). All algorithms stay in the DUMP; only the panel roster changes here. LSE and NR are
-# the non-recursive (open-loop) pair, so they share the "naive" y-scale block below. Set ALGOS back to
-# c("R","MR","VR","IR") for the recursive-ladder figure.
-ALGOS  <- c("LSE", "NR", "R", "IR")
-ALAB   <- c(LSE = "LSE", NR = "NR", NMR = "MNR", R = "R", MR = "MR", VR = "VR", IR = "IR")
-LEAD   <- ALGOS[1]      # leftmost column: carries the y title, the row titles and the panel tags
-FULL   <- c(LSE = "Least Squares", NR = "Non-Recursive", NMR = "Mean Non-Recursive", R = "Recursive",
-            VR = "Variance Recursive", MR = "Mean Recursive", IR = "Interval Recursive")
-P_MAIN <- 1L     # k_off
-B      <- 400    # bootstrap replicates over recordings
+# THE SWITCH. One entry per parameter to draw on the score rows. param_index in the digest:
+# 0 = k_on, 1 = k_off, 2 = unitary_current, 5 = Num_ch_mean.
+PSEL <- c(k_off = 1L, N_ch = 5L)          # set to c(k_off = 1L) for the one-parameter variant
 
-read_one <- function(a) {
-  dt  <- fread(sprintf("../data/figure_3_time_dlik_%s.csv", a), skip = 1, showProgress = FALSE)
-  agg <- function(d) d[, .(v = mean(value)), by = .(simulation_index, sample_index)]  # dedup writer x2 copies
-  pk  <- function(comp, calc, p = NA) {
-    q <- dt[component_path == comp & calculus == calc & !is.na(sample_index)]
-    if (!is.na(p)) q <- q[param_index == p]
-    agg(q)
-  }
-  rr <- pk("r_std",  "primitive");          setnames(rr, "v", "r_std")
-  ll <- pk("logL",   "primitive");          setnames(ll, "v", "ll")   # the OUTPUT: per-interval logL
-  yv <- pk("y_var",  "primitive");          setnames(yv, "v", "yv")
-  ti <- unique(dt[!is.na(patch_current), .(sample_index, t = step_middle * 1000, agonist)])  # ms
-  ti <- ti[, .(t = first(t), agonist = first(agonist)), by = sample_index]
-  # example recording (min sim): predicted current mean/var (primitives) over the observed current
-  es  <- dt[!is.na(sample_index), min(simulation_index)]
-  eb  <- unique(dt[simulation_index == es & !is.na(patch_current),
-                   .(sample_index, t = step_middle * 1000, obs = patch_current, agonist)])
-  eb  <- eb[, .(t = first(t), obs = first(obs), agonist = first(agonist)), by = sample_index]
-  em  <- dt[simulation_index == es & component_path == "y_mean" & calculus == "primitive" & !is.na(sample_index),
-            .(y_mean = mean(value)), by = sample_index]
-  ev  <- dt[simulation_index == es & component_path == "y_var"  & calculus == "primitive" & !is.na(sample_index),
-            .(y_var  = mean(value)), by = sample_index]
-  ex  <- Reduce(function(x, y) merge(x, y, by = "sample_index"), list(eb, em, ev))
-  # The per-interval score s_t and its per-step Gaussian Fisher information I = F_t, for each
-  # parameter in PSC. Every row of the figure that is about a parameter descends from this one
-  # table, including the Fisher row, which is just E[I] and so needs no separate extraction.
-  # `sco` is long, one block per parameter, so the downstream statistics group by (algo, param).
-  # Extracted while dt is still in memory: the second parameter costs no extra pass over the
-  # ~1 GB dump. param_index in the dump: 0 = k_on, 1 = k_off, 2 = unitary_current, 5 = Num_ch_mean.
-  PSC <- c(k_off = P_MAIN, N_ch = 5L)
-  sco <- rbindlist(lapply(names(PSC), function(nm) {
-    scp <- pk("logL",   "derivative", PSC[[nm]]); setnames(scp, "v", "s")
-    dmp <- pk("y_mean", "derivative", PSC[[nm]]); setnames(dmp, "v", "dm")
-    dvp <- pk("y_var",  "derivative", PSC[[nm]]); setnames(dvp, "v", "dv")
-    z <- Reduce(function(x, y) merge(x, y, by = c("simulation_index", "sample_index")),
-                list(scp, dmp, dvp, yv))
-    z[, .(algo = a, param = nm, simulation_index, sample_index, s,
-          I = dm^2 / yv + 0.5 * dv^2 / yv^2)]
-  }))
-  rm(dt); gc(verbose = FALSE)
-  rr <- merge(rr, ll, by = c("simulation_index", "sample_index"))
-  rr <- merge(rr, ti, by = "sample_index")
-  list(resid = rr[is.finite(r_std)][, algo := a],
-       sco   = sco,
-       ex    = ex[, algo := a],
-       tm    = ti)
+# ROSTER. "steps" is the three class-B members drawn over the member each is one step from;
+# "family" is the whole lattice with NO reference, every panel read against its own null.
+# The second is the one the green-line reading argues for (Luciano, 2026-07-31): if a panel is read
+# against the calibrated value and not against another algorithm, then the reference curve is
+# cognitive load that buys three small differences between two failing curves, and those are better
+# said as numbers in the caption. It also puts IR back in the frame, which the claim needs: the
+# statement is that the whole family fails AND IR is the exception, and the exception has to be
+# visible next to the failures.
+ROSTER <- "family"
+LAB  <- c(LSE = "LSE", NR = "NR", INR = "INR", R = "R", MR = "MR", VR = "VR", IR = "IR")
+FLAB <- c(LSE = "Least\nSquares", NR = "Non-\nRecursive", INR = "Interval Non-\nRecursive",
+          R = "Recursive", MR = "Mean\nRecursive", VR = "Variance\nRecursive",
+          IR = "Interval\nRecursive")
+# `ref` is NA_character_ and not the logical NA, so that vapply over the roster stays type-stable
+# whether or not the roster has references.
+mk <- function(k, ref = NA_character_) list(key = k, ref = ref, lab = LAB[[k]], flab = FLAB[[k]],
+                                 rlab = if (is.na(ref)) NA_character_ else LAB[[ref]])
+STEPS <- if (ROSTER == "steps") {
+  list(mk("INR", "NR"), mk("MR", "R"), mk("VR", "MR"))
+} else {
+  lapply(c("LSE", "NR", "INR", "R", "MR", "VR", "IR"), mk)
 }
-raw  <- lapply(ALGOS, read_one)
-RR   <- rbindlist(lapply(raw, `[[`, "resid")); RR[, algo := factor(algo, levels = ALGOS)]
-SC   <- rbindlist(lapply(raw, `[[`, "sco"));   SC[, algo := factor(algo, levels = ALGOS)]
-# SC carries both parameters. SCk is the k_off slice, kept because the lag axis and the caption
-# numbers are k_off statements; PSEL_COL fixes which parameters the figure shows.
-PSEL_COL <- c("k_off", "N_ch")
-SC[, param := factor(param, levels = PSEL_COL)]
-# N_ch is NOT shown in the least-squares column. Its diagonal information there is not zero, but it
-# comes from the mean current N*i*P_open, along which the channel count and the unitary current are
-# degenerate; separating them needs the gating fluctuations, which is the one thing least squares
-# does not model. The curve would therefore read as information about N_ch that least squares does
-# not deliver. figure_4_common.R applies the same exclusion through EXCLUDE_ROWS, so this keeps
-# figure 3 consistent with figure 4 rather than inventing a rule. One filter here covers the score
-# rows, the ratio rows and the autocorrelation, since all of them descend from SC; SCk is k_off
-# only, so the mono figures are untouched.
-SC <- SC[!(param == "N_ch" & algo == "LSE")]
-SCk  <- SC[param == "k_off"]
-EX   <- rbindlist(lapply(raw, `[[`, "ex"));    EX[, algo := factor(algo, levels = ALGOS)]
-tmap <- raw[[1]]$tm
-setorder(RR, algo, simulation_index, sample_index)
-setorder(SC, algo, simulation_index, sample_index)
-n_samp <- uniqueN(RR$sample_index)
+HASREF <- !is.na(STEPS[[1]]$ref)
+DEFAULT <- ROSTER == "family" && length(PSEL) == 2
+OUT <- if (DEFAULT) "Figure_3.pdf" else
+  sprintf("Figure_3_%s_%s.pdf", ROSTER, if (length(PSEL) == 1) "koff" else "both")
+
+COLS <- vapply(STEPS, `[[`, "", "lab")
+LEAD <- COLS[1]
+B    <- 400    # bootstrap replicates over recordings
+
+# Every member that appears anywhere, member or reference, read once.
+NEED <- unique(na.omit(c(vapply(STEPS, `[[`, "", "key"), vapply(STEPS, function(s) s$ref, ""))))
+dg <- setNames(lapply(NEED, function(a) {
+  f <- sprintf("../data/digest/figure_3_digest_%s.rds", a)
+  if (!file.exists(f)) stop("missing digest for ", a, ": run figure_3_digest.R ", a)
+  readRDS(f)
+}), NEED)
+
+SCAL <- rbindlist(lapply(NEED, function(a) as.data.table(dg[[a]]$scalar)[, key := a]))
+PAR  <- rbindlist(lapply(NEED, function(a)
+  as.data.table(dg[[a]]$param)[param_index %in% PSEL, .(simulation_index, sample_index,
+                                                        param_index, s, I)][, key := a]))
+PAR[, param := factor(names(PSEL)[match(param_index, PSEL)], levels = names(PSEL))]
+
+# N_ch IS NOT DRAWN IN THE LEAST-SQUARES COLUMN, ported from the four-column parent this file
+# replaced (figure_3.Rmd:145 there) and applied by figure_4_common.R through EXCLUDE_ROWS. Its
+# diagonal information there is not zero, but it comes from the mean current N*i*P_open, along
+# which the channel count and the unitary current are degenerate; separating them needs the gating
+# fluctuations, the one thing least squares does not model. Measured rather than assumed: F_t over
+# the pulse is 1076.55 for N_ch and for i alike, to every digit. The curve would therefore read as
+# information about N_ch that least squares does not deliver. One filter here covers every row that
+# descends from PAR, which is C to G. The legend has to say so, or the missing curve reads as a
+# rendering failure (Luciano, 2026-07-30).
+PAR_ALL <- copy(PAR)                       # kept whole: the degeneracy check needs the dropped curve
+PAR <- PAR[!(param == "N_ch" & key == "LSE")]
+tmap   <- unique(SCAL[key == NEED[1], .(sample_index, t, agonist)])[order(sample_index)]
+n_samp <- nrow(tmap)
+setorder(SCAL, key, simulation_index, sample_index)
+setorder(PAR,  key, param, simulation_index, sample_index)
 ```
 
-```{r residual-stats}
-# Panel A annotation: the ensemble-mean total logL over recordings +/- its SE. Per-recording total
-# logL first (sum_t logL_t within a recording), then mean and SE across the 1000 recordings.
-totL <- RR[, .(tot = sum(ll)), by = .(algo, simulation_index)][
-              , .(mean = mean(tot), se = sd(tot) / sqrt(.N)), by = algo]
-# Row B: residual variance over time. Bootstrap over recordings, like every other band in this
-# figure. For a mean over 1000 recordings the percentile interval and 1.96*SE agree to within a
-# couple of percent, so this buys consistency rather than accuracy: a reader comparing band widths
-# across rows should be comparing one kind of object, not two.
+```{r stats}
+set.seed(20260731)
+colVar    <- function(M) { n <- nrow(M); m <- colMeans(M); (colMeans(M * M) - m^2) * n / (n - 1) }
+rowCumsum <- function(M) t(apply(M, 1, cumsum))
+wide <- function(d, val) as.matrix(dcast(d, simulation_index ~ sample_index, value.var = val)[, -1])
+
+# Row B: residual variance over time, bootstrapped over recordings, like every other band here.
 bootmean <- function(d, val) {
-  M <- as.matrix(dcast(d, simulation_index ~ sample_index, value.var = val)[, -1])
-  n <- nrow(M)
+  M <- wide(d, val); n <- nrow(M)
   rep <- vapply(seq_len(B), function(b) colMeans(M[sample.int(n, n, TRUE), , drop = FALSE]),
                 numeric(ncol(M)))
   data.table(sample_index = as.integer(colnames(M)), m = colMeans(M),
              lo = apply(rep, 1, quantile, .025, na.rm = TRUE),
              hi = apply(rep, 1, quantile, .975, na.rm = TRUE))
 }
-RR[, r2 := r_std^2]
-tsV <- RR[, bootmean(.SD, "r2"), by = algo]
-setnames(tsV, c("m", "lo", "hi"), c("mean_r2", "r2_lo", "r2_hi"))
-tsV <- merge(tsV, tmap, by = "sample_index")[, algo := factor(algo, levels = ALGOS)]
-# Row F: SCORE autocorrelation over lag (the k_off score s_t; mean over recordings +/- 1.96 SE per
-# lag). Same computation as figure_3's row E, so this panel matches it. This is the temporal memory
-# at the inference level: a non-white score IS the J_T > F_T that makes the accumulated ratio (E)
-# diverge. (Residual autocorrelation, the data-level version, stays in the full figure_3.)
-LAGMAX  <- min(25, n_samp - 2)
-acf_one <- function(x) as.numeric(acf(x, lag.max = LAGMAX, plot = FALSE)$acf)
-# Bootstrap here too, and it is nearly free: the per-recording autocorrelations are already
-# computed and stacked in M, so a replicate is a row resample of M followed by colMeans. No
-# autocorrelation is ever recomputed.
-acf_by <- function(D) as_tibble(D) %>%
-  group_by(algo, param, simulation_index) %>% summarise(a = list(acf_one(s)), .groups = "drop") %>%
-  group_by(algo, param) %>% summarise(M = list(do.call(rbind, a)), .groups = "drop") %>%
-  mutate(d = map(M, function(m) {
-    n <- nrow(m)
-    rep <- vapply(seq_len(B), function(b) colMeans(m[sample.int(n, n, TRUE), , drop = FALSE]),
-                  numeric(ncol(m)))
-    tibble(lag = 0:LAGMAX, acf = colMeans(m),
-           lo = apply(rep, 1, quantile, .025, na.rm = TRUE),
-           hi = apply(rep, 1, quantile, .975, na.rm = TRUE))
-  })) %>%
-  select(algo, param, d) %>% unnest(d) %>% filter(lag >= 1)
-acf_sc  <- acf_by(SCk)    # k_off only: feeds the lag axis and the caption numbers, not a panel
-acf_sc2 <- acf_by(SC)     # both parameters: the *_color variants
-```
+SCAL[, r2 := r_std^2]
+RESID <- merge(SCAL[is.finite(r_std), bootmean(.SD, "r2"), by = key], tmap, by = "sample_index")
 
-```{r score-stats}
-set.seed(1)
-colVar    <- function(M) { n <- nrow(M); m <- colMeans(M); (colMeans(M * M) - m^2) * n / (n - 1) }
-rowCumsum <- function(M) t(apply(M, 1, cumsum))
-# All four per-interval statistics come out of ONE resampling loop, so the three added here cost a
-# couple of colMeans per replicate; the expensive part, the rowCumsum for the accumulated ratio,
-# was already there.
-# The standardized score bias is resampled as the WHOLE ratio, colMeans(Sb)/sqrt(colMeans(Ib)),
-# not as the numerator with the denominator held fixed. That is a real correction and not just
-# consistency: s_t and I_t are computed from the same recordings and are correlated, and the
-# analytic standard error this replaces ignored that correlation by treating Fbar as known.
-compute_one <- function(d) {
-  Sm  <- as.matrix(dcast(d, simulation_index ~ sample_index, value.var = "s")[, -1])
-  Im  <- as.matrix(dcast(d, simulation_index ~ sample_index, value.var = "I")[, -1])
+# Rows C to F out of ONE resampling loop per (member, parameter): the Fisher magnitude, the
+# standardized score bias, the per-interval ratio and the accumulated ratio. The bias is resampled
+# as the WHOLE ratio, colMeans(S)/sqrt(colMeans(I)), so it carries the correlation between the
+# score and its own information rather than treating Fbar as known.
+score_stats <- function(d) {
+  Sm <- wide(d, "s"); Im <- wide(d, "I")
   smp <- as.integer(colnames(Sm)); n <- nrow(Sm)
-  vA  <- colVar(Sm); Fb <- colMeans(Im)
-  zA  <- colMeans(Sm) / sqrt(Fb)
-  rB  <- vA / Fb
-  rC  <- colVar(rowCumsum(Sm)) / cumsum(Fb)
+  Fb <- colMeans(Im)
   repZ <- repF <- repB <- repC <- matrix(NA_real_, B, length(smp))
   for (b in seq_len(B)) {
     idx <- sample.int(n, n, replace = TRUE)
-    Sb  <- Sm[idx, , drop = FALSE]; Ib <- Im[idx, , drop = FALSE]
-    fb  <- colMeans(Ib)
+    Sb <- Sm[idx, , drop = FALSE]; Ib <- Im[idx, , drop = FALSE]
+    fb <- colMeans(Ib)
     repZ[b, ] <- colMeans(Sb) / sqrt(fb)
     repF[b, ] <- fb
     repB[b, ] <- colVar(Sb) / fb
     repC[b, ] <- colVar(rowCumsum(Sb)) / cumsum(fb)
   }
   ci <- function(M, p) apply(M, 2, quantile, p, na.rm = TRUE)
-  data.table(sample_index = smp, mA = colMeans(Sm), Fbar = Fb,
-             zA = zA,   zA_lo = ci(repZ, .025), zA_hi = ci(repZ, .975),
+  data.table(sample_index = smp, Fbar = Fb,
+             zA = colMeans(Sm) / sqrt(Fb), zA_lo = ci(repZ, .025), zA_hi = ci(repZ, .975),
              F_lo = ci(repF, .025), F_hi = ci(repF, .975),
-             rB = rB,   rB_lo = ci(repB, .025), rB_hi = ci(repB, .975),
-             rC = rC,   rC_lo = ci(repC, .025), rC_hi = ci(repC, .975))
+             rB = colVar(Sm) / Fb, rB_lo = ci(repB, .025), rB_hi = ci(repB, .975),
+             rC = colVar(rowCumsum(Sm)) / cumsum(Fb),
+             rC_lo = ci(repC, .025), rC_hi = ci(repC, .975))
 }
+SCO <- merge(PAR[, score_stats(.SD), by = .(key, param)], tmap, by = "sample_index")
 
-# Same statistics per (algo, param) for the *_color variants. This is the expensive part of the
-# notebook: compute_one runs B = 400 bootstrap replicates over the 1000 recordings, so a second
-# parameter doubles it. Everything else in this refactor is free.
-RES2 <- SC[, compute_one(.SD), by = .(algo, param)]
-RES2 <- merge(RES2, tmap, by = "sample_index")
-RES2[, `:=`(algo = factor(algo, levels = ALGOS), param = factor(param, levels = PSEL_COL))]
-# ONE mask for both score rows, and it is an absolute floor rather than a fraction of the peak.
-# The score bias and the information ratio are the same 0/0 as F_t goes to zero -- both are built
-# from the same two derivatives -- so masking one and not the other is an inconsistency, not a
-# property of the quantities. What forces a mask is numerical, not statistical: once the
-# derivatives reach ~1e-15 the ratio is floating-point noise. A percent-of-peak threshold (this
-# used to be Fbar > 1e-3 * max(Fbar)) erases the low-information region by construction, which is
-# precisely the region the N_ch curve is about.
+# Row G: score autocorrelation over lag. The bootstrap resamples the matrix of per-recording
+# autocorrelations, so no autocorrelation is ever recomputed inside the loop.
+LAGMAX  <- min(25, n_samp - 2)
+acf_one <- function(x) as.numeric(acf(x, lag.max = LAGMAX, plot = FALSE)$acf)
+# Factored out because row G now carries TWO kinds of series, the score per parameter and the
+# parameter-free residual, and they have to be the same kind of object: one autocorrelation per
+# recording, then a row-resample bootstrap of the stacked matrix. One estimator, called twice.
+acf_boot <- function(d, val) {
+  M <- do.call(rbind, d[, .(a = list(acf_one(get(val)))), by = simulation_index]$a)
+  n <- nrow(M)
+  rep <- vapply(seq_len(B), function(b) colMeans(M[sample.int(n, n, TRUE), , drop = FALSE]),
+                numeric(ncol(M)))
+  # list() and not .(): the data.table shorthand is only defined inside a `[` expression, and this
+  # is a plain function called from two of them.
+  list(lag = 0:LAGMAX, acf = colMeans(M),
+       lo = apply(rep, 1, quantile, .025, na.rm = TRUE),
+       hi = apply(rep, 1, quantile, .975, na.rm = TRUE))
+}
+# Mirrors the parent's row G, which took the residual in on 2026-07-31: the score is the memory that
+# makes the accumulated ratio diverge, and the residual is the same memory at the data level and the
+# only quantity here an experimentalist can compute on a real recording. Inheriting the parent's row
+# content, as with its scale splits, is what lets the two figures be read row for row.
+ACF <- rbind(
+  PAR[, acf_boot(.SD, "s"), by = .(key, param)],
+  SCAL[is.finite(r_std), acf_boot(.SD, "r_std"), by = key][, param := "residual"],
+  use.names = TRUE)[lag >= 1]
+ACF[, param := factor(as.character(param), levels = c("residual", names(PSEL)))]
+
+# Row A: the ensemble-mean total logL over recordings and its SE. For this figure it is the number
+# that carries the cost-ladder reading across the row, so it is computed for every member.
+TOTL <- SCAL[, .(tot = sum(ll)), by = .(key, simulation_index)][
+             , .(mean = mean(tot), se = sd(tot) / sqrt(.N)), by = key]
+ES <- SCAL[, min(simulation_index)]
+EX <- SCAL[simulation_index == ES, .(key, sample_index, t, agonist, obs = patch_current,
+                                     y_mean, y_var)]
+
+# ONE mask for the score rows, an absolute floor and not a fraction of the peak. What forces a mask
+# is numerical (once the derivatives reach ~1e-15 the ratio is floating-point noise); a
+# percent-of-peak threshold would erase the low-information region by construction, and with N_ch
+# on the figure that region is exactly what row C is about.
 FMIN <- 1e-6
-dF2 <- RES2[is.finite(Fbar) & Fbar > FMIN]                       # row C: the information itself
-dScore2 <- RES2[is.finite(zA) & is.finite(Fbar) & Fbar > FMIN]   # row D
-dB2 <- RES2[is.finite(rB) & is.finite(rB_lo) & rB_lo > 0 & is.finite(Fbar) & Fbar > FMIN]
-dC2 <- RES2[is.finite(rC) & is.finite(rC_lo) & rC_lo > 0]
+dC <- SCO[is.finite(Fbar) & Fbar > FMIN]
+dD <- SCO[is.finite(zA) & is.finite(Fbar) & Fbar > FMIN]
+dE <- SCO[is.finite(rB) & is.finite(rB_lo) & rB_lo > 0 & is.finite(Fbar) & Fbar > FMIN]
+dFa <- SCO[is.finite(rC) & is.finite(rC_lo) & rC_lo > 0]
 ```
 
-```{r panels, fig.width = 7.0, fig.height = 6.2}
-COL <- "#0072B2"; NUL <- "#009E73"
-# the two-block y scale only exists while a non-recursive column is present; with an all-recursive
-# roster `naive` is empty, every column falls in one group and the split degenerates to one scale.
-naive <- intersect(ALGOS, c("LSE", "NR", "NMR")); recg <- setdiff(ALGOS, naive)
+```{r caption-numbers}
+# --- the numbers the caption quotes, printed so they are never read off the plot (LINT-SRC) ---
+PQ <- names(PSEL)[1]     # the parameter the quoted numbers are about
+endv <- function(k, p) dFa[key == k & param == p][which.max(sample_index)]
+cat("\n=== Figure 3 caption numbers (n_simulations =",
+    uniqueN(SCAL$simulation_index), "| roster =", ROSTER,
+    "| parameters drawn:", paste(names(PSEL), collapse = ", "), ") ===\n")
 
-grange <- function(lo, hi, algo, pad = .08) {
-  g <- tibble(lo, hi, grp = ifelse(algo %in% naive, 1L, 2L)) %>% group_by(grp) %>%
-    summarise(lo = min(lo), hi = max(hi), .groups = "drop") %>%
-    mutate(pd = (hi - lo) * pad, lo = lo - pd, hi = hi + pd)
-  list(naive = c(g$lo[g$grp == 1], g$hi[g$grp == 1]), rec = c(g$lo[g$grp == 2], g$hi[g$grp == 2]))
+# WHAT EACH PANEL CLAIMS, AS A TEST AND NOT AS A PICTURE. With the roster read against the null and
+# not against another member, the caption's job is to say which tests each member fails and by how
+# much, so the table is one row per (member, parameter) with the two end-of-recording statistics
+# and, for the time-resolved rows, the fraction of informative steps whose interval excludes the
+# calibrated value. A 95% interval covers the null about 95% of the time when the member IS
+# calibrated, so a fraction near 0.05 is a pass and anything far above it is not.
+frac <- function(D, lo, hi, null) D[, .(f = mean(get(lo) > null | get(hi) < null)), by = .(key, param)]
+tab <- Reduce(function(x, y) merge(x, y, by = c("key", "param")), list(
+  frac(dD, "zA_lo", "zA_hi", 0)[, .(key, param, D_bias = f)],
+  frac(dE, "rB_lo", "rB_hi", 1)[, .(key, param, E_perint = f)],
+  dFa[, .SD[which.max(sample_index)], by = .(key, param)][
+      , .(key, param, F_accum = rC, F_lo = rC_lo, F_hi = rC_hi)],
+  ACF[lag == 1, .(key, param, G_acf1 = acf, G_lo = lo, G_hi = hi)]))
+tab <- merge(tab, TOTL[, .(key, logL = mean, logL_se = se)], by = "key")
+tab[, `:=`(F_fails = F_lo > 1 | F_hi < 1, G_fails = G_lo > 0 | G_hi < 0)]
+tab <- tab[order(match(key, vapply(STEPS, `[[`, "", "key")), param)]   # roster order, not alphabetical
+print(as.data.frame(tab), digits = 3, row.names = FALSE)
+# Row B is parameter-free, so it gets its own line.
+cat("\nB residual variance, fraction of steps whose interval excludes 1:\n")
+print(as.data.frame(RESID[, .(f = mean(lo > 1 | hi < 1)), by = key]), digits = 3, row.names = FALSE)
+if (HASREF) for (i in seq_along(STEPS)) cat(sprintf(
+  "%-4s - %-3s: %+7.2f nats total logL | accumulated ratio %.3f vs %.3f\n",
+  STEPS[[i]]$lab, STEPS[[i]]$rlab,
+  TOTL[key == STEPS[[i]]$key, mean] - TOTL[key == STEPS[[i]]$ref, mean],
+  endv(STEPS[[i]]$key, PQ)$rC, endv(STEPS[[i]]$ref, PQ)$rC))
+
+# THE COLUMN THIS FIGURE GAINED, as numbers rather than as an eyeball. INR restores the interval
+# variance term that the archived NMR build had lost, and what that buys is a DATA-level repair with
+# no INFERENCE-level repair: row B goes to one while rows F and G stay broken. Printed against both
+# neighbours, the member one step below it on the ladder (NR) and the calibrated member (IR), since
+# the claim is that it matches the second on row B and the first on rows F and G.
+if ("INR" %in% NEED) {
+  b_of <- function(k) RESID[key == k, mean(m)]
+  f_of <- function(k) endv(k, PQ)$rC
+  g_of <- function(k) ACF[key == k & param == PQ & lag == 1, acf]
+  cat("\nINR, the interval non-recursive member, against its neighbours:\n")
+  for (k in intersect(c("NR", "INR", "IR"), NEED))
+    cat(sprintf("  %-4s mean r^2 %.4f | accumulated J/F %6.2f | score ACF(1) %+.4f | logL %8.2f\n",
+                LAB[[k]], b_of(k), f_of(k), g_of(k), TOTL[key == k, mean]))
+  cat(sprintf("  INR - NR = %+.2f nats; INR reaches IR's residual calibration (%.4f vs %.4f)\n",
+              TOTL[key == "INR", mean] - TOTL[key == "NR", mean], b_of("INR"), b_of("IR")))
+  cat("  and does not reach its information calibration:",
+      sprintf("%.2f against %.2f.\n", f_of("INR"), f_of("IR")))
 }
+```
+
+```{r panels, fig.width = 7.0, fig.height = 7.5}
+# MEMBER / REFERENCE. With one parameter the colour is free, so the member is the body figure's
+# blue and the reference is grey: the strongest possible contrast for the comparison this figure
+# exists to make. With two parameters the colour has to carry the PARAMETER, so the contrast moves
+# to weight and opacity: the reference is the same hue, thicker and washed out, the member is thin,
+# saturated and the only one with a band. Dashing was the other candidate and was rejected because
+# rows D to F are high-frequency at 0.4 pt, where a dash pattern reads as noise.
+PCOL <- c(residual = "#1A1A1A", k_off = "#0072B2", N_ch = "#D55E00")
+PLEG <- c(residual = expression(r[t]), k_off = expression(k["off"]), N_ch = expression(N["ch"]))
+# alpha 0.35 at linewidth 0.85 was tried first and failed: against a 0.4 pt member of the same hue
+# the two curves read as two curves, with no cue as to which is which. The contrast has to be in
+# WEIGHT, not only in opacity, so the reference becomes a pale wide underlay that the member rides
+# on: nothing else in the figure is 1.3 pt, so the idiom is unambiguous at a glance.
+REF_A <- if (length(PSEL) == 1) 1.00 else 0.30    # reference opacity
+REF_W <- if (length(PSEL) == 1) 0.55 else 1.30    # reference weight
+REF_C <- if (length(PSEL) == 1) "grey60" else NA  # reference colour, NA = take the parameter's
+# Rows A and B are parameter-free, so their colour is free and the reference can be plain grey at a
+# normal weight. Only the score rows need the pale-wide-underlay trick, because there the hue is
+# spoken for by the parameter.
+NEU_L <- "#1A1A1A"; NEU_F <- "#9E9E9E"; NEU_R <- "grey55"; NEU_W <- 0.55
+NUL   <- "#009E73"
+
+pscale <- list(scale_colour_manual(values = PCOL, labels = PLEG, name = NULL, drop = FALSE),
+               scale_fill_manual(values = PCOL, labels = PLEG, name = NULL, drop = FALSE))
+# The reference layer: same hue when the colour is spoken for, flat grey when it is not.
+refdat  <- function(D, s) if (HASREF) D[key == s$ref] else D[0]
+reflayer <- function(d, mapping) {
+  if (!HASREF || !nrow(d)) return(NULL)
+  if (is.na(REF_C)) {
+    geom_line(data = d, mapping = mapping, linewidth = REF_W, alpha = REF_A, show.legend = FALSE)
+  } else {
+    geom_line(data = d, mapping = mapping, colour = REF_C, linewidth = REF_W, show.legend = FALSE)
+  }
+}
+
+# Y SCALES, and which one is right follows from WHAT THE PANEL IS COMPARED TO.
+#   with a reference: the comparison is between two curves INSIDE the panel, so the scale is PER
+#     COLUMN. A shared scale hands the range to whichever step is largest -- the first spans 13 to
+#     22 in the accumulated row while the other two span 1.07 to 1.20 -- and renders the
+#     MR-against-R difference, a number the paper quotes, as a flat line.
+#   without a reference: the comparison is between the curve and its null, and the null is the same
+#     value in every column, so the scale is SHARED per row and the columns become comparable for
+#     free. This also returns the width that a second y axis was costing.
+rng <- function(D, s, cols, incl = NULL) {
+  d <- if (HASREF) D[key %in% c(s$key, s$ref)] else D
+  v <- unlist(lapply(cols, function(k) d[[k]]))
+  range(c(v[is.finite(v)], incl), finite = TRUE)
+}
+
+# THE TWO-BLOCK SPLIT, and it is the parent figure's, not a new invention. The open-loop members
+# fail by a factor of twenty and the recursive ones by twenty percent, so one axis cannot show
+# both: on a shared scale the four recursive columns of the accumulated row collapse onto the
+# reference line and the MR-and-VR-against-IR difference, which is the number this figure exists
+# for, disappears. figure_3.Rmd splits exactly rows B, D, F and G and leaves A, C and E shared;
+# this figure inherits that choice rather than making its own, so the two can be read row for row.
+NAIVE <- intersect(COLS, c("LSE", "NR", "INR", "NMR"))
+blkof <- function(lab) if (lab %in% NAIVE) "naive" else "rec"
+KEYBLK <- setNames(vapply(STEPS, function(s) blkof(s$lab), ""), vapply(STEPS, `[[`, "", "key"))
+# The first column of each block carries the y numbers; only the first of the figure carries the
+# y title, since it is the same quantity on both scales.
+AXIS_AT <- c(COLS[1], if (length(unique(KEYBLK)) > 1) COLS[which(vapply(COLS, blkof, "") == "rec")[1]])
+# Per-block range. `pad` and the log/linear treatment stay with the caller, as in the flat case.
+rng2 <- function(D, cols, incl = NULL) {
+  lapply(split(names(KEYBLK), KEYBLK), function(ks) {
+    v <- unlist(lapply(cols, function(k) D[key %in% ks][[k]]))
+    range(c(v[is.finite(v)], incl), finite = TRUE)
+  })
+}
+qrng2 <- function(D, cols, p = c(.005, .995)) {
+  lapply(split(names(KEYBLK), KEYBLK), function(ks) {
+    v <- unlist(lapply(cols, function(k) D[key %in% ks][[k]]))
+    as.numeric(quantile(v[is.finite(v)], p))
+  })
+}
+pick <- function(yl, s) if (is.list(yl)) yl[[blkof(s$lab)]] else yl
+
+base <- function() theme_bw(base_size = 9)
+tr   <- range(tmap$t)
+lr   <- range(c(1, ACF$lag))
+agon <- tmap[agonist > 0]; x0 <- min(agon$t); x1 <- max(agon$t)
+# AGONIST BAND, -Inf/Inf and not +-1e10 (fixed 2026-07-31). A rect 2e10 tall clipped to a window of
+# order one rasterises to NOTHING on a linear axis, so every LINEAR row of this figure was rendering
+# unshaded while the log rows were fine -- inconsistent shading inside one figure, which reads as
+# deliberate and was not. -Inf/Inf means "to the panel edge"; on a log axis it is NaN and the layer
+# is dropped, hence the tiny positive lower bound there instead.
+mkshade <- function(logr = FALSE) annotate("rect", xmin = x0, xmax = x1,
+                  ymin = if (logr) 1e-300 else -Inf, ymax = Inf, fill = "grey85", alpha = .5)
 padr <- function(r, f = .06) r + c(-1, 1) * diff(r) * f
+
 ratio_breaks <- function(lo, hi) {
   cand <- if (log10(hi) - log10(lo) <= 1.2)
             c(.1, .2, .3, .5, .7, 1, 1.5, 2, 3, 5, 7, 10, 15, 20, 30, 50, 70, 100)
           else c(.1, .2, .5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000)
   b <- sort(unique(c(1, cand[cand >= lo & cand <= hi])))
-  # At most three labels. The rows are short (see the height budget at the layout chunk), so a
-  # full ladder of breaks would collide; 1 is the reference and must survive, the other two are
-  # the ends of the range actually drawn.
   if (length(b) > 3) b <- sort(unique(c(b[1], 1, b[length(b)])))
   b
 }
-# The gap under the column heads has three sources, all of them furniture. theme_void inherits
-# plot.margin from theme_grey (5.5 pt top and bottom), the title carries a default bottom margin
-# of about half a line, and, worst of the three, the empty panel of this plot is a null unit that
-# absorbs every bit of slack left in the header cell -- and that slack sits exactly between the
-# titles and row A. The margins are zeroed here; the slack is removed by giving the header row a
-# share slightly smaller than the two lines of text need (see HS2 at the layout chunk), so the
-# panel collapses to zero height and the titles end flush against the first row.
-colhead <- function(k) ggplot() + theme_void() + ggtitle(ALAB[[k]], subtitle = FULL[[k]]) +
-  theme(plot.title = element_text(hjust = .5, size = 9, margin = margin(b = 0.5)),
-        plot.subtitle = element_text(hjust = .5, size = 7, margin = margin(b = 0)),
-        plot.margin = margin(0, 0, 0, 0))
-deco <- function(p, col, split, xr, yl, yq, ttl = NULL, tag = NULL, bottom = FALSE, xlab = NULL, logr = FALSE) {
-  ylim <- if (is.list(yl)) (if (col %in% naive) yl$naive else yl$rec) else yl
+# Signed axes: at most three breaks, SYMMETRIC about zero. The body figure's rule (keep the first
+# break, zero, and the last) can return -0.2 / 0 / 0.1, which reads as a mistake; here the outer
+# pair is one round step chosen to fit inside the range.
+sym_breaks <- function(ylim) {
+  s <- max(abs(ylim)); st <- c(.005, .01, .02, .05, .1, .2, .5, 1, 2, 5, 10, 20, 50)
+  st <- st[st <= s]; if (!length(st)) return(0)
+  k <- st[length(st)]; b <- c(-k, 0, k)
+  sort(unique(b[b >= ylim[1] & b <= ylim[2]]))
+}
+deco <- function(p, col, xr, ylim, yq, bottom = FALSE, xlab = NULL, logr = FALSE, own = FALSE,
+                 split = FALSE) {
   if (logr) {
     ylim <- c(min(ylim[1], 1), max(ylim[2], 1))
     rb <- ratio_breaks(ylim[1], ylim[2])
-    p <- p + scale_y_log10(breaks = rb, labels = as.character(rb)) + coord_cartesian(xlim = xr, ylim = ylim)
+    p <- p + scale_y_log10(breaks = rb, labels = as.character(rb)) +
+      coord_cartesian(xlim = xr, ylim = ylim)
   } else {
-    brk <- pretty(ylim, n = 3); brk <- sort(unique(c(0, brk))); brk <- brk[brk >= ylim[1] & brk <= ylim[2]]
-    if (length(brk) > 3) brk <- sort(unique(c(brk[1], 0, brk[length(brk)])))   # same cap; 0 is the reference
-    p <- p + scale_y_continuous(breaks = brk) + coord_cartesian(xlim = xr, ylim = ylim)
+    p <- p + scale_y_continuous(breaks = sym_breaks(ylim)) + coord_cartesian(xlim = xr, ylim = ylim)
   }
+  # Who prints y numbers. `own` (per-column scales) means everybody, because hiding them would
+  # silently invite a comparison across columns whose scales differ. `split` means the first column
+  # of each block. Otherwise the leftmost alone. The y TITLE appears once in every case, because it
+  # is the same quantity whatever the scale.
+  shows <- own || (split && col %in% AXIS_AT)
   if (col == LEAD) p <- p + ylab(yq) + theme(axis.title.y = element_text(size = 8))
-  else if (col == "R" && split) p <- p + theme(axis.title.y = element_blank())
-  else p <- p + theme(axis.title.y = element_blank(), axis.text.y = element_blank(), axis.ticks.y = element_blank())
-  # x NUMBERS on every bottom-of-block panel, but the x TITLE only ONCE, on the centre column (R)
+  else if (shows) p <- p + theme(axis.title.y = element_blank())
+  else p <- p + theme(axis.title.y = element_blank(), axis.text.y = element_blank(),
+                      axis.ticks.y = element_blank())
   if (bottom) {
-    if (col == "R") p <- p + xlab(xlab) + theme(axis.title.x = element_text(size = 8))
+    if (col == COLS[2]) p <- p + xlab(xlab) + theme(axis.title.x = element_text(size = 8))
     else p <- p + theme(axis.title.x = element_blank())
   } else p <- p + theme(axis.title.x = element_blank(), axis.text.x = element_blank())
-  # Neither the row title nor the A-F letter is drawn here any more; see the house convention in
-  # papers/_program/notation_map.md section 6. R3: the prose name of a row lives in the legend,
-  # once, not inside the image. R4: the letter sits alone in its own strip column, added at the
-  # layout chunk, which costs width once instead of a line of height per row (~0.13 in x 6).
-  # `ttl` and `tag` are still accepted so the six call sites below need no edit.
   p + theme(panel.grid.minor = element_blank(), plot.margin = margin(0.5, 3, 0.5, 3))
 }
-base <- function() theme_bw(base_size = 8)
 
-tr    <- range(tsV$t)
-lr    <- range(c(1, acf_sc$lag))
-agon  <- tmap[agonist > 0]; x0 <- min(agon$t); x1 <- max(agon$t)
-# full-panel agonist band. ymin branches: a log10 axis rejects a negative floor
-# (log10(<=0)=NaN -> rect dropped); linear panels go negative and need to reach the floor.
-mkshade <- function(logr = FALSE) annotate("rect", xmin = x0, xmax = x1,
-                  ymin = if (logr) 1e-10 else -1e10, ymax = 1e10, fill = "grey85", alpha = .5)
-
-# A: example recording — predicted current (mean +/- sd) over observed; SHARED, linear, time. Extra
-# top headroom (+35% of the range) carries the ensemble-mean total logL over recordings (+/- SE) as a
-# per-column label. Spelled "mean logL" (over recordings) so it is not misread as this one example's
-# logL; on two lines so it fits the narrow single-column width without clipping.
-yTr <- padr(range(c(EX$obs, EX$y_mean - sqrt(EX$y_var), EX$y_mean + sqrt(EX$y_var)), na.rm = TRUE))
-yTr[2] <- yTr[2] + 0.35 * diff(yTr)
-# B: residual variance (>=0) -> log10, GROUPED, time
-loV <- pmax(tsV$r2_lo, 1e-6)
-yA  <- lapply(grange(log10(loV), log10(tsV$r2_hi), as.character(tsV$algo)), function(r) 10^r)
-# --- numbers the caption quotes, printed so they are never read off the plot (LINT-SRC) ---
-.capnum <- merge(
-  totL[, .(algo, logL = mean, logL_se = se)],
-  RES2[param == "k_off"][, .SD[which.max(sample_index)], by = algo][
-        , .(algo, accum_ratio = rC, lo = rC_lo, hi = rC_hi)],
-  by = "algo")
-.capnum <- merge(.capnum, as.data.table(acf_sc)[lag == 1, .(algo, acf_lag1 = acf,
-                 acf_lo = lo, acf_hi = hi)], by = "algo")
-.capnum <- .capnum[match(ALGOS, algo)]
-cat("\n=== Figure 3 caption numbers (n_simulations =", uniqueN(SC$simulation_index), ") ===\n")
-print(as.data.frame(.capnum), digits = 3, row.names = FALSE)
-cat("logL spread (best - worst):", sprintf("%.1f nats\n", diff(range(.capnum$logL))))
-
-# HEIGHT BUDGET (2026-07-30). The eLife text block is 9.23 in tall and this figure's legend runs
-# about 2.9 in at 9 pt, so the image has to fit in ~6.3 in. All six rows are kept; what changes is
-# that the rows no longer get equal shares. A, the example trace, needs vertical range because it
-# IS a range; B, C and D are curves sitting on a reference line, where extra height buys nothing;
-# E spans 1 to 15 on a log axis and F spans 0 to 0.86, so both need something in between. The head
-# strip is raised from 0.10 to 0.18 because at 6.2 in the old share (0.16 in) is less than the
-# column titles themselves need (~0.27 in) and they would clip.
-# The total stays at 6.2 in after folding the A-F letters into the row titles (see deco): the ~1 in
-# that change frees is spent on the panels rather than on shrinking the figure further, because at
-# 6.2 in the data area was tighter than anything else in this family. 6.2 + a 2.9 in legend is 9.1
-# against the 9.23 in text block, so the figure and its legend share one page.
-# Head at 0.15, deliberately a little less than the two lines of text need. The fixed title rows
-# keep their height and the empty panel under them collapses to zero, which is what removes the gap
-# between the heads and row A. Raise it only if the subtitles start to clip. The vector in force is
-# HS2, at the layout chunk; the six-row HS that used to sit here went with the six-row figure.
-
-# Row furniture as two thin columns instead of a line of height per row. On the LEFT the panel
-# letter alone, bold, at the top, which is where eLife figures put it. On the RIGHT the row title
-# rotated in a grey box, which is where ggplot's own facet_grid puts a row strip.
-#
-# The box is drawn as a rect INSIDE the plotting area rather than as plot.background, because a
-# plot background also paints the margin, so consecutive rows fuse into one continuous grey bar
-# with no separation. ymin/ymax at 0.03/0.97 leave the gap between boxes that a facet strip has.
-#
-# Titles are wrapped to two lines and carry no math. A rotated title has to fit in the ROW's
-# height, and the short rows are 0.84 in: "information ratio" at 6.5 pt is 0.72 in, the full
-# "per-interval information ratio" on one line would be 1.46 in and would not fit. The symbols
-# stay on the y axis (notation_map.md section 6, R3 and R5); the strip is a locator.
+# Column heads name the STEP, not the member.
+colhead <- function(s) ggplot() + theme_void() +
+  ggtitle(if (HASREF) bquote(bold(.(s$lab)) ~ "over" ~ .(s$rlab)) else bquote(bold(.(s$lab))),
+          subtitle = s$flab) +
+  theme(plot.title = element_text(hjust = .5, size = 9, margin = margin(b = 0.5)),
+        plot.subtitle = element_text(hjust = .5, size = 7, margin = margin(b = 0)),
+        plot.margin = margin(0, 0, 0, 0))
 rowlet <- function(lt) ggplot() + theme_void() +
-  annotate("text", x = 0.5, y = 0.97, label = lt, size = 8 / .pt, fontface = "bold", vjust = 1) +
+  annotate("text", x = .5, y = .97, label = lt, size = 8 / .pt, fontface = "bold", vjust = 1) +
   coord_cartesian(xlim = c(0, 1), ylim = c(0, 1), expand = FALSE) +
   theme(plot.margin = margin(0, 0, 0, 0))
-
 rowstrip <- function(txt) ggplot() + theme_void() +
-  annotate("rect", xmin = 0.15, xmax = 1, ymin = 0.03, ymax = 0.97, fill = "grey85", colour = NA) +
-  annotate("text", x = 0.575, y = 0.5, label = txt, angle = -90, size = 6.5 / .pt,
-           lineheight = 0.9) +
+  annotate("rect", xmin = .15, xmax = 1, ymin = .03, ymax = .97, fill = "grey85", colour = NA) +
+  annotate("text", x = .575, y = .5, label = txt, angle = -90, size = 6.5 / .pt, lineheight = .9) +
   coord_cartesian(xlim = c(0, 1), ylim = c(0, 1), expand = FALSE) +
   theme(plot.margin = margin(0, 0, 0, 0))
+RTTL <- c(A = "predicted &\nobserved current", B = "residual\nvariance", C = "Fisher\ninformation",
+          D = "score bias", E = "per-interval\ninformation ratio",
+          F = "accumulated\ninformation ratio", G = "autocorrelation")
 
-RTTL <- c(A = "predicted &\nobserved current", B = "residual\nvariance",
-          C = "Fisher\ninformation",  D = "score bias",
-          E = "per-interval\ninformation ratio", F = "accumulated\ninformation ratio",
-          G = "score\nautocorrelation")
-
-```
-
-```{r color-variants, fig.width = 7.0, fig.height = 7.3}
-# TWO-PARAMETER VARIANTS, written under their own names so all four can be compared:
-#   Figure_3.pdf            6 rows, k_off only            (the current figure)
-#   Figure_3_FIM.pdf        7 rows, k_off only + F_t row
-#   Figure_3_color.pdf      6 rows, k_off and N_ch
-#   Figure_3_FIM_color.pdf  7 rows, k_off and N_ch + F_t row
-#
-# Rows A and B are parameter-free (the current, and the standardized residual), so they are shared
-# with the mono figures unchanged. Rows C to F are score quantities and get one colour per
-# parameter. k_off keeps the mono figure's blue, so a colour variant can be laid over the mono one
-# and the k_off curves should coincide exactly.
-#
-# WHAT THE LEGEND MUST SAY (Luciano, 2026-07-30). The least-squares column carries no N_ch curve,
-# by exclusion rather than by absence of data (see the note at SC in the read chunk). Least squares
-# does not model the gating fluctuations, which is the only thing that separates the channel count
-# from the unitary current, so its information about N_ch would be an artefact of the
-# parameterisation rather than something it delivers. A sentence of the form "the channel-count
-# comparison is not drawn for least squares, because with the fluctuations unmodelled the channel
-# count and the unitary current are not separable" belongs in the legend; without it the missing
-# curve reads as a rendering failure.
-PCOL2 <- c(k_off = COL, N_ch = "#D55E00")
-PLEG2 <- parse(text = c('k["off"]', 'N["ch"]'))
-# ONE legend for the whole figure, and it takes two things to get it.
-# drop = FALSE: since N_ch is excluded from the least-squares column, that panel has a single level
-# present, and by default ggplot drops unused levels from the guide. Its guide would then differ
-# from the others, and patchwork's guides = "collect" only merges guides that are identical, so
-# every distinct one gets printed. Keeping both levels in every panel's scale makes them identical.
-# guides(fill = "none"): the ribbons carry a fill scale with the same labels as the colour scale,
-# which otherwise prints as a second legend saying the same thing. The colour key is the one that
-# means something; the fill just follows it.
-pscale <- list(scale_colour_manual(values = PCOL2, labels = PLEG2, name = NULL, drop = FALSE),
-               scale_fill_manual(values = PCOL2, labels = PLEG2, name = NULL, drop = FALSE),
-               guides(fill = "none"),
-               # the one key that survives is a line, so make it read as one rather than as the
-               # hairline the 0.4 pt data lines would give
-               guides(colour = guide_legend(override.aes = list(linewidth = 0.8))))
-# Rows A and B are not about any parameter -- they are the current and the standardized residual --
-# so they must not wear a parameter's colour. Neutral dark grey for the line, light grey for the
-# band, which also keeps them apart from the observed points at grey45.
-NEU_L <- "#1A1A1A"; NEU_F <- "#9E9E9E"
-
-# ONE legend in the whole figure, carried by exactly one panel. patchwork's guides = "collect"
-# merges guides only when they are IDENTICAL, and ours are not: the autocorrelation row draws its
-# key with points and segments while the ribbon rows draw it with a line, and the least-squares
-# column has one level fewer than the rest. Rather than chase those differences, every geom is
-# built with show.legend = FALSE except the Fisher line in the column named here, so only one guide
-# is ever produced and collecting it is trivial. IR is the bearer because it carries both
-# parameters; the least-squares column does not.
-LEGCOL <- "IR"
-
-# A and B rebuilt in the neutral colour for these variants (the mono figures keep COL).
-pTr2 <- lapply(ALGOS, function(a) {
-  d <- EX[algo == a]
+# --- A: the example recording, the same one in every column. The member's predictive band and
+# mean, the reference's mean as a line but NOT its band: two overlapping +-1 sd ribbons in a 1.78 in
+# panel read as one wide ribbon. Both total logL values are annotated, which is where the ladder
+# identity stops being a visual impression and becomes a number.
+yTr <- padr(range(c(EX$obs, EX$y_mean - sqrt(EX$y_var), EX$y_mean + sqrt(EX$y_var)), na.rm = TRUE))
+yTr[2] <- yTr[2] + 0.45 * diff(yTr)
+pA <- lapply(STEPS, function(s) {
+  d <- EX[key == s$key]; r <- refdat(EX, s)
   g <- ggplot(d, aes(t)) + mkshade() +
     geom_ribbon(aes(ymin = y_mean - sqrt(y_var), ymax = y_mean + sqrt(y_var)),
-                fill = NEU_F, alpha = .55) +
+                fill = NEU_F, alpha = .5) +
     geom_point(aes(y = obs), colour = "grey45", size = .35, alpha = .5) +
+    geom_line(data = r, aes(y = y_mean), colour = NEU_R, linewidth = .55) +
     geom_line(aes(y = y_mean), colour = NEU_L, linewidth = .4) +
-    annotate("text", x = tr[2], y = yTr[2], hjust = 1, vjust = 1, size = 2.7, lineheight = .9,
-             label = sprintf("mean logL\n%.1f %s %.1f", totL[algo == a, mean], "±",
-                             totL[algo == a, se])) + base()
-  deco(g, a, FALSE, tr, yTr, "current")
+    annotate("text", x = tr[2], y = yTr[2], hjust = 1, vjust = 1, size = 2.5, lineheight = .95,
+             label = if (HASREF)
+               sprintf("mean logL\n%s %.1f\n%s %.1f", s$lab, TOTL[key == s$key, mean],
+                       s$rlab, TOTL[key == s$ref, mean])
+             else sprintf("mean logL\n%.1f %s %.1f", TOTL[key == s$key, mean], "\u00b1",
+                             TOTL[key == s$key, se])) + base()
+  deco(g, s$lab, tr, yTr, "current")
 })
-pA2 <- lapply(ALGOS, function(a) {
-  d <- tsV[algo == a]
-  g <- ggplot(d, aes(t, mean_r2)) + mkshade(TRUE) +
+# --- B: residual variance
+RESID[, lo_p := pmax(lo, 1e-6)]
+pB <- lapply(STEPS, function(s) {
+  d <- RESID[key == s$key]; r <- refdat(RESID, s)
+  yB <- lapply(rng2(RESID, c("lo_p", "hi"), incl = 1), function(r) 10^padr(log10(r)))
+  g <- ggplot(d, aes(t, m)) + mkshade(TRUE) +
     geom_hline(yintercept = 1, colour = NUL, linewidth = .4) +
-    geom_ribbon(aes(ymin = pmax(r2_lo, 1e-6), ymax = r2_hi), fill = NEU_F, alpha = .55) +
+    geom_line(data = r, colour = NEU_R, linewidth = NEU_W) +
+    geom_ribbon(aes(ymin = lo_p, ymax = hi), fill = NEU_F, alpha = .45) +
     geom_line(colour = NEU_L, linewidth = .4) + base()
-  deco(g, a, TRUE, tr, yA, expression(bar(r[t]^2)), logr = TRUE)
+  deco(g, s$lab, tr, pick(yB, s), expression(bar(r[t]^2)), logr = TRUE, own = HASREF, split = TRUE)
 })
-
-# C: score bias, STANDARDIZED by its own information, s_bar_t / sqrt(F_bar_t).
-# Two reasons, and the first is not cosmetic. (i) The raw score has the units of the parameter it
-# differentiates, so k_off and N_ch cannot share a linear axis at all; dividing by sqrt(F_t) makes
-# both dimensionless, with null 0 and natural scale 1, and comparable across members too.
-# (ii) The raw version reached about -20 in the LSE and NR columns, because grange takes the
-# absolute min and max over the block, so one excursion at the concentration jump set the scale for
-# every other point. qrange below is grange's robust twin: the same naive/recursive split, but the
-# block limits come from percentiles rather than extremes. A curve may therefore leave the panel;
-# that is the intended trade and the legend should say so.
-qrange <- function(lo, hi, algo, p = c(.005, .995), pad = .08) {
-  g <- tibble(lo, hi, grp = ifelse(algo %in% naive, 1L, 2L)) %>% group_by(grp) %>%
-    summarise(lo = quantile(lo, p[1], na.rm = TRUE),
-              hi = quantile(hi, p[2], na.rm = TRUE), .groups = "drop") %>%
-    mutate(pd = (hi - lo) * pad, lo = lo - pd, hi = hi + pd)
-  list(naive = c(g$lo[g$grp == 1], g$hi[g$grp == 1]),
-       rec   = c(g$lo[g$grp == 2], g$hi[g$grp == 2]))
-}
-yC2 <- qrange(dScore2$zA_lo, dScore2$zA_hi, as.character(dScore2$algo))
-# One band only: the ordinary standard error of a mean over the recordings, standardized like the
-# line. No bootstrap in this row -- the bootstrap in this notebook serves the two information-ratio
-# rows, per-interval and accumulated, and nothing else.
-# The ribbon is a bootstrap percentile interval of the WHOLE standardized ratio, resampled over
-# recordings, so it carries the correlation between the score and its own information. The analytic
-# standard error it replaces divided the numerator's error by a Fbar treated as known, which
-# understates it wherever that correlation is not negligible.
-pC2 <- lapply(ALGOS, function(a) {
-  g <- ggplot(dScore2[algo == a], aes(t, zA, colour = param, fill = param)) + mkshade() +
-    geom_hline(yintercept = 0, colour = NUL, linewidth = .4) +
-    geom_ribbon(aes(ymin = zA_lo, ymax = zA_hi), alpha = .22, colour = NA, show.legend = FALSE) +
-    geom_line(linewidth = .4, show.legend = FALSE) + base() + pscale
-  deco(g, a, TRUE, tr, yC2, expression(bar(s)[t] / sqrt(F[t])))
-})
-# D: per-interval information ratio, log10, shared
-yD2 <- 10^padr(log10(as.numeric(quantile(c(dB2$rB_lo, dB2$rB_hi), c(.01, .99), na.rm = TRUE))))
-pD2 <- lapply(ALGOS, function(a) {
-  g <- ggplot(dB2[algo == a], aes(t, rB, colour = param, fill = param)) + mkshade(TRUE) +
-    geom_hline(yintercept = 1, colour = NUL, linewidth = .4) +
-    geom_ribbon(aes(ymin = rB_lo, ymax = rB_hi), alpha = .22, colour = NA, show.legend = FALSE) +
-    geom_line(linewidth = .4, show.legend = FALSE) + base() + pscale
-  deco(g, a, FALSE, tr, yD2, expression(Var(s[t]) / F[t]), logr = TRUE)
-})
-# E: accumulated information ratio, log10, grouped, bottom of the time block
-yE2 <- lapply(grange(log10(dC2$rC_lo), log10(dC2$rC_hi), as.character(dC2$algo)), function(r) 10^r)
-pE2 <- lapply(ALGOS, function(a) {
-  g <- ggplot(dC2[algo == a], aes(t, rC, colour = param, fill = param)) + mkshade(TRUE) +
-    geom_hline(yintercept = 1, colour = NUL, linewidth = .4) +
-    geom_ribbon(aes(ymin = rC_lo, ymax = rC_hi), alpha = .22, colour = NA, show.legend = FALSE) +
-    geom_line(linewidth = .4, show.legend = FALSE) + base() + pscale
-  deco(g, a, TRUE, tr, yE2, expression(Var(sum(s[t])) / sum(F[t])),
-       bottom = TRUE, xlab = "time (ms)", logr = TRUE)
-})
-# F: score autocorrelation over lag, signed -> linear, grouped, bottom of the lag block
-yF2 <- grange(acf_sc2$lo, acf_sc2$hi, as.character(acf_sc2$algo))
-pSc2 <- lapply(ALGOS, function(a) {
-  g <- ggplot(filter(acf_sc2, algo == a), aes(lag, acf, colour = param)) +
-    geom_hline(yintercept = 0, colour = NUL, linewidth = .4) +
-    geom_linerange(aes(ymin = lo, ymax = hi), linewidth = .35, show.legend = FALSE,
-                   position = position_dodge(width = .35)) +
-    geom_point(size = .25, position = position_dodge(width = .35), show.legend = FALSE) +
-    base() + pscale
-  deco(g, a, TRUE, lr, yF2, "ACF", bottom = TRUE, xlab = "lag")
-})
-# ROW C: the Fisher information itself, with its own bootstrap band. It comes from RES2's Fbar,
-# the same table every other parameter row descends from, so there is one definition of F_t in the
-# notebook and one resampling of it.
-# Plotted as log10(F_t) on a LINEAR axis rather than through deco's log branch, because that branch
-# forces the value 1 onto the ticks -- right for a ratio whose null is 1, meaningless for an
-# information magnitude that spans decades and never passes near 1.
-dF2[, `:=`(lF = log10(Fbar), lF_lo = log10(pmax(F_lo, 1e-300)), lF_hi = log10(F_hi))]
-yFI <- range(c(dF2$lF_lo, dF2$lF_hi), finite = TRUE)
-pFI <- lapply(ALGOS, function(a) {
-  g <- ggplot(dF2[algo == a], aes(t, lF, colour = param, fill = param)) + mkshade() +
+# --- C: log10 F_t on a LINEAR axis. The limits come from the CURVE, not from the band's lower edge:
+# F_lo runs down to the mask floor, and ranging over the band there spends two thirds of the row on
+# empty space (the defect the body figure's row C has and this one does not repeat).
+dC[, `:=`(lF = log10(Fbar), lF_lo = log10(pmax(F_lo, 1e-300)), lF_hi = log10(F_hi))]
+# The floor is the top of the range minus DEC decades, not the minimum of the curve. The N_ch
+# information falls off a cliff when the agonist is washed out and keeps falling to the mask, so
+# ranging over the curve spends most of the row drawing the cliff. Five decades keep the plateau,
+# the cliff and where each parameter stops being measured, which is what the row is for; the tail
+# below runs off the panel and the caption says so.
+DEC <- 5
+pC <- lapply(STEPS, function(s) {
+  d <- dC[key == s$key]; r <- refdat(dC, s)
+  hi <- rng(dC, s, c("lF_hi"))[2]
+  yC <- padr(c(hi - DEC, hi), .04)
+  g <- ggplot(d, aes(t, lF, colour = param, fill = param)) + mkshade() +
+    reflayer(r, aes(t, lF, colour = param)) +
     geom_ribbon(aes(ymin = lF_lo, ymax = lF_hi), alpha = .22, colour = NA, show.legend = FALSE) +
-    geom_line(linewidth = .4, show.legend = (a == LEGCOL)) + base() + pscale +
-    coord_cartesian(xlim = tr, ylim = yFI) +
-    scale_y_continuous(breaks = pretty(yFI, n = 3)) +
+    geom_line(linewidth = .4, show.legend = FALSE) + base() + pscale +
+    coord_cartesian(xlim = tr, ylim = yC) + scale_y_continuous(breaks = pretty(yC, n = 3)) +
     theme(panel.grid.minor = element_blank(), plot.margin = margin(0.5, 3, 0.5, 3),
           axis.title.x = element_blank(), axis.text.x = element_blank())
-  if (a == LEAD)
-    g + ylab(expression(log[10] ~ F[t])) + theme(axis.title.y = element_text(size = 8))
-  else
-    g + theme(axis.title.y = element_blank(), axis.text.y = element_blank(),
-              axis.ticks.y = element_blank())
+  if (s$lab == LEAD) g + ylab(expression(log[10] ~ F[t])) +
+      theme(axis.title.y = element_text(size = 8))
+  else if (HASREF) g + theme(axis.title.y = element_blank())
+  else g + theme(axis.title.y = element_blank(), axis.text.y = element_blank(),
+                 axis.ticks.y = element_blank())
+})
+# --- D: standardized score bias. Percentile limits and not extremes: one excursion at the
+# concentration jump would otherwise set the scale for the whole row.
+qrng <- function(D, s, cols, p = c(.005, .995)) {
+  d <- if (HASREF) D[key %in% c(s$key, s$ref)] else D
+  v <- unlist(lapply(cols, function(k) d[[k]]))
+  as.numeric(quantile(v[is.finite(v)], p))
+}
+pD <- lapply(STEPS, function(s) {
+  d <- dD[key == s$key]; r <- refdat(dD, s)
+  yD <- lapply(qrng2(dD, c("zA_lo", "zA_hi")), padr, .08)
+  g <- ggplot(d, aes(t, zA, colour = param, fill = param)) + mkshade() +
+    geom_hline(yintercept = 0, colour = NUL, linewidth = .4) +
+    reflayer(r, aes(t, zA, colour = param)) +
+    geom_ribbon(aes(ymin = zA_lo, ymax = zA_hi), alpha = .22, colour = NA, show.legend = FALSE) +
+    geom_line(linewidth = .4, show.legend = FALSE) + base() + pscale
+  deco(g, s$lab, tr, pick(yD, s), expression(bar(s)[t] / sqrt(F[t])), own = HASREF, split = TRUE)
+})
+# --- E: per-interval information ratio
+pE <- lapply(STEPS, function(s) {
+  d <- dE[key == s$key]; r <- refdat(dE, s)
+  yE <- 10^padr(log10(qrng(dE, s, c("rB_lo", "rB_hi"), c(.01, .99))))
+  g <- ggplot(d, aes(t, rB, colour = param, fill = param)) + mkshade(TRUE) +
+    geom_hline(yintercept = 1, colour = NUL, linewidth = .4) +
+    reflayer(r, aes(t, rB, colour = param)) +
+    geom_ribbon(aes(ymin = rB_lo, ymax = rB_hi), alpha = .22, colour = NA, show.legend = FALSE) +
+    geom_line(linewidth = .4, show.legend = FALSE) + base() + pscale
+  deco(g, s$lab, tr, yE, expression(Var(s[t]) / F[t]), logr = TRUE, own = HASREF)
+})
+# --- F: accumulated information ratio, bottom of the time block
+pF <- lapply(STEPS, function(s) {
+  d <- dFa[key == s$key]; r <- refdat(dFa, s)
+  yF <- lapply(rng2(dFa, c("rC_lo", "rC_hi"), incl = 1), function(r) 10^padr(log10(r)))
+  g <- ggplot(d, aes(t, rC, colour = param, fill = param)) + mkshade(TRUE) +
+    geom_hline(yintercept = 1, colour = NUL, linewidth = .4) +
+    reflayer(r, aes(t, rC, colour = param)) +
+    geom_ribbon(aes(ymin = rC_lo, ymax = rC_hi), alpha = .22, colour = NA, show.legend = FALSE) +
+    geom_line(linewidth = .4, show.legend = FALSE) + base() + pscale
+  deco(g, s$lab, tr, pick(yF, s), expression(Var(sum(s[t])) / sum(F[t])),
+       bottom = TRUE, xlab = "time (ms)", logr = TRUE, own = HASREF, split = TRUE)
+})
+# --- G: score autocorrelation over lag, bottom of the lag block
+pG <- lapply(STEPS, function(s) {
+  d <- ACF[key == s$key]; r <- refdat(ACF, s)
+  yG <- lapply(rng2(ACF, c("lo", "hi"), incl = 0), padr, .08)
+  g <- ggplot(d, aes(lag, acf, colour = param)) +
+    geom_hline(yintercept = 0, colour = NUL, linewidth = .4) +
+    reflayer(r, aes(lag, acf, colour = param)) +
+    geom_linerange(aes(ymin = lo, ymax = hi), linewidth = .35, show.legend = FALSE,
+                   position = position_dodge(width = .4)) +
+    geom_point(size = .3, position = position_dodge(width = .4), show.legend = FALSE) +
+    base() + pscale
+  deco(g, s$lab, lr, pick(yG, s), "ACF", bottom = TRUE, xlab = "lag", own = HASREF, split = TRUE)
 })
 
-leg <- theme(legend.position = "bottom", legend.direction = "horizontal",
-             legend.text = element_text(size = 6.5), legend.key.size = unit(0.28, "cm"),
-             legend.margin = margin(0, 0, 0, 0), legend.box.margin = margin(-4, 0, 0, 0))
-lay <- function(rows, hs) wrap_plots(
-  c(list(plot_spacer()), lapply(ALGOS, colhead), list(plot_spacer()),
-    unlist(lapply(seq_along(rows), function(k)
-      c(list(rowlet(names(rows)[k])), rows[[k]]$p, list(rowstrip(rows[[k]]$s)))), recursive = FALSE)),
-  ncol = length(ALGOS) + 2, widths = c(0.085, rep(1, length(ALGOS)), 0.155), heights = hs) +
-  plot_layout(guides = "collect") & leg
+# ONE hand-drawn key, in the layout's last row. Hand-drawn rather than collected, because the
+# member/reference distinction is weight and opacity applied inside geoms and has no scale for
+# patchwork to collect, and because guides = "collect" only merges guides that are IDENTICAL.
+# Positions are in panel fractions, so a label that is too long silently overprints its neighbour
+# (it did, on the first render). They are laid out from a single vector of column starts, measured
+# against the longest label at 6.5 pt rather than guessed.
+keyplot <- local({
+  seg <- function(x, y, col, lw, a = 1)
+    annotate("segment", x = x, xend = x + .045, y = y, yend = y, colour = col, linewidth = lw,
+             alpha = a)
+  txt <- function(x, y, lab, parse = FALSE)
+    annotate("text", x = x + .056, y = y, hjust = 0, size = 6.5 / .pt, label = lab, parse = parse)
+  y1 <- if (HASREF && length(PSEL) > 1) .74 else .5
+  g <- ggplot()
+  if (HASREF) g <- g +
+    seg(.015, y1, if (is.na(REF_C)) "grey35" else REF_C, REF_W, REF_A) +
+    txt(.015, y1, "the member it is one step from") +
+    seg(.44, y1, PCOL[[1]], .5) +
+    txt(.44, y1, "the step's member, with its 95% bootstrap interval")
+  if (length(PSEL) > 1) {
+    y2 <- if (HASREF) .26 else .5
+    # Three keys since row G took the residual in: the two score parameters, and the residual, whose
+    # scope has to be named or a reader looks for a black curve on rows C to F and does not find one.
+    # Kept SHORT. The first version carried the rows-A-and-B sentence here too and ran off the right
+    # edge of the page, silently: the key is drawn in panel fractions, so an over-long label does not
+    # wrap, it disappears. Anything longer than a clause belongs in the caption.
+    g <- g + seg(.015, y2, PCOL[["k_off"]], .5) + txt(.015, y2, 'k["off"]', parse = TRUE) +
+      seg(.105, y2, PCOL[["N_ch"]], .5) + txt(.105, y2, 'N["ch"]', parse = TRUE) +
+      annotate("text", x = .195, y = y2, hjust = 0, size = 6.5 / .pt,
+               label = "score, rows C to G") +
+      seg(.375, y2, PCOL[["residual"]], .5) + txt(.375, y2, 'r[t]', parse = TRUE) +
+      annotate("text", x = .445, y = y2, hjust = 0, size = 6.5 / .pt,
+               label = "standardized residual, row G")
+  }
+  g + theme_void() + coord_cartesian(xlim = c(0, 1), ylim = c(0, 1), expand = FALSE) +
+    theme(plot.margin = margin(2, 0, 0, 0))
+})
 
-
-# Row weights, revisited with the final content: rows D, E and F each carry TWO curves and TWO
-# ribbons, where the vector this replaces was set when every row had one of each. A is the trace and
-# needs vertical range because its range IS the data; B is a single grey curve on a reference line;
-# C spans decades; G is points with intervals over lag.
-#        head   A(trace) B(resid) C(F_t) D(bias) E(ratio) F(accum) G(acf)
-HS2 <- c(0.15,  0.85,    0.55,    0.70,  0.60,   0.60,    0.70,    0.70)
-
-# ROW ORDER (2026-07-31). The Fisher row sits between the data rows and the inference rows, not
-# inside the cascade. It is a PRECONDITION, not a step: there is no point asking whether the
-# reported information is honest before establishing that there is information to report, and for
-# how long. So: the recording and the prediction (A), whether the predictive variance is right (B),
-# where in the recording each parameter is measured at all (C), and then the inference cascade in
-# moment order -- the score is biased (D), the identity holds per interval (E), it fails once
-# accumulated (F), and the reason is the temporal memory of the score (G).
-g3d <- lay(list(A = list(p = pTr2, s = RTTL[["A"]]),
-                B = list(p = pA2,  s = RTTL[["B"]]),
-                C = list(p = pFI,  s = RTTL[["C"]]),
-                D = list(p = pC2,  s = RTTL[["D"]]),
-                E = list(p = pD2,  s = RTTL[["E"]]),
-                F = list(p = pE2,  s = RTTL[["F"]]),
-                G = list(p = pSc2, s = RTTL[["G"]])), HS2)
-ggsave("Figure_3.pdf", g3d, width = 7.0, height = 7.5)
-cat("wrote Figure_3.pdf: 7 rows, four columns, k_off and N_ch, 7.0 x 7.5 in\n")
+# Row weights. A is the trace and needs range because its range IS the data; C spans decades; G is
+# points over lag. Head at 0.15, deliberately a little less than the two lines of text need, so the
+# empty panel under the titles collapses and they sit flush against row A.
+#        head   A     B     C     D     E     F     G
+HS <- c(0.15,  0.85, 0.55, 0.70, 0.60, 0.60, 0.70, 0.70)
+ROWS <- list(A = pA, B = pB, C = pC, D = pD, E = pE, F = pF, G = pG)
+nc   <- length(STEPS) + 2
+# The rotated row-title strip stays, at six columns too (Luciano, 2026-07-31): matching the parent
+# figure's furniture is worth more than the width it costs. What it costs is measured, not guessed:
+# the strip is 0.47 in, so with it and the second block's y axis the fixed furniture is 1.90 of the
+# 7.0 in and the panels land at 0.85 in; dropping it would buy 0.08 in per panel. That is not
+# enough to be worth having the supplement look like a different family of figure from its parent.
+STRIP <- TRUE
+cells <- unlist(lapply(names(ROWS), function(k)
+  c(list(rowlet(k)), ROWS[[k]], if (STRIP) list(rowstrip(RTTL[[k]])))), recursive = FALSE)
+grid <- wrap_plots(c(
+    list(plot_spacer()), lapply(STEPS, colhead), if (STRIP) list(plot_spacer()), cells),
+  ncol = nc,
+  # ABSOLUTE widths for the two furniture columns, null for the panels. figure_3 sets them as
+  # FRACTIONS of a panel (0.085 and 0.155), which is the same thing only at its own column count:
+  # a fraction of a 1.31 in panel is 0.11 and 0.20 in, but a fraction of the 0.85 in panel six
+  # columns leave is 0.07 and 0.13, and the rotated two-line row title does not fit in 0.13 -- it
+  # rendered clipped. The strips carry TEXT, so what they need is a length, not a proportion.
+  widths = unit(c(0.112, rep(1, length(STEPS)), if (STRIP) 0.203),
+                c("in", rep("null", length(STEPS)), if (STRIP) "in")),
+  heights = HS)
+# The key is STACKED UNDER the whole grid, not placed in a cell of it. In a cell its 0-to-1
+# coordinates map to one column's 1.78 in and every label overprints its neighbour, which is what
+# the first render did.
+KEYH <- if (length(PSEL) > 1) 0.030 else 0.018
+g <- grid / keyplot + plot_layout(heights = c(1, KEYH))
+ggsave(OUT, g, width = 7.0, height = 7.5)
+cat(sprintf("wrote %s: 7 rows, %d members, parameters %s, 7.0 x 7.5 in\n",
+            OUT, length(STEPS), paste(names(PSEL), collapse = " + ")))
 ```

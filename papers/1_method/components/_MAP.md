@@ -11,7 +11,9 @@
 ## algorithms/ — type `reference`
 - ✓ `[[MR]]` — Mean-averaged Recursive (av=1). Cautionary intermediate; over-confident 1.5–2.1.
 - · `[[NR]]` — Non-recursive instantaneous (av=0). ≈ Milescu 2005. Overconfident ×10–16, cond ∝N_ch².
-- · `[[NMR]]` — Non-recursive mean (av=1). Unbiased, over-confident; possible speed niche.
+- · `[[INR]]` — Non-recursive interval mean (av=1); the published MacroINR. Formerly `[[NMR]]`, which
+  now names the defective build that omitted the interval-variance term. The "unbiased, over-confident"
+  reading was measured on that build and is open again (`../_program/nomenclature.md`).
 - · `[[R]]` — Recursive instantaneous (av=0). ≈ Moffatt 2007 / Münch 2022. ×1.3.
 - · `[[IR]]` — Interval/boundary-conditioned Recursive (av=2) = MacroIR. Sole calibrated survivor.
 

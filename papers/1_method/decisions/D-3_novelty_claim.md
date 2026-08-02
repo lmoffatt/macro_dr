@@ -1,5 +1,17 @@
 # D-3 — Novelty: concept + evidence map
 
+> **BANNER 2026-07-31, updated 2026-08-01.** `MNR`/`NMR` here is the **defective build** (missing the
+> `N·ms` interval-variance term); the corrected member is `INR` (`../../_program/nomenclature.md`). The
+> two quantitative lines that pool it with `NR` — the `N_ch²` conditioning scaling and the ×10–16
+> overconfidence — were measured on that build and must be rechecked against the re-run before they
+> enter the paper.
+> **The re-run has landed** (`figures/data/1f7138b/`) and closes the bias and information-distortion
+> half only: see the first-moment table under "Result magnitudes" and
+> `recompute/d3_interval_vs_recursion_2x2.py`. **Both starred lines are still owed**, because each is a
+> different statistic (a Fisher-spectrum scaling and a standard-error ratio) and neither can be read
+> off that script. Expect real movement, not rounding: `INR`'s distortion is 22 where `NMR` pooled with
+> `NR` at 79.
+
 > Substrate, not prose. Concepts and their evidence, telegraphic. The paper text gets BUILT from this;
 > nothing here is copy-paste. Rebuilt 2026-07-15 with Luciano (replaces the earlier paste-ready draft,
 > which over-conceded "no new likelihood" and opened on a negation).
@@ -42,7 +54,9 @@ What does THIS paper claim as new — distinct from MacroIR (Comm Biol 2025) and
 - Both α⋆ and ½ log det C corrections = published objects (Pauli; Lv & Liu).
 
 ### LIVE — this paper's actual novelty
-- ~~**New likelihoods: MR, MNR**~~ **RETRACTED for MNR, and the reason is now sharper (2026-07-29).** It cannot be claimed as new by this paper because it is **already published, by us**: `MNR`/`NMR` is `MacroINR`, the control of Comm Biol 2025. And the "speed niche" it was claimed to have does not exist: on the freeze it is **numerically indistinguishable from NR** (`D-4_ranking_verdict.md` §5). So it is prior work of ours that buys nothing a body member does not. **MR survives** as the cautionary intermediate and now lives in a supplement.
+- ~~**New likelihoods: MR, MNR**~~ **RETRACTED for MNR on priority, and ONLY on priority (revised 2026-08-01).** It cannot be claimed as new by this paper because it is **already published, by us**: `MNR`/`NMR` is `MacroINR`, the control of Comm Biol 2025. **MR survives** as the cautionary intermediate and now lives in a supplement.
+  - **The second reason given on 2026-07-29 is dead and must not be re-copied**: "the 'speed niche' does not exist, on the freeze it is numerically indistinguishable from NR, so it is prior work of ours that buys nothing a body member does not". That indistinguishability was `NMR`, the build missing the `N·ms` interval-variance term. The corrected `INR` separates from `NR` in **both** moments: median |bias| in `N_ch` 0.003 against 0.099 log10, and `k_off` information distortion at noise 0.1 / N_ch 10⁴ of 22.2 against 78.9, with the sample component at 1.00 against 47.2 (`recompute/d3_interval_vs_recursion_2x2.py`, on `figures/data/1f7138b/`).
+  - **And it buys something no body member does**: it is the only member that isolates the interval-window margin, so it is what turns "the window restores the mean, the recursion restores the variance" from an assertion into a measurement. Being prior work of ours bars a **novelty** claim; it does not bar a **body column**. Those were conflated in the retracted sentence. Roster consequence is Q-5 in `../decisions.md`.
 - **The Comm Biol control is this paper's real-data demonstration** (ADDED 2026-07-29). Comm Biol 2025 already ranked **nine** kinetic schemes by Bayesian evidence with MacroIR and repeated the ranking with MacroINR as a control: *"Model ranking was sensitive to likelihood approximation: the control method (MacroINR) systematically underestimated evidence for schemes with conformational intermediates"*, and *"leading to systematically different evidence values (Supplementary Table S1)"*. So **"an invalid likelihood corrupts model comparison" is not a promise in this paper, it is a published, real-data observation**, and what eLife adds is why, by how much, and where. Two consequences to handle deliberately: the winning margin over the top non-conformational alternative is only **6.4** (5.5-6.7), which is the scale a systematic likelihood distortion can move; and those evidences were computed with the version carrying the `gvar_i` defect, which is undisclosed and whose correction is an open question. See `../decisions.md`.
 - **Positioning against Münch et al. 2022** (ADDED 2026-07-28, M-6). It is a published Bayesian Kalman filter for ion channels **in the target journal**, so the topic demonstrably clears the desk and the novelty bar is correspondingly higher. The abstract must offer **the test of whether such filters tell the truth about their own uncertainty, plus the map of where they fail** — not another filter. Münch also already published diagnostic (i), residual whiteness, plus an N_ch rule of thumb; what they never compute is the score, the Fisher information, the score covariance or any sandwich. **That is the delta, and it should be stated as the delta.**
 - **Measurement, not test** (domain-first; map Part III #1)
@@ -66,6 +80,23 @@ What does THIS paper claim as new — distinct from MacroIR (Comm Biol 2025) and
 - interval finishes it: R ×1.3 → IR **×1**; but MR ×1.5–2.1 (non-monotone)
 - ⇒ recursion NECESSARY, not SUFFICIENT; IR (recursion + interval, done right) the only calibrated one
 - ⇒ Luciano's "recursive methods are under-used and unproven" is the DOMINANT empirical effect, not a hunch
+
+**The first-moment half, added 2026-08-01, and it is a second axis rather than a correction.** Everything above is the second moment. On the first moment the ordering is different and the window, not the recursion, is what acts. Median |bias| over every cell and interval on disk, log10, in `N_ch` / `i`:
+
+| member | window | recursion | N_ch | i | k_off |
+|---|---|---|---|---|---|
+| `LSE` | — | no | 0.001 | Fixed | 0.001 |
+| `NR` | no | no | 0.099 | 0.085 | 0.002 |
+| `INR` | yes | no | **0.003** | **0.003** | 0.000 |
+| `R` | no | yes | 0.110 | 0.101 | 0.002 |
+| `MR` | one end | yes | 0.120 | 0.103 | 0.001 |
+| `VR` | one end | yes | 0.058 | 0.066 | 0.001 |
+| `IR` | both ends | yes | **0.002** | **0.001** | 0.000 |
+
+- the bias is an **amplitude-pair** effect, ~25–30 %, and it is flat in N_ch; `k_off` is unbiased for everyone
+- **recursion alone does not remove it and slightly worsens it** (NR 0.099 → R 0.110 → MR 0.120); the two members carrying the interval window are the two without it
+- so the two axes are not two projections of one story: **window → first moment, recursion → second moment**, and IR is the only member that closes both. That is a stronger and more legible claim than the ladder, and it is the 2026-08-01 audio's decomposition
+- source: `recompute/d3_interval_vs_recursion_2x2.py`, which also carries the LSE parameter-index trap (LSE renumbers its free vector, so the figure-4 digest mislabels its amplitude rows)
 
 ---
 

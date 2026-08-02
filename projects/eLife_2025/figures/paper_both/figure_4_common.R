@@ -24,18 +24,28 @@ library(patchwork)
 # ---- roster ---------------------------------------------------------------------------------
 # battery-fed notebooks, so the keys are the PREFIXED form that lands in the CSV `algorithm` column.
 # Order = row order inside each parameter block: the cost ladder, cheapest first.
-ALGOS    <- c("nonlinearsqr", "macro_NR", "macro_R", "macro_IR")
-ALGO_LAB <- c(nonlinearsqr = "LSE", macro_NR = "NR", macro_R = "R", macro_IR = "IR")
+# OPT-IN OVERRIDE: a notebook that wants a different roster or a fourth data dir declares
+# FIG4_ALGOS / FIG4_ALGO_LAB / FIG4_DATA_DIRS BEFORE sourcing this file; the defaults below are
+# unchanged, so every existing notebook renders exactly as it did. Added 2026-07-31 for
+# figure_4_5algo.Rmd, which is figure_4.Rmd with INR as a fifth member. The variable stays set for
+# the rest of the R session, so knit one notebook per session or the four-member figure inherits it.
+ALGOS    <- if (exists("FIG4_ALGOS")) FIG4_ALGOS else
+  c("nonlinearsqr", "macro_NR", "macro_R", "macro_IR")
+ALGO_LAB <- if (exists("FIG4_ALGO_LAB")) FIG4_ALGO_LAB else
+  c(nonlinearsqr = "LSE", macro_NR = "NR", macro_R = "R", macro_IR = "IR")
 
 NCHS      <- c(10, 100, 1000, 10000)
-DATA_DIRS <- c("../data/1c2ae6f", "../data/87889e6", "../data/0ffbda7")  # search path, first hit wins
+DATA_DIRS <- if (exists("FIG4_DATA_DIRS")) FIG4_DATA_DIRS else
+  c("../data/1c2ae6f", "../data/87889e6", "../data/0ffbda7")  # search path, first hit wins
 
 # ---- file naming: the prefix is PER ALGORITHM ------------------------------------------------
 # LSE (nonlinearsqr) is produced by dispatch_figure_4.sh's LSE arm, which routes to
 # figure_4_LSE.macroir and stamps the prefix `figure_3_LSE_`; macro/micro get `figure_3_G_`
 # (dispatch_figure_4.sh:217-218). Everything else about the two file sets is identical, including
 # the Gaussian_ component names and the _G battery suffix.
-.pre  <- function(a) if (identical(a, "nonlinearsqr")) "figure_3_LSE_" else "figure_3_G_"
+# startsWith, not identical: every family-2 member writes under the LSE prefix, including
+# `nonlinearsqr_g` (the averaging=0 member added 2026-08-02).
+.pre  <- function(a) if (startsWith(a, "nonlinearsqr")) "figure_3_LSE_" else "figure_3_G_"
 findf <- function(nch, algo, z, kind) {
   f <- file.path(DATA_DIRS,
                  sprintf("%snch_%d_nsim_10000_%s_noise_%s_%s.csv", .pre(algo), nch, algo, z, kind))
@@ -168,47 +178,40 @@ readcell <- function(kind) pmap_dfr(cells, function(algo, nch, z)
   read.csv(findf(nch, algo, z, kind), skip = 1, stringsAsFactors = FALSE) %>%
     mutate(noise = z, algo = algo))
 
-# BIAS comes from battery_sim_G, anchored at theta_sim. It cannot come from the pool files: a bias
-# evaluated at the optimum is zero by construction because the score vanishes there.
-bias <- readcell("battery_sim_G") %>%
-  filter(component_path == "Probit_statistics_Gaussian_Distortion_Induced_Bias",
-         param_index %in% PIDX[PARAM_LONG],
-         statistic == "value", probit %in% c("mean", "quantile")) %>%
-  mutate(key = case_when(probit == "mean" ~ "m", quantile_level == 0.025 ~ "lo",
-                         quantile_level == 0.975 ~ "hi", TRUE ~ NA_character_)) %>%
-  filter(!is.na(key)) %>%
-  group_by(algo, noise, Num_ch, interval_in_tau, param_index, key) %>%
-  summarise(v = mean(value), .groups = "drop") %>%
-  pivot_wider(names_from = key, values_from = v) %>%
-  # CI-aware toward ZERO: a cell whose interval covers 0 renders white
-  mutate(Bconf = ifelse(m > 0, pmax(0, lo), pmin(0, hi)),
-         lx = log10(interval_in_tau), ly = log10(as.numeric(noise)),
-         param = names(PIDX)[match(param_index, PIDX)],
-         nchf  = factor(paste0("N[ch]==", Num_ch), levels = paste0("N[ch]==", NCHS)))
+# ---- the source data ---------------------------------------------------------------------------
+# One build for the whole set, written as CSV so it doubles as the figure's source data. See
+# figure_4_data.R for what makes it stale and why it is not per notebook.
+source("figure_4_data.R")
+.fig4_src <- fig4_source_data()
 
-stat <- readcell("battery_pool_G") %>%
-  filter(component_path %in% COMPS, param_index == param_col, param_index %in% PIDX[PARAM_LONG],
-         statistic == "value", probit %in% c("mean", "quantile")) %>%
-  mutate(comp = names(COMPS)[match(component_path, COMPS)],
-         key  = case_when(probit == "mean" ~ "m", quantile_level == 0.025 ~ "lo",
-                          quantile_level == 0.975 ~ "hi", TRUE ~ NA_character_)) %>%
-  filter(!is.na(key)) %>%
-  group_by(algo, comp, noise, Num_ch, interval_in_tau, param_index, key) %>%
-  summarise(v = mean(value), .groups = "drop") %>%
-  pivot_wider(names_from = key, values_from = v) %>%
-  # CI-aware: a cell whose 95% interval brackets 1 collapses to exactly 1 and renders white
-  mutate(Dconf = ifelse(m > 1, pmax(1, lo), pmin(1, hi)),
-         lx = log10(interval_in_tau), ly = log10(as.numeric(noise)),
-         param = names(PIDX)[match(param_index, PIDX)],
-         nchf  = factor(paste0("N[ch]==", Num_ch), levels = paste0("N[ch]==", NCHS)))
+# ---- the anchor, filtered ONCE at the source ---------------------------------------------------
+# The half-B products (stat / sedat / scal) now carry BOTH anchors, tagged by `anchor`. Four
+# supplements read `.fig4_src$scal` and `.fig4_src$sedat` DIRECTLY, so filtering here rather than at
+# each consumer is what keeps them from silently doubling their rows. With ANCHOR = "pool", the
+# default, every notebook sees exactly the frame it saw before the column existed.
+# A notebook that wants the sim-anchored plane declares FIG4_ANCHOR <- "sim" before sourcing; one
+# that wants BOTH at once (the pool-vs-sim ratio) reads `.fig4_all`, which is left untouched.
+# The bias product has no anchor column: it is sim-only by construction (see figure_4_data.R).
+ANCHOR <- if (exists("FIG4_ANCHOR")) FIG4_ANCHOR else "pool"
+stopifnot(ANCHOR %in% c("sim", "pool"))
+.fig4_all <- .fig4_src
+for (.k in c("stat", "sedat", "scal"))
+  .fig4_src[[.k]] <- dplyr::filter(.fig4_src[[.k]], anchor == ANCHOR)
+cat("figure_4 data: anchor = ", ANCHOR, " (theta_",
+    if (ANCHOR == "sim") "sim, the simulation truth" else "pool, the joint fit", ")\n", sep = "")
 
+.withnchf <- function(d) dplyr::mutate(
+  d, nchf = factor(paste0("N[ch]==", Num_ch), levels = paste0("N[ch]==", NCHS)))
+
+# BIAS is anchored at theta_sim, DISTORTION at theta_pool; both are shaped in figure_4_data.R and
+# only the roster filter happens here, so two notebooks on different rosters share one build.
+bias <- .withnchf(dplyr::filter(.fig4_src$bias, algo %in% ALGOS))
+stat <- .withnchf(dplyr::filter(.fig4_src$stat, algo %in% ALGOS))
 # UNIDENTIFIED cells: greyed, not clamped. Off-scale AND ill-conditioned (kappa > 3e4) together
 # isolate the R corner (N_ch 10000, Delta = 1), a displacement along a near-null direction whose
 # magnitude is not a meaningful bias/distortion. kappa alone grows with N_ch for everyone.
-kap <- readcell("battery_pool_G") %>%
-  filter(component_path == "Probit_statistics_Spectrum_Condition_Number_Gaussian_Fisher_Covariance",
-         statistic == "value", probit == "mean") %>%
-  group_by(algo, Num_ch, noise, interval_in_tau) %>% summarise(kappa = mean(value), .groups = "drop")
+kap <- .fig4_src$scal %>% dplyr::filter(param == "kappa") %>%
+  dplyr::transmute(algo, Num_ch, noise, interval_in_tau, kappa = v)
 KAPPA_MAX <- 3e4
 bias <- bias %>% left_join(kap, by = c("algo", "Num_ch", "noise", "interval_in_tau")) %>%
   mutate(unident = (m < min(BIAS_LIN) | m > max(BIAS_LIN)) & is.finite(kappa) & kappa > KAPPA_MAX)
@@ -402,9 +405,25 @@ Y_LAB <- formatC(10^Y_BRK, format = "g", digits = 3)
 # it. Side by side that reads as LSE winning the count, when what happened is that it assumed the
 # hard part away. LSE therefore appears in the k_off rows only. Applies to every map built through
 # rowfac(), i.e. both figure-4 halves and the corrected-SE supplement.
+#
+# LSE x unitary_current and LSE x Current_Noise are excluded for a SECOND and harder reason, found
+# 2026-08-01: nonlinearsqr indexes its own four parameters, and the indices do NOT mean what PIDX
+# says. Read off `param_name` in the files:
+#     LSE    0 = on   1 = off   2 = Current_Baseline   3 = Num_ch_mean
+#     macro  0 = on   1 = off   2 = unitary_current    3 = Current_Noise
+#                     4 = Current_Baseline             5 = Num_ch_mean
+# so the shared mapping `names(PIDX)[match(param_index, PIDX)]` labels LSE's baseline as the
+# unitary current and its CHANNEL NUMBER as the instrumental noise. Nothing built so far is wrong,
+# because every figure to date uses only index 1 (k_off, which agrees) and index 5 (which LSE does
+# not have); but the first supplement to put index 2 or 3 on the plane would have shown LSE's N_ch
+# in the sigma_noise column without a word. Excluded here rather than remapped, because the
+# like-for-like argument reaches the same verdict: LSE has no unitary current at all (it is held
+# fixed, which is why the Num_ch_mean exclusion above exists) and no free noise scale.
 EXCLUDE_ROWS <- tibble::tribble(
   ~algo,          ~param,
-  "nonlinearsqr", "Num_ch_mean")
+  "nonlinearsqr", "Num_ch_mean",
+  "nonlinearsqr", "unitary_current",
+  "nonlinearsqr", "Current_Noise")
 
 .rowlab <- function(p, a) sprintf("atop(%s, bold(\"%s\"))", PARAM_MATH[p], ALGO_LAB[a])
 rowfac <- function(d, params) {

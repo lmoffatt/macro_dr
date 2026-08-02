@@ -1,5 +1,15 @@
 # How the figure results were obtained
 
+> **`NMR` vs `INR`, 2026-07-31 — read before using any `macro_NMR` file.** This document is a record of
+> what ran, so its `NMR` references stay. They denote a **defective build**: the non-recursive
+> interval member with the `N·ms` interval-variance term missing, which is what the engine computed
+> between `a3e0a89` (2025-12-02) and `1f7138b` (2026-07-31). The corrected member is `INR`, which is
+> the published `MacroINR` (`nomenclature.md`). So **every `macro_NMR` file on disk is that defective
+> build**, and `INR` was re-dispatched from scratch on 2026-07-31; its data will carry `macro_INR` and
+> a later commit hash. The two are not interchangeable and the `.Rmd` readers must keep telling them
+> apart. Nothing else in the freeze is affected: the fix is confined to the non-recursive path with
+> `av > 0`, so `NR`, `R`, `MR`, `VR`, `IR` and `LSE` are unchanged.
+
 > Opened 2026-07-14. Updated 2026-07-20. Shared across the three papers; the run manifest they all
 > cite. Companion to each paper's Methods (`1_method/docs/manuscript-drafts/sections/06_methods.md`; the model half migrates to
 > `model_and_sim.md` when created), not a replacement for it.
@@ -16,7 +26,7 @@ There are four production runs behind the figures, not one. Each is a single `.m
 |---|---|---|---|---|
 | 1 | `ops/local/figure_1.macroir` | none, run directly | loose `figures/data/figure_1_*.csv` | Figure 1, Fig 1—figure supplement 1 (ex-S1) |
 | 2 | `ops/local/figure_3_mle.macroir` | `ops/slurm/dispatch_figure_3.sh` | `figures/data/433ed13/` (487 CSVs) | Figure 2 + its supplements (ex-S2, ex-S3) — numerical anchor, superseded for the body |
-| 3 | `ops/local/figure_3_time.macroir` | none, run directly | `figures/data/figure_3_time_dlik_{NR,NMR,R,MR,IR}.csv` (5 files, about 1 GB each) | Figure 3, Fig 3—figure supplement 1 (ex-Fig 4), Fig 3 supplements (ex-S4, ex-S5) |
+| 3 | `ops/local/figure_3_time.macroir` | none, run directly | `figures/data/figure_3_time_dlik_{NR,NMR,R,MR,IR}.csv` (5 files, about 1 GB each; `VR` and `LSE` added 2026-07-23, and `INR` replaces `NMR` from 2026-07-31) | Figure 3, Fig 3—figure supplement 1 (ex-Fig 4), Fig 3 supplements (ex-S4, ex-S5) |
 
 > **Anchor/seed note (2026-07-22).** The body Fig 2 and Fig 4 were moved to the **Gaussian anchor**
 > (`1c2ae6f`/`0ffbda7`), so run 2's `433ed13` above now feeds the *superseded* numerical versions and
@@ -70,12 +80,13 @@ The five algorithms are one code path under two flags, `recursive_approximation`
 | Label in data | Label in figures | `recursive` | `averaging` |
 |---|---|---|---|
 | `macro_NR` | NR | false | 0 |
-| `macro_NMR` | MNR | false | 1 |
+| `macro_NMR` | NMR (defective build) | false | 1 |
+| `macro_INR` | INR | false | 1 |
 | `macro_R` | R | true | 0 |
 | `macro_MR` | MR | true | 1 |
 | `macro_IR` | IR | true | 2 |
 
-Note the relabelling: the data key is `NMR` and the displayed label is `MNR`. Both appear in the repository and the notebooks map between them explicitly (`figure_2.Rmd:43`).
+**The `macro_NMR` / `macro_INR` split is not a relabelling, it is two algorithms** (2026-07-31, see the banner at the top). Same flags, different code: `NMR` omits the `N·ms` interval-variance term and `INR` carries it. Until 2026-07-29 the repository also used `NMR` and `MNR` as two spellings of one thing and the notebooks mapped between them (`figure_2.Rmd:43`); that mapping now has to resolve to `INR` for new data and stay on `NMR` for the freeze.
 
 ## 4. Run 1: Figure 1 and Figure S1
 
@@ -168,7 +179,7 @@ The mode is selected by call *arity*, not by a flag: the five-argument form of `
 | `macro_NR` | 10, 100, 1000 | 0.1 only |
 | `macro_NMR` | none | none |
 
-All at 10000 recordings. **MacroNMR is entirely absent from the Gaussian family, and MacroNR is missing its 10000-channel cell.** This is the single fact that governs what the definitive figures can currently be anchored on, and it is the operational content of the anchor split described in `1_method/docs/manuscript-drafts/sections/06_methods.md` M10: any cross-algorithm statement has to come from `433ed13` (numerical Fisher, all five algorithms), and only the IR mechanism panels can come from `1c2ae6f`.
+All at 10000 recordings. **MacroNMR is entirely absent from the Gaussian family, and MacroNR is missing its 10000-channel cell.** (Superseded 2026-07-31: the Gaussian family was later filled for `NMR` on `87889e6`, and that fill is the defective build; `INR` is being run now.) This is the single fact that governs what the definitive figures can currently be anchored on, and it is the operational content of the anchor split described in `1_method/docs/manuscript-drafts/sections/06_methods.md` M10: any cross-algorithm statement has to come from `433ed13` (numerical Fisher, all five algorithms), and only the IR mechanism panels can come from `1c2ae6f`.
 
 **Consumers.** Only the `figure_7_*` notebooks read this directory, four of them anchored on θ_sim (`battery_sim_G`) and three on θ_pool (`battery_pool_G`). None of them is a numbered figure in the manuscript. A separate directory, `87889e6`, holds `micro_R` and `micro_IR` runs of the same pipeline and feeds no paper figure.
 

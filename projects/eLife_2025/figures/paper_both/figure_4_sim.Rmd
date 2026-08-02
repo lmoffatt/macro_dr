@@ -1,0 +1,125 @@
+---
+title: "Figure 4 (sim anchor) — the same plane with the distortion read at the simulation truth"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+WHAT THIS IS. `figure_4.Rmd` with ONE thing changed: the distortion half is read from
+`battery_sim_G` instead of `battery_pool_G`. Same roster, same data directories, same scale, same
+lines, same rows, same layout, same `per_row`. The single knob is `FIG4_ANCHOR <- "sim"`, declared
+before the source; `figure_4_common.R` filters the half-B products to that anchor once, at the
+source, so nothing else in the composition knows the difference.
+
+The bias half does NOT change and never could: it was always read at theta_sim, because
+GDIB = G_bar^-1 * (mean score) and the pooled score vanishes at theta_pool by the stationarity
+condition of the joint fit, so a pool-anchored bias is zero by construction for every member.
+
+So this figure is BOTH halves at theta_sim, against `figure_4.Rmd`'s bias-at-sim,
+distortion-at-pool.
+
+WHY IT IS WORTH DRAWING. Two reasons, one practical and one that is a question.
+
+The practical one is that the original argument for anchoring the distortion at the optimum has
+expired. It was to keep the finite-difference Fisher out of the indefinite region, which is a real
+pathology of a numerically differenced Hessian off the maximum. The body has anchored on the
+analytic Gaussian Fisher G_bar since the freeze, and G_bar is positive semidefinite by
+construction at every theta. There is no numerical reason left to prefer the optimum.
+
+The question is what the pool anchor buys, and it is not obvious that it is neutral. GIDM is a
+RATIO OF TWO SCORE VARIANCES, J = Var_true(score) over G_bar = Var_model(score), and a ratio of
+variances needs no stationary point to be defined: unlike the sandwich, it is not an asymptotic
+statement about an estimator. Both readings are legitimate and they answer different questions.
+Two things separate them:
+
+  - At theta_pool every member has REFIT its nuisance parameters, Current_Noise among them. A
+    member that under-predicts its own dispersion can absorb the shortfall into the instrumental
+    noise and buy calibration with a parameter rather than with a better predictive. At theta_sim
+    it cannot: sigma^2 sits at the truth. If that mechanism is real, the pool anchor is
+    systematically kinder to the members that have somewhere to hide, and this figure minus
+    `figure_4.Rmd` measures how much each one buys. Note the asymmetry it would create in the
+    published comparison: LSE runs with Current_Noise FIXED and so cannot make that trade at all,
+    while every macro member can.
+  - theta_pool DEPENDS ON THE DESIGN. It is the Kullback-Leibler projection under this interval,
+    this N_ch and this noise, so every cell of the pool-anchored plane is measured against its own
+    anchor, some hundreds of them across the map. theta_sim is the same point in every cell. For a
+    figure whose whole job is to read how a quantity varies ACROSS the plane, a moving reference is
+    a real interpretive cost.
+
+WHAT TO LOOK AT, in order. First the saturation report `figure_4_common.R` prints: the distortion
+scale (DIST_LIN) was built against pool-anchored values, IR 0.97-1.49 and R 0.44-1.82 with NR's
+tail out to 3.4e4, and there is no guarantee the sim-anchored field lives in the same range. If it
+saturates, the number is printed and the scale is the thing to fix, not the figure. Second whether
+the IR column still reaches white, which is the paper's claim and the one reading that must not
+depend on the anchor. Third whether the ORDERING of the five members survives; a changed level with
+an intact ordering is a much weaker finding than a reordering.
+
+WHAT THIS FIGURE CANNOT DO, and it is the reason the ratio is a separate notebook. Comparing this
+plane against `figure_4.Rmd` cell by cell mixes two displacements: the numerator J and the
+denominator G_bar BOTH move with the anchor, and a cell that looks unchanged may be two changes
+cancelling. Separating them needs the congruence
+G_pool^-1/2 . G_sim . G_pool^-1/2 formed per cell, which is `figure_4_pool_sim_ratio.Rmd`. The raw
+J and G_bar are on disk as full 6x6 matrices in both batteries
+(`Probit_statistics_Moment_statistics_Sum_dlogL` at `statistic == "covariance"` and
+`..._Sum_Gaussian_Fisher_Information` at `statistic == "mean"`), so that step needs no re-run
+either.
+
+BOOTSTRAP. Each anchor carries its own percentile intervals and this figure uses them exactly as
+`figure_4.Rmd` does, through the CI-aware `Dconf`. What is NOT available from disk is an interval
+on the DIFFERENCE between the anchors: the two batteries share `seed = 0` and resample vectors of
+the same length, so their bootstrap index sets coincide replicate by replicate and a paired
+analysis would be the right one, but the CSVs carry only the percentile summaries and not the
+per-replicate samples. Point estimates only, for the ratio.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+```{r common, include=FALSE}
+# Identical to figure_4.Rmd, plus the anchor. Both are read by figure_4_common.R at source time.
+FIG4_ALGOS     <- c("nonlinearsqr", "macro_NR", "macro_INR", "macro_R", "macro_IR")
+FIG4_ALGO_LAB  <- c(nonlinearsqr = "LSE", macro_NR = "NR", macro_INR = "INR",
+                    macro_R = "R", macro_IR = "IR")
+FIG4_DATA_DIRS <- c("../data/1c2ae6f", "../data/87889e6", "../data/0ffbda7", "../data/1f7138b")
+FIG4_ANCHOR    <- "sim"
+source("figure_4_common.R")
+```
+
+```{r layout, include=FALSE}
+source("figure_4_layout.R")
+```
+
+```{r sides}
+# Same two halves as figure_4.Rmd. `bias` is unchanged (it was always sim-anchored); `stat` now
+# holds the sim-anchored distortion because figure_4_common.R filtered it there.
+SIDES <- list(
+  list(lab = "distortion-induced bias", letter = "A",
+       data = bias,                                  zf = function(x) x$Bconf),
+  list(lab = "information distortion at the truth",  letter = "B",
+       data = dplyr::filter(stat, comp == "total"),  zf = function(x) log10(x$Dconf)))
+```
+
+```{r render, fig.width = 7.4, fig.height = 5.95}
+# Same layout as figure_4.Rmd: same column count, same row spans, so the same solved PER_ROW.
+fig4_render(SIDES, per_row = 0.179, out = "Figure_4_sim.pdf")
+```
+
+```{r compare, echo=FALSE}
+# The two planes side by side as NUMBERS, so the visual reading is checked against one. Medians
+# over the seven intervals at noise 0.1, per member and parameter, exactly the reduction
+# figure_4.Rmd's header table uses. Dconf is the CI EDGE toward 1, not the point estimate, so a
+# 1.000 here means "the interval brackets 1"; `m` is carried alongside for that reason.
+cmp <- .fig4_all$stat %>%
+  dplyr::filter(algo %in% ALGOS, comp == "total", noise == "0.1",
+                param %in% c("off", "Num_ch_mean")) %>%
+  dplyr::group_by(param, algo, Num_ch, anchor) %>%
+  dplyr::summarise(Dconf = median(Dconf), m = median(m), .groups = "drop") %>%
+  tidyr::pivot_wider(names_from = anchor, values_from = c(Dconf, m)) %>%
+  dplyr::mutate(algo = factor(ALGO_LAB[algo], levels = ALGO_LAB[ALGOS])) %>%
+  dplyr::arrange(param, algo, Num_ch)
+cat("\n=== distortion, median over the 7 intervals, noise 0.1 ===\n")
+cat("Dconf = CI edge toward 1 (what the map paints); m = the point estimate\n\n")
+print(as.data.frame(cmp), digits = 4, row.names = FALSE)
+```

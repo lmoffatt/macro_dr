@@ -1,0 +1,88 @@
+---
+title: "Figure 4—figure supplement (number pending) — the same plane for the parameters the body figure leaves out: k_on, the unitary current and the noise scale"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+NUMBER PENDING, as for the other rebuilt supplements.
+
+WHAT IT IS. Figure 4's plane for the three parameters the body figure does not carry. Same rows,
+same members, same scale, same lines. What changes is the INNER column level: where the body
+nests moment > member > (k_off | N_ch), this nests one moment > member > (k_on | i | sigma_noise),
+and the two moments are two FILES rather than two sides, because six columns per member would not
+fit across the page at a legible cell.
+
+WHY ONE MOMENT PER FILE AND NOT TWO SIDES. The isotropy ties the cell width to the height: with
+the page fixed at 7.4 in, panel_height = 95.2 x cell_width. Three parameters over five members is
+13 columns, which gives a 1.74 mm cell — the widest of the whole set — and an 8.3 in figure. Put
+both moments in one file and it is 26 columns, a 0.79 mm cell and a 4.6 in figure, and 0.79 mm is
+below what the body figure already spends (1.14) and below what was judged readable. Height is
+free in a supplement and cell width is not, so the trade goes this way.
+
+THE THREE PARAMETERS, and why they are not decoration. k_on is a rate like k_off but lives in the
+RISE rather than the decay, so it is measured where the agonist is present and not after; the
+unitary current is the amplitude scale that trades against the channel number along the N*i ridge;
+and sigma_noise is the SHARED-NULL CONTROL. That last one carries the figure's internal check: it
+is the direction in which nobody, on the old measurement, departed from calibration at all. A
+machinery that painted everything red would paint it red too. If it stays white the maps are
+reporting a property of the members and not of the pipeline.
+
+LSE IS ABSENT FROM TWO OF THE THREE COLUMNS, and the reason is worth reading before assuming it
+is a coverage gap. nonlinearsqr indexes its own four parameters and they do NOT line up with the
+macro ones: read off `param_name`, LSE's index 2 is Current_Baseline and its index 3 is
+Num_ch_mean, where the macro members have unitary_current and Current_Noise. The shared mapping in
+figure_4_common.R goes by index, so without an exclusion this figure would have drawn LSE's
+CHANNEL NUMBER inside the sigma_noise column and said nothing. It is excluded in EXCLUDE_ROWS,
+with the note; the like-for-like argument reaches the same place, since LSE holds the unitary
+current fixed and has no free noise scale. So LSE contributes k_on only, and the figure is 13
+columns and not 15.
+
+Nothing built before 2026-08-01 is affected: every figure to date uses index 1, which agrees, and
+index 5, which LSE does not have.
+
+DATA. Bias from battery_sim_G at theta_sim, distortion from battery_pool_G at theta_pool, exactly
+as the body figure, so a column here can be laid against a column there without conversion. INR
+still has one noise level and is drawn as tiles under MIN_CONTOUR_LEVELS.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+```{r common, include=FALSE}
+FIG4_ALGOS     <- c("nonlinearsqr", "macro_NR", "macro_INR", "macro_R", "macro_IR")
+FIG4_ALGO_LAB  <- c(nonlinearsqr = "LSE", macro_NR = "NR", macro_INR = "INR",
+                    macro_R = "R", macro_IR = "IR")
+FIG4_DATA_DIRS <- c("../data/1c2ae6f", "../data/87889e6", "../data/0ffbda7", "../data/1f7138b")
+# the inner column level: the three the body figure leaves out, kinetic first, the shared-null
+# control last, which is the order figure_4_supp_common.R used for the same reason
+FIG4_PARS   <- c("on", "unitary_current", "Current_Noise")
+FIG4_PSHORT <- c(on = "k[on]", unitary_current = "i", Current_Noise = "sigma[noise]")
+source("figure_4_common.R")
+source("figure_4_layout.R")
+```
+
+```{r sides}
+# One side per file. The labels and the letter are the same two the body figure uses, so a reader
+# who has the body figure in hand knows which moment they are looking at without being told twice.
+SIDE_BIAS <- list(lab = "distortion-induced bias", letter = "A",
+                  data = bias, zf = function(x) x$Bconf)
+SIDE_DIST <- list(lab = "information distortion", letter = "B",
+                  data = dplyr::filter(stat, comp == "total"),
+                  zf = function(x) log10(x$Dconf))
+```
+
+```{r render-bias, fig.width = 7.4, fig.height = 8.27}
+# 13 columns, one side, key row kept (the white standard-error contours are drawn here, and they
+# now exist for every parameter: sedat was widened from the body figure's two to all of PIDX).
+# per_row 0.264 measured at x 0.2400, y 0.2400 (tmp/calib_fig4.R, tmp/measure_fig4.py).
+fig4_render(list(SIDE_BIAS), per_row = 0.264,
+            out = "Figure_4_supplement_other_parameters_bias.pdf")
+```
+
+```{r render-distortion, fig.width = 7.4, fig.height = 8.27}
+fig4_render(list(SIDE_DIST), per_row = 0.264,
+            out = "Figure_4_supplement_other_parameters_distortion.pdf")
+```

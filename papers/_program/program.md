@@ -33,8 +33,10 @@ whichever rung they are on today:
 
 Reading LSE against IR answers "do you need a likelihood?". Reading R against IR answers "what does
 conditioning on the interval buy?". The supplement carries `MR` and `VR`, which split the R → IR step,
-and `NMR` (the published `MacroINR`), which is measurably indistinguishable from `NR` — and that
-near-identity is itself the finding: the interval-mean conductance buys nothing without recursion.
+and `INR` (the published `MacroINR`). **What `INR` shows is open** (2026-07-31): the near-identity with
+`NR` that used to be quoted here as the finding was measured on `NMR`, a build missing the `N·ms`
+interval-variance term, so it says nothing about the method. The re-run dispatched 2026-07-31 decides
+it (`nomenclature.md`, the `NMR` entry).
 
 ## 2. The channel-number axis, partitioned
 
@@ -77,7 +79,7 @@ few-channel degradation, which one or two annotated cells already supply (§6).
   VR → IR only the gain"**: the predictive variance divides the gain, so the variance step moves the
   update too, and `MR` and `IR` predict the *same* observable variance from the same state, so the
   whole MR-to-IR difference is the gain. Measured in `../1_method/figures_build_plan.md` §F1-2.
-- **Excludes:** micro as a subject. Nothing else is excluded; `NMR`, `MR` and `VR` are supplement members (`decisions.md` §2).
+- **Excludes:** micro as a subject. Nothing else is excluded; `INR`, `MR` and `VR` are supplement members (`decisions.md` §2).
 - **Still needs:** LSE and NR re-run at n_sims 10⁴ so they can share a panel with the band-A cells;
   the region map written into Results; the recording-condition overlay lifted out of the notebook
   into a citable Methods table; the sign convention verified against the producer.

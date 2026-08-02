@@ -1,5 +1,5 @@
 \begin{abstract}
-Kinetic schemes are usually fitted to macroscopic ion-channel currents by least squares on the deterministic mean, leaving the gating fluctuations unmodelled. Likelihoods that use them, including Bayesian recursive filters, are two decades old and little used: a filter tracks the data even when the uncertainty it reports is wrong. The test is classical: at the true parameters the score, the log-likelihood's derivative, averages to zero, and its covariance across recordings equals the Fisher information it reports. We measure bias and distortion along a seven-rung ladder from least squares to a filter conditioned on both ends of each acquisition interval, for a two-state scheme over channel number, noise and acquisition interval, against exact simulations of the process they approximate. The boundary-conditioned filter is calibrated over most of the sweep, departing toward few channels and low noise, where the occupancy Gaussian is misspecified. The intermediate rungs are calibrated where least squares already is, and least squares becomes calibrated once instrumental noise exceeds gating noise, which happens at an instrumental variance proportional to channel number. No measured recording gives both the unitary current and a trustworthy least-squares error bar, the two boundaries one to three decades of noise apart. The boundary-conditioned likelihood (MacroIR) is available for R and Python with its score and information, so an experimenter can fit their own recording. 
+Kinetic schemes are usually fitted to macroscopic ion-channel currents by least squares on the deterministic mean, leaving the gating fluctuations unmodelled. Likelihoods that use them, including Bayesian recursive filters, are two decades old and little used: a filter tracks the data even when the uncertainty it reports is wrong. The test is classical: at the true parameters the score, the log-likelihood's derivative, averages to zero, and its covariance across recordings equals the Fisher information it reports. We measure bias and distortion along a seven-rung ladder from least squares to a filter conditioned on both ends of each acquisition interval, for a two-state scheme over channel number, noise and acquisition interval, against exact simulations of the process they approximate. The boundary-conditioned filter is calibrated over most of the sweep, departing toward few channels and low noise, where the occupancy Gaussian is misspecified. Least squares becomes calibrated once instrumental noise exceeds gating noise, which happens at an instrumental variance proportional to channel number. No measured recording gives both the unitary current and a trustworthy least-squares error bar, the two boundaries one to three decades of noise apart. The boundary-conditioned likelihood (MacroIR) is available for R and Python with its score and information, so an experimenter can fit their own recording. 
 \end{abstract}
 
 
@@ -49,7 +49,7 @@ Kinetic schemes are usually fitted to macroscopic ion-channel currents by least 
 %     back-infer a graded family. All three outside reads flagged this independently and it
 %     was the only defect all three found. "Seven-rung ... from least squares to a filter
 %     conditioned on both ends of the acquisition interval" names the endpoints and the size
-%     in eleven words. Seven = LSE + NR + NMR + R + MR + VR + IR (02_theory.tex, Table 1).
+%     in eleven words. Seven = LSE + NR + INR + R + MR + VR + IR (02_theory.tex, Table 1).
 %     See the verify list: the body walks four of them.
 %
 % (d) ONE WORD FOR ONE PROPERTY: "calibrated", five times. The previous version alternated
@@ -69,6 +69,9 @@ Kinetic schemes are usually fitted to macroscopic ion-channel currents by least 
 %     are calibrated where least squares already is" still asserts set inclusion; it is
 %     weaker than "have no domain of their own", which 04_results.tex:120 explicitly warns
 %     against, and it is now the one rule-4 site in the section.
+%     [CLOSED 2026-08-01: that clause is cut, see 1e, so the section now has no rule-4 site
+%     beyond the bounded universal in sentence 7. If either replacement draft goes in, neither
+%     reopens this -- both are mechanism statements and assert no set inclusion.]
 %
 % (g) SIGNIFICANCE, which the brief lists as open. Sentence 8 names who acts and on what:
 %     an experimenter checks the interval a fit reports before concluding from it. The
@@ -278,6 +281,39 @@ Kinetic schemes are usually fitted to macroscopic ion-channel currents by least 
 %     own scheme instead of extrapolating this map to it (see the last paragraph of 1c). That is a
 %     Discussion sentence and it is the only real answer to the objection.
 %
+% 1e. THE INTERMEDIATE-RUNGS CLAUSE IS CUT (2026-08-01), and the ten words it frees are NOT spent
+%     here: this note leaves the choice open rather than making it. 218 -> 208 by wc.
+%
+%     WHAT WAS CUT: "The intermediate rungs are calibrated where least squares already is, and".
+%
+%     WHY, and it is not a style call. Section 4 already flagged the clause as "the weakest
+%     evidentiary link in the section", because the scan behind it compared R, MR, NR and NMR
+%     against IR rather than against least squares, and did not include VR. The corrected INR run
+%     (figures/data/1f7138b, 2026-07-31) kills it outright on two counts:
+%       (i) the NMR arm of that scan was the defective build, missing the N*ms interval-variance
+%           term. The provenance note below now carries the recount.
+%       (ii) the corrected INR is nowhere near calibrated -- k_off information distortion 22.2 at
+%           noise 0.1, N_ch 1e4 -- so on the second moment it belongs WITH least squares (13.3), not
+%           between least squares and the filter. "Intermediate" is the wrong category, not merely an
+%           overstated bound. Numbers: papers/1_method/decisions/recompute/d3_interval_vs_recursion_2x2.py.
+%
+%     WHAT THE MEASUREMENT SUPPORTS INSTEAD is a two-margin sentence, and it is stronger than what
+%     was cut because it is a mechanism rather than a set inclusion: averaging over the acquisition
+%     window removes the amplitude BIAS (median |bias| in N_ch, log10: NR 0.099 and R 0.110 against
+%     INR 0.003 and IR 0.002 -- so recursion alone does not remove it and slightly worsens it), and
+%     the recursion removes the DISTORTION, completely only when it conditions on both ends (MR, one
+%     end, 1.94 is worse than R, no interval conditioning, 1.46). Two drafts, with their costs:
+%       A, 15 words, +5 over the pre-cut budget: "Averaging over the interval removes the bias and
+%          leaves the distortion, which the recursion removes."
+%       B, 21 words, +11: "... , which the recursion removes when it conditions on both ends."
+%          B is the one that pays sentence 4's "conditioned on both ends" back; A leaves that clause
+%          doing its own work.
+%     [OPEN, Luciano's call] Take A, take B, or spend the ten freed words on the Gaussian-closure
+%     gloss that section 4 calls the first thing to buy. Do not take both without a cut elsewhere.
+%
+%     RULE CHECK on A and B: no "only" (rule 4); "the recursion" is the functional description and
+%     not the product name (rule 5); both are two-sided and carry no direction convention (1i).
+%
 % 2. PROVENANCE, keyed by the words the sentence opens with.
 %
 % "Kinetic schemes are usually fitted" -> 02_theory.tex:89-95 (LSE fits the deterministic
@@ -312,9 +348,14 @@ Kinetic schemes are usually fitted to macroscopic ion-channel currents by least 
 %   attribution to the Gaussian closure is 04_results.tex:185 and its boundary is the one
 %   with negative slope, -0.56 in dlog10(noise)/dlog10(N_ch).
 %
-% "The intermediate rungs" -> domain scan over the same three directories (R calibrated
-%   where IR is not at 3 of 812 shared cell-parameter points, MR 2 of 336, NR 0 of 728,
-%   NMR 0 of 336, and all five of those exceptions at N_ch 10-20 where IR is the
+% "The intermediate rungs" -> CLAUSE CUT 2026-08-01, see 1e. The scan is kept because it is
+%   still the evidence for anything written about the middle of the ladder: domain scan over
+%   the same three directories (R calibrated where IR is not at 3 of 812 shared
+%   cell-parameter points, MR 2 of 336, NR 0 of 728, NMR 0 of 336 [that NMR count is the
+%   defective build, missing N*ms; the recount landed 2026-07-31 and does not transfer -- the
+%   corrected INR is not a near-calibrated member at all, its k_off distortion is 22.2 at
+%   noise 0.1 / N_ch 1e4, so it never enters the "calibrated where LSE is" comparison], and
+%   all five of those exceptions at N_ch 10-20 where IR is the
 %   conservative one); R calibrated at 62 points against 134 failing at noise 0.1 and
 %   overwhelmingly calibrated above noise 1000. For the least-squares crossing:
 %   figures/paper_both/figure_6.html (crossing table and fitted log-log slopes 1.01 and 1.03
@@ -361,10 +402,12 @@ Kinetic schemes are usually fitted to macroscopic ion-channel currents by least 
 %   - "seven-rung": the body walks four (LSE, NR, R, IR) and the supplement carries the full
 %     lattice of six plus LSE. A referee who counts will look for the other three. Confirm
 %     the supplement is cited near the ladder in Theory so the count is discharged.
-%   - "The intermediate rungs are calibrated where least squares already is": the cited scan
-%     compares R, MR, NR and NMR against IR, not against LSE, and does not include VR at
-%     all. Either extend the scan to VR and to a point-by-point LSE comparison, or narrow
-%     the sentence to what was measured. This is the weakest evidentiary link in the section.
+%   - ~~"The intermediate rungs are calibrated where least squares already is"~~ DISCHARGED BY
+%     DELETION 2026-08-01 (1e). It was the weakest evidentiary link and the corrected INR run
+%     took the rest of it out. The underlying gap is NOT closed and comes back the moment any
+%     sentence is written about the middle of the ladder: the scan still compares R, MR and NR
+%     against IR rather than against LSE, and still does not include VR. Extend it before the
+%     Results prose leans on it.
 %   - "No measured recording": the ordering is measured at Delta*k_off = 0.1 with ribbons
 %     swept over 0.01 to 1. Confirm it holds across the ribbon, because sentence 4 claims a
 %     three-axis sweep and sentence 7 says "measured".

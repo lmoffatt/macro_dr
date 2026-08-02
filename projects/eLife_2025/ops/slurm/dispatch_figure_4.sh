@@ -208,7 +208,12 @@ for i in "${!NCHS[@]}"; do
         micro_MR)  recursive=true;  averaging=1 ; taylor=false ; family=1 ; variance_form=0 ;;
         micro_IR)  recursive=true;  averaging=2 ; taylor=false ; family=1 ; variance_form=0 ;;
         nonlinearsqr) recursive=false; averaging=1 ; taylor=false ; family=2 ; variance_form=0 ;;
-        *) echo "[dispatch] unknown algorithm '$algo' (want macro_{NR,R,INR,MR,VR,IR,IRT}, micro_{R,MR,IR}, or nonlinearsqr)" >&2; exit 1 ;;
+        # LSE on the INSTANTANEOUS conductance: same fold, averaging=0, so the mean is
+        # P_half * g instead of P * gmean_i — i.e. exactly NR's mean model, where the
+        # av=1 member carries INR's (legacy/qmodel.h:7524-7546). No C++ change: the LSE
+        # branch's averaging domain is {0,1} (include/macrodr/cmd/likelihood.h:129).
+        nonlinearsqr_g) recursive=false; averaging=0 ; taylor=false ; family=2 ; variance_form=0 ;;
+        *) echo "[dispatch] unknown algorithm '$algo' (want macro_{NR,R,INR,MR,VR,IR,IRT}, micro_{R,MR,IR}, nonlinearsqr or nonlinearsqr_g)" >&2; exit 1 ;;
     esac
 
     # Producer + file prefix by family. LSE (family 2) fixes i/Current_Noise (figure_4_LSE.macroir)
@@ -222,7 +227,9 @@ for i in "${!NCHS[@]}"; do
     # collapsed to one name per N_ch, and squeue's default 8-char NAME column even merged nch 1000
     # with nch 10000. FILES were never at risk (the filepath carries nch AND noise) and neither were
     # the logs (slurm-%j.out is per job id) — it was the QUEUE that was unreadable.
-    case "$family" in 1) fam=M ;; 2) fam=L ;; *) fam=G ;; esac
+    # family 2 carries the averaging digit, so the two LSE members are distinguishable
+    # in squeue (L1 = interval-mean conductance, L0 = instantaneous).
+    case "$family" in 1) fam=M ;; 2) fam="L${averaging}" ;; *) fam=G ;; esac
     # Compact power-of-ten tags so the name stays short and fixed-width-ish: 10000 -> 1E4, 20 -> 2E1,
     # 0.1 -> 1E-1, 0.05 -> 5E-2. Every value these grids use is a single digit times a power of ten,
     # so nothing is lost; and truncated to squeue's default 8-char NAME you still read the family and

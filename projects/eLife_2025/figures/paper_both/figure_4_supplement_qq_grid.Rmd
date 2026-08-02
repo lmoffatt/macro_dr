@@ -1,0 +1,412 @@
+---
+title: "Figure 4—figure supplement (number pending) — the sandwich against the empirical distribution, over the design space: Mahalanobis quantile-quantile for the body roster"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+NUMBER PENDING, as for the other rebuilt supplements. This OPENS the single-cell Mahalanobis
+figure (`figure_4_supplement_mahalanobis_qq.Rmd`, one member, one cell, two intervals) onto the
+design space, and it is meant to stand beside it rather than replace it: that one has a thousand
+fits and can be read as a curve, this one has a hundred per panel and is read as a family.
+
+WHAT A PANEL IS. Each fit in the cloud gives a squared Mahalanobis distance from the cloud mean,
+
+    d2_k = (theta_hat_k - theta_bar)' Sigma^-1 (theta_hat_k - theta_bar)
+
+which is chi-squared with p degrees of freedom if theta_hat is normal with covariance Sigma. Sort
+them, plot against the chi-squared quantiles, and a calibrated covariance lies on the identity.
+Above the line the reported region is too small and under-covers; below it, too large.
+
+TWO COVARIANCES PER MEMBER, which is the whole comparison: what the algorithm REPORTS (its Fisher
+covariance) and what the distortion correction says it should have reported (the sandwich). Both
+are the aggregate matrices from the battery at the same cell, both 6x6 for the likelihood members.
+Centring on the cloud mean and not on the truth is deliberate: it tests the SECOND MOMENT alone,
+which is what the sandwich claims to fix. The first moment is a separate question and the coverage
+supplement answers it.
+
+WHAT THE GRID WALKS, and the arrangement follows the set's own norm: COLUMNS ARE THE MEMBERS, rows
+are the channel count. The acquisition interval is the COLOUR, three of them across the two decades
+the plane spans, on a sequential ramp so the order is visible without a legend lookup. A first
+version put the members in colour and the interval in the columns, which asked a reader to hold
+four hues and two dash patterns at once: eight curves in a panel, and the eye could not follow one
+member across the grid.
+
+WHAT IT COSTS: the noise is FIXED at the one level where all four members have clouds. The
+correlation distortion is largest at the short interval and instrumental noise dilutes it, so the
+noise axis matters, but it cannot also be in this figure without either forty-eight panels or a
+fifth code. The plane figures carry it, and the coverage supplement sweeps the interval at the
+same fixed noise.
+
+THE GREY BAND IS THE NULL, pointwise 95 per cent, simulated at each panel's own n and degrees of
+freedom. It exists because the tail of a quantile-quantile plot invites over-reading: with 700
+fits and six parameters, a sample drawn from exactly the right distribution puts its largest
+squared distance anywhere between 18.4 and 30.6 against a theoretical 16.8 at the 99th percentile.
+A curve that leaves the identity only inside this band has said nothing. A curve that leaves the
+band through the body of the distribution has.
+
+TWO RENDERS FROM ONE SWEEP. `Figure_4_supplement_qq_grid.pdf` colours three intervals;
+`Figure_4_supplement_qq_pooled.pdf` pools ALL SEVEN into one curve per cell, which is the version
+to put in front of a reader: d2 is chi-squared with p degrees of freedom whatever the interval, so
+the reference does not move and the samples can be sorted together. Seven hundred fits per curve
+instead of a hundred, two curves per panel instead of six, and the count is printed in each panel
+because the open-loop member contributes only the intervals at which it converges.
+
+A HUNDRED FITS PER PANEL, AND WHY NOT A THOUSAND. Each cloud carries group size 10 (1000 fits) and
+100 (100 fits). The larger group is used even though it gives ten times fewer curves, because at
+few channels group size 10 does not merely add noise: it REVERSES the sign of the channel-number
+direction, which figure_4_common.R warns about in as many words. A hundred points still draw a
+quantile curve; a reversed direction would draw a wrong one.
+
+CONVERGED FITS ONLY, on the per-fit `Convergence_Status_Code`. Nothing in this project filtered on
+it before 2026-08-01, and here it is not housekeeping but content: the colours that DISAPPEAR from
+the open-loop column as the channel count grows are its convergence frontier, not missing runs.
+Measured at this noise, the fraction of converged fits for NR is 1.00 up to some interval and then
+0.00, and the interval at which it falls off moves with the channel count:
+
+    Delta*k_off       0.01  0.02  0.05  0.1   0.2   0.5   1
+    NR  N_ch 10       1.00  1.00  1.00  1.00  1.00  0.02  0.00
+        N_ch 100      1.00  1.00  1.00  1.00  0.00  0.00  0.00
+        N_ch 1000     1.00  1.00  1.00  0.00  0.00  0.00  0.00
+        N_ch 10000    1.00  1.00  0.00  0.00  0.00  0.00  0.00
+
+So over more than half of this plane the open-loop member does not fit at all, which is a harder
+statement than anything about its error bar, and it had never been looked at. R and IR converge
+everywhere except the few-channel corner (0.77 to 0.97 at N_ch 10 and short intervals) and least
+squares converges everywhere. The empty LSE panel at ten thousand channels is a different thing:
+there is no cloud there at all.
+
+SKIPPED CELLS ARE PRINTED, never dropped quietly. A cell is skipped when the battery has no rows
+for that covariance at that interval, when its matrix comes back with missing entries, or when it
+is singular. The first render lost EVERY open-loop cell at Delta = 1 that way, which is precisely
+where that member is worst, and an absence there reads as health. The render log now names each
+one and its reason, and any caption has to carry the count.
+
+LEAST SQUARES APPEARS IN ONE COLUMN PAIR ONLY. Its clouds exist at noise 0.1 and at three channel
+counts, so it is absent from the noise 1 and 10 columns and from the ten-thousand row, and that is
+coverage and not a statement. Its d2 is over its OWN four parameters against chi-squared with four
+degrees of freedom, since nonlinearsqr indexes them differently from the macro members.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+suppressMessages({ library(data.table); library(ggplot2); library(patchwork) })
+```
+
+```{r data}
+SRC   <- "../figure_4_source_data/figure_4_source_data_qq_grid.csv"
+ALGOS <- c(nonlinearsqr = "LSE", macro_NR = "NR", macro_R = "R", macro_IR = "IR")
+NCHS  <- c(10, 100, 1000, 10000)
+ZS    <- "0.1"                   # one noise level: see the header on what that costs
+DLTS  <- c(0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1)   # all seven: the pooled curve uses them
+DLT3  <- c(0.01, 0.1, 1)                         # the three the colour version draws
+GS    <- 100                     # 100 fits; see the header on why not group size 10
+COV   <- c(reported = "Probit_statistics_Gaussian_Fisher_Covariance",
+           sandwich = "Probit_statistics_Gaussian_Distortion_Corrected_Covariance")
+.pre  <- function(a) if (a == "nonlinearsqr") "figure_3_LSE_" else "figure_3_G_"
+.f    <- function(a, n, z, kind)
+  Sys.glob(file.path("../data", "*", sprintf("%snch_%d_nsim_10000_%s_noise_%s_%s.csv",
+                                             .pre(a), n, a, z, kind)))
+
+stamp <- local({
+  fs <- unlist(lapply(names(ALGOS), function(a) unlist(lapply(NCHS, function(n)
+    unlist(lapply(ZS, function(z) c(.f(a, n, z, "mle_cloud_runs"),
+                                    .f(a, n, z, "battery_pool_G"))))))))
+  i <- file.info(c(fs, "figure_4_supplement_qq_grid.Rmd"))
+  sprintf("# figure_4 qq grid | files=%d bytes=%.0f newest=%.0f", length(fs),
+          sum(i$size, na.rm = TRUE), max(as.numeric(i$mtime), na.rm = TRUE))
+})
+
+qq_cell <- function(a, n, z) {
+  fc <- .f(a, n, z, "mle_cloud_runs"); fb <- .f(a, n, z, "battery_pool_G")
+  if (!length(fc) || !length(fb)) return(NULL)
+  d <- fread(fc[1], skip = 1, showProgress = FALSE)
+  b <- fread(fb[1], skip = 1, showProgress = FALSE)
+  out <- list()
+  for (dlt in DLTS) {
+    cv <- d[variable == "Convergence_Status_Code" & group_size == GS & interval_in_tau == dlt]
+    ok <- if (nrow(cv)) cv$sample_index[cv$value == 0] else NULL
+    TH <- d[variable == "Model_Parameters_Hat" & group_size == GS & interval_in_tau == dlt &
+            (is.null(ok) | sample_index %in% ok)]
+    if (!nrow(TH)) next
+    W <- dcast(TH, sample_index ~ param_index, value.var = "value")
+    M <- as.matrix(W[, -1]); if (nrow(M) < 20) next
+    pid <- as.integer(colnames(M)); P <- length(pid)
+    C <- sweep(M, 2, colMeans(M), "-")
+
+    for (k in names(COV)) {
+      g <- b[component_path == COV[[k]] & statistic == "value" & probit == "mean" &
+             abs(interval_in_tau - dlt) < 1e-9 &
+             param_index %in% pid & param_col %in% pid]
+      # NO SILENT DROPS. The first render of this figure lost every NR cell at Delta = 1 without a
+      # word, which is exactly where NR is worst, so a reader would have read its absence as
+      # health. Every skip now says which cell and why.
+      why <- NULL
+      if (!nrow(g)) why <- "no rows in the battery"
+      S <- matrix(NA_real_, P, P)
+      if (is.null(why)) {
+        S[cbind(match(g$param_index, pid), match(g$param_col, pid))] <- g$value
+        if (anyNA(S)) why <- sprintf("%d of %d matrix entries missing", sum(is.na(S)), P * P)
+      }
+      Si <- NULL
+      if (is.null(why)) {
+        # the cloud is a GROUP of GS recordings, the battery matrix is per recording
+        Si <- try(solve(S / GS), silent = TRUE)
+        if (inherits(Si, "try-error")) why <- "matrix is singular"
+      }
+      if (!is.null(why)) {
+        cat(sprintf("    SKIP %-14s N_ch %-6d noise %-5s Delta %-5g %-9s : %s\n",
+                    a, n, z, dlt, k, why))
+        next
+      }
+      d2 <- sort(rowSums((C %*% Si) * C))
+      out[[length(out) + 1]] <- data.table(
+        algo = a, nch = n, z = z, dlt = dlt, cov = k, p = P, nfit = length(d2),
+        theo = qchisq(ppoints(length(d2)), P), emp = d2)
+    }
+  }
+  rbindlist(out)
+}
+
+fresh <- file.exists(SRC) && identical(readLines(SRC, n = 1), stamp)
+if (fresh) {
+  cat("qq grid: source CSV is current, reading it\n")
+  Q <- as.data.table(read.csv(SRC, skip = 1))
+} else {
+  cat("qq grid: sweeping the clouds\n")
+  Q <- rbindlist(lapply(names(ALGOS), function(a)
+    rbindlist(lapply(NCHS, function(n)
+      rbindlist(lapply(ZS, function(z) {
+        r <- qq_cell(a, n, z)
+        if (!is.null(r) && nrow(r))
+          cat(sprintf("  %-14s N_ch %-6d noise %-5s fits %d, p %d\n", a, n, z,
+                      r$nfit[1], r$p[1]))
+        r
+      }))))))
+  dir.create(dirname(SRC), showWarnings = FALSE, recursive = TRUE)
+  writeLines(stamp, SRC)
+  suppressWarnings(write.table(Q, SRC, sep = ",", row.names = FALSE, col.names = TRUE,
+                               append = TRUE, qmethod = "double"))
+}
+
+Q[, lab  := factor(ALGOS[algo], levels = unname(ALGOS))]
+Q[, nchf := factor(sprintf("N[ch]==%d", nch), levels = sprintf("N[ch]==%d", NCHS))]
+Q[, dltf := factor(sprintf("%g", dlt), levels = sprintf("%g", DLT3))]
+```
+
+```{r plot, fig.width = 7.0, fig.height = 5.6}
+# three intervals on a sequential ramp, short to long: ordered, monotone in luminance so it reads
+# in greyscale, and distinct from the diverging scale the plane figures use for a distortion.
+# yellow -> blue -> dark purple, viridis stops with the GREEN taken out on purpose: the identity
+# line is green, and a reference a reader has to tell apart from a curve by hue is not a reference.
+# one hue, three depths, all of them visible ON WHITE: the first version used a viridis yellow for
+# the short interval and a thin yellow line on paper is not a line. Ordered by darkness, so it
+# reads in greyscale, and it is not the diverging red-blue the plane figures use for a distortion.
+PAL <- c(`0.01` = "#6BAED6", `0.1` = "#2171B5", `1` = "#08306B")
+LIM <- c(0, quantile(Q$theo, 0.999, na.rm = TRUE))
+g <- ggplot(Q[dlt %in% DLT3 & emp <= LIM[2] * 3], aes(theo, emp, colour = dltf, linetype = cov)) +
+  # GREEN, and no curve is green: the identity is the one thing in the panel that is not data, and
+  # it should be found without decoding. It was grey first, which collided with the grey a member
+  # was drawn in and had readers seeing least squares in panels it is absent from.
+  geom_abline(slope = 1, intercept = 0, colour = "#1A9850", linewidth = .35) +
+  geom_line(linewidth = .4) +
+  facet_grid(nchf ~ lab, labeller = label_parsed) +
+  coord_cartesian(xlim = LIM, ylim = LIM * 2) +
+  scale_colour_manual(values = PAL, name = expression(Delta %.% k[off])) +
+  scale_linetype_manual(values = c(reported = "22", sandwich = "solid"), name = NULL) +
+  labs(x = expression("theoretical quantile, " * chi[p]^2),
+       y = expression("empirical squared Mahalanobis distance " * d^2)) +
+  theme_bw(base_size = 8, base_family = "Helvetica") +
+  theme(panel.grid.minor = element_blank(), legend.position = "bottom",
+        legend.box = "horizontal", legend.key.size = unit(9, "pt"),
+        strip.text = element_text(size = 6.5), axis.text = element_text(size = 6.5),
+        axis.title = element_text(size = 8), legend.text = element_text(size = 7))
+g
+ggsave("Figure_4_supplement_qq_grid.pdf", g, width = 7.0, height = 5.6)
+cat(sprintf("Figure_4_supplement_qq_grid.pdf: 7.00 x 5.60 in, %d curves\n",
+            nrow(unique(Q[, .(algo, nch, z, dlt, cov)]))))
+```
+
+```{r pooled, fig.width = 7.0, fig.height = 5.2}
+# POOLED OVER THE INTERVALS. d2 is chi-squared with p degrees of freedom under calibration whatever
+# the acquisition interval is, so fits from different intervals can be sorted into one sample: the
+# reference does not move. What that buys is up to seven hundred fits per curve instead of a
+# hundred, and one curve per cell instead of three. What it costs is that the curve is then a
+# MIXTURE -- if the calibration differs across intervals, this shows their average and not any one
+# of them, which is why the three-colour version above stays.
+PO <- Q[, .(emp = sort(emp), p = p[1]), by = .(algo, lab, nch, nchf, cov)]
+PO[, theo := qchisq(ppoints(.N), p[1]), by = .(algo, nch, cov)]
+NF <- PO[cov == "sandwich", .(n = .N), by = .(lab, nchf)]
+
+# THE NULL BAND, and it is what stops the tail from being over-read. The top of a Q-Q is built from
+# a handful of order statistics and those have enormous sampling spread: for n = 700 and six
+# degrees of freedom, a PERFECTLY chi-squared sample puts its largest value anywhere between 18.4
+# and 30.6, and its 99th percentile between 14.9 and 18.5. Every upward bend IR shows at the right
+# edge sits inside that. So curvature out there is evidence of nothing; what is evidence is a
+# systematic tilt through the BODY of the distribution, which is what least squares and the
+# open-loop member show.
+set.seed(1)
+BAND <- PO[cov == "sandwich", {
+  n <- .N; pp <- p[1]
+  M <- replicate(1000, sort(rchisq(n, pp)))
+  .(theo = qchisq(ppoints(n), pp),
+    lo = apply(M, 1, quantile, .025), hi = apply(M, 1, quantile, .975))
+}, by = .(algo, lab, nch, nchf)]
+
+gp <- ggplot(PO[emp <= LIM[2] * 3], aes(theo, emp, linetype = cov)) +
+  geom_ribbon(data = BAND, aes(x = theo, ymin = lo, ymax = hi), inherit.aes = FALSE,
+              fill = "grey85", colour = NA) +
+  geom_abline(slope = 1, intercept = 0, colour = "#1A9850", linewidth = .35) +
+  geom_line(linewidth = .45, colour = "#08306B") +
+  geom_text(data = NF, aes(x = 0, y = LIM[2] * 1.9, label = sprintf("n=%d", n)),
+            inherit.aes = FALSE, hjust = 0, vjust = 1, size = 2.1, colour = "grey30") +
+  facet_grid(nchf ~ lab, labeller = label_parsed) +
+  coord_cartesian(xlim = LIM, ylim = LIM * 2) +
+  scale_linetype_manual(values = c(reported = "22", sandwich = "solid"), name = NULL) +
+  labs(x = expression("theoretical quantile, " * chi[p]^2),
+       y = expression("empirical squared Mahalanobis distance " * d^2)) +
+  theme_bw(base_size = 8, base_family = "Helvetica") +
+  theme(panel.grid.minor = element_blank(), legend.position = "bottom",
+        legend.key.size = unit(9, "pt"), strip.text = element_text(size = 7),
+        axis.text = element_text(size = 7), axis.title = element_text(size = 8),
+        legend.text = element_text(size = 7))
+gp
+ggsave("Figure_4_supplement_qq_pooled.pdf", gp, width = 7.0, height = 5.2)
+cat(sprintf("Figure_4_supplement_qq_pooled.pdf: 7.00 x 5.20 in, %d curves\n",
+            nrow(unique(PO[, .(algo, nch, cov)]))))
+```
+
+```{r pooled-loglog, fig.width = 7.0, fig.height = 5.2}
+# THE SAME PLOT ON LOG-LOG, and it is licit for the reason any monotone transform applied to BOTH
+# axes is: the identity stays the identity, above stays above, and the null band transforms with
+# the data. What it BUYS here is that the dominant failure in this figure is a SCALE error, and a
+# scale error is exactly what log-log turns into a rigid vertical offset: if the reported
+# covariance is too small by a factor c then d2_emp = c * d2_theo, so log d2_emp = log c + log
+# d2_theo, a line PARALLEL to the identity displaced by log c. The displacement can be read with a
+# ruler and it is the same at every quantile. A shape error -- a genuinely non-chi-squared
+# distribution -- is then the thing that is NOT parallel.
+#
+# Two more things it fixes. The body of the distribution gets the room: on a linear axis the
+# hundreds of points below the median are crushed into the first fifth while the tail, a handful of
+# noisy order statistics, takes most of the width. And nothing has to be clipped, so least squares
+# stops running off the top of its panel and can be seen for what it is.
+gl <- ggplot(PO, aes(theo, emp, linetype = cov)) +
+  geom_ribbon(data = BAND, aes(x = theo, ymin = lo, ymax = hi), inherit.aes = FALSE,
+              fill = "grey85", colour = NA) +
+  geom_abline(slope = 1, intercept = 0, colour = "#1A9850", linewidth = .35) +
+  geom_line(linewidth = .45, colour = "#08306B") +
+  geom_text(data = NF, aes(x = 0.7, y = 400, label = sprintf("n=%d", n)),
+            inherit.aes = FALSE, hjust = 0, vjust = 1, size = 2.1, colour = "grey30") +
+  facet_grid(nchf ~ lab, labeller = label_parsed) +
+  scale_x_log10(limits = c(0.5, 25), breaks = c(1, 3, 10, 20)) +
+  scale_y_log10(limits = c(0.5, 600), breaks = c(1, 10, 100)) +
+  scale_linetype_manual(values = c(reported = "22", sandwich = "solid"), name = NULL) +
+  labs(x = expression("theoretical quantile, " * chi[p]^2 * " (log)"),
+       y = expression("empirical " * d^2 * " (log)")) +
+  theme_bw(base_size = 8, base_family = "Helvetica") +
+  theme(panel.grid.minor = element_blank(), legend.position = "bottom",
+        legend.key.size = unit(9, "pt"), strip.text = element_text(size = 7),
+        axis.text = element_text(size = 7), axis.title = element_text(size = 8),
+        legend.text = element_text(size = 7))
+gl
+ggsave("Figure_4_supplement_qq_pooled_loglog.pdf", gl, width = 7.0, height = 5.2)
+```
+
+```{r pooled-wh, fig.width = 7.0, fig.height = 5.2}
+# WILSON-HILFERTY. (d2/p)^(1/3) is very nearly normal with mean 1 - 2/(9p) and sd sqrt(2/(9p)), so
+# standardising it turns the whole thing into a NORMAL quantile-quantile plot, the object the eye
+# is best calibrated for. The readings become the two a reader already knows: the SLOPE is the
+# ratio of spreads and the INTERCEPT the shift. A covariance wrong by a factor c shows as a slope
+# of c^(1/3) -- compressed, which is the cost -- and a non-chi-squared shape shows as curvature,
+# which is what a normal Q-Q exposes best.
+wh <- function(d2, pp) { m <- 1 - 2 / (9 * pp); s <- sqrt(2 / (9 * pp)); ((d2 / pp)^(1/3) - m) / s }
+PO[, ppo := ppoints(.N), by = .(algo, nch, cov)]
+BAND[, ppo := ppoints(.N), by = .(algo, nch)]
+PO[, `:=`(zn = qnorm(ppo), zw = wh(emp, p))]
+BW <- copy(BAND)
+BW[, pw := ifelse(lab == "LSE", 4, 6)]
+BW[, `:=`(zn = qnorm(ppo), lo_w = wh(lo, pw), hi_w = wh(hi, pw))]
+
+gw <- ggplot(PO, aes(zn, zw, linetype = cov)) +
+  geom_ribbon(data = BW, aes(x = zn, ymin = lo_w, ymax = hi_w), inherit.aes = FALSE,
+              fill = "grey85", colour = NA) +
+  geom_abline(slope = 1, intercept = 0, colour = "#1A9850", linewidth = .35) +
+  geom_line(linewidth = .45, colour = "#08306B") +
+  facet_grid(nchf ~ lab, labeller = label_parsed) +
+  coord_cartesian(ylim = c(-3.5, 12)) +
+  scale_linetype_manual(values = c(reported = "22", sandwich = "solid"), name = NULL) +
+  labs(x = "standard normal quantile",
+       y = expression("Wilson-Hilferty transform of " * d^2 * ", standardised")) +
+  theme_bw(base_size = 8, base_family = "Helvetica") +
+  theme(panel.grid.minor = element_blank(), legend.position = "bottom",
+        legend.key.size = unit(9, "pt"), strip.text = element_text(size = 7),
+        axis.text = element_text(size = 7), axis.title = element_text(size = 8),
+        legend.text = element_text(size = 7))
+gw
+ggsave("Figure_4_supplement_qq_pooled_wh.pdf", gw, width = 7.0, height = 5.2)
+```
+
+```{r pooled-ratio, fig.width = 7.0, fig.height = 5.3}
+# THE RATIO, the most direct of the three and the least conventional. d2_emp / d2_theo against
+# d2_theo puts the quantity of interest on the vertical axis and nothing else: a calibrated
+# covariance is a HORIZONTAL LINE AT ONE, one wrong by a factor c is a horizontal line at c that
+# can be read off the axis, and a wrong SHAPE is the only thing that tilts it. It spends the whole
+# height of the panel on the deviation instead of on a 45-degree line. What it gives up is
+# recognition: a referee expects the Q-Q.
+#
+# ONE Y SCALE PER MEMBER, and that is why this is four plots composed with patchwork rather than
+# one facet_grid. The members differ by two orders of magnitude in how wrong they are -- least
+# squares reaches a hundred, the boundary-conditioned filter never leaves 0.8 to 1.5 -- so a shared
+# axis draws IR as a flat line on the floor and says nothing about it. facet_grid can free a scale
+# by ROW and this figure needs it freed by COLUMN, so the columns are separate plots, which is the
+# device the plane figures already use for their member blocks. COST, stated plainly: heights are
+# NOT comparable across columns, only shapes are, and the green line at one anchors every panel.
+ratio_block <- function(A, first, last) {
+  d <- PO[lab == A & theo > 1]; bd <- BAND[lab == A & theo > 1]
+  if (!nrow(d)) return(NULL)
+  # drop = FALSE below keeps every level of BOTH facet variables, which is wanted for the channel
+  # count and emphatically not for the member: left alone it drew the other three members as empty
+  # columns inside each block. Collapsing lab to this member's single level is what confines the
+  # instruction to the rows.
+  d[, lab := factor(as.character(lab), levels = A)]
+  bd <- copy(bd)[, lab := factor(as.character(lab), levels = A)]
+  rg <- range(c(d$emp / d$theo, 1), na.rm = TRUE)
+  ggplot(d, aes(theo, emp / theo, linetype = cov)) +
+    geom_ribbon(data = bd, aes(x = theo, ymin = lo / theo, ymax = hi / theo),
+                inherit.aes = FALSE, fill = "grey85", colour = NA) +
+    geom_hline(yintercept = 1, colour = "#1A9850", linewidth = .35) +
+    geom_line(linewidth = .45, colour = "#08306B") +
+    # drop = FALSE keeps the channel counts this member has no cloud for as EMPTY panels. Without
+    # it least squares, which has no ten-thousand cell, drew three panels stretched over the height
+    # the others use for four, and the rows stopped lining up across the composition: row one of
+    # one column sat beside row two of the next. An empty panel is the honest filler.
+    facet_grid(nchf ~ lab, labeller = label_parsed, drop = FALSE) +
+    scale_x_log10(breaks = c(1, 3, 10, 20)) +
+    scale_y_log10(limits = rg) +
+    scale_linetype_manual(values = c(reported = "22", sandwich = "solid"), name = NULL) +
+    labs(x = expression("theoretical quantile, " * chi[p]^2 * " (log)"),
+         y = if (first) expression("empirical " * d^2 * " over theoretical") else NULL) +
+    theme_bw(base_size = 8, base_family = "Helvetica") +
+    theme(panel.grid.minor = element_blank(),
+          strip.text.x = element_text(size = 7),
+          strip.text.y = if (last) element_text(size = 7, angle = 0) else element_blank(),
+          axis.text = element_text(size = 6.5), axis.title = element_text(size = 8),
+          plot.margin = margin(1, 1, 1, 1))
+}
+LV <- levels(PO$lab)
+bs <- Filter(Negate(is.null), lapply(seq_along(LV), function(i)
+  ratio_block(LV[i], i == 1, i == length(LV))))
+# patchwork collects the one legend and the shared x title, so each block carries neither
+gr <- wrap_plots(bs, nrow = 1, guides = "collect", axis_titles = "collect") &
+  theme(legend.position = "bottom", legend.key.size = unit(9, "pt"),
+        legend.text = element_text(size = 7))
+gr
+ggsave("Figure_4_supplement_qq_pooled_ratio.pdf", gr, width = 7.0, height = 5.3)
+```
+
+```{r numbers}
+cover <- Q[, .(cover = mean(emp <= qchisq(0.95, p[1]))), by = .(lab, nch, z, dlt, cov)]
+knitr::kable(dcast(cover[dlt == 1], lab + z ~ nch + cov, value.var = "cover"), digits = 3,
+             caption = "coverage of the nominal 95% region at Delta*k_off = 1")
+```

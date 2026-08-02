@@ -128,6 +128,25 @@ for nch in 1 10 100 1000 10000; do
 done
 ```
 
+### What is queued, in sweep coordinates
+
+`squeue` can only show the job *name*, and the dispatchers can only fit family + N_ch decade +
+noise decade into it (`f4G_1E4_1E5`) — so the **algorithm is not visible in the queue**, and one
+cell launched under three algorithms looks like three identical rows. Reading the submit
+arguments back from `scontrol show job` does not help either: Slurm 23.11 prints `Command=` with
+the argv dropped. The full submit line does survive in the accounting DB, so:
+
+```bash
+projects/eLife_2025/ops/slurm/queue_status.sh          # PD + R now, decoded
+projects/eLife_2025/ops/slurm/queue_status.sh -a       # every state since -S (default 60 d back)
+```
+
+gives one row per job with algorithm, N_ch, noise label, n_sim, submit date, run directory (the
+binary's commit hash, so campaigns from different builds stay apart), the group-size/interval
+knobs of its dispatch, and how many CSVs that exact cell already has on scratch (`OUT`) —
+`OUT=0` on a `PENDING` row is a cell still to produce, `OUT>0` is a redo of something already
+there.
+
 For many *string-shaped* knobs (scheme names, algorithm labels), prefer **template rendering**
 — a `*_template.macroir` with `@PLACEHOLDER@`s, `sed`-substituted into a concrete file per job
 (quotes live in the template, no shell escaping; the rendered file is a provenance record).

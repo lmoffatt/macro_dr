@@ -1,5 +1,11 @@
 # Writing plan: the paper as a task graph agents execute
 
+> **Label note 2026-07-31.** Every `NMR`/`MNR` below is the non-recursive interval member, now
+> named **`INR`** (the published `MacroINR`). `NMR` alone now denotes the *defective build* that
+> omitted the `N·ms` interval-variance term between `a3e0a89` and `1f7138b`, so any measured
+> statement about it here is about that build and not about the method
+> (`../_program/nomenclature.md`).
+
 > Opened 2026-07-14. Rewritten 2026-07-14 to be **executable by agents under supervision**.
 >
 > Owns: **the objective, the task graph, the checks, and the human budget.** It does not own what any

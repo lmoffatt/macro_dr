@@ -1,0 +1,128 @@
+---
+title: "Figure 4—figure supplement (number pending) — the same plane, the distortion split into its per-sample and temporal-correlation parts"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+NUMBER PENDING. The Figure 4 supplements are being rebuilt on the five-member plane and the
+numbering is settled once the set is known; the ones written against the superseded figure are
+parked in `../in_progress/figure_4_supplements_20260731/`. File name carries the content until
+then.
+
+WHAT IT IS. Figure 4's second moment, factored. Same plane, same rows, same members, same scale,
+same two line families, same everything: the only thing that changes is what the top bar says.
+Where Figure 4 nests moment > member > parameter, this nests COMPONENT > member > parameter, so a
+reader who has paid for Figure 4 reads this one with no new instructions. 18 columns, the same as
+the body figure, so the geometry and `per_row` are the same too.
+
+THE TWO COMPONENTS. The Gaussian information distortion factors into two congruences that the
+battery computes separately:
+
+  PER-SAMPLE     G^-1/2 J_sample G^-1/2, the departure of a SINGLE interval from the Gaussian the
+                 algorithm assumes: the skewness and kurtosis of the one-step residual. It is
+                 the price of the closure, and it must go to 1 as the channel count grows, since
+                 that is when the binomial occupancy becomes normal.
+  CORRELATION    J_sample^-1/2 J J_sample^-1/2, the temporal memory ACROSS intervals that a
+                 likelihood diagonal in time cannot see. It is the price of the factorisation,
+                 and nothing about the channel count makes it go away.
+
+Both are factors with a null of 1, so they take Figure 4's palette and Figure 4's two criteria
+unchanged, and both are read at theta_pool from battery_pool_G, the same anchor as Figure 4's B.
+
+THE PRODUCT IS NOT EXACT PER PARAMETER, and the caption has to say so. Total = sample x
+correlation holds exactly in log-det, and it is what makes the whole-matrix maps safe; per
+parameter the reconstruction is K CDM K^T with K = H^-1/2 J_s^1/2, NOT SDM^1/2 CDM SDM^1/2, so
+the diagonal of the product is not the product of the diagonals. Reading a cell of Figure 4's B
+as the product of the two cells here is right to within that rotation and no further. It is close
+in practice (R at N_ch 1e3: 1.024 x 1.433 = 1.468 against a total of 1.481) and it is not an
+identity.
+
+WHAT IT SHOWS, measured at noise 0.1, medians over the seven intervals:
+
+                        N_ch:     10      100     1000    10000
+    per-sample, k_off   LSE      1.016   0.967   0.943   0.947
+                        NR       1.239   1.019   5.676  47.165
+                        INR      1.724   1.154   1.015   1.003
+                        R        1.086   1.071   1.024   0.998
+                        IR       1.099   1.068   1.038   1.007
+    per-sample, N_ch    NR       1.191   1.207  11.569 569.391
+                        INR      1.079   1.048   1.010   1.001
+                        R        0.906   0.926   0.933   0.960
+                        IR       0.913   0.962   0.972   0.986
+    correlation, k_off  LSE     10.818  13.698  14.155  14.073
+                        NR      16.513  19.467  21.162  21.194
+                        INR     16.487  20.713  21.778  22.103
+                        R        1.354   1.356   1.433   1.471
+                        IR       1.239   1.019   1.017   1.000
+    correlation, N_ch   NR       8.776   8.970   6.278   5.475
+                        INR      9.095  10.300   9.887  10.169
+                        R        0.994   1.255   1.342   1.338
+                        IR       0.914   0.967   0.995   0.997
+
+Three readings, and the first is the one this supplement exists for.
+
+  1. NR AND INR HAVE THE SAME CORRELATION PART. 16.5 / 19.5 / 21.2 / 21.2 against 16.5 / 20.7 /
+     21.8 / 22.1 on k_off: the same open-loop temporal structure, as it must be, since the two
+     differ by a per-sample variance term and not by anything about time. What separates them is
+     the SAMPLE part, and there the split is total: NR runs 1.24, 1.02, 5.68, 47.2 and diverges,
+     INR runs 1.72, 1.15, 1.02, 1.00 and converges to one. In the channel-number direction it is
+     starker still, 569 against 1.00. So the divergence Figure 4 shows for NR is not a temporal
+     failure at all: it is the one-interval variance being wrong by a term that grows with the
+     channel count, which is exactly what the omitted N*ms is.
+  2. THE RECURSION BUYS THE OTHER FACTOR AND ONLY THE OTHER FACTOR. INR to IR takes the
+     correlation part from 22.1 to 1.000 and leaves the sample part where it already was (1.003
+     against 1.007). R to IR is the same statement one rung lower, 1.47 to 1.00.
+  3. LEAST SQUARES IS PER-SAMPLE HONEST AND TEMPORALLY BLIND: sample 0.95 to 1.02 across four
+     decades, correlation 10.8 to 14.1. Its failure is entirely the factorisation, which is worth
+     stating plainly because it is the concession the paper makes to the classical fit.
+
+Read together with Figure 4 the ladder becomes a 2x2 with a mechanism attached: the interval
+term fixes the per-sample factor, the recursion fixes the correlation factor, and calibration
+needs both.
+
+INR IS ONE NOISE LEVEL SO FAR, so its two columns are the tiles the layout draws for a member
+under `MIN_CONTOUR_LEVELS`, at noise 0.1 only. They become contours on their own once the sweep
+lands. Everything else on this plane has its full staircase.
+
+SUPERSEDES, when the numbering is settled, `figure_4_supplement_3.Rmd` (the map version of the
+same split, written for R against IR and never built) and `figure_4_supplement_4.Rmd` (the line
+version, which carries the same decomposition against N_ch resolved by noise). Both are parked in
+`../in_progress/`. The line version says something this one does not, namely how the split moves
+with noise as a continuous cut, so it is a candidate to keep rather than a certainty to drop.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+```{r common, include=FALSE}
+# The same roster as the body figure, and for the same reason: this is Figure 4's own second
+# moment taken apart, so any member missing here would be a member whose mechanism is not shown.
+FIG4_ALGOS     <- c("nonlinearsqr", "macro_NR", "macro_INR", "macro_R", "macro_IR")
+FIG4_ALGO_LAB  <- c(nonlinearsqr = "LSE", macro_NR = "NR", macro_INR = "INR",
+                    macro_R = "R", macro_IR = "IR")
+FIG4_DATA_DIRS <- c("../data/1c2ae6f", "../data/87889e6", "../data/0ffbda7", "../data/1f7138b")
+source("figure_4_common.R")
+source("figure_4_layout.R")
+```
+
+```{r sides}
+# `stat` already carries all three components (COMPS in figure_4_common.R) with a `comp` column,
+# and Figure 4 filters it to "total". Here the two halves take the two factors instead. Same
+# readout as Figure 4's B, log10 of the CI-aware Dconf, so a cell means the same thing in all
+# three files: the factor by which the reported second moment is wrong.
+SIDES <- list(
+  list(lab = "per-sample distortion", letter = "A",
+       data = dplyr::filter(stat, comp == "sample"), zf = function(x) log10(x$Dconf)),
+  list(lab = "temporal-correlation distortion", letter = "B",
+       data = dplyr::filter(stat, comp == "corr"),   zf = function(x) log10(x$Dconf)))
+```
+
+```{r render, fig.width = 7.4, fig.height = 5.95}
+# 18 columns, the same as Figure 4, so the same nominal knob: 0.179, measured at x 0.1567,
+# y 0.1562, 99.7 per cent isotropic (tmp/calib_fig4.R, tmp/measure_fig4.py).
+fig4_render(SIDES, per_row = 0.179, out = "Figure_4_supplement_sample_corr.pdf",
+            cb_title = "factor by which\nthe report is wrong")
+```
