@@ -566,7 +566,12 @@ scI  <- scale_y_continuous(limits = YI)     # observation current (full-data ran
 # the FULL map). Keep the two apart here rather than propagating the wart into the roster.
 .DISP <- c(LSE = "LSE", NR = "NR", NMR = "MNR", R = "R", MR = "MR", VR = "VR", IR = "IR")
 
-build_figure <- function(sel, outfile, cols) {
+# hgt (2026-08-05): the body figure and its supplement need different heights. At 7.5 in the
+# Figure 1 float was 102.5 pt taller than a page could hold with its 287-word legend, and LaTeX
+# dropped the last 31 words plus the supplement line off the bottom. 6.05 in puts the art at
+# 435 pt, the height Figure 2 already fits at. Font sizes are in points and do not scale with the
+# device, so the panels get shorter and the text stays where eLife's floor needs it.
+build_figure <- function(sel, outfile, cols, hgt = 7.5, wdt = 7.0) {
   stopifnot(length(cols) >= 2, all(cols %in% names(.DAT)))
   unify <- !is.null(sel)
   first <- cols[1]                                  # carries the y title and the legend
@@ -662,6 +667,6 @@ build_figure <- function(sel, outfile, cols) {
           plot.margin = margin(1.5, 2, 1.5, 2)) &
     scale_x_continuous(labels = function(x) x * 1000)   # seconds -> ms
 
-  ggsave(outfile, g, width = 7.0, height = 7.5)
+  ggsave(outfile, g, width = wdt, height = hgt)
   g
 }

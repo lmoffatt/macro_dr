@@ -260,7 +260,13 @@ colhead <- function(k) ggplot() + theme_void() + ggtitle(ALAB[[k]], subtitle = F
   theme(plot.title = element_text(hjust = .5, size = 9),
         plot.subtitle = element_text(hjust = .5, size = 7))
 
-base <- function() theme_bw(base_size = 8)
+# axis.text raised to 7 pt on 2026-08-05. theme_bw(base_size = 8) leaves it at rel(0.8) = 6.4 pt,
+# and the old 7.0 x 11 in art was then scaled by 0.81 into the 5.65 in supplement column, so the
+# numbers landed on page 45 at a measured 4.82 pt against eLife's 7 pt floor for base text. Drawing
+# at 5.6 in removes the scaling; this puts the text where the floor needs it.
+base <- function() theme_bw(base_size = 8) + theme(axis.text = element_text(size = 7))
+# the shared legend is base text as well; theme_bw leaves it at rel(0.8) = 6.4 pt
+LEGEND_TXT <- theme(legend.text = element_text(size = 7))
 
 # mode "info" -> log10 magnitude axis, no null; "linear" -> signed axis with 0 forced onto the ticks.
 # y title only on LEAD; x numbers on every bottom-of-block panel, x TITLE once, on XTTL.
@@ -331,19 +337,34 @@ mk_ratio <- function(i, a, tag = NULL, bottom = FALSE) {
        xlab = "time (ms)", mode = "linear")
 }
 
-info_tags  <- c("A", "C", "E", "G")
-ratio_tags <- c("B", "D", "F", "H")
-panels <- list()
-for (i in seq_along(PLAB)) {
-  for (a in ALGOS) panels <- c(panels, list(mk_info (i, a, tag = if (a == LEAD) info_tags[i]  else NULL)))
-  for (a in ALGOS) panels <- c(panels, list(mk_ratio(i, a, tag = if (a == LEAD) ratio_tags[i] else NULL,
-                                                     bottom = (i == length(PLAB)))))
+# SPLIT INTO TWO SUPPLEMENTS, 2026-08-05. As one 7.0 x 11 in figure this could not be published:
+# a figure supplement is placed in the 5.65 in text column (elife.cls:409-413), so the art arrived
+# scaled by 0.81 and occupied 639 pt of the ~648 pt page, which left no room for the 273-word legend
+# (154 of its words were dropped off the bottom of page 45) and shrank the axis numbers to 4.82 pt.
+# Two halves, two parameters each, drawn at 5.6 in wide so nothing is scaled. The per-column panel
+# width on the page is unchanged (7.0 x 0.81 = 5.67), so this costs no panel area; it buys the
+# legend its room and the axis text its 7 pt. Letter tags run A-D in each half, restarting, because
+# each half is now its own display item.
+HALVES <- list(list(idx = 1:2, out = "Figure_3_S1.pdf",
+                    what = "the opening rate and the closing rate"),
+               list(idx = 3:4, out = "Figure_3_S2.pdf",
+                    what = "the unitary current and the channel number"))
+info_tags  <- c("A", "C")
+ratio_tags <- c("B", "D")
+for (hh in HALVES) {
+  panels <- list()
+  for (k in seq_along(hh$idx)) {
+    i <- hh$idx[k]
+    for (a in ALGOS) panels <- c(panels, list(mk_info (i, a, tag = if (a == LEAD) info_tags[k] else NULL)))
+    for (a in ALGOS) panels <- c(panels, list(mk_ratio(i, a, tag = if (a == LEAD) ratio_tags[k] else NULL,
+                                                       bottom = (k == length(hh$idx)))))
+  }
+  gh <- wrap_plots(c(lapply(ALGOS, colhead), panels), ncol = length(ALGOS),
+                   heights = c(0.10, rep(c(1, 0.5), length(hh$idx))), guides = "collect") &
+        theme(legend.position = "bottom", legend.text = element_text(size = 7))
+  # 5.60 x 5.60 in: the width is the supplement column exactly, and the height is the old 11 in
+  # scaled by this half's share of the row budget (3.10 of 6.10 units), so the panels keep their shape.
+  ggsave(hh$out, gh, width = 5.6, height = 5.6)
+  cat(sprintf("wrote %s: %d parameter bands x 2 rows, %d members, 5.6 x 5.6 in (%s)\n",
+              hh$out, length(hh$idx), length(ALGOS), hh$what))
 }
-
-g4 <- wrap_plots(c(lapply(ALGOS, colhead), panels), ncol = length(ALGOS),
-                 heights = c(0.10, rep(c(1, 0.5), length(PLAB))), guides = "collect") &
-      theme(legend.position = "bottom")
-ggsave("Figure_3_supplement_1.pdf", g4, width = 7.0, height = 11)
-cat(sprintf("wrote Figure_3_supplement_1.pdf: %d parameter bands x 2 rows, %d members, 7.0 x 11 in\n",
-            length(PLAB), length(ALGOS)))
-```

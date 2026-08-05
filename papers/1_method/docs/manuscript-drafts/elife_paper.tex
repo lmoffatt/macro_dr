@@ -1,6 +1,9 @@
 \documentclass[9pt]{elife}
 
-\usepackage{amsmath,amssymb,mathtools}
+% amssymb dropped 2026-08-05: elife.cls loads stix, which already provides the AMS symbols, and
+% amssymb declines to load itself under it ("the 'amssymb' package is redundant when you are using
+% the 'stix' package"). It was one of the build's warnings and nothing in the manuscript used it.
+\usepackage{amsmath,mathtools}
 \usepackage{siunitx}
 \usepackage{graphicx}
 % Figures live in the shared figure tree and are regenerated there; point at the source so
@@ -32,7 +35,25 @@
 % (3) "Honest uncertainty in kinetic inference from macroscopic ion-channel currents: a
 %     validity criterion and a design map". Longer, and "honest" in a title may read as a
 %     claim about other people's work rather than about a measured quantity.
-\title{A validity criterion and a usage map for likelihoods of macroscopic ion-channel currents}
+% (4) SETTLED 2026-08-04, and this closes the standing title conflict. The previous title,
+%     "A validity criterion and a usage map for likelihoods of macroscopic ion-channel currents",
+%     promised recommendations that the paper deliberately declines to make: the Discussion now
+%     carries an explicit demarcation of what is not settled, and "usage map" contradicts it.
+%     The word "map" itself is fine and is the right epistemic word, continuous and cartographic;
+%     "usage" is what promises a verdict.
+%     The adopted form is the declarative finding recommended by the title study
+%     (archive/section-plans-20260729/title.md, revised recommendation), because that is eLife's
+%     dominant shape (over half of 20 surveyed titles, zero colons, zero questions, zero aphorisms)
+%     and it is the grammar of Luciano's most-cited paper. Reordered to the grammar of
+%     moffatt2007estimation, "Estimation of Ion Channel Kinetics from Fluctuations of Macroscopic
+%     Currents": "ion channel" open and attached to the kinetic information, "macroscopic currents"
+%     unmodified. That echo is free and it removes the hyphen question.
+%     Rejected in the same pass: "Measuring/Quantifying how ..." (gerund is eLife's tertiary shape
+%     and reads as a procedure rather than a finding; the novelty scoping it bought is already done,
+%     and better, by the narrow-novelty paragraph in the Introduction), and any form carrying
+%     "differ" or "differently" (the plural already says a family is compared, and it shifts the
+%     emphasis away from the fact that the best member distorts too, which the Discussion defends).
+\title{Likelihood approximations distort the ion channel kinetic information in macroscopic currents}
 
 \author[1*]{Luciano Moffatt}
 \affil[1]{Instituto de Qu\'imica F\'isica de los Materiales, Medio Ambiente y Energ\'ia (INQUIMAE), CONICET; Facultad de Ciencias Exactas y Naturales, Universidad de Buenos Aires, Ciudad de Buenos Aires, C1428EHA, Argentina}

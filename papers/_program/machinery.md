@@ -79,8 +79,18 @@ misreported, which no scalar summary can.
 
 > **C_ii > 1 means the likelihood under-reports the uncertainty in parameter i, i.e. over-confident.**
 >
-> **Every verdict in every paper depends on this convention.** It is currently asserted in three
-> places with two different signs. **Verify it once against the code and fix the other copies.**
+> **VERIFIED against the producing code 2026-08-04, and no copy dissents.** The emitter is
+> `legacy/lapack_headers.h:2519` (`Lapack_PSD_Normalized_Congruence_Matrix`), which computes
+> H^(−1/2) J H^(−1/2) taking H as its FIRST argument, and `legacy/distributions.h:470-478` states in
+> so many words that the reported Fisher information is the H reference of
+> `Likelihood_Information_Distortion`. So C > 1 means the score varies more than the reported
+> information, i.e. the reported interval is narrower than the delivered one. Cross-checked against
+> `theory/macroir/docs/Likelihood_Information_Distortion/supplement_information_distortion_main.tex:129-130`
+> and against `03_diagnostics.tex:15,47`, which agree, and against the data: NR reads 13 to 17 and NR
+> is the member that discards the correlation and must therefore over-state information.
+> The earlier warning that this was "asserted in three places with two different signs" was stale;
+> the dissenting copy no longer exists. The `TODO-SIGN` markers it spawned were cleared from the
+> manuscript in the same pass.
 
 **It is a tool, not a complaint.** The same matrix repairs the error bars: the sandwich
 Σ = H⁻¹ J H⁻¹ = H^(−1/2) C H^(−1/2) is the corrected parameter covariance, and the corrected ellipse

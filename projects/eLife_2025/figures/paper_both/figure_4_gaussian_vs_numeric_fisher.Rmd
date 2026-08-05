@@ -1,0 +1,155 @@
+---
+title: "Figure 4—figure supplement (number pending, PROVISIONAL) — does the closed-form Fisher reproduce the differenced one? The analytic Gaussian Fisher against the numerical Fisher, in size and in shape"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+PROVISIONAL, and not a candidate for the paper in this state. The two members the question is about
+are the two this figure cannot draw. Read the coverage note below before reading the maps.
+
+THE QUESTION, which is about the DEVICE and not about calibration. Every distortion in this set is
+built on a Fisher information, and there are two ways to get one: the closed-form Gaussian
+expression, which is cheap, and differencing the likelihood, which is not. If they agree the cheap
+one can be used everywhere and the whole set rests on it. If they do not, every figure anchored on
+the analytic Fisher inherits the gap. This asks how far apart they are, with the same two numbers
+the magnitude/anisotropy supplement uses, because "how far apart are two positive definite
+matrices" is the same question there and here.
+
+WHAT IT IS. Two panels over the same plane, five members, one column each, 10 columns, both reading
+Likelihood_Gaussian_Fisher_Distortion = inv(sqrt(G_b)) * F_b * inv(sqrt(G_b)), with G_b the analytic
+Gaussian Fisher and F_b the finite-difference one:
+
+  A  size    exp(mean(log lambda)), the typical factor by which the analytic formula misses. Below
+             1 it understates the information the differenced likelihood carries, above 1 it
+             overstates it.
+  B  shape   exp(sd(log lambda)), whether it misses by the same factor in every direction. At 1 the
+             analytic Fisher is the numerical one up to a scalar and could be rescaled; above 1 the
+             two matrices differ in a way no rescaling reaches.
+
+Same scale as everything else in the set, one bar, criteria 1.15 and 2, CI-aware toward 1.
+
+THE COVERAGE, and it is why this is provisional. The quantity exists only in the NON-`_G` runs: the
+`_G` sweep is gaussian-only, F_b is never formed there, and the slot is `nan` in all 240 cells.
+What the non-`_G` runs have at nsim 10000 is NR, R, MR, NMR and IR at three noise levels, 0.1, 1
+and 10, against the nine to twelve the rest of the set reaches. Absent entirely: least squares,
+which is the member the analytic Fisher is reported to fail for, and INR, which is the high-noise
+comparison. So the figure today shows the members for which the answer was already expected to be
+yes, and is silent on both cases.
+
+NMR IS SUPERSEDED. These runs predate the fix at HEAD that restored the interval conductance
+variance in the non-recursive path and renamed the member INR, so this column is the version
+missing the N*ms term. It is drawn because it carries by far the largest departure in the file and
+that is worth seeing, and it must be labelled superseded in any caption.
+
+WHAT IT SHOWS, medians over the seven intervals, POOL anchor, as factors:
+
+               noise 0.1                        noise 10
+      N_ch:    10     100    1e3    1e4      10     100    1e3    1e4
+ size  NR     1.007  1.010  1.264  1.602    1.001  1.011  1.016  1.005
+       NMR    1.005  1.003  1.585  2.307    1.002  1.002  1.006  1.003
+       R      1.028  1.017  1.009  1.001    1.009  1.006  1.005  1.012
+       MR     1.041  1.030  1.012  1.002    1.018  1.020  1.022  1.021
+       IR     1.014  1.004  1.000  1.000    1.002  0.999  1.000  1.000
+ shape NR     1.093  1.044  1.885  3.103    1.075  1.034  1.041  1.038
+       NMR    1.027  1.015  2.687  6.216    1.064  1.022  1.026  1.020
+       R      1.055  1.026  1.018  1.011    1.043  1.027  1.029  1.027
+       MR     1.097  1.049  1.025  1.010    1.083  1.047  1.048  1.048
+       IR     1.033  1.011  1.003  1.003    1.038  1.008  1.004  1.004
+
+THE CLOSED FORM IS THE DIFFERENCED ONE FOR EVERY RECURSIVE MEMBER, everywhere on this plane: R, MR
+and IR sit within 4 per cent in size and 10 in shape at every cell, and IR within half a per cent
+once there are a thousand channels. So the analytic Fisher the rest of the set rests on is not
+adding anything of its own for those members, which is the result this figure exists to state.
+
+IT FAILS FOR THE TWO OPEN-LOOP MEMBERS, and in one corner of the plane: NR and NMR at LOW noise,
+LONG sampling interval and MANY channels. NR reads 1.26 and 1.60 in size at a thousand and ten
+thousand channels at noise 0.1, NMR 1.58 and 2.31, and at noise 1 NMR is still 1.59 at ten thousand
+while everything else has recovered. The interval is the axis the medians hide and the map shows:
+the departure is a wedge opening toward the long intervals, and it widens down the channel count
+until at ten thousand it has taken most of the row. All three directions are the same direction,
+deeper into where the data is least Gaussian, which is what a moment-matched closed form should do
+when it leaves the regime it was matched in.
+
+SHAPE FAILS HARDER THAN SIZE, in every cell where anything fails: 3.10 against 1.60 for NR, 6.22
+against 2.31 for NMR, 2.70 against 1.59 at noise 1. So where the analytic Fisher misses, it is not
+missing by a factor that could be divided out; the two matrices differ in direction. That is the
+argument for drawing the pair rather than one number, and it is the same argument the
+magnitude/anisotropy supplement makes about the distortion.
+
+THE ANCHOR MATTERS HERE AND IT IS WORTH RECORDING. At theta_sim the same medians read 0.86 to 0.93
+in size for R and 1.15 to 1.42 in shape, against 1.00 to 1.03 and 1.01 to 1.06 at theta_pool: the
+recursive members look 6 to 15 per cent off at the simulation truth and agree at the optimum. That
+is the expected signature of a differenced Hessian evaluated off the maximum rather than of a real
+disagreement between the two Fishers, and it is an argument for the pool anchor being the right
+default for THIS question, whatever it is for the distortion.
+
+THE PLANE IS THREE NOISE LEVELS TALL, which is what makes this figure look unlike its siblings.
+Every other map in the set spans nine to twelve decades of noise; this one spans two, four times
+over. The geometry is calibrated for that and not borrowed.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+```{r common, include=FALSE}
+# The five members with a non-_G run, in ladder order: the sample level instantaneous and interval,
+# then the recursive level instantaneous and partially corrected, then the complete one.
+FIG4_ALGOS     <- c("macro_NR", "macro_NMR", "macro_R", "macro_MR", "macro_IR")
+FIG4_ALGO_LAB  <- c(macro_NR = "NR", macro_NMR = "NMR*", macro_R = "R",
+                    macro_MR = "MR", macro_IR = "IR")
+FIG4_DATA_DIRS <- c("../data/433ed13", "../data/1c2ae6f", "../data/87889e6",
+                    "../data/0ffbda7", "../data/1f7138b")
+FIG4_PARS   <- c("mag", "aniso")
+FIG4_PSHORT <- c(mag = "'size'", aniso = "'shape'")
+source("figure_4_common.R")
+# The independent builder, and then the re-point: the layout reads its plane out of `bias`, `stat`
+# and GRID_BY_ALGO, all of which describe the _G grid until this runs. Between the two sources is
+# the only place it can go.
+source("figure_4_fisher_data.R")
+fis <- dplyr::filter(fisher_source_data(), anchor == ANCHOR, algo %in% ALGOS,
+                     is.finite(Sconf), Sconf > 0)
+fisher_repoint(fis)
+source("figure_4_layout.R")
+cat("fisher cells: ", nrow(fis), " rows, noise levels ",
+    paste(sort(unique(fis$noise)), collapse = " "), "\n", sep = "")
+```
+
+```{r sides}
+# Neither side declares a scale, so both take SCALE_FACTOR and the render gives them one bar: the
+# two are commensurable by construction, being the two orthogonal parts of one distance.
+SIDES <- list(
+  list(lab = "size: how far the closed form misses", letter = "A",
+       data = dplyr::filter(fis, param == "mag"),   zf = function(x) log10(x$Sconf)),
+  list(lab = "shape: whether it misses evenly", letter = "B",
+       data = dplyr::filter(fis, param == "aniso"), zf = function(x) log10(x$Sconf)))
+```
+
+```{r render, fig.width = 7.4, fig.height = 3.67}
+# 10 columns over two sides, no key row and no white contours. per_row 0.3510, x 0.2823, y 0.2823,
+# 100.0 per cent, cell 2.05 mm.
+#
+# SOLVED ON THE REAL FIGURE and not in tmp/calib_fig4.R, because this plane is 8 decades of noise
+# against the set's 27.204 (three levels, 0.1 to 10, over four N_ch rows) and no case in that file
+# has this geometry. The figure is cheap enough to iterate on directly: render, read the printed
+# isotropy per cent, multiply per_row by 100/that, repeat. It took two rounds from 0.320.
+# The page is 3.67 in, the shortest in the set, and that is the coverage showing: two decades of
+# noise per row cannot fill more.
+fig4_render(SIDES, per_row = 0.3510, out = "Figure_4_supplement_gaussian_vs_numeric_fisher.pdf",
+            se_lines = FALSE, key = FALSE)
+```
+
+```{r table}
+# the medians in the note, rebuilt from the source so the two cannot drift
+fis %>%
+  dplyr::group_by(param, algo, noise, Num_ch) %>%
+  dplyr::summarise(v = median(m), .groups = "drop") %>%
+  dplyr::mutate(algo = factor(ALGO_LAB[algo], levels = ALGO_LAB[ALGOS]),
+                param = factor(param, levels = c("mag", "aniso"))) %>%
+  tidyr::pivot_wider(names_from = Num_ch, values_from = v) %>%
+  dplyr::arrange(param, noise, algo) %>%
+  as.data.frame() %>%
+  print(digits = 4)
+```

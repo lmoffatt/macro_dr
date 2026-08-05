@@ -45,6 +45,17 @@ disappears. Rows A, C and E stay shared, where the magnitudes are comparable and
 cost width. The supplements inherit this choice of which rows split rather than making their own, so they can
 be read row for row against this figure.
 
+THREE BLOCKS, AND THE MIDDLE ONE IS THE TRAP (2026-08-03). The rows are not seven checks in a list,
+they are the trace, then everything that can be checked WITHIN a sample, then everything that can
+only be checked ACROSS samples. INR passes the whole middle block and fails the whole bottom one,
+which is the dissociation this figure exists for, and a reader who reads row by row can miss it. The
+strips are now filled by block and the E | F gap is opened, because E and F are the SAME quantity,
+the information ratio, once per interval and once accumulated: the jump from 1.0 to 20.8 happens
+between two adjacent rows whose titles differ by one word.
+  A        the trace
+  B C D E  per sample     -- INR passes every one
+  F G      across time    -- INR fails both, by a factor of twenty
+
 ROWS: the cascade, from the filter output through the residual to the accumulated score.
   A predicted & observed current   (one example recording, the same one in every column; the
     annotation is the ensemble-mean total logL, and read across the row it is the whole cost ladder)
@@ -462,13 +473,43 @@ rowlet <- function(lt) ggplot() + theme_void() +
   annotate("text", x = .5, y = .97, label = lt, size = 8 / .pt, fontface = "bold", vjust = 1) +
   coord_cartesian(xlim = c(0, 1), ylim = c(0, 1), expand = FALSE) +
   theme(plot.margin = margin(0, 0, 0, 0))
-rowstrip <- function(txt) ggplot() + theme_void() +
-  annotate("rect", xmin = .15, xmax = 1, ymin = .03, ymax = .97, fill = "grey85", colour = NA) +
+rowstrip <- function(txt, fill = "grey85", ymin = .03, ymax = .97) ggplot() + theme_void() +
+  annotate("rect", xmin = .15, xmax = 1, ymin = ymin, ymax = ymax, fill = fill, colour = NA) +
   annotate("text", x = .575, y = .5, label = txt, angle = -90, size = 6.5 / .pt, lineheight = .9) +
   coord_cartesian(xlim = c(0, 1), ylim = c(0, 1), expand = FALSE) +
   theme(plot.margin = margin(0, 0, 0, 0))
-RTTL <- c(A = "predicted &\nobserved current", B = "residual\nvariance", C = "Fisher\ninformation",
-          D = "score bias", E = "per-interval\ninformation ratio",
+
+# THE ROWS ARE THREE BLOCKS AND THE FIGURE NOW SAYS SO, because the distinction between what is
+# checked WITHIN a sample and what is checked ACROSS samples is the claim, not a detail of layout.
+# A is the trace. B to E are per-sample checks, every one of which INR PASSES. F and G are the
+# across-time checks, both of which INR fails, by a factor of twenty. A reader who does not see that
+# the middle block passes as a block and the bottom block fails as a block has been shown the
+# dissociation and has not been told it.
+#
+# The boundary that carries it is E | F, and it is the only one that has to be unmissable: E and F
+# are the SAME quantity, the information ratio, once per interval and once accumulated, so the jump
+# from 1.0 to 20.8 happens between two adjacent rows whose titles differ by one word. Marked by a
+# change of HUE and not of lightness, and not by a gap. A gap was tried first and abandoned: it
+# depends on which end of the strip cell y = 1 is, the first attempt put the break above E and below
+# F (grouping the two boundaries that carry nothing), and the correction did not land either. Hue is
+# orientation-free, costs no width (the strip column is a fixed 0.203 in, and in patchwork a fixed
+# width in one row is reserved in EVERY row), keeps 6.5 pt black text legible, and is redundant with
+# the row titles, so nothing rests on colour alone.
+#
+# NO REORDERING, and the earlier plan to move the Fisher row up was WRONG. F_t is a per-sample
+# quantity, and it is the denominator of row E, so it belongs exactly where it is. The blocks are
+# already contiguous; only the marking was missing.
+RSTRIP_FILL <- c(A = "grey90", B = "grey85", C = "grey85", D = "grey85", E = "grey85",
+                 F = "#BFCAD4", G = "#BFCAD4")
+RSTRIP_YMIN <- c(A = .03, B = .03, C = .03, D = .03, E = .03, F = .03, G = .03)
+RSTRIP_YMAX <- c(A = .97, B = .97, C = .97, D = .97, E = .97, F = .97, G = .97)
+
+# "per-step" said twice more, so the middle block is named by its own titles and needs no fourth
+# line of strip text (a third rotated line would widen the fixed column in every row). E and F
+# already carry "per-interval" and "accumulated", which is the contrast the block boundary marks.
+RTTL <- c(A = "predicted &\nobserved current", B = "residual\nvariance",
+          C = "per-step\ninformation", D = "per-step\nscore bias",
+          E = "per-interval\ninformation ratio",
           F = "accumulated\ninformation ratio", G = "autocorrelation")
 
 # --- A: the example recording, the same one in every column. The member's predictive band and
@@ -638,7 +679,9 @@ nc   <- length(STEPS) + 2
 # enough to be worth having the supplement look like a different family of figure from its parent.
 STRIP <- TRUE
 cells <- unlist(lapply(names(ROWS), function(k)
-  c(list(rowlet(k)), ROWS[[k]], if (STRIP) list(rowstrip(RTTL[[k]])))), recursive = FALSE)
+  c(list(rowlet(k)), ROWS[[k]],
+    if (STRIP) list(rowstrip(RTTL[[k]], RSTRIP_FILL[[k]],
+                             RSTRIP_YMIN[[k]], RSTRIP_YMAX[[k]])))), recursive = FALSE)
 grid <- wrap_plots(c(
     list(plot_spacer()), lapply(STEPS, colhead), if (STRIP) list(plot_spacer()), cells),
   ncol = nc,
@@ -655,7 +698,11 @@ grid <- wrap_plots(c(
 # the first render did.
 KEYH <- if (length(PSEL) > 1) 0.030 else 0.018
 g <- grid / keyplot + plot_layout(heights = c(1, KEYH))
-ggsave(OUT, g, width = 7.0, height = 7.5)
+# HEIGHT 5.90 in, was 7.5 (2026-08-05). At 7.5 the float ran 185 pt past the page and LaTeX dropped
+# the last 109 words of the legend and both supplement lines off the bottom. The legend is also being
+# cut by about a hundred words in the same pass; the two together close the deficit. Point sizes do
+# not scale with the device, so this shortens the panels and leaves the text at its set size.
+ggsave(OUT, g, width = 7.0, height = 5.90)
 cat(sprintf("wrote %s: 7 rows, %d members, parameters %s, 7.0 x 7.5 in\n",
             OUT, length(STEPS), paste(names(PSEL), collapse = " + ")))
 ```

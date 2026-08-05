@@ -1,0 +1,89 @@
+# figure_3_time_LSE_g.macroir — the av=0 member of the least-squares family
+# (`nonlinearsqr_g`, LSE in the paper's names; the av=1 member already on disk as
+# figure_3_time_dlik_LSE.csv is ILSE). ONE simulate, ONE likelihood, ONE CSV.
+#
+# WHY A STANDALONE SCRIPT AND NOT AN EIGHTH BLOCK IN figure_3_time.macroir: adding a
+# block there re-runs all seven algorithms and rewrites ~7 GB of dumps that are already
+# built (all six live ones carry `1f7138b-dirty` as line 1, from the 2026-07-31 run).
+# This script reproduces THE SAME ENSEMBLE instead, by repeating the simulate() call
+# verbatim — same seed 20260722, same n_simulations, experiment, parameters and
+# substeps — so the new dump is comparable interval-by-interval with the other seven.
+# It is NOT a copy of figure_3_time_LSE.macroir: that one carries seed = 0, the
+# random_device sentinel, so it would draw a FRESH ensemble and the comparison against
+# NR / R / INR / MR / VR / IR would be against different recordings.
+#
+# VERIFY THE ENSEMBLE before believing any cross-algorithm comparison: the
+# `patch_current` column of this dump must be IDENTICAL to that of
+# figure_3_time_dlik_LSE.csv row for row. If it is not, the seed did not reproduce the
+# stream on this binary and the dump is on its own ensemble.
+#
+# THE ONE FLAG THAT DIFFERS from the LSE block of figure_3_time.macroir:120 is
+# averaging_approximation = 0. In the least-squares fold (legacy/qmodel.h:7524-7546)
+# that switches the per-interval mean from P * gmean_i (the interval-mean conductance,
+# INR's mean model) to P_half * g (the instantaneous conductance, NR's mean model), so
+# this member and NR share a mean and differ only in whether the gating fluctuations
+# are modelled at all. Everything else — cell, six free parameters, variance flag —
+# is deliberately identical.
+#
+# CELL, read off the values below and not off figure_3_time.macroir's stale header:
+# scheme_CO, N_ch = 100, Current_Noise = 1e-4 (noise label 0.1), n_samp = 50 raw
+# samples per interval at 50 kHz, i.e. interval_in_tau = 50/500 = 0.1, 1000 simulations.
+#
+# ALL SIX PARAMETERS STAY FREE (Log10), as in the other dumps: figures 3 and 4 never
+# invert the Fisher, they accumulate it, so the least-squares flat directions are
+# harmless and param_index stays aligned with the macro dumps. Fixing two would emit
+# four indices against the others' six and silently misalign the R comparisons.
+#
+# TRAP, inherited: sum_t r_std_t^2 == n IDENTICALLY for the least-squares family
+# (sigma_hat^2 = SSE/n by construction), so any r2_std panel reads "perfectly
+# calibrated" as a tautology, not as a result. Do not report it as one.
+#
+# Output: figures/data/figure_3_time_dlik_LSE_g.csv  (~1 GB, like the other dumps).
+# The `algorithm` column is added in R from the filename.
+#
+# RUN LOCALLY (no dirac), from where "figures/data/" resolves:
+#   build/gcc-release/macrodr_cli projects/eLife_2025/ops/local/figure_3_time_LSE_g.macroir
+
+model = load_model("scheme_CO")
+
+parameter = create_parameters(
+   model = model,
+   parameters_info = [
+      {"on","Log10",10},
+      {"off","Log10",100},
+      {"unitary_current","Log10",1},
+      {"Current_Noise","Log10",0.0001},
+      {"Current_Baseline","Log10",1},
+      {"Num_ch_mean","Log10", 100}])
+
+experiment = create_experiment(
+   experiment_structure = [{20,50,0.0},{40,50,10.0},{40,50,0.0}],
+   frequency_of_sampling = 50e3,
+   initial_agonist = 0.0,
+   initial_time = 0.0)
+
+observations = set_observations(values_set = [0,0,0,0])
+par_tr = get_standard_parameter_transformed_values(parameter)
+
+# shared ensemble of recordings — VERBATIM from figure_3_time.macroir:43-53, seed
+# included. Change nothing here or the dump stops being comparable with the other seven.
+simulation_axis = axis(name = "simulation_algorithm", labels = ["uniformization"])
+simulations = simulate(
+   model = model, parameter_transformed = par_tr, n_simulations = 1000,
+   experiment = experiment, observations = observations,
+   simulation_algorithm = indexed_string_by(axis = simulation_axis, values = ["uniformization"]),
+   number_of_substeps = indexed_size_by(axis = simulation_axis, values = [1000]),
+   seed = 20260722)
+
+# ---- LSE, av = 0 (nonlinearsqr_g, family = 2, non-recursive, instantaneous conductance) ----
+# Evaluated at par_tr (no MLE here), so the flat directions are harmless: Current_Noise
+# gets an identically zero score/Fisher row and (unitary_current, Num_ch_mean) form the
+# rank-1 N*g ridge. variance_approximation is accepted and IGNORED by this branch.
+lse_g = build_likelihood_function_with_family(model = model, adaptive_approximation = 0,
+   recursive_approximation = 0, averaging_approximation = 0, variance_approximation = 1,
+   taylor_variance_correction = 0, family_approximation = 2, variance_form_approximation = 0,
+   taylor_qdt_approximation = false)
+dlik_LSE_g = calc_dlikelihood_predictions(likelihood_algorithm = lse_g, parameters = par_tr,
+   experiment = experiment, data_series = simulations)
+file_LSE_g = write_csv(experiment = experiment, simulations = simulations, likelihood = dlik_LSE_g,
+   path = "figures/data/figure_3_time_dlik_LSE_g")

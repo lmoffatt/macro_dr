@@ -89,12 +89,14 @@ scoped to the old single-paper frame.
 | Document | Owns | Status | Note |
 |---|---|---|---|
 | `00_plan.md` | paper 1's thesis, scope, roster, the band-A results, its open decisions | REWRITE | was `00_master_plan_v2.md`; reframed 2026-07-20, but its §0 and §1a still speak for the whole program — those parts now belong to `_program/` |
+| `approach.md` | the framing: the reader's problem, the argument, the narrative order, the declared scope, **the demarcation of what the paper does not settle**, and the doubts | LIVE | opened 2026-08-03 from the audios of that morning, rewritten the same day after a critique pass. The seam against `00_plan.md`: that file says **what is in the paper** (roster, scope, cells), this one says **what it is for and how it is told**. §10 carries the work the framing implies and is the only place that list exists; §8 owns what the alternatives to a filter cost and what each of them answers |
 | `decisions.md` | paper 1's own settled decisions | REWRITE | was `02_decision_log.md`; the cross-paper half has been copied to `_program/decisions.md` and must now be **deleted from here**, not left as a second copy |
 | `01_writing_plan.md` | the drafting task graph, the lints, the human budget | REWRITE (partly done) | six-figure gate updated to five body figures + supplements, §6/§7 redrawn to the writing critical path (2026-07-22, `1_method/decisions.md`) |
 | `docs/manuscript-drafts/sections/*.md` | **one brief per manuscript section, beside its own `.tex`** (`00_abstract.md` … `07_backmatter.md`): the job, the constraints, what is open or blocked, and the verify list. `sections/README.md` holds what governs every section, the title argument, and the standing blockers | LIVE | created 2026-07-29. Supersedes `SPINE.md` (written and split the same day) and, before it, the eight standalone section plans; all in `1_method/archive/section-plans-20260729/`. **Rule: a section brief holds no prose and no numbers.** That is what stopped the previous two layouts from rotting — they carried drafts and figure arcs the manuscript then overtook. Prose is `sections/*.tex`; every number's provenance is a `% src:` comment beside the claim |
 | `README.md` | routes into paper 1; points at the program layer | LIVE | — |
 | `00_master_plan.md`, `01_writing_plan.md`, `04_figures_storyboard.md`, `06_repro_pipeline.md` | retired/pointer stubs carried over from the pack | RETIRED/REWRITE | `04_*` and `06_*` are dead arcs; `01_writing_plan`'s six-figure gate was fixed 2026-07-22; `00_master_plan` is a tombstone |
 | `analysis_figure_S1_score_mean.md` | what the score-mean figure shows | LIVE | — |
+| `analysis_figure_5_breakdown_criterion.md` | whether a predicted breakdown boundary can go on Figure 5, which claims survive a circularity audit, and what the figure carries instead | LIVE | opened 2026-08-03 on a twelve-agent derivation + measurement + adversarial run (`wf_cd2f528f-2c3`). **Verdict: no line.** Five candidate criteria, zero survivors. Also holds the roads not taken (micro_IR, higher-cumulant emission) with their costs, and §11 lists corrections owed to `_program/axes.md` and to the long-interval premise |
 | `figures_build_plan.md` | the **order** of figure runs and edits, and the command for each | LIVE | opened 2026-07-21 for the VR re-runs; owns build order only — the arc is `1_method/docs/manuscript-drafts/sections/04_results.md`, the visual system `_program/figures_system.md`, the run manifest `_program/provenance.md` |
 | `CONTINUE_HERE.md` | cold-start pointer for the figure work: what is in flight, and the traps that are not visible in the code | LIVE | opened 2026-07-22; a pointer, not a copy. Delete it the day it starts duplicating the documents it points at |
 | `decisions/D-0, D-3, D-4` | freeze scope, the novelty claim, the ranking verdict | LIVE | D-4 rescopes to band A rather than being rewritten |
@@ -128,6 +130,8 @@ Look the topic up here before writing.
 | How many figure supplements a parent carries, and supplement vs appendix vs repo | `_program/figure_supplements_decision_guide.md` |
 | Cross-paper settled decisions | `_program/decisions.md` |
 | Paper 1's thesis, scope, roster | `1_method/00_plan.md` |
+| Why the paper exists, the argument, the narrative order, what is open | `1_method/approach.md` |
+| Where MacroIR's approximation breaks, and what Figure 5 may claim about it | `1_method/analysis_figure_5_breakdown_criterion.md` |
 | The claim spine, constraints and verify lists of every section | `1_method/docs/manuscript-drafts/sections/README.md` |
 | Paper 1's figure arc | `1_method/docs/manuscript-drafts/sections/README.md`, Results block |
 | Paper 1's cells | `1_method/grid.md` |

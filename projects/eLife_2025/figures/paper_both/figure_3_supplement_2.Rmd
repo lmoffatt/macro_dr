@@ -1,5 +1,5 @@
 ---
-title: "Figure 3—figure supplement 2 — the checks the body figure has no room for"
+title: "Figure 3—figure supplement 3 — the checks the body figure has no room for"
 author: "Luciano Moffatt"
 date: "`r Sys.Date()`"
 output: html_document
@@ -345,7 +345,12 @@ grid <- wrap_plots(c(
                 c("in", rep("null", length(ALGOS)), if (STRIP) "in")),
   heights = HS)
 g <- grid / keyplot + plot_layout(heights = c(1, 0.075))
-ggsave("Figure_3_supplement_2.pdf", g, width = 7.0, height = 5.8)
+# RENAMED and RESIZED 2026-08-05. Figure 3 now carries three supplements: the per-step information
+# figure was split in two (Figure_3_S1 / Figure_3_S2) because at 7.0 x 11 in it could not fit a
+# supplement page, and this one follows them as S3. Width 5.6 in, not 7.0: a figure supplement is
+# placed in the 5.65 in text column, so 7.0 in art was arriving scaled by 0.81 with its text 19%
+# under whatever size it was set at. Height scaled with the width to keep the panel shape.
+ggsave("Figure_3_S3.pdf", g, width = 5.6, height = 4.64)
 cat(sprintf("wrote Figure_3_supplement_2.pdf: 3 rows, %d members, %d parameters, 7.0 x 5.8 in\n",
             length(ALGOS), length(PSEL)))
 ```

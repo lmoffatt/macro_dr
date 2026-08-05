@@ -185,7 +185,7 @@ source("figure_4_data.R")
 .fig4_src <- fig4_source_data()
 
 # ---- the anchor, filtered ONCE at the source ---------------------------------------------------
-# The half-B products (stat / sedat / scal) now carry BOTH anchors, tagged by `anchor`. Four
+# The half-B products (stat / sedat / scal / spec) now carry BOTH anchors, tagged by `anchor`. Four
 # supplements read `.fig4_src$scal` and `.fig4_src$sedat` DIRECTLY, so filtering here rather than at
 # each consumer is what keeps them from silently doubling their rows. With ANCHOR = "pool", the
 # default, every notebook sees exactly the frame it saw before the column existed.
@@ -195,7 +195,7 @@ source("figure_4_data.R")
 ANCHOR <- if (exists("FIG4_ANCHOR")) FIG4_ANCHOR else "pool"
 stopifnot(ANCHOR %in% c("sim", "pool"))
 .fig4_all <- .fig4_src
-for (.k in c("stat", "sedat", "scal"))
+for (.k in c("stat", "sedat", "scal", "spec"))
   .fig4_src[[.k]] <- dplyr::filter(.fig4_src[[.k]], anchor == ANCHOR)
 cat("figure_4 data: anchor = ", ANCHOR, " (theta_",
     if (ANCHOR == "sim") "sim, the simulation truth" else "pool, the joint fit", ")\n", sep = "")

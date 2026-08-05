@@ -1,0 +1,156 @@
+---
+title: "Figure 6B — the decision, against a number you can measure: distortion (size and shape) versus the memory left in the least-squares residual"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+WHAT THIS IS, and why it closes the paper. Every other figure in this set is indexed by the DESIGN
+(channel count, noise, sampling interval). This one is indexed by a number the reader MEASURES on
+their own record, with no model, no derivative and no fit: the integrated autocorrelation of the
+standardized residual of a least-squares fit, tau_int, in normalized Sokal / Kish form, null 1 for a
+white residual. It counts how many intervals the likelihood effectively has for every interval it
+believes it has.
+
+So the reader's procedure is: fit by least squares, which they were going to do anyway; compute
+tau_int from the residual, which costs nothing; find their x on this panel; read what least squares
+is doing to their error bars, and what the boundary-conditioned filter would do instead. The vertical
+distance between the two series at their x IS what switching buys them.
+
+EVERY MARK IS ONE CELL OF THE DESIGN GRID AND ONE BATTERY OF 10 000 SIMULATIONS. There is no binning
+here: an earlier draft binned in tau_int and the binning manufactured a non-monotone median by mixing
+cells that differ in sampling interval, which is exactly the structure this panel exists to show.
+
+HOW A MARK ENCODES BOTH NUMBERS. The distortion of a member is not one number, it is a size and a
+shape: m = exp(mean log lambda) is the typical factor by which the reported information is wrong, and
+a = exp(sd log lambda) is how much that factor VARIES from parameter direction to parameter
+direction. A mark is therefore a point at m with a bar from m/a to m*a, which is the actual range of
+per-direction factors. On log axes the bar is symmetric about the point, which is why the axes are
+log and why the shape is written as a multiplicative spread and not as a plus-or-minus.
+
+Read the bar's ENDS, not only its centre: the lower end is the reader's best-determined direction and
+the upper end their worst. A mark centred at 6 with a bar from 1.9 to 19.5 says that even the
+best-determined parameter is off by a factor 2 and the worst by 20.
+
+IN ERROR-BAR UNITS, take the square root: the distortion is a ratio of informations, so a distortion
+of 1.15 is a 7 per cent error on a confidence interval and nobody should care, 2 is 41 per cent, and
+4 is a factor two, which turns a nominal 95 per cent interval into about 68. The panel deliberately
+draws NO threshold. The criterion belongs to the reader and the axis lets them place it.
+
+WHAT THE PANEL SHOWS, measured.
+
+  (1) N_ch and noise DROP OUT. At matched tau_int the least-squares size agrees to three digits over
+      four decades of channel count: at tau_int ~ 1.04 it reads 1.127, 1.135, 1.123, 1.145 for N_ch
+      10, 100, 1000, 10000; at 1.21 it reads 2.198, 2.163, 2.211, 2.162. The two design variables
+      that look like they should matter enter ONLY through the measured statistic.
+
+  (2) THE SAMPLING INTERVAL DOES NOT, which is why the marks are coloured by it. At tau_int ~ 2.87
+      with interval 0.01 the size is 8.9; at tau_int ~ 2.6 to 3.0 with interval 0.5 it is 1.56 to
+      1.63, a factor 5.7 apart at the same measured memory. Within one interval the collapse is again
+      exact: the whole interval-0.5 group sits between 1.56 and 1.63 across noise 0.1 to 1000 and
+      N_ch 1000 to 10000. So the reader needs TWO numbers, and they have both: the one they measure
+      and the one they chose when they set the sampling rate.
+
+  (3) THE SHAPE SATURATES. Least squares' bar stops growing in height at about x3.3 from tau_int ~ 9
+      onward while its centre keeps climbing from 6 to 53. Consequence, and it corrects a looser
+      statement made earlier in the project: an effective-N rescaling DOES capture the part that
+      keeps growing. What it never captures is a fixed x3.3 spread across directions, which stays
+      whatever the memory does.
+
+  (4) THE FILTER IS FLAT. IR sits at 1.00 in size and at 1.04 in shape at every x, and 1.043 +- 0.010
+      is the estimation floor of this statistic, so those bars are measuring the bootstrap and not a
+      distortion. The independent variable sweeps a factor of 20 and the filter does not move. The
+      only departures are at N_ch = 10.
+
+  (5) ONE MARK CROSSES THE NULL. At tau_int ~ 1.80 least squares reads a size of 1.04 with a spread
+      of x2.9, so its bar runs 0.37 to 2.90: the typical direction is right while some directions are
+      overstated and others understated at the same time. That mark alone is the argument for the
+      whole size-and-shape decomposition, because no scalar summary can express it.
+
+WHAT IS NOT CLAIMED. tau_int is measured here as a median over 10 000 recordings per cell. An
+experimenter has ONE, so the sampling distribution of tau_int at a single record is what fixes the
+operational threshold and the false-alarm rate a reader would actually suffer. That analysis is
+pending and the series is already emitted (Figure 3, row G), so it needs no run.
+
+AND ONE CAUTION so the panel is not dismissed for the wrong reason. This project has recorded that
+least squares' r^2_std of exactly 1 is a tautology, since the classical fit standardizes the residual
+by a variance fitted to that same residual. That does NOT apply here: scaling a residual by a
+constant leaves its autocorrelation unchanged, so tau_int is not self-referential.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+suppressMessages({ library(tidyverse) })
+```
+
+```{r data}
+SRC <- "../figure_4_source_data"
+rd  <- function(f) read.csv(file.path(SRC, f), skip = 1, stringsAsFactors = FALSE)
+
+# tau_int is a property of the LEAST-SQUARES residual and of nothing else: it is what the reader has
+# before choosing a method, so it is the x of every mark including the filter's.
+tau <- rd("figure_4_source_data_cell_scalars.csv") %>%
+  filter(param == "lag", anchor == "pool", algo == "nonlinearsqr") %>%
+  transmute(noise, Num_ch, interval_in_tau, tau_int = v)
+
+spec <- rd("figure_4_source_data_spectrum.csv") %>%
+  filter(anchor == "pool", algo %in% c("nonlinearsqr", "macro_IR")) %>%
+  select(algo, param, noise, Num_ch, interval_in_tau, m) %>%
+  pivot_wider(names_from = param, values_from = m)
+
+dat <- spec %>%
+  inner_join(tau, by = c("noise", "Num_ch", "interval_in_tau")) %>%
+  filter(is.finite(mag), is.finite(aniso), mag > 0, aniso > 0) %>%
+  mutate(lo = mag / aniso, hi = mag * aniso,
+         member = factor(ifelse(algo == "nonlinearsqr", "ILSE", "IR"),
+                         levels = c("ILSE", "IR")),
+         d = factor(sprintf("%g", interval_in_tau),
+                    levels = sprintf("%g", sort(unique(interval_in_tau)))))
+
+cat(sprintf("figure_6B: %d marks, %d cells, intervals %s\n",
+            nrow(dat), n_distinct(dat[c("noise","Num_ch","interval_in_tau")]),
+            paste(levels(dat$d), collapse = " ")))
+```
+
+```{r render, fig.width = 7.0, fig.height = 3.6}
+# The estimation floor of the shape statistic, drawn on the filter's side so a reader can see that
+# its bars are the bootstrap and not a finding.
+FLOOR <- 1.043
+
+g <- ggplot(dat, aes(tau_int, mag, colour = d)) +
+  geom_hline(yintercept = 1, linewidth = 0.35, colour = "grey45") +
+  geom_linerange(aes(ymin = lo, ymax = hi), linewidth = 0.45, alpha = 0.75) +
+  geom_point(size = 0.85) +
+  facet_wrap(~ member, nrow = 1) +
+  scale_x_log10(breaks = c(1, 1.2, 1.5, 2, 3, 5, 10, 20),
+                labels = c("1", "1.2", "1.5", "2", "3", "5", "10", "20")) +
+  scale_y_log10(breaks = c(0.3, 0.5, 1, 2, 5, 10, 30, 100, 200),
+                labels = c("0.3", "0.5", "1", "2", "5", "10", "30", "100", "200")) +
+  scale_colour_viridis_d(name = expression(Delta*t %.% k[off]), option = "D", end = 0.92) +
+  labs(x = expression("memory left in the least-squares residual,  "*tau[int]),
+       y = "distortion of the reported information\n(point = size, bar = across directions)") +
+  theme_bw(base_size = 8, base_family = "Helvetica") +
+  theme(panel.grid.minor = element_blank(),
+        legend.position = "right",
+        legend.key.height = unit(9, "pt"),
+        strip.background = element_rect(fill = "grey92", colour = NA),
+        strip.text = element_text(face = "bold", size = 8))
+
+ggsave("Figure_6B.pdf", g, width = 7.0, height = 3.6, device = cairo_pdf)
+g
+```
+
+```{r numbers}
+# the statements in the note, rebuilt from the data so the two cannot drift
+dat %>% filter(member == "ILSE") %>%
+  mutate(bin = cut(tau_int, c(0, 1.02, 1.5, 3, 6, 100))) %>%
+  group_by(bin) %>%
+  summarise(n = n(), size = median(mag), shape = median(aniso),
+            lo = median(lo), hi = median(hi), .groups = "drop") %>%
+  as.data.frame() %>% print(digits = 3)
+
+cat("\nIR over the whole sweep: size", sprintf("%.3f", median(dat$mag[dat$member == "IR"])),
+    " shape", sprintf("%.3f", median(dat$aniso[dat$member == "IR"])),
+    " (floor", FLOOR, ")\n")
+```

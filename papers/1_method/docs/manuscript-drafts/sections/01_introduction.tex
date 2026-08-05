@@ -1,46 +1,203 @@
 \section*{Introduction}
 
-% Owner: papers/1_method/decisions.md ("Introduction, five moves", 2026-07-28) and
-% papers/_program/program.md §1 (merged macro paper, least squares as the comparison anchor).
-% Written after 04_results.tex so that the ground conceded here is the ground the paper delivers.
-% The concessions in the prior-art paragraph are sourced in
-% docs/bibliography/temporal_correlation_and_AR_errors_2026-07-28.md, Part 2.
+% Owner: papers/1_method/approach.md (the framing) and papers/_program/program.md §1 (merged macro
+% paper, least squares as the comparison anchor).
+%
+% REWRITTEN 2026-08-04. Predecessor kept verbatim at
+% ../archives/01_introduction_SUPERSEDED_20260804.tex (2095 words). This version is ~1700.
+% What changed and why, so the trade is not re-litigated:
+%
+% (a) THE THREAD. The previous version had no single line: it was context, gap, lineage, then four
+%     separate defensive digressions before the criterion. This one runs on one, that the memory of
+%     the gating process is both what carries the information and what lets a model track the data
+%     without earning it. Chosen over four alternatives in a controlled comparison (five drafts on
+%     five threads, same fact packet, same length, three critique lenses; 2026-08-04).
+% (b) THE OPENING no longer attributes least squares to Hodgkin and Huxley, who fitted by hand, and
+%     no longer uses the events-per-sample ratio to separate the single-channel from the macroscopic
+%     regime. That separation is the CHANNEL COUNT. The ratio is the interval axis and appears where
+%     it belongs.
+% (c) THE LINEAGE is compressed from a nine-name walk to the two axes it establishes, with the
+%     citations hanging off them. The two members that act in the paper (the non-recursive member,
+%     the interval-conditioned one) stay visible.
+% (d) THE SCORE PARAGRAPH now says, in the sentence that introduces the identity, that measuring it
+%     needs an ensemble from known parameters and is therefore not something a reader runs on one
+%     record. That removes an expectation the old closer had to withdraw. It also avoids implying an
+%     approximation has a true parameter of its own (the score vanishes at the pseudo-true value,
+%     which is not the simulator's).
+% (e) GODAMBE 1960 IS OUT. Optimum estimating functions, not the score identity.
+% (f) THE ARMA AND FLUCTUATION-ANALYSIS CONCESSIONS MOVED after the criterion. In the predecessor
+%     they sat before it and cut the line twice at the point of maximum tension.
+% (g) THE CLOSER names the measurement rather than promising it, and raises nothing it then declines.
+%     "Locating the reader on the map" was wrong and is gone: the map coordinates come from peak
+%     current and baseline variance, while the residual autocorrelation answers a different and
+%     narrower question, whether the interval a least-squares fit reports is credible. Whether to use
+%     least squares is the experimenter's decision and the paper does not raise it. The demarcation
+%     of what is not settled belongs in the Discussion, not here.
+%
+% STILL OWED, see sections/01_introduction.md:
+%  - the "each sample equals the last plus noise" claim needs its derivation (the first difference of
+%    a mean-square continuous process vanishes with the interval) or a naive-forecast citation. It is
+%    currently an assertion.
+%  - covariance fitting cost: "square of the number of samples" (moffatt2007estimation) vs "cube of
+%    the record length" (predecessor). Open. The wording below avoids the exponent.
+%
+% PENDING-BIB: katz1970membrane, katz1972statistical, anderson1973voltage, conti1980conductance,
+% sigworth1981covariance and lei2020considering live in biblio_full.bib (124 entries) and are absent
+% from biblio.bib (15 entries), which is what elife_paper.tex points at. Repoint \bibliography{biblio}
+% to biblio_full, or merge the six keys across. hodgkin1952quantitative, neher1977conductance and
+% colquhoun1981stochastic: colquhoun1981stochastic and neher1977conductance are in biblio_full;
+% hodgkin1952quantitative is in NEITHER and must be added.
 
-A macroscopic ion-channel current is the summed signal of a population of channels. Its mean carries the gating kinetics through the deterministic relaxation, and its fluctuations carry, in addition, the number of channels, the unitary current, and, through the temporal structure of the noise, the rate constants themselves. The standard way to fit a kinetic scheme to such a recording is least squares on the mean current. The four approaches surveyed by \citet{clerx2019four} are all deterministic fits with a root-mean-square objective, and the community benchmark IonBench states that it does not cover optimisation approaches for stochastic models \citep{owen2025ionbench}.
+A channel opens and shuts at random, and how long it stays in each conformation is the elementary
+random quantity of gating. What an experiment sees of it depends on how many channels contribute.
+With one channel in the patch the durations are read off the record and the rate constants come from
+their distributions \citep{neher1977conductance,colquhoun1981stochastic}. In the currents that carry
+an action potential so many channels contribute that the durations average away, the current follows
+the deterministic relaxation of the Hodgkin and Huxley description \citep{hodgkin1952quantitative},
+and rate constants are obtained by fitting that relaxation, in current practice by least squares.
 
-Least squares rests on an assumption that a gating record does not satisfy. The residual sum of squares becomes a variance, and then a confidence interval, only through a count of independent residuals. Channel gating leaves the residuals correlated over the channel's own relaxation time, so a sample taken faster than that time partly repeats what the sample before it already said. The point estimate often survives this. The count does not: a fit that treats correlated residuals as independent behaves as though the recording supplied more observations than it did, and reports an interval narrower than the spread of the estimator it is describing. \citet{delcore2025parameter} state the same cost in the field's own terms, that standard methods built for deterministic models do not distinguish stochastic channel gating from measurement noise and return biased estimates.
+Most macroscopic patch-clamp recordings are in neither place. A few hundred to a few thousand
+channels contribute, individual openings cannot be resolved, and the averaging is incomplete. The
+durations are still there, and what they leave behind is a fluctuation around the mean current that
+carries the memory of the gating process. Samples taken closer together than the channel's
+relaxation time are correlated, so a sample taken faster than that time partly repeats what the one
+before it already said.
 
-A Markov description of gating models the dependence instead of assuming it away. A channel with a small number of conformational states, connected by rate constants that hold over the whole record, generates the mean current and the covariance of the fluctuations from the same constants. The temporal structure of the noise then becomes a second measurement of the same parameters rather than a nuisance to be neutralised. The rate constants also mean something outside the record: they are properties of the protein, comparable across conditions, preparations and laboratories, and they connect what is measured to a mechanism. A correlation function fitted freely to the residuals delivers neither of those.
+That fluctuation carries what the mean cannot. Channel number and unitary current enter the mean
+current as a product, so no fit to the mean separates them. The standard analysis discards the
+fluctuation anyway: the four approaches surveyed by \citet{clerx2019four} are deterministic fits with
+a root-mean-square objective, and the IonBench benchmark states that it does not cover optimisation
+approaches for stochastic models \citep{owen2025ionbench}. Discarding it usually leaves the point
+estimate standing. What it damages is the count of independent residuals, the number that turns a
+residual sum of squares into a confidence interval, so a fit that treats correlated residuals as
+independent behaves as though the recording had supplied more observations than it did.
+\citet{delcore2025parameter} state the same cost in the field's own terms, that standard methods
+built for deterministic models do not distinguish stochastic channel gating from measurement noise
+and return biased estimates.
+% What the classical arm of this paper is, said plainly and once: least squares on the deterministic
+% mean current with the unitary current held fixed. Repeated in Methods; do not let it drift.
 
-Using the fluctuations to identify a scheme requires a likelihood for the recorded current, and the likelihoods that exist for macroscopic recordings form a small lineage, each of them an approximation. \citet{celentano2004use} fit the full Q-matrix covariance directly, at a cost that grows as the cube of the record length. \citet{milescu2005maximum} keeps the gating variance at each sample and drops the correlation between samples. \citet{moffatt2007estimation} recasts the problem as a recursive filter, propagating the occupancy distribution and conditioning it on each new datum. \citet{stepanyuk2011efficient} restores the full covariance at near-linear cost through a semiseparable representation, and \citet{munch2022bayesian} places the recursive filter in a Bayesian setting. A recent member conditions the interval-averaged observable on the channel states at both ends of the acquisition interval (MacroIR, \citealt{moffatt2025bayesian}). Ordered by what they compute for every interval of the record, these methods form a ladder of cost with least squares at its bottom rung, and the ladder hangs from one root question: does the analysis model the gating fluctuations at all, and if it does, how much of their temporal structure does it keep?
+A Markov description models the dependence rather than assuming it away. A channel with a small
+number of conformational states, connected by rate constants that hold over the whole record,
+generates the mean current and the covariance of the fluctuations from the same constants, so the
+temporal structure of the noise becomes a second measurement of the same parameters. Those constants
+also mean something outside the record. They are properties of the protein, comparable across
+conditions, preparations and laboratories, and they connect what is measured to a mechanism. A
+correlation function fitted freely to the residuals delivers neither of those.
 
-None of these methods has displaced least squares. They are published, implemented and available, and they are almost unused. The reason has to do with what an analyst can see.
+Kinetic information has been read from that correlation since the 1970s, first through stationary
+power spectra \citep{katz1970membrane,katz1972statistical,anderson1973voltage}, from which
+\citet{anderson1973voltage} obtained a unitary conductance and a closing rate jointly with standard
+errors on both, and then through the exact non-stationary two-time covariance of a population of
+identical independent channels, estimated from ensembles of $256$ to $504$ repeated sweeps
+\citep{conti1980conductance,sigworth1981covariance}. The whole-record likelihoods that followed
+differ along two axes and are best read that way. The first is how much of the gating stochasticity
+the likelihood models: nothing, then the variance at each sample \citep{milescu2005maximum}, then its
+correlation in time, whether by carrying the full two-time covariance at a cost that keeps it to a
+hundred or two selected points \citep{celentano2004use}, or by propagating the occupancy recursively
+and conditioning it on each new datum at a cost linear in the record
+\citep{moffatt2007estimation,stepanyuk2011efficient,munch2022bayesian}. The second axis is the
+observable itself. An acquisition system reports an average over each interval rather than an
+instantaneous sample, and the most recent member conditions that interval average on the channel
+states at both of its ends \citep{moffatt2025bayesian}.
 
-Least squares is checkable by eye. It predicts the current at every point of the record from the parameters alone, so the prediction can be laid over the data and read interval by interval. A systematic departure of the model from the record shows up as a systematic departure of the line from the points. When the scheme is wrong the picture usually says so, and when the forward model has a mistake in it the picture usually says that too. This is weak evidence in a formal sense and strong evidence in practice, and it is what has kept the classical fit in place.
+None of these has displaced least squares. Cost is part of it, and \citet{delcore2025parameter} make
+that case. There is also something these methods ask an analyst to give up. A least-squares fit
+predicts the current at every point from the parameters alone, so the residual can be read directly,
+and read twice. Its amplitude reports the quality of the fit against what the gating variance and the
+baseline noise should deliver, and its correlation in time reports what the fit leaves out. Both
+readings appeal to knowledge from outside the fit, which is what makes them checks.
 
-A recursive filter offers no such picture. It predicts each interval from the parameters and from the data already observed, so the previous sample enters the prediction of the next one and the predicted trace follows the record closely by construction. It follows the record closely when the kinetic scheme is right, when the kinetic scheme is wrong, and when the code has a mistake in it. The residuals come out small and close to white, and they come out white in large part because the recursion subtracts, at each step, what it has just seen. Whiteness of the residuals is as far as the prior work goes, and it cannot falsify anything, since enough free terms will whiten any sequence. The visual evidence that carries the classical fit is unavailable for a filter, and nothing has taken its place. There has been no straightforward way to tell a working method from a bug, and no criterion for deciding whether the confidence interval it reports, which is the reason to use a likelihood in the first place, should be believed. Supplying that criterion is what this paper is for.
+Modelling the correlation is what takes those readings away. A recursive likelihood predicts each
+interval from the parameters and from the data already observed, so the previous sample enters the
+prediction of the next one and the predicted trace follows the record by construction. It follows the
+record when the scheme is right, when the scheme is wrong, and when the code has a mistake in it. The
+limiting case of the argument carries no kinetics at all and states that each sample equals the last
+one plus noise: where the interval is short against the relaxation time and the instrumental noise is
+small, it predicts almost perfectly and says nothing about the channel. % NEEDS SUPPORT, see header.
+Such a likelihood also standardises its residual against its own predicted variance, so the amplitude
+reading becomes a statement of internal consistency, and the correlation reading is spent because the
+recursion subtracts at each step what it has just seen. The same blindness covers two questions that
+an experimenter cannot separate and has no reason to: whether the approximation is adequate, and
+whether the code that computes it is correct.
 
-The standard statistical repair for correlated residuals does not reach this problem. Generalized least squares with autoregressive or moving-average errors whitens the residual sequence with a correlation function estimated from the residuals themselves, and \citet{lei2020considering} have run exactly that on ion-channel data, fitting an autoregressive moving-average error model and two Gaussian-process variants to the residuals of a hERG kinetic model. Gating puts this family out of reach for structural reasons. An autoregressive moving-average error model is stationary by construction, one covariance function for the whole trace, while the gating covariance tracks the mean current, vanishes when the current does, and restarts at every concentration or voltage jump. It contains no channel number and no unitary current, so it cannot return the two parameters the fluctuations are richest in. Its timescales are free parameters, where the Markov model ties them to the eigenvalues of the rate matrix that already fixed the mean, so free timescales absorb the information the mechanism would have contributed. \citet{lei2020considering} report that the autoregressive model widens the posterior without predicting better, and that in some cases the best predictions came from ignoring the discrepancy altogether. Their target is structural error in the kinetic scheme rather than finite-channel gating noise, so their study is not a test of the present question; what it shows is what a correlation model without a mechanism can and cannot buy.
+The apparatus that answers this is classical. For a correctly specified likelihood the score, the
+gradient of the log-likelihood with respect to the parameters, has mean zero at the parameters that
+generated the data, and its covariance across independent recordings equals the Fisher information
+the likelihood reports \citep{huber1967behavior,white1982maximum}. An approximation satisfies neither
+statement at those parameters, and the two departures are measurable quantities rather than tests to
+be passed. Goodness of fit does not answer the question, since an approximation can reproduce the
+mean current closely and still report an information matrix wrong by more than an order of magnitude,
+and comparing two approximations against each other does not answer it either, because both may be
+wrong. Measuring the departures takes an ensemble of recordings drawn from known parameters, which is
+why this is a simulation study and not something a reader can run on a single record. What makes it
+possible at all for this class of model is an asymmetry between simulation and inference: the forward
+process can be simulated exactly while its likelihood cannot be computed exactly, so the simulator
+supplies ground truth for what the likelihood approximates.
 
-% PENDING-BIB: the first prior-art citation of the paragraph below. katz1970membrane,
-% katz1972statistical, anderson1973voltage, conti1980conductance, sigworth1981covariance and
-% lei2020considering (cited above) live in biblio_full.bib (124 entries) and are absent from
-% biblio.bib (15 entries), which is what elife_paper.tex currently points at. Repoint
-% \bibliography{biblio} to biblio_full, or merge the six keys across. Not a retrieval job.
-None of this is a claim that the correlation went unnoticed. Kinetic information has been read out of the temporal correlation of macroscopic currents since the early 1970s, first through the Lorentzian power spectrum under stationary conditions \citep{katz1970membrane,katz1972statistical,anderson1973voltage}, which is the Fourier transform of the autocovariance. \citet{anderson1973voltage} obtained the unitary conductance and the channel closing rate jointly, from the same fluctuation data and with standard errors on both: a unitary conductance of $0.205 \pm 0.0063$ (standard error) $\times 10^{-10}$ mho, and a closing rate exponential in membrane potential whose prefactor is $0.17 \pm 0.04$ ms$^{-1}$. % src: docs/bibliography/temporal_correlation_and_AR_errors_2026-07-28.md §Part 2 Tier 1, from Anderson & Stevens 1973 J. Physiol. 235:655-691 (PDF in docs/bibliography/)
-The exact non-stationary two-time covariance for a population of identical independent Markov channels was derived and used a decade later \citep{conti1980conductance,sigworth1981covariance}, estimated from ensembles of $256$ to $504$ repeated sweeps, from which rate constants were obtained with standard errors, and used principally to discriminate between kinetic hypotheses. % src: docs/bibliography/temporal_correlation_and_AR_errors_2026-07-28.md §Part 2 Tier 2, from Sigworth 1981 Biophys. J. 34:111-133 (PDF in docs/bibliography/)
-A covariance likelihood for macroscopic currents \citep{celentano2004use} predates the recursive filter of \citet{moffatt2007estimation} by three years. The statistical apparatus used below is equally old: the score, the information matrix equality and the sandwich covariance under misspecification are classical \citep{godambe1960optimum,huber1967behavior,white1982maximum}. What none of this work supplies is a statement of when a method built on the correlation is working.
+Two alternatives to a mechanistic likelihood are worth placing here, since both are in use. The
+standard statistical repair for correlated residuals is generalized least squares with autoregressive
+or moving-average errors, which whitens the residual sequence with a correlation function estimated
+from the residuals themselves, and \citet{lei2020considering} have run exactly that on ion-channel
+data. Gating puts that family out of reach for structural reasons. An autoregressive moving-average
+error model is stationary by construction, one covariance function for the whole trace, while the
+gating covariance tracks the mean current, vanishes when the current does, and restarts at every
+concentration or voltage jump. It contains no channel number and no unitary current, so it cannot
+return the two parameters the fluctuations are richest in. Its timescales are free parameters, where
+the Markov model ties them to the eigenvalues of the rate matrix that already fixed the mean, so free
+timescales absorb the information the mechanism would have contributed. \citet{lei2020considering}
+report that the autoregressive model widens the posterior without predicting better. The other
+alternative is non-stationary fluctuation analysis, the one fluctuation-based method in routine use,
+which regresses the variance of the current against its mean and returns the unitary current, the
+channel number and the peak open probability \citep{stepanyuk2014maximum}. This paper does not
+compete with it over how much amplitude information a macroscopic recording holds, never benchmarks
+against it, and no comparison with the variance-mean regression should be read into any result below.
 
-Non-stationary fluctuation analysis is the one fluctuation-based method in routine use. It regresses the variance of the current against its mean and returns the unitary current, the channel number and the peak open probability \citep{stepanyuk2014maximum}, and practitioners of the method report that the unitary current is close to the only parameter it recovers reliably and that kinetic rates have essentially never been estimated this way for receptors in their native setting. This paper does not compete with it over how much amplitude information a macroscopic recording holds. The question here is whether a reported confidence interval from a fit to such a recording is honest, and where, on the plane of channel number against instrumental noise, it stops being honest. Nothing in the fluctuation-analysis literature addresses that. What the classical arm of this paper is should also be said plainly: least squares on the deterministic mean current with the unitary current held fixed. Fluctuation analysis is never benchmarked here, and no comparison against the variance-mean regression should be read into any result below.
+Because every member is an approximation, the measurement returns a domain rather than a verdict. The
+question is where a likelihood reports honestly, and the answer is a map whose boundaries are level
+sets of a continuous diagnostic rather than thresholds. Position on it is set by the number of
+channels, by the acquisition interval in units of the channel's relaxation time, and by the
+instrumental noise in units of the gating noise, held at fixed spectral density so that shortening the
+interval raises the noise in each sample and leaves the noise per unit bandwidth unchanged. The
+measurements are made on a two-state scheme at an open probability of one half, driven by a single
+concentration jump, compared at the level of the likelihood rather than of a fitted experiment. The
+small model isolates the error the approximation itself commits, with no confounding from a
+misspecified kinetic scheme, it keeps the exact simulation cheap enough to run thousands of replicates
+at every design cell, and it is the most favourable case for a Gaussian treatment of the occupancy and
+therefore a lower bound on the error for anything richer. Open probability, stationary protocols and
+larger schemes are left out for reasons that follow from the same design, and are stated with the
+results.
 
-The criterion this paper supplies is checkable. Under a correctly specified likelihood the score, the gradient of the log-likelihood with respect to the parameters, averages to zero at the true parameters, and the covariance of the score equals the Fisher information the likelihood reports, which is the information matrix equality \citep{white1982maximum,huber1967behavior}. Under an approximation both statements fail, and how they fail is measurable. Goodness of fit does not answer the question, because an approximation can reproduce the mean current closely and still report an information matrix wrong by more than an order of magnitude, and comparing two approximations to each other does not answer it either, because both may be wrong. What makes the question answerable for this class of models is an asymmetry between simulation and inference: the forward process can be simulated exactly while its likelihood cannot be computed exactly, so the simulator supplies the ground truth that the likelihood is an approximation of, and any candidate likelihood can be interrogated against data drawn from the very process it claims to describe. The sensitivity matrix is then analytic and the variability matrix is a Monte Carlo average over independent replicates, with no null hypothesis to reject and no finite-sample defect to correct for. This is measurement rather than testing.
+Two things come out of the map, and they answer different readers. The first is where each
+approximation misreports what the data determine, including the most complete one, since a method
+whose limits are unmapped has been endorsed rather than characterised. The second is the region in
+which a classical fit reports an interval that matches the spread it delivers, and it carries an
+ordering that is falsifiable and does not depend on where the level sets are placed: there is no
+region of the measured plane in which the fluctuations still carry information about the unitary
+current or the channel number and the classical interval is simultaneously trustworthy, the two
+boundaries being separated by one to three decades of instrumental noise everywhere they were
+measured. % src: projects/eLife_2025/figures/paper_both/figure_6.html (crossing table, fitted slopes)
 
-The mismatch between the two matrices is itself the measurement. It gives an information distortion matrix that says, in units of parameter variance a reader already understands, by how much and in which parameter directions an approximation misreports what the data determine. The distortion runs in both directions: some approximations state more confidence than the data support, and others state less. % TODO-SIGN: direction convention as fixed in Diagnostics; if the pending code read reverses it, flip every TODO-SIGN site in one pass.
-Evaluated across channel number and instrumental noise at a fixed acquisition interval, the same quantity yields a map of which parameters a macroscopic recording can deliver and whose reported interval is honest, with boundaries drawn as level sets of a continuous diagnostic rather than as thresholds. The map carries an ordering that is falsifiable and does not depend on where those level sets are placed: there is no region of the measured plane in which the amplitude still carries information and the classical error bar is simultaneously trustworthy, the two boundaries being separated by one to three decades of instrumental noise everywhere they were measured. % src: projects/eLife_2025/figures/paper_both/figure_6.html (crossing table and fitted slopes, Delta.k_off = 0.1)
-Wherever the fluctuations still say something about the unitary current or the channel number, a classical fit reports an interval that is too narrow. % TODO-SIGN
-
-Against that history, what is new here is narrow and is worth stating narrowly. A joint estimate of rates and amplitudes from fluctuation data, carrying standard errors, is \citet{anderson1973voltage}. What this paper adds, to a non-stationary protocol read from a single record, is the third element of the combination: an interval whose calibration has been verified rather than assumed. The thousands of replicate recordings used below certify the method; they are not what applying it requires.
-
-The measurements are made in a deliberately small setting: a two-state channel whose open probability at the peak of the response is fixed at one half, a single concentration jump, simulated data, and comparison at the level of the likelihood rather than of a fitted experiment. The small model isolates the error the approximation itself commits, with no confounding from a misspecified kinetic scheme, and it keeps the exact simulation cheap enough to run thousands of replicates at every design cell. Richer schemes, the stationary regime, the few-channel boundary and experimental recordings are the subjects of companion work.
-
-The map answers a question the field is currently arguing about. \citet{delcore2025parameter} argue against filtering on cost, since the moment integration and the correction step run between every pair of samples, and they are right about the cost. Knowing which approximation misreports the uncertainty, by how much, and in which corner of the operating regime is what turns that cost into a decision a reader can make for their own rig.
+Against that history, what is new here is narrow and is worth stating narrowly. A joint estimate of
+rates and amplitudes from fluctuation data, carrying standard errors, is \citet{anderson1973voltage}.
+What this paper adds, to a non-stationary protocol read from a single record, is the third element of
+the combination: an interval whose calibration has been verified rather than assumed. The thousands of
+replicate recordings used below certify the method; they are not what applying it requires. Separately
+from the map, there is a reading an experimenter can take from a recording they already have. The
+integrated autocorrelation of the standardized least-squares residual counts how many intervals the
+fit effectively has for every interval it believes it has, and it costs nothing, since the fit was
+going to be made anyway. Two design variables that look as though they should matter, the channel
+count and the instrumental noise, enter the answer through that one statistic and through nothing
+else. The acquisition interval does not, and the reader knows it, because they chose it when they set
+the sampling rate. Those two numbers together say what a classical fit is doing to the width of the
+interval it reports, in units a reader can act on: a distortion of $1.15$ is a $7\%$ error on a
+confidence interval, $2$ is $41\%$, and $4$ turns a nominal $95\%$ interval into about $68\%$.
+% src: projects/eLife_2025/figures/paper_both/figure_6B.Rmd (header, measured points 1 to 5): tau_int
+% in normalized Sokal/Kish form, null 1 for a white residual; at matched tau_int the least-squares
+% size agrees to three digits over four decades of N_ch (1.127 / 1.135 / 1.123 / 1.145 at ~1.04), while
+% at matched tau_int two sampling intervals differ by a factor 5.7 (8.9 at interval 0.01 against
+% 1.56-1.63 at 0.5). The error-bar scale is the square root of the distortion, which is why 4 and not 3
+% is the factor-two mark.
+% CORRECTED 2026-08-04: an earlier draft of this paragraph said the residual autocorrelation alone
+% locates a recording, and quoted a factor of two at three. Both were wrong, and figure_6B.Rmd had
+% already measured the right version.

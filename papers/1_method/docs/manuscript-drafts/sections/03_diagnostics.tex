@@ -11,7 +11,15 @@ The second is the score. Writing $\ell(\theta)$ for the total log-likelihood and
 The third and strongest is the information itself. Correct specification requires $\mathrm{Cov}[S]=\mathbf{H}$, the information the likelihood reports, the covariance being taken over independent recordings of the same cell. That is the second thing an experiment cannot supply: one recording gives one score, and a covariance cannot be estimated from a single draw. An approximation can pass the residual and score checks and still violate this one by an order of magnitude. The two failures are independent: whether the estimate is biased is governed by how the conductance is modelled over the interval, while whether the reported information agrees with the information delivered is governed by the recursion. We turn all three checks on the whole cost ladder set out in Theory, from least squares on the deterministic mean current (LSE) at the bottom to the boundary-conditioned filter at the top. The range they have to cover is wide. The members that carry no recursion misreport the information grossly, and among the recursive members the interval conditioning leaves distortions small enough that a diagnostic has to be sharp to resolve them, so the same instrument has to remain informative across both. Because the failure is directional, we record it as a matrix,
 \[ \mathbf{C}=\mathbf{H}^{-1/2}\,\mathbf{J}\,\mathbf{H}^{-1/2}, \]
 with $\mathbf{J}=\mathrm{Cov}(S)$ the covariance of the total score, cross-interval terms included. This definition is exact algebra given $\mathbf{H}$ and $\mathbf{J}$, and under correct specification $\mathbf{J}=\mathbf{H}$ so $\mathbf{C}=\mathbf{I}$ exactly.
-% TODO-SIGN: direction convention below not yet verified against the producing code (C++ emitter of the distortion matrices); if the read reverses it, flip every TODO-SIGN site in one pass.
+% [SIGN VERIFIED 2026-08-04] Direction confirmed against the producing code and left as
+% written. legacy/lapack_headers.h:2519 Lapack_PSD_Normalized_Congruence_Matrix computes
+% H^(-1/2) J H^(-1/2) with H the FIRST argument, and legacy/distributions.h:470-478 states that
+% the reported Fisher information is the H reference of Likelihood_Information_Distortion. So
+% C > 1 means the score varies more than the reported information, i.e. the likelihood
+% over-states the information the data carry and under-reports the width of its interval.
+% Cross-checked: theory/macroir/docs/Likelihood_Information_Distortion/supplement_information_distortion_main.tex:129-130,
+% papers/_program/machinery.md section 4, and the NR reading of 13-17 on a member that ignores
+% the correlation and must therefore over-state information. No dissenting copy was found.
 We fix the direction by convention: $C_{ii}>1$ means the likelihood under-reports the uncertainty in parameter $i$ and is over-confident, $C_{ii}<1$ means it over-reports and is conservative. The eigen-directions of $\mathbf{C}$ say which combinations of parameters are misreported, which a scalar summary cannot recover.
 
 The anchor $\mathbf{H}$ is the likelihood's own Gaussian Fisher information,
@@ -31,9 +39,10 @@ is the corrected parameter covariance: it substitutes the information the likeli
 % PENDING-FIG2: Figure 2 has not been knitted for the merged roster; this cross-reference stands on the members that have clouds.
 A diagnostic that also corrects the error bars it flags is a stronger result than one that only scores algorithms.
 
-The distortion splits into two physically distinct parts (Figure~\ref{fig:plane}--figure supplement 3).
-% NOTE: the map version (figure_4_supplement_3.Rmd) is not built; the line version occupies the
-% third figsupp slot of Figure 4 and carries the same decomposition.
+The distortion splits into two physically distinct parts (Figure~\ref{fig:plane}--figure supplement 1).
+% NOTE: the map version (figure_4_supplement_3.Rmd) is not built; the line version carries the same
+% decomposition. Renumbered 3 -> 1 on 2026-08-05, when Figure 4's supplement set was cut from eleven
+% to the two the prose cites (see the note beside the declarations in 04_results.tex).
 The sample distortion $\mathbf{C}_s=\mathbf{H}^{-1/2}\,\mathbf{J}_s\,\mathbf{H}^{-1/2}$, built from the within-interval score covariance $\mathbf{J}_s=\sum_t\mathrm{Cov}(s_t)$ with $s_t=\nabla_\theta\ell_t$ the score of interval $t$, measures per-sample departure from Gaussianity; to the leading corrections it is the third and fourth cumulants of the interval current, the non-Gaussian shape the Gaussian predictive cannot carry. The correlation distortion $\mathbf{R}=\mathbf{J}_s^{-1/2}\,\mathbf{J}\,\mathbf{J}_s^{-1/2}$ measures what the within-interval covariance misses, the cross-interval correlation of the score, which is exactly the local time correlation of the current that \cite{milescu2005maximum} named as the dominant error of non-recursive fitting; $\mathbf{R}=\mathbf{I}$ when the score carries no cross-interval dependence. The figures resolve the same pair in time and one parameter at a time, and the notation follows the matrices. For the parameter under discussion, $F_t$ is the Gaussian Fisher information of interval $t$ alone, so that the corresponding diagonal entry of $\mathbf{H}$ is $\sum_t F_t$; $J_t=\mathrm{Var}(s_t)$ is the variance of that interval's score. Accumulated to interval $T$ they are $F_T=\sum_{t\le T}F_t$ and $J_T=\mathrm{Var}\bigl(\sum_{t\le T}s_t\bigr)$, and it is the second of these, not the sum of the $J_t$, that the reported information has to match. The two statements $J_t=F_t$ and $J_T=F_T$ are therefore not equivalent, and their divergence is the whole of what Figure~\ref{fig:time} measures. These compose exactly. The exact identity is
 \[ \mathbf{C}=\mathbf{K}\,\mathbf{R}\,\mathbf{K}^\top,\qquad \mathbf{K}=\mathbf{H}^{-1/2}\,\mathbf{J}_s^{1/2}, \]
 which holds as algebra for any $\mathbf{H}$ and $\mathbf{J}_s$, since substituting the definitions collapses the chain. The factor $\mathbf{K}$ satisfies $\mathbf{K}\mathbf{K}^\top=\mathbf{C}_s$, so it is a legitimate square-root factor of the sample distortion, but it is not the symmetric principal square root, and the form $\mathbf{C}=\mathbf{C}_s^{1/2}\,\mathbf{R}\,\mathbf{C}_s^{1/2}$ holds only where $\mathbf{H}$ and $\mathbf{J}_s$ commute. What composes with no assumption at all is the information volume,
@@ -42,6 +51,34 @@ an exact identity because the determinant is multiplicative. The per-parameter d
 
 The correlation distortion has a reader-facing translation. For any additive statistic $X_t$ with sum $L=\sum_t X_t$, the ratio $\kappa=\mathrm{Var}(L)\big/\sum_t\mathrm{Var}(X_t)$ is unity when the terms are independent and larger when they are positively correlated, and it converts to an effective sample size $T_\mathrm{eff}=T/\kappa$: a non-recursive likelihood believes it has $T$ independent intervals when it effectively has $T/\kappa$. This is the number from the diagnostic most worth quoting, and it is exact by definition. When $\mathbf{R}\approx\kappa\mathbf{I}$ the temporal error is isotropic and this scalar captures it; when $\mathbf{R}$ is anisotropic, or when $\mathbf{C}_s\neq\mathbf{I}$, the distortion cannot be reduced to a sample-size correction and the full matrix is needed.
 
+A matrix is not a number, and two scalars summarise it without pretending to replace it. Let
+$\lambda_1,\dots,\lambda_d$ be the eigenvalues of $\mathbf{C}$ on the retained subspace. Their
+logarithms have a mean $\bar e = d^{-1}\sum_i \log\lambda_i$ and a variance
+$s^2 = \mathrm{Var}_i(\log\lambda_i)$, and the two quantities reported throughout are their
+exponentials,
+\begin{equation}
+  m \;=\; e^{\bar e} \;=\; \Bigl(\textstyle\prod_i \lambda_i\Bigr)^{1/d},
+  \qquad
+  a \;=\; e^{\,s},
+  \label{eq:magnitude-anisotropy}
+\end{equation}
+so that $m$ is the typical factor by which the reported information is wrong, the geometric mean
+of the per-direction factors, and $a$ is the multiplicative spread of those factors from direction
+to direction. A member is drawn as a point at $m$ with a bar from $m/a$ to $m\,a$, which is why
+the axes are logarithmic and why the spread is written as a factor rather than as a plus-or-minus.
+Both are one at correct specification. The single scalar that combines them is the
+affine-invariant Riemannian distance from the identity,
+$D_{\mathrm{AI}} = \bigl(\sum_i \log^2\lambda_i\bigr)^{1/2} = \sqrt{d\,(\bar e^2 + s^2)}$, which
+is used where a single number is wanted and is reported nowhere in place of the pair.
+In error-bar units take the square root of any of these, since the distortion is a ratio of
+informations: a distortion of $1.15$ is a $7\%$ error on a confidence interval, $2$ is $41\%$, and
+$4$ turns a nominal $95\%$ interval into about $68\%$.
+% ADDED 2026-08-04. The two summaries were named throughout and defined nowhere, which a
+% replication audit reported as cannot-implement. Formulas from the emitter's own header,
+% src/core/likelihood.cpp:560-563 ("e-bar = (1/d) sum log lambda_i, signed magnitude of distortion
+% on log scale; s^2 = Var(log lambda_i), anisotropy; D_AI = sqrt(d(e-bar^2+s^2)) = sqrt(sum
+% log^2 lambda_i)"), and the exponentiation is what the figures report, per
+% figures/paper_both/figure_6B.Rmd:25-30. The error-bar scale is that file's lines 36-39.
+
 Two conventions govern the edge cases.
-% TODO-SIGN: same direction convention as above; verify once against the producing code and flip both sites together if it reverses.
-The direction is fixed as above, $C_{ii}>1$ being over-confidence and $C_{ii}<1$ conservatism, stated once so every verdict reads the same way. And the anchor can be near-singular where a parameter is unidentifiable, which by design happens once the open population relaxes (Figure~\ref{fig:time}--figure supplement 1); there we work in the retained eigenspace of $\mathbf{H}$ above a numerical cutoff and leave the quantity undefined, not finite, when that eigenspace is empty. Undefined is not zero, and the maps render those cells in grey to keep the two apart.
+The direction is fixed as above, $C_{ii}>1$ being over-confidence and $C_{ii}<1$ conservatism, stated once so every verdict reads the same way. And the anchor can be near-singular where a parameter is unidentifiable, which by design happens once the open population relaxes (Figure~\ref{fig:time}--figure supplements 1 and 2); there we diagonalize $\mathbf{H}$ and retain the eigenmodes whose eigenvalue exceeds a tolerance set relative to the largest, $\lambda_i > \lambda_{\max}\cdot 10^{-10}$, evaluate every inverse power on that retained subspace alone, and leave the quantity undefined, not finite, when the retained subspace is empty. The dimension $d$ of Eq.~\ref{eq:magnitude-anisotropy} is the dimension of that subspace, so a cell where a direction has been dropped is summarised over fewer directions than one where none has. Undefined is not zero, and the maps render those cells in grey to keep the two apart.

@@ -65,17 +65,35 @@ window or discard it. Three switches fix which member is being run.
 
 \paragraph{Switch 1: the window, $\mathrm{av}\in\{0,1,2\}$.} It selects the conductance
 object, and with it the second term of the predictive variance and the gain. At
-$\mathrm{av}=0$ the observation is treated as an instantaneous sample: the occupancy is
-propagated to the sampling point first, the conductance is $\bm{\gamma}$, and
+$\mathrm{av}=0$ the observation is treated as an instantaneous sample taken at the centre of
+the window: the occupancy is propagated there first, by $\mathbf{P}(\Delta/2)$, the conductance
+is $\bm{\gamma}$, and, with $\bm{\Sigma}$ read in that mid-window frame,
 \begin{equation}
   \widetilde{\bm{\gamma}^\top\bm{\Sigma}\bm{\gamma}} \;\to\; \bm{\gamma}^\top\bm{\Sigma}\bm{\gamma},
   \qquad
-  \mathbf{g} \;\to\; \mathbf{P}(\Delta)^\top\bm{\Sigma}\,\bm{\gamma}.
+  \mathbf{g} \;\to\; \mathbf{P}(\Delta/2)^\top\bm{\Sigma}\,\bm{\gamma}.
   \label{eq:av0}
 \end{equation}
 At $\mathrm{av}=1$ the same two expressions hold with $\bar{\bm{\gamma}}_0$ in place of
-$\bm{\gamma}$: the conductance is conditioned on the state at the window's start, but the
-contraction is still an ordinary quadratic form on the $K$ states. At $\mathrm{av}=2$ the
+$\bm{\gamma}$ and the full $\mathbf{P}(\Delta)$ in the gain, since the conductance is
+conditioned on the state at the window's start and the whole window remains to be crossed;
+the contraction is still an ordinary quadratic form on the $K$ states.
+The trailing propagator in the gain is not decoration. It carries the update from the frame in
+which the observation was formed to the frame the next window starts in, which is the end of
+the current window, so it is the remaining half at $\mathrm{av}=0$ and the whole window at
+$\mathrm{av}=1$. Omitting it, or using the full window where half is called for, leaves the
+rank-one down-date in the wrong frame, and the symptom is specific and was observed: a spike in
+the distortion-induced bias of the recursive instantaneous member at long intervals and large
+channel counts.
+% CORRECTED 2026-08-04. Eq. av0 read P(Delta) in the gain and named no frame for Sigma. Both are
+% wrong for av=0: the implementation propagates to the window MIDPOINT and the trailing factor is
+% P_half. Source, with the table that makes the three cases explicit and the historical failure it
+% caused: docs/math/trust_coefficient.md:24-40 ("| 0 | X_mid via instantaneous g | g^T . Sigma_mid .
+% P_half |", and "Without it the down-date is in the wrong frame - manifested historically as a
+% Distortion-Induced-Bias spike in macro_R at long intervals / large Num_ch (fixed 2026-05-10)").
+% Found by a replication audit, which noticed the appendix and that file disagree.
+% CHECK BEFORE SUBMISSION: whether Delta/2 is exactly what the code uses, or whether P_half is
+% defined against a different reference point (legacy/qmodel.h:4508-4515). At $\mathrm{av}=2$ the
 conductance is conditioned on both endpoints and the two expressions become the tildes,
 Eq.~\ref{eq:tilde} and Eq.~\ref{eq:vector-tilde}. The step from $\mathrm{av}=1$ to
 $\mathrm{av}=2$ therefore does two things at once: it replaces $\bm{\Sigma}_0$ by

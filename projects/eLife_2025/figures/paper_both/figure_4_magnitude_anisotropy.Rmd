@@ -1,0 +1,200 @@
+---
+title: "Figure 4—figure supplement (number pending) — can the distortion be undone by counting fewer intervals? The SIZE of the information distortion against its SHAPE"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+NUMBER PENDING, as for the other rebuilt supplements.
+
+THE QUESTION, and it is the one a reader reaches for the moment Figure 4 shows a distortion. If the
+likelihood overstates its information, can that be repaired by declaring that the recording holds
+fewer independent intervals than it appears to? That repair is the standard one, it costs nothing,
+and the lag supplement already measures the number it would use. It works if and only if the
+distortion is a SCALAR: every parameter direction wrong by the same factor. This figure measures
+whether it is.
+
+WHAT IT IS. Two panels over the same plane, six members, one column each, 12 columns. Both read
+GIDM, the same matrix Figure 4's B half draws one diagonal entry of, and both are invariants of its
+whole spectrum:
+
+  A  magnitude    exp(mean(log lambda_i)) = det(GIDM)^(1/p), the geometric mean of the eigenvalues.
+                  The typical factor by which the reported information is wrong, over all
+                  directions at once. Null 1, and SIGNED: below 1 the member understates what it
+                  knows, above 1 it overstates it.
+  B  anisotropy   exp(sd(log lambda_i)), how much that factor VARIES from direction to direction,
+                  read as a spread: the per-direction ratios sit within a factor of this either
+                  side of the magnitude. Null 1, and one-sided, since a spread cannot be negative.
+
+WHY THEY ARE THE RIGHT PAIR and not two arbitrary summaries: they are the orthogonal components of
+a quantity the set already reports, exactly, with p = 6 the number of parameters,
+
+    affine_invariant_distance^2 = p * (mean(log lambda))^2 + p * (sd(log lambda))^2
+
+so panel A is the whole distortion that a scalar correction COULD absorb and panel B is the whole
+of what it could not. Panel B at 1 means an effective-N rescaling is exact, and the factor it should
+use is panel A. Panel B above 1 means no such rescaling exists at any factor, whatever the lag
+supplement reports. That is the entire argument, and it is why the two panels belong on one page.
+
+Verified against the emitted spectrum, 2026-08-02, INR at N_ch 1e4 / noise 0.1 / interval 0.01:
+log_Det 18.63817 = 6 * 3.106361, and 6 * (3.106361^2 + 4.868375) = 87.107 = 9.333113^2. The emitted
+logs are natural and the emitted variance divides by p, not by p - 1.
+
+ONE SCALE AND ONE BAR, which is the point of drawing them together. Both are factors on an
+information ratio with a null of 1, which is the same kind of number as Figure 4's B half and is
+read against the same two criteria, 1.15 and 2. So they take SCALE_FACTOR, the set's default, and
+`fig4_render` gives them a single bar across the width. A colour here means what it means in
+Figure 4. The anisotropy occupies only the upper arm, since it cannot fall below 1; that is half a
+diverging scale unused, and it is bought deliberately, because the comparison this figure exists to
+make is A against B cell for cell and a second bar would break it. Every other one-sided quantity in
+this set (the standard error, the autocorrelation time, the condition number) is drawn alone or
+against something incommensurable, and takes a sequential scale for exactly the reason that does not
+apply here.
+
+WHAT IT SHOWS. Medians over the seven intervals at noise 0.1, pool anchor, as factors:
+
+                     N_ch:     10       100      1000     10000
+    magnitude       ILSE       5.79     6.10     6.15     6.08
+                    NR         6.68    15.07    30.13    99.37
+                    INR        5.16     5.01     4.94     4.93
+                    R          1.09     1.15     1.23     1.24
+                    MR         1.30     1.46     1.51     1.56
+                    IR         1.02     1.00     1.00     1.00
+    anisotropy      ILSE       3.17     3.20     3.17     3.22
+                    NR         3.90     5.99    15.32    86.15
+                    INR        3.18     3.26     3.28     3.30
+                    R          1.29     1.17     1.18     1.19
+                    MR         1.40     1.36     1.38     1.39
+                    IR         1.25     1.15     1.07     1.04
+
+THE ANSWER IS NO, and it is not close. Wherever the magnitude is large the anisotropy is large with
+it: least squares and the open-loop interval member each overstate their information by about a
+factor 5 to 6, and the per-direction factor spreads by 3.2 around that, so directions exist that are
+wrong by 20 and directions exist that are barely wrong at all. A single effective count cannot serve
+both. The claim the reader would otherwise make, that the integrated autocorrelation of the residual
+gives the correction, is refuted on the same page that would have supplied the number.
+
+ILSE AND INR ARE FLAT IN THE CHANNEL COUNT and nearly equal to each other, 6.1 against 4.9 in
+magnitude and 3.2 against 3.3 in shape. Neither tracks the temporal correlation, and what they lose
+by not tracking it does not depend on how many channels there are. NR, which does not track it
+either but keeps the sample-level variance, is the one that runs away: 99 and 86 at ten thousand,
+where the anisotropy has almost caught the magnitude.
+
+THE THREE RECURSIVE MEMBERS SEPARATE ON DIFFERENT AXES, which is worth a sentence in the caption.
+R's magnitude DRIFTS UP with the channel count, 1.09 to 1.24, while its shape sits flat at about
+1.18: its failure is mostly a size it could in principle correct for. IR's magnitude is already 1 at
+every count and its anisotropy FALLS, 1.25 to 1.04, so it is the only member converging on both axes
+at once. IR at ten channels is the honest exception in this figure: 1.25 is above the strict
+criterion, so even the boundary-conditioned filter is not isotropic when there are ten channels to
+filter.
+
+MR IS WORSE THAN THE MEMBER IT IMPROVES ON, on both axes and at every channel count: 1.30 to 1.56 in
+size against R's 1.09 to 1.24, and 1.36 to 1.40 in shape against R's flat 1.18. It carries the
+interval treatment R does not have and costs more for it, and it is further from honest than R is.
+That is the ladder claim in its sharpest form, and it is a claim this figure makes and the bias half
+of Figure 4 cannot: a partial interval correction does not interpolate between the member without
+one and the member with a complete one, it is off the ladder altogether. Whether VR behaves the same
+way is one line in the roster and one recalibration to 14 columns, both already measured.
+
+THE NOISE FLOOR, and it is the reason both panels are CI-aware. Both statistics are biased AWAY from
+their null by estimation noise alone: a spectrum estimated from a finite bootstrap spreads even when
+the truth is isotropic, so a raw anisotropy is never exactly 1 and the panel would show structure
+where there is none. Each cell is therefore drawn at the EDGE of its 95 per cent interval toward the
+null, the same collapse `Dconf` uses, so a cell whose interval brackets 1 renders white. IR's 1.04
+at ten thousand channels is the cell to watch: if it survives the collapse it is a real residual
+anisotropy, and if it goes white the floor is where it should be. That reading belongs in the
+caption either way, since it is what calibrates every other number on the page.
+
+THE ROSTER, and why MR is in it. The organising axis is the instantaneous/interval pairing at each
+level of the stochasticity ladder, which wants LSE and ILSE, NR and INR, R and IR. The un-averaged
+least squares (av = 0) has no run yet, so that column is a gap, and MR takes the sixth place until
+it lands. Two reasons, and the second is the one that decided it. MR is the partially-corrected
+interval member, so it belongs on the axis this figure draws and it turns out to carry the sharpest
+version of the ladder claim (above). And the page is what sets the column count: at five members the
+figure is 9.15 in tall against a 9.263 in text height, which leaves 0.11 in for a legend and does
+not fit. A column ADDED makes it shorter, since the cell narrows and a square cell then wants less
+height, so the sixth member is what puts the figure on the page at all. The arithmetic is in the
+render chunk.
+
+The member the rest of the set labels LSE is the AVERAGED one, av = 1, and it is labelled ILSE here
+because this figure is organised by exactly that distinction and calling it LSE would break the axis
+the figure is about. That relabel is pending across the rest of the set.
+
+VR IS NOT HERE, and it is the only member left out. Adding it is one line in the roster and one
+number in the render chunk, 14 columns at per_row 0.2128 and 6.65 in, already measured. It is out
+today only because six members is what the page wanted and MR was the more informative sixth.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+```{r common, include=FALSE}
+# The ladder, in order, paired: no stochasticity, sample variance, recursion, each in its
+# instantaneous and its interval form. ../data/0ffbda7 carries the averaged least squares and
+# ../data/1f7138b carries INR; neither supplies anything the frozen dirs already have.
+FIG4_ALGOS     <- c("nonlinearsqr", "macro_NR", "macro_INR", "macro_R", "macro_MR", "macro_IR")
+FIG4_ALGO_LAB  <- c(nonlinearsqr = "ILSE", macro_NR = "NR", macro_INR = "INR",
+                    macro_R = "R", macro_MR = "MR", macro_IR = "IR")
+FIG4_DATA_DIRS <- c("../data/1c2ae6f", "../data/87889e6", "../data/0ffbda7", "../data/1f7138b")
+# The inner level is the QUANTITY, as in the lag/kappa supplement: neither has a parameter index,
+# so each member costs one column per side and the strip names what is in it.
+FIG4_PARS   <- c("mag", "aniso")
+FIG4_PSHORT <- c(mag = "size", aniso = "shape")
+source("figure_4_common.R")
+source("figure_4_layout.R")
+```
+
+```{r sides}
+# Both halves come out of the shared source data (figure_4_data.R), already as factors with a null
+# of 1, so this notebook reads five small CSVs and no battery file. NEITHER side declares a scale:
+# they are commensurable by construction, so both take SCALE_FACTOR and fig4_render gives them one
+# bar across the width, which is what lets them be compared rather than merely juxtaposed.
+spec <- dplyr::filter(.fig4_src$spec, algo %in% ALGOS, is.finite(Sconf), Sconf > 0)
+
+SIDES <- list(
+  list(lab = "size of the information distortion", letter = "A",
+       data = dplyr::filter(spec, param == "mag"),   zf = function(x) log10(x$Sconf)),
+  list(lab = "shape: spread across directions", letter = "B",
+       data = dplyr::filter(spec, param == "aniso"), zf = function(x) log10(x$Sconf)))
+```
+
+```{r render, fig.width = 7.4, fig.height = 7.69}
+# 12 columns over two sides, no key row and no white contours: a standard error is not defined for a
+# quantity with no parameter index. per_row 0.2512, x 0.2289, y 0.2289, 100.0 per cent
+# (tmp/calib_fig4.R case 12T2), cell 1.66 mm.
+#
+# THE COLUMN COUNT IS SET BY THE PAGE, and the direction is the opposite of the obvious one: a
+# column ADDED makes this figure SHORTER, because the height follows from the cell being square and
+# the cell narrows as columns are added. Measured from the class this manuscript uses (9pt elife,
+# letterpaper): \textheight is 666.93 pt = 9.263 in and a fullwidth \linewidth is 534.63 pt =
+# 7.425 in, so a 7.40 in PDF lands essentially 1:1 and the whole height budget for a figure AND its
+# legend is 9.263 in. The three rosters, all measured:
+#   10 columns, five members     per_row 0.3049, 9.15 in, cell 2.05 mm  DOES NOT FIT: 0.11 in left
+#                                                                       for a legend
+#   12 columns, six members      per_row 0.2512, 7.69 in, cell 1.66 mm  fits, 1.57 in for the legend
+#   14 columns, all seven        per_row 0.2128, 6.65 in, cell 1.38 mm  fits, 2.61 in, and lands on
+#                                                                       the lag/kappa geometry
+# Twelve is the one drawn. Fourteen is seven members, so it covers EITHER the un-averaged least
+# squares landing OR VR joining, not both: the two together are sixteen columns and are not
+# measured, and at that width the cell is under 1.4 mm and the roster wants a second look anyway.
+fig4_render(SIDES, per_row = 0.2512, out = "Figure_4_supplement_magnitude_anisotropy.pdf",
+            se_lines = FALSE, key = FALSE)
+```
+
+```{r table}
+# The medians in the note, rebuilt from the source data so the note cannot drift from the figure.
+# `m` and not `Sconf`: the CI edge is the right value for a MAP and the wrong one for a printed
+# number, where it would report the edge of an interval as though it were the estimate.
+spec %>%
+  dplyr::filter(abs(ly - log10(0.1)) < 1e-9) %>%
+  dplyr::group_by(param, algo, Num_ch) %>%
+  dplyr::summarise(v = median(m), .groups = "drop") %>%
+  dplyr::mutate(algo = factor(ALGO_LAB[algo], levels = ALGO_LAB[ALGOS]),
+                param = factor(param, levels = c("mag", "aniso"))) %>%
+  tidyr::pivot_wider(names_from = Num_ch, values_from = v) %>%
+  dplyr::arrange(param, algo) %>%
+  as.data.frame() %>%
+  print(digits = 3)
+```

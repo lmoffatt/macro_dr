@@ -283,3 +283,65 @@
              ignoring discrepancy". VERIFY the full author list against the published
              version before use}
 }
+
+% Migrated from biblio_full.bib 2026-08-05. These three were cited in the .tex and absent here,
+% which is what printed the question marks in the compiled PDF. Verbatim from the pool except
+% that neher1977conductance's provenance field is renamed note -> annote, per the header rule:
+% vancouver-elife.bst typesets note and would have printed the internal reading note in the
+% reference list.
+
+@article{neher1977conductance,
+  author  = {Neher, Erwin and Stevens, Charles F.},
+  title   = {Conductance Fluctuations and Ionic Pores in Membranes},
+  journal = {Annual Review of Biophysics and Bioengineering},
+  year    = {1977},
+  volume  = {6},
+  pages   = {345--381},
+  doi     = {10.1146/annurev.bb.06.060177.002021},
+  annote  = {The review that consolidated spectral noise analysis. Cite for "the field has
+             always known the correlation carries the kinetics"}
+}
+
+@article{colquhoun1981stochastic,
+  author  = {Colquhoun, David and Hawkes, Alan G.},
+  title   = {On the Stochastic Properties of Single Ion Channels},
+  journal = {Proceedings of the Royal Society of London. Series B},
+  year    = {1981},
+  volume  = {211},
+  number  = {1183},
+  pages   = {205--235},
+  doi     = {10.1098/rspb.1981.0003}
+}
+
+@article{vanloan1978computing,
+  author  = {Van Loan, Charles F.},
+  title   = {Computing Integrals Involving the Matrix Exponential},
+  journal = {IEEE Transactions on Automatic Control},
+  year    = {1978},
+  volume  = {23},
+  number  = {3},
+  pages   = {395--404},
+  doi     = {10.1109/TAC.1978.1101743}
+}
+
+% Created 2026-08-05. This key was in NEITHER biblio.bib nor biblio_full.bib, so it had no
+% source to migrate from. Fields are the standard record for the fourth 1952 paper, the one
+% that carries the full model, and not one of the three that precede it in the same volume.
+% No local PDF: nothing matching hodgkin or huxley under docs/bibliography/, ~/papers or
+% ~/Data/Rich/Bibliografia. Fetch one before submission if the citation survives.
+% NOTE FOR WHOEVER CLOSES THE OPEN ITEM in sections/01_introduction.md dated 2026-08-05: if the
+% opening stops attributing rate constants to Hodgkin and Huxley by dropping them from the
+% sentence, this entry becomes dead and must come back out, since the cited-only invariant of
+% this file is what makes the no-dead-entries test meaningful.
+
+@article{hodgkin1952quantitative,
+  author  = {Hodgkin, Alan L. and Huxley, Andrew F.},
+  title   = {A Quantitative Description of Membrane Current and its Application to
+             Conduction and Excitation in Nerve},
+  journal = {The Journal of Physiology},
+  year    = {1952},
+  volume  = {117},
+  number  = {4},
+  pages   = {500--544},
+  doi     = {10.1113/jphysiol.1952.sp004764}
+}

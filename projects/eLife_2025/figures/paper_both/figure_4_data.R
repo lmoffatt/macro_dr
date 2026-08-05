@@ -34,7 +34,8 @@ SRC_DIR <- "../figure_4_source_data"
 SRC <- c(bias  = "figure_4_source_data_bias.csv",
          stat  = "figure_4_source_data_distortion.csv",
          sedat = "figure_4_source_data_standard_error.csv",
-         scal  = "figure_4_source_data_cell_scalars.csv")
+         scal  = "figure_4_source_data_cell_scalars.csv",
+         spec  = "figure_4_source_data_spectrum.csv")
 
 # Every member with runs on disk. NOT the calling notebook's roster: the point is that one build
 # serves all six. A member added here costs one sweep the first time and nothing after.
@@ -75,6 +76,34 @@ KEEP_COLS <- c("component_path", "variable", "param_index", "param_col", "statis
 # figure_4_common.R, the residual lag for the lag/kappa supplement -- so they ride this pass too.
 KAPPA_PATH <- "Probit_statistics_Spectrum_Condition_Number_Gaussian_Fisher_Covariance"
 
+# The SPECTRUM pair: the two invariants of the SAME matrix the distortion product reads per
+# parameter, GIDM. The distortion side of Figure 4 draws one diagonal entry of it; these two summarise
+# the whole of it, and they ride the same pass because the file is already in memory.
+#
+#   mag    m_bar = mean(log lambda_i), so exp(m_bar) = det(GIDM)^(1/p) is the geometric mean of the
+#          eigenvalues. Same KIND of number as the diagonal entry the distortion draws, an
+#          information ratio with a null of 1, only summarised over every direction instead of read
+#          off one coordinate. Signed: a member can overstate its information or understate it.
+#   aniso  a = sd(log lambda_i), what is LEFT once that scalar is taken out. It is exactly the
+#          affine-invariant distance from GIDM to the NEAREST multiple of the identity, so it is the
+#          quantity that decides whether an effective-N rescaling can absorb the distortion at all:
+#          at a = 0 it can, since every direction is wrong by the same factor, and the integrated
+#          autocorrelation already reports that factor. Above 0 no scalar correction exists.
+#
+# The two are orthogonal components of the distance the set already reports, exactly:
+#     affine_invariant_distance^2 = p * (m_bar^2 + a^2)
+# VERIFIED 2026-08-02 against the emitted spectrum, INR at N_ch 1e4 / noise 0.1 / interval 0.01:
+# p = 6, log_Det 18.63817 = 6 * 3.106361, and 6 * (3.106361^2 + 4.868375) = 87.107 = 9.333113^2.
+# So the logs are NATURAL and the variance divides by p, not by p - 1. Both facts matter downstream:
+# the notebook divides by log(10) to reach the log10 factor the scales are declared in, and the
+# identity above is what lets a reader add the two panels back into a number the set already prints.
+#
+# Emitted as the VARIANCE; the sqrt is taken in the shaping, where the bootstrap quantiles are still
+# attached, because sqrt is monotone and carries an interval through unchanged.
+SPEC_PATHS <- c(
+  mag   = "Probit_statistics_Mean_Log_Eigenvalue_Likelihood_Gaussian_Information_Distortion",
+  aniso = "Probit_statistics_Log_Eigenvalue_Variance_Likelihood_Gaussian_Information_Distortion")
+
 # BOTH ANCHORS for the half-B products (2026-08-02). The distortion, the corrected standard error
 # and the per-cell scalars are extracted from battery_sim_G AND battery_pool_G and tagged with
 # `anchor`, because GIDM at theta_sim and GIDM at theta_pool are DIFFERENT quantities: the
@@ -102,11 +131,17 @@ KAPPA_PATH <- "Probit_statistics_Spectrum_Condition_Number_Gaussian_Fisher_Covar
       (d$variable == "Report_integral_r_std" &
          d$statistic == "integral_correlation_lag" & d$probit == "mean") |
       (d$variable == "r2_std" & d$statistic == "mean" & d$probit == "mean"), , drop = FALSE],
+    algo = a, noise = z, anchor = anchor),
+  # the quantiles come too: both statistics are biased AWAY from their null by estimation noise, so
+  # the CI edge is not a refinement here, it is what keeps a noise floor from reading as a finding
+  spec = transform(
+    d[d$component_path %in% SPEC_PATHS & d$statistic == "value" &
+      d$probit %in% c("mean", "quantile"), , drop = FALSE],
     algo = a, noise = z, anchor = anchor))
 
 fig4_build <- function(cl) {
   t0 <- Sys.time()
-  bias_l <- stat_l <- se_l <- scal_l <- vector("list", nrow(cl))
+  bias_l <- stat_l <- se_l <- scal_l <- spec_l <- vector("list", nrow(cl))
   for (i in seq_len(nrow(cl))) {
     a <- cl$algo[i]; n <- cl$nch[i]; z <- cl$z[i]
 
@@ -124,6 +159,7 @@ fig4_build <- function(cl) {
     stat_l[[i]] <- rbind(bs$stat, bp$stat)
     se_l[[i]]   <- rbind(bs$se,   bp$se)
     scal_l[[i]] <- rbind(bs$scal, bp$scal)
+    spec_l[[i]] <- rbind(bs$spec, bp$spec)
 
     if (i %% 25 == 0) cat(sprintf("  figure_4 data: %d/%d cells\n", i, nrow(cl)))
   }
@@ -132,7 +168,8 @@ fig4_build <- function(cl) {
   list(bias = fig4_shape_bias(dplyr::bind_rows(bias_l)),
        stat = fig4_shape_stat(dplyr::bind_rows(stat_l)),
        sedat = fig4_shape_sedat(dplyr::bind_rows(se_l)),
-       scal  = fig4_shape_scal(dplyr::bind_rows(scal_l)))
+       scal  = fig4_shape_scal(dplyr::bind_rows(scal_l)),
+       spec  = fig4_shape_spec(dplyr::bind_rows(spec_l)))
 }
 
 # ---- the shaping, kept here so the CSVs are already what the blocks draw --------------------
@@ -181,6 +218,28 @@ fig4_shape_scal <- function(d) d %>%
   dplyr::group_by(algo, anchor, param, noise, Num_ch, interval_in_tau) %>%
   dplyr::summarise(v = mean(value), .groups = "drop") %>%
   dplyr::mutate(lx = log10(interval_in_tau), ly = log10(as.numeric(noise)))
+
+# The spectrum pair, shaped into the unit the scales are declared in: a FACTOR with a null of 1,
+# like every other product here. The anisotropy is emitted as a VARIANCE of log eigenvalues, so it
+# takes a sqrt on the way; sqrt and exp are both monotone, so the 2.5 and 97.5 edges stay the same
+# edges and no quantile has to be recomputed from a spectrum this file never holds.
+fig4_shape_spec <- function(d) d %>%
+  dplyr::mutate(param = names(SPEC_PATHS)[match(component_path, SPEC_PATHS)],
+                key = dplyr::case_when(probit == "mean" ~ "m", quantile_level == 0.025 ~ "lo",
+                                       quantile_level == 0.975 ~ "hi", TRUE ~ NA_character_)) %>%
+  dplyr::filter(!is.na(key), !is.na(param)) %>%
+  dplyr::group_by(algo, anchor, param, noise, Num_ch, interval_in_tau, key) %>%
+  dplyr::summarise(v = mean(value), .groups = "drop") %>%
+  tidyr::pivot_wider(names_from = key, values_from = v) %>%
+  dplyr::mutate(dplyr::across(c(m, lo, hi),
+                              ~ exp(ifelse(param == "aniso", sqrt(pmax(0, .x)), .x)))) %>%
+  # CI-aware toward 1, the same collapse the distortion uses: a cell whose 95% interval brackets the
+  # null renders white. It matters more here than anywhere else in the set, because BOTH statistics
+  # are biased away from the null by estimation noise alone (a fitted spectrum spreads even when the
+  # truth is isotropic), so without the collapse a noise floor reads as a finding. For the
+  # anisotropy, which cannot sit below 1, this is always the lower edge.
+  dplyr::mutate(Sconf = ifelse(m > 1, pmax(1, lo), pmin(1, hi)),
+                lx = log10(interval_in_tau), ly = log10(as.numeric(noise)))
 
 # ---- the entry point ---------------------------------------------------------------------------
 fig4_source_data <- function() {

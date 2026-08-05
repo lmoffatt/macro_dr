@@ -185,6 +185,29 @@ ellipse_path <- function(cx, cy, S, level = 0.95, npoints = 200) {
   { ev <- eigen(S, symmetric = TRUE)$values; if (any(ev <= 0)) NA_real_ else sqrt(prod(ev)) }
 .fmt  <- function(r) ifelse(!is.finite(r), "", ifelse(r >= 10, sprintf("%.0f×", r), sprintf("%.1f×", r)))
 
+# THE SHAPE COMPANION TO .area(), and the two of them are an exact decomposition rather than two
+# summaries that happen to sit together. With M = S_F^{-1/2} S_emp S_F^{-1/2} and its eigenvalues
+# lambda_1 >= lambda_2, the area ratio this figure ALREADY prints is sqrt(lambda_1 * lambda_2), which
+# is exp(mean(log lambda)); the orthogonal companion is sqrt(lambda_1/lambda_2), which is
+# exp(sd(log lambda)). So the pair on every panel is exactly the pair the anisotropy map carries over
+# the whole design plane (Figure 4--figure supplement, magnitude/anisotropy), restricted to this 2D
+# slice. The first says by how much the report is wrong; the second says whether ONE factor could
+# repair it, which is the correction a reader reaches for and the one this paper says does not exist.
+#
+# A 2D slice is a LOWER BOUND on the anisotropy of the full six-parameter object: a pair can look
+# round while the matrix is strongly anisotropic in a direction that mixes parameters. The caption
+# says so, and it is why the map figure is not made redundant by these numbers.
+.shape <- function(Semp, SF) {
+  if (is.null(Semp) || is.null(SF) || any(!is.finite(Semp)) || any(!is.finite(SF)))
+    return(NA_real_)
+  ev <- tryCatch(Re(eigen(solve(SF, Semp), only.values = TRUE)$values),
+                 error = function(e) NA_real_)
+  if (any(!is.finite(ev)) || any(ev <= 0)) return(NA_real_)
+  sqrt(max(ev) / min(ev))
+}
+# printed as a spread, not as a factor, so it cannot be read as "multiply by this"
+.fmts <- function(r) ifelse(!is.finite(r), "", sprintf("×÷%.1f", r))
+
 battery_cov_pair <- function(comp, algo, ix, jx) {           # ix,jx = param indices
   df <- battery %>%
     filter(component == comp, statistic == "value", probit == "mean",
@@ -242,6 +265,15 @@ pair_plot <- function(px, py, algos = ALGOS) {
     Ss <- list(empirical = cov(cbind(cl$x, cl$y)),
                Fisher    = battery_cov_pair(C_FISHER, a, pix, piy),
                corrected = battery_cov_pair(C_CORRECTED, a, pix, piy))
+    # THE BEST A SINGLE FACTOR CAN DO: the Fisher ellipse resized to the empirical AREA, and nothing
+    # else touched. If the distortion were a scalar, which is the effective-N rescaling a reader
+    # reaches for and which the integrated autocorrelation would supply, this curve would land ON the
+    # empirical one. Where it does not, no rescaling reaches, and the gap the eye sees IS the shape
+    # number in the corner. Scaling a 2x2 by k scales its area by k, so k is the ratio of areas.
+    if (!is.null(Ss$Fisher) && all(is.finite(Ss$Fisher))) {
+      k <- .area(Ss$empirical) / .area(Ss$Fisher)
+      if (is.finite(k) && k > 0) Ss[["Fisher rescaled"]] <- Ss$Fisher * k
+    }
     for (nm in names(Ss)) {
       e <- ellipse_path(ctr[1], ctr[2], Ss[[nm]])
       if (!is.null(e)) ell[[length(ell) + 1]] <- e %>% mutate(algo = ALGO_LAB[a], source = nm)
@@ -249,7 +281,7 @@ pair_plot <- function(px, py, algos = ALGOS) {
   }
   ellipses <- bind_rows(ell) %>%
     mutate(algo = factor(algo, levels = ALGO_LV),
-           source = factor(source, levels = c("empirical","Fisher","corrected")))
+           source = factor(source, levels = c("empirical","Fisher","Fisher rescaled","corrected")))
   centers <- centers_for_pair(px, py, algos)
   tx <- unname(TRUTH[px]); ty <- unname(TRUTH[py])     # centre EVERY panel on the expected value
   hx <- 1.25 * max(abs(quantile(cl_all$x, c(.01, .99), na.rm = TRUE) - tx))
@@ -269,8 +301,13 @@ pair_plot <- function(px, py, algos = ALGOS) {
     # correlated, so the old fixed top-left placement sat the numbers on top of the points.
     rho <- suppressWarnings(cor(cl$x, cl$y))
     hj  <- if (is.finite(rho) && rho < 0) 1 else 0
+    SF <- battery_cov_pair(C_FISHER, a, pix, piy)
+    # size and shape on ONE line. They are one decomposition and reading them as a pair is the whole
+    # point; stacking them also cost a third text row, which pushed the blue number down into the
+    # cloud in the panels whose ellipses are widest.
     tibble(algo  = factor(ALGO_LAB[a], levels = ALGO_LV), hj = hj,
-           lab_F = .fmt(Aemp / .area(battery_cov_pair(C_FISHER, a, pix, piy))),
+           lab_F = paste(.fmt(Aemp / .area(SF)),
+                         .fmts(.shape(cov(cbind(cl$x, cl$y)), SF))),
            lab_C = .fmt(Aemp / .area(battery_cov_pair(C_CORRECTED, a, pix, piy))))
   }) %>% mutate(x = tx + ifelse(hj == 1, hx, -hx) * 0.94, yF = ty + hy * 0.92, yC = ty + hy * 0.60)
 
@@ -286,11 +323,17 @@ pair_plot <- function(px, py, algos = ALGOS) {
     facet_wrap(~ algo, nrow = 1) +
     coord_cartesian(xlim = tx + c(-hx, hx), ylim = ty + c(-hy, hy)) +
     scale_x_continuous(breaks = xb) + scale_y_continuous(breaks = yb) +
+    # "Fisher rescaled" takes the Fisher COLOUR because it is the Fisher ellipse, with the single
+    # degree of freedom a scalar correction has already spent in its favour. Its own dash pattern,
+    # and thin, so it reads as a construction and not as a fourth estimate of the covariance.
     scale_colour_manual(values = c(empirical = "grey45", Fisher = "#D55E00",
+                                   `Fisher rescaled` = "#D55E00",
                                    corrected = "#0072B2"), name = NULL) +
     scale_linetype_manual(values = c(empirical = "solid", Fisher = "dashed",
+                                     `Fisher rescaled` = "dotdash",
                                      corrected = "dotted"), name = NULL) +
-    scale_linewidth_manual(values = c(empirical = .55, Fisher = .75, corrected = 1.05), guide = "none") +
+    scale_linewidth_manual(values = c(empirical = .55, Fisher = .75,
+                                      `Fisher rescaled` = .5, corrected = 1.05), guide = "none") +
     scale_shape_manual(values = c("truth" = 3, "empirical mean" = 19,
                                   "predicted (truth + bias)" = 1), name = NULL) +
     labs(x = parse(text = unname(PARAM_LAB[px]))[[1]],
@@ -380,8 +423,13 @@ corner_plot <- function(algo, title = NULL) {
     # runs bottom-left..top-right, so top-left is empty (hj=0); negative -> top-right is empty (hj=1).
     rho <- suppressWarnings(cor(c2$x, c2$y))
     hj  <- if (is.finite(rho) && rho < 0) 1 else 0
+    SFk <- battery_cov_pair(C_FISHER, algo, PARAM_IDX[xpk], PARAM_IDX[ypk])
+    # the shape number rides here too: for IR it is the quantitative face of "IR calibrates" extended
+    # from size to shape, which is the stronger of the two statements and the one Part A's failing
+    # members do not get. No rescaled curve in the corner: fifteen cells cannot carry a fourth path.
     tibble(xp = xpk, yp = ypk, hj = hj,
-           lab_F = .fmt(Aemp / .area(battery_cov_pair(C_FISHER, algo, PARAM_IDX[xpk], PARAM_IDX[ypk]))),
+           lab_F = paste(.fmt(Aemp / .area(SFk)),
+                         .fmts(.shape(cov(cbind(c2$x, c2$y)), SFk))),
            lab_C = .fmt(Aemp / .area(battery_cov_pair(C_CORRECTED, algo, PARAM_IDX[xpk], PARAM_IDX[ypk]))),
            x = tx + ifelse(hj == 1, hx, -hx) * 0.92, yF = ty + hy * 0.92, yC = ty + hy * 0.60)
   }) %>% mutate(xp = fx(xp), yp = fy(yp))

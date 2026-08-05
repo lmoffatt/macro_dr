@@ -1,0 +1,180 @@
+---
+title: "Figure 4 (tentative C) — the score itself: does the mean score vanish at the simulation truth, member by member, along the interval axis"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+<!--
+TENTATIVE. Written 2026-08-04. Not numbered, not in the manuscript.
+
+WHY THIS EXISTS. figure_4_interval_pairs.Rmd plots the distortion-INDUCED bias, which
+Lapack_Likelihood_Distortion_Induced_Bias_Subspace computes as H^-1 g: the one-step Newton
+displacement of a member's optimum away from theta_sim. That is a product of two things, and a large
+value can come either from a score that genuinely fails to vanish or from an ill-conditioned reported
+information whose inverse amplifies a small one. At N_ch = 10 the second is a live possibility.
+This notebook removes the Hessian from the question and looks at the score directly.
+
+WHAT IS PLOTTED. Probit_statistics_Moment_statistics_Sum_dlogL with statistic = "mean": the mean over
+recordings of the score summed over the record, evaluated at theta_sim on battery_sim_G. Null zero.
+It is a VECTOR, so it is indexed by param_index alone and there is no diagonal to take.
+
+TWO PANELS PER PARAMETER, and the second is the one to read.
+  RAW      the mean score in its own units. Members are not comparable on this scale, since a member
+           with a sharper likelihood has a larger score for the same data.
+  STANDARDISED  z = mean / sqrt(J_ii / n), with J the score covariance emitted alongside as
+           statistic = "covariance" (a matrix, so param_index == param_col picks its diagonal) and n
+           the emitted count. This is how many standard errors the mean score sits from zero, which
+           IS the identity being tested, and it is comparable across members and cells.
+
+THE QUESTION IT ANSWERS. At N_ch = 10 and Delta*k_off = 0.01 the induced bias reads 0.027 for NR
+against 0 for INR, and it does not scale with the interval: over a hundredfold change in Delta the NR
+value moves only from 0.027 to 0.055. Whatever produces that floor is therefore not the interval
+averaging, whose contribution is O(lambda*Delta) and would have to move a hundredfold. If the floor
+is in the score, NR is genuinely displaced and something in its likelihood other than the window is
+responsible. If the floor is not in the score, it is the inverse information doing the work and the
+induced bias cannot be read as a displacement of the optimum.
+
+BOOTSTRAP. Same machinery as the companion notebooks and the same caveat: the classical
+nonparametric bootstrap of legacy/bootstrap.h resampling GROUPS, not recordings
+(src/core/likelihood.cpp:4278), B = 100, centre taken as the median because the mean over replicates
+of a nonlinear functional carries a Jensen bias. For the raw score the functional is linear, so mean
+and median agree there; the median is kept for consistency with the standardised panel, where the
+ratio is not.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+suppressMessages({ library(tidyverse); library(patchwork) })
+```
+
+```{r constants}
+DATA_DIRS <- c("../data/1c2ae6f", "../data/87889e6", "../data/0ffbda7", "../data/1f7138b")
+NOISE     <- "0.1"
+NCH_ENDS  <- c(10, 10000)
+SCORE     <- "Probit_statistics_Moment_statistics_Sum_dlogL"
+
+PAIRS <- tribble(
+  ~pair,      ~naive,       ~aware,
+  "LSE/ILSE", "macro_LSE",  "macro_ILSE",
+  "NR/INR",   "macro_NR",   "macro_INR",
+  "R/IR",     "macro_R",    "macro_IR"
+)
+PARAMS   <- c(off = 1, Num_ch_mean = 5)
+PAR_LAB  <- c(off = "k[off]", Num_ch_mean = "N[ch]")
+MEM_COL  <- c("interval-naive" = "#D55E00", "interval-aware" = "#0072B2")
+X_BRK    <- c(0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1)
+
+findf <- function(nch, algo, z, kind) {
+  f <- file.path(DATA_DIRS,
+       sprintf("figure_3_G_nch_%d_nsim_10000_%s_noise_%s_%s.csv", nch, algo, z, kind))
+  f <- f[file.exists(f)]
+  if (!length(f)) NA_character_ else f[1]
+}
+```
+
+```{r data}
+grid <- expand_grid(PAIRS, nch = NCH_ENDS) %>%
+  pivot_longer(c(naive, aware), names_to = "member", values_to = "algo") %>%
+  mutate(member = if_else(member == "naive", "interval-naive", "interval-aware"))
+
+raw <- pmap_dfr(grid, function(pair, nch, member, algo) {
+  f <- findf(nch, algo, NOISE, "battery_sim_G")
+  if (is.na(f)) return(NULL)
+  read.csv(f, skip = 1, stringsAsFactors = FALSE) %>%
+    filter(component_path == SCORE,
+           (param_index %in% PARAMS) | statistic == "count") %>%   # count is a scalar: no param_index
+    transmute(pair, nch, member,
+              interval = as.numeric(interval_in_tau),
+              param = names(PARAMS)[match(param_index, PARAMS)],
+              statistic, probit, quantile_level, param_col, value)
+})
+stopifnot(nrow(raw) > 0)
+
+# the mean score: a vector, no diagonal to take
+sc <- raw %>%
+  filter(statistic == "mean", probit == "quantile",
+         quantile_level %in% c(0.025, 0.5, 0.975)) %>%
+  mutate(key = case_when(quantile_level == 0.5   ~ "mid",
+                         quantile_level == 0.025 ~ "lo",
+                         TRUE                    ~ "hi")) %>%
+  select(pair, nch, member, interval, param, key, value) %>%
+  pivot_wider(names_from = key, values_from = value)
+
+# the score covariance: a matrix, its diagonal, at the median replicate
+jj <- raw %>%
+  filter(statistic == "covariance", probit == "quantile", quantile_level == 0.5) %>%
+  filter(as.character(param_col) == as.character(PARAMS[match(param, names(PARAMS))])) %>%
+  select(pair, nch, member, interval, param, J = value)
+
+nn <- raw %>%
+  filter(statistic == "count") %>%
+  group_by(pair, nch, member, interval) %>% summarise(n = median(value), .groups = "drop")
+
+d <- sc %>% left_join(jj, by = c("pair","nch","member","interval","param")) %>%
+            left_join(nn, by = c("pair","nch","member","interval")) %>%
+  mutate(se = sqrt(J / n), z = mid / se, zlo = lo / se, zhi = hi / se,
+         nlab = factor(sprintf("N[ch] == %d", nch), levels = sprintf("N[ch] == %d", NCH_ENDS)),
+         member = factor(member, levels = c("interval-naive", "interval-aware")))
+
+ok <- d %>% distinct(pair, nch, member) %>% count(pair, nch) %>%
+      group_by(pair) %>% filter(all(n == 2), n_distinct(nch) == length(NCH_ENDS)) %>%
+      ungroup() %>% distinct(pair) %>% pull(pair)
+d <- d %>% filter(pair %in% ok)
+cat("pairs complete at both ends:", paste(ok, collapse = " "), " rows:", nrow(d), "\n")
+```
+
+```{r plot, fig.width = 6.0, fig.height = 5.0}
+base_theme <- theme_bw(base_size = 8, base_family = "Helvetica") +
+  theme(panel.grid.minor = element_blank(), panel.spacing = unit(.14, "cm"),
+        strip.text = element_text(size = 7.5), strip.text.y = element_text(angle = 0, size = 6.5),
+        axis.text = element_text(size = 6), axis.text.x = element_text(size = 5.5),
+        legend.position = "bottom", legend.key.size = unit(.6, "lines"),
+        legend.text = element_text(size = 7.5), plot.title = element_text(size = 8, hjust = .5),
+        plot.margin = margin(3, 4, 2, 3))
+
+one_pair <- function(dd, pr, ycol, ylo, yhi, ylab) {
+  ggplot(filter(dd, pair == pr),
+         aes(interval, .data[[ycol]], colour = member, fill = member)) +
+    geom_hline(yintercept = 0, colour = "grey55", linewidth = .3) +
+    geom_linerange(aes(ymin = .data[[ylo]], ymax = .data[[yhi]]), linewidth = .45, alpha = .8) +
+    geom_line(linewidth = .5) + geom_point(size = .9) +
+    scale_x_log10(breaks = X_BRK, labels = as.character(X_BRK)) +
+    scale_colour_manual(values = MEM_COL) + scale_fill_manual(values = MEM_COL) +
+    facet_grid(nlab ~ ., scales = "free_y", labeller = label_parsed) +
+    labs(x = expression(Delta %.% k[off]), y = ylab, colour = NULL, fill = NULL, title = pr) +
+    base_theme
+}
+
+for (pp in names(PARAMS)) {
+  dd <- d %>% filter(param == pp)
+  prs <- unique(as.character(dd$pair))
+  if (!length(prs)) next
+  for (blk in list(list(y = "mid", lo = "lo", hi = "hi", tag = "raw",
+                        lab = expression("mean score at "*theta[sim])),
+                   list(y = "z", lo = "zlo", hi = "zhi", tag = "z",
+                        lab = "mean score / standard error"))) {
+    gl <- lapply(prs, function(pr)
+      one_pair(dd, pr, blk$y, blk$lo, blk$hi, if (pr == prs[1]) blk$lab else NULL))
+    g <- wrap_plots(gl, nrow = 1) +
+      plot_annotation(subtitle = parse(text = PAR_LAB[pp])) +
+      plot_layout(guides = "collect") & theme(legend.position = "bottom")
+    print(g)
+    ggsave(sprintf("Figure_4_score_%s_%s.pdf", blk$tag, pp), g,
+           width = 3.0 * length(prs), height = 4.4)
+  }
+}
+```
+
+```{r numbers}
+cat("\n=== mean score in standard errors, at the short end (Delta*k_off = 0.01) ===\n")
+d %>% filter(interval == 0.01) %>%
+  select(pair, nch, param, member, mean_score = mid, se, z) %>%
+  arrange(desc(abs(z))) %>% print(n = 40)
+
+cat("\n=== does |z| scale with the interval? floor test: |z| at 0.01 against |z| at 1 ===\n")
+d %>% filter(interval %in% c(0.01, 1)) %>%
+  select(pair, nch, param, member, interval, z) %>%
+  pivot_wider(names_from = interval, values_from = z, names_prefix = "d") %>%
+  mutate(fold = abs(d1) / pmax(abs(d0.01), 1e-12)) %>%
+  arrange(fold) %>% print(n = 40)
+```

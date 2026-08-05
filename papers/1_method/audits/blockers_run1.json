@@ -1,0 +1,472 @@
+[
+ [
+  "simulator",
+  "cannot-verify",
+  "The exact simulator: what object uniformization is applied to, the population or a single chann"
+ ],
+ [
+  "simulator",
+  "cannot-verify",
+  "Whether the channel count is fixed per recording or drawn from a distribution"
+ ],
+ [
+  "simulator",
+  "can-proceed",
+  "The recorded observable: an exact time integral over the window, or the mean of n_samp instanta"
+ ],
+ [
+  "simulator",
+  "cannot-run",
+  "The grid of instrumental noise labels to simulate"
+ ],
+ [
+  "simulator",
+  "cannot-implement",
+  "Figure 1: the single-recording illustration and its simulator"
+ ],
+ [
+  "simulator",
+  "cannot-verify",
+  "Any acceptance test for the simulator"
+ ],
+ [
+  "simulator",
+  "can-proceed",
+  "Sign convention of the unitary current and the baseline"
+ ],
+ [
+  "simulator",
+  "can-proceed",
+  "The parameter called sigma in Figure 2 and its relation to Current_Noise"
+ ],
+ [
+  "simulator",
+  "can-proceed",
+  "Whether the seven acquisition intervals inside one design cell share the underlying trajectorie"
+ ],
+ [
+  "simulator",
+  "can-proceed",
+  "The uniformization rate"
+ ],
+ [
+  "members",
+  "cannot-implement",
+  "The boundary-conditioned single-channel moments Gamma-bar_{i0->it} and V-bar_{i0->it}, on which"
+ ],
+ [
+  "members",
+  "cannot-implement",
+  "Evaluating Gamma-bar and V-bar during the pre-pulse segment of the protocol"
+ ],
+ [
+  "members",
+  "can-proceed",
+  "The scale on which the occupancy covariance Sigma is carried"
+ ],
+ [
+  "members",
+  "can-proceed",
+  "Initialising the occupancy covariance at the first interval"
+ ],
+ [
+  "members",
+  "cannot-verify",
+  "Whether the channel count is a fixed number or a random variable with that mean"
+ ],
+ [
+  "members",
+  "cannot-verify",
+  "The av=0 predicted mean, predicted variance and gain (members NR and R, two of the four body me"
+ ],
+ [
+  "members",
+  "can-proceed",
+  "The per-interval log-likelihood contribution"
+ ],
+ [
+  "members",
+  "cannot-verify",
+  "The least-squares likelihood, its variance estimate and its score"
+ ],
+ [
+  "members",
+  "cannot-verify",
+  "A fourth flag that changes the predictive variance"
+ ],
+ [
+  "members",
+  "cannot-implement",
+  "The numerical safeguards: the simplex projection of mu and the trust-region shrink that keeps S"
+ ],
+ [
+  "members",
+  "cannot-compare",
+  "Comparing my per-member numbers against the paper's for the recursive members"
+ ],
+ [
+  "members",
+  "can-proceed",
+  "The baseline and the sign of the conductance in the predicted mean"
+ ],
+ [
+  "leastsquares",
+  "cannot-verify",
+  "The predictive variance sigma^2 used by the four-parameter least-squares configuration (the arm"
+ ],
+ [
+  "leastsquares",
+  "cannot-verify",
+  "The least-squares score and Fisher when the constant variance is itself a function of the param"
+ ],
+ [
+  "leastsquares",
+  "cannot-compare",
+  "The information mask that defines \"the informative steps\" over which every per-step median is t"
+ ],
+ [
+  "leastsquares",
+  "cannot-compare",
+  "The integrated autocorrelation of the standardized residual (least squares reads 9.26)"
+ ],
+ [
+  "leastsquares",
+  "cannot-compare",
+  "How a boundary crossing is located from the measured noise cells (the least-squares honesty bou"
+ ],
+ [
+  "leastsquares",
+  "can-proceed",
+  "What the residual sum of squares is summed over, and over what fitting unit"
+ ],
+ [
+  "leastsquares",
+  "can-proceed",
+  "Whether the number of channels in a simulated recording is exactly N_ch or drawn from a distrib"
+ ],
+ [
+  "leastsquares",
+  "can-proceed",
+  "The units of the \"factor of two\" threshold on the distortion-corrected standard error, which is"
+ ],
+ [
+  "leastsquares",
+  "can-proceed",
+  "The divisor in the reported least-squares covariance: n or n minus the number of free parameter"
+ ],
+ [
+  "leastsquares",
+  "can-proceed",
+  "The noise labels of the 30 least-squares grid cells"
+ ],
+ [
+  "leastsquares",
+  "can-proceed",
+  "Appendix 2, which the interval-averaged conductance moments were to be derived in"
+ ],
+ [
+  "leastsquares",
+  "can-proceed",
+  "The ellipse-area ratio reported in Figure 2 (least squares reads 14.78 on the kinetic pair)"
+ ],
+ [
+  "leastsquares",
+  "can-proceed",
+  "The first-order expansion behind the bias vector and the sandwich"
+ ],
+ [
+  "leastsquares",
+  "can-proceed",
+  "The baseline term in the predicted mean"
+ ],
+ [
+  "leastsquares",
+  "can-proceed",
+  "Whether the least-squares arm and the likelihood members are scored on the same simulated recor"
+ ],
+ [
+  "leastsquares",
+  "can-proceed",
+  "The configuration and the source of the least-squares band drawn in Figure 1"
+ ],
+ [
+  "design",
+  "cannot-run",
+  "The noise axis: the enumerated list of noise labels in the sweep"
+ ],
+ [
+  "design",
+  "cannot-run",
+  "The table of which (channel count, noise label, interval) cells were actually run for each of t"
+ ],
+ [
+  "design",
+  "cannot-run",
+  "The channel-number parameter: whether N_ch is fixed or drawn per recording"
+ ],
+ [
+  "design",
+  "cannot-verify",
+  "The observable: exact time-integral over the window, or mean of n_samp raw samples"
+ ],
+ [
+  "design",
+  "cannot-compare",
+  "The coverage check of Figure 4 supplement 5 / the Discussion's 0.914-vs-0.947 result"
+ ],
+ [
+  "design",
+  "cannot-compare",
+  "The anchor used by Figure 3 (the time-resolved figure)"
+ ],
+ [
+  "design",
+  "cannot-verify",
+  "Reconciling the accumulated information ratio at the reference cell against the distortion matr"
+ ],
+ [
+  "design",
+  "cannot-run",
+  "The eigenvalue cutoff that decides which cells are undefined (grey)"
+ ],
+ [
+  "design",
+  "cannot-compare",
+  "The 'informative steps' mask used for the per-interval medians and for where the curves stop"
+ ],
+ [
+  "design",
+  "cannot-compare",
+  "The failure rule that decides which per-group fits are dropped from the cloud"
+ ],
+ [
+  "design",
+  "cannot-compare",
+  "The interval quoted on every cloud-derived number"
+ ],
+ [
+  "design",
+  "cannot-implement",
+  "The Gaussian Fisher information H for the least-squares arm"
+ ],
+ [
+  "design",
+  "cannot-run",
+  "The 'factor of two' criterion that draws the reachability boundaries in Figure 6"
+ ],
+ [
+  "design",
+  "cannot-implement",
+  "Appendix 2 and the Supplementary Information, which the study needs before any cell can be run"
+ ],
+ [
+  "design",
+  "cannot-implement",
+  "Stage 6, the 'empirical-versus-theoretical distortion capstone'"
+ ],
+ [
+  "design",
+  "can-proceed",
+  "Whether the members at a grid cell score the same simulated ensemble"
+ ],
+ [
+  "design",
+  "can-proceed",
+  "Which cells carry a per-group MLE cloud, and which group size each figure used"
+ ],
+ [
+  "design",
+  "cannot-compare",
+  "Identifying 'the one-endpoint member carried in the supplement' and INR's grid coverage"
+ ],
+ [
+  "design",
+  "can-proceed",
+  "The Levenberg damping schedule and the two script-set tolerances"
+ ],
+ [
+  "design",
+  "can-proceed",
+  "The design cell behind Figure 1"
+ ],
+ [
+  "diagnostic",
+  "cannot-implement",
+  "The score itself, for every member that models the acquisition average (INR, MR, VR, IR): I nee"
+ ],
+ [
+  "diagnostic",
+  "cannot-verify",
+  "The anchor H: is it an expectation over recordings or a per-recording realisation?"
+ ],
+ [
+  "diagnostic",
+  "cannot-compare",
+  "The per-parameter distortion number that fills every map cell and every quoted value (13.24, 1."
+ ],
+ [
+  "diagnostic",
+  "cannot-compare",
+  "The per-parameter form of the sample/correlation split (Figure 5 blocks B and C, and the quoted"
+ ],
+ [
+  "diagnostic",
+  "cannot-verify",
+  "The estimation floor: what C reads when the likelihood is perfectly calibrated but the ensemble"
+ ],
+ [
+  "diagnostic",
+  "cannot-implement",
+  "The two scalar summaries of the whole matrix (what my task calls magnitude and anisotropy)"
+ ],
+ [
+  "diagnostic",
+  "cannot-compare",
+  "The mask that defines 'the informative steps' for the per-interval medians, and the point where"
+ ],
+ [
+  "diagnostic",
+  "cannot-implement",
+  "The near-singular-anchor rule: the retained eigenspace of H and when a quantity is left undefin"
+ ],
+ [
+  "diagnostic",
+  "cannot-compare",
+  "The lag-one score autocorrelation (-0.0043 +/- 0.0043 for IR, 0.191 for R, 0.864 for NR, 0.856 "
+ ],
+ [
+  "diagnostic",
+  "cannot-compare",
+  "The integrated autocorrelation of the standardized residual (1.008 IR, 1.30 R, 3.93 NR, 9.26 LS"
+ ],
+ [
+  "diagnostic",
+  "cannot-compare",
+  "The bootstrap: what is resampled"
+ ],
+ [
+  "diagnostic",
+  "cannot-compare",
+  "The Figure 2 ellipse-area ratios and the 'empirical-versus-theoretical distortion capstone'"
+ ],
+ [
+  "diagnostic",
+  "cannot-compare",
+  "The +/-15% calibration envelope and the point counts behind 94% / 70% / 33%"
+ ],
+ [
+  "diagnostic",
+  "can-proceed",
+  "J: centred covariance or raw second moment, and the divisor"
+ ],
+ [
+  "diagnostic",
+  "can-proceed",
+  "The per-interval score s_t for a recursive member"
+ ],
+ [
+  "diagnostic",
+  "can-proceed",
+  "The sandwich at group level and its anchor"
+ ],
+ [
+  "diagnostic",
+  "can-proceed",
+  "Least squares: is the residual variance profiled or a fixed plug-in in the score and the Fisher"
+ ],
+ [
+  "numbers",
+  "cannot-compare",
+  "The reference-cell ellipse-area ratios: NR 11.41 (per-pair 10.04-14.83), R 1.17 (1.08-1.32), IR"
+ ],
+ [
+  "numbers",
+  "cannot-verify",
+  "The anchor H in C = H^{-1/2} J H^{-1/2}, for every distortion number in the paper"
+ ],
+ [
+  "numbers",
+  "cannot-run",
+  "The coverage result: IR's nominal 95% region covers 0.914 under its own Fisher and 0.947-0.949 "
+ ],
+ [
+  "numbers",
+  "cannot-run",
+  "Building the design grid at all: the instrumental-noise axis"
+ ],
+ [
+  "numbers",
+  "cannot-compare",
+  "The headline calibration counts: 94% of IR's points (1977 of 2100), 70% of R's (625 of 896), 33"
+ ],
+ [
+  "numbers",
+  "cannot-compare",
+  "The per-parameter departure fractions: R 0.4375, 0.5625, 0.2232, 0.3125, 0.0000 against IR 0.01"
+ ],
+ [
+  "numbers",
+  "cannot-compare",
+  "The k_off distortion floor: R 1.372, 1.440, 1.439, 1.42 against IR 1.324, 1.099, 1.000, 1.00 ac"
+ ],
+ [
+  "numbers",
+  "cannot-compare",
+  "The bias numbers: R's channel-number bias 0.126 / 0.148 / 0.138 / 0.138 in log10, and the media"
+ ],
+ [
+  "numbers",
+  "cannot-verify",
+  "The eigenvalue cutoff that defines \"informative\" intervals and the retained eigenspace"
+ ],
+ [
+  "numbers",
+  "cannot-compare",
+  "The lag-one score autocorrelation: -0.0043 +/- 0.0043 for IR, 0.191 +/- 0.004 for R, 0.864 +/- "
+ ],
+ [
+  "numbers",
+  "cannot-compare",
+  "The integrated autocorrelation of the standardized residual: 1.008 for IR, 1.30 for R, 3.93 for"
+ ],
+ [
+  "numbers",
+  "cannot-compare",
+  "The accumulated information ratio with its confidence interval: 14.96 (13.86-15.93) LSE, 13.63 "
+ ],
+ [
+  "numbers",
+  "cannot-compare",
+  "The washout information numbers: IR's channel-number and opening-rate information at 1.4e-21 an"
+ ],
+ [
+  "numbers",
+  "cannot-compare",
+  "The information-budget factors: pooled variance growing by 1.24 (k_off), 3.11 (k_on), 288.19 (i"
+ ],
+ [
+  "numbers",
+  "cannot-compare",
+  "The reachability floors: N_ch unreachable below about 17, k_on below about 52"
+ ],
+ [
+  "numbers",
+  "cannot-compare",
+  "The closure-boundary exponent"
+ ],
+ [
+  "numbers",
+  "cannot-compare",
+  "The ensemble-mean total log-likelihoods: -262 +/- 0.73 (LSE), -230 +/- 0.83 (NR), -147 +/- 0.20"
+ ],
+ [
+  "numbers",
+  "cannot-implement",
+  "The claimed agreement of MacroIR with an integrated-measurement augmented Kalman filter \"to abo"
+ ],
+ [
+  "numbers",
+  "cannot-compare",
+  "Everything the paper defers to a Supplementary Information that is not in the nine files"
+ ]
+]

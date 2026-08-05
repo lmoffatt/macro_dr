@@ -92,7 +92,18 @@ This is what licenses treating the simulation as the reference against which the
 Gaussian likelihood approximations are judged: the approximations are the object
 under test, and the simulator supplies the exact answer they are compared to. Every
 maximum-likelihood grid cell reported here, the least-squares arm included, used
-$10^4$ recordings; the time-resolved run used $1{,}000$ recordings; the
+$10^4$ recordings, with one exception: the cell that carries the coverage result
+($N_{\mathrm{ch}}=10$, noise label $0.05$, boundary-conditioned member) was run at
+$10^5$, because coverage of a nominal $95\%$ region in six parameters needs a thousand
+independent fits and those fits are taken at group size $100$, so $10^5$ recordings are
+required to produce them. The time-resolved run used $1{,}000$ recordings; the
+% AMENDED 2026-08-04. The blanket "every cell used 10^4" was false and it was the stop point of a
+% replication attempt: the Discussion's coverage sentence says "a thousand fits ... at group size
+% 100", which needs 10^5 recordings, and Methods elsewhere states that 10^4 gives "1,000 groups of
+% 10 and 100 groups of 100". The data settle it: the cell exists on disk as
+% figures/data/0ffbda7/figure_3_G_nch_10_nsim_100000_macro_IR_noise_0.05_*.csv, and it is the only
+% nsim_100000 cell in the three freeze directories (five files; every other cell is nsim_10000).
+% So the ensemble is real and the sentence describing the study was the thing that was wrong.
 single-recording illustration (Figure~1) was drawn by the substep sampler instead,
 one $20$-channel trace at $250$ substeps per interval, and does not enter the
 quantitative comparison.
@@ -225,11 +236,47 @@ MacroMR and not MacroMRT.
 % src: papers/1_method/archive/section-plans-20260729/methods.md#M6 (taylor=false -> MacroMR, not MRT)
 
 The filter carries two numerical safeguards, present because the code runs them and
-because anyone reimplementing the filter meets the same constraint on day one. The
-occupancy mean is held on the probability simplex, and the occupancy covariance is
-kept positive semidefinite through a trust-region shrink of the Kalman-like mean
-update. Two constants enter, a binomial-count floor set to $5$ and a minimum
-occupancy probability set to $10^{-12}$.
+because anyone reimplementing the filter meets the same constraint on day one. Without
+them the recursive members return no value at all at the smaller channel counts, so they
+are part of the method rather than housekeeping.
+
+The first holds the occupancy mean on the probability simplex. An undamped Kalman-like
+update can drive entries of $\bm{\mu}$ negative or above one, so the mean step is scaled
+by a trust coefficient $\alpha_\mu\in(0,1]$, the largest scaling that keeps the posterior
+on the simplex. The covariance is treated separately and takes its full step, since the
+rank-one down-date of Eq.~\ref{eq:sig-post} is positive semidefinite by construction; the
+two trusts are not tied to a common factor. The form of the damping matters here in a way
+it would not in an ordinary filter. This paper differentiates the log-likelihood with
+respect to $\bm{\theta}$, so a coefficient that is merely continuous is not enough: a hard
+$\alpha=\min(1,\,c\,\alpha_p)$ leaves a step in $\partial\alpha/\partial\bm{\theta}$ at the
+boundary and pumps variance into the score whenever the system sits near it, and a
+discontinuous form leaves a delta. The coefficient is therefore taken in the smooth form
+$\alpha = \tfrac12\bigl(1 + c\,\alpha_p - \sqrt{(1-c\,\alpha_p)^2+\epsilon^2}\bigr)$, a softened
+minimum of $1$ and $c\,\alpha_p$ that is infinitely differentiable in $\bm{\theta}$ everywhere.
+Here $\alpha_p$ is the largest scaling that keeps the posterior mean on the simplex,
+$c = 0.9$ is a safety factor applied when the constraint binds, leaving a ten per cent margin
+against the boundary, and $\epsilon = 10^{-4}$ sets the width of the smoothing band, so the
+residual bias of $\alpha$ below the hard minimum is at most $\epsilon/2$, which is three orders
+of magnitude smaller than that margin. Reimplementing this with a hard minimum reproduces the
+mean current and corrupts every quantity this paper measures.
+
+The second is a pair of constants: a binomial-count floor of $5$, below which the expected
+count in a state is too small for the Gaussian treatment of that state and the member falls
+back to its non-recursive form, and a minimum occupancy probability of $10^{-12}$.
+% EXPANDED 2026-08-04. The previous paragraph named the two safeguards and gave neither the
+% rule nor the form, which a replication audit reported as cannot-implement: the four recursive
+% members return NaN at N_ch 10 and 100 without them. Source: docs/math/trust_coefficient.md
+% (281 lines), which carries the decoupling of the two trusts, the softmin form with its epsilon,
+% and the history: a discontinuous alpha gave "catastrophic score variance at high N" and the
+% C0-continuous min() form "still pumped variance into the score whenever the system hovered near
+% the boundary". That history is why the smoothness is stated as load-bearing rather than as a
+% detail. Implementation: legacy/qmodel.h:7273-7310 for the binomial floor demoting a recursive
+% member to non-recursive.
+% CONSTANTS SUPPLIED 2026-08-04, from docs/math/trust_coefficient.md:66-71 (epsilon = 1e-4 as the
+% current default, with the residual bias of at most eps/2 = 5e-5 argued there against the margin)
+% and :174-175 (trust_multiplying_factor = 0.9, applied when the trust binds, leaving 10% margin).
+% Two independent students stopped here in the replication run of 2026-08-04, both on these two
+% numbers, after the paragraph above had told them the safeguard exists and what form it takes.
 % src: papers/1_method/archive/section-plans-20260729/methods.md#M11 (simplex + PSD trust-region; Binomial_magical_number=5, min_P=1e-12)
 % src: theory/macroir/docs/Macro_IR/macro_ir_variance_inflation_correction.tex
 
@@ -240,6 +287,43 @@ models. Both select \emph{family approximation} $= 2$, both fit data from the sa
 simulator, and both minimise the same sum of squares. They differ in which parameters
 are free, so no quantity computed under one may be compared against the same quantity
 computed under the other.
+
+The residual scale is not a free parameter of either and is not given a value. It is
+integrated out under a scale-invariant prior, so with $\mathrm{SSE}=\sum_i (y_i-\mu_i(\bm{\theta}))^2$
+over the $n$ finite recorded values the objective is the marginal
+\begin{equation}
+  \log L(\bm{\theta}) \;=\; \log\Gamma\!\bigl(\tfrac{n}{2}\bigr)
+    \;-\; \tfrac{n}{2}\log\pi \;-\; \tfrac{n}{2}\log \mathrm{SSE}(\bm{\theta}),
+  \label{eq:lse-marginal}
+\end{equation}
+whose maximiser is the ordinary least-squares one, since only the last term depends on
+$\bm{\theta}$. What the marginalisation changes is everything downstream of the point
+estimate. The score is the derivative of Eq.~\ref{eq:lse-marginal} and carries the factor
+$n/\mathrm{SSE}$ rather than a $1/\sigma^2$ that would have to be supplied, and the
+information the fit reports is
+\begin{equation}
+  \mathbf{H}_{\mathrm{LSE}} \;=\; \frac{n}{\mathrm{SSE}}\,
+    \sum_i \frac{\partial\mu_i}{\partial\bm{\theta}}\,
+           \frac{\partial\mu_i}{\partial\bm{\theta}}^{\!\top},
+  \label{eq:lse-fisher}
+\end{equation}
+the Gauss-Newton curvature with $\hat\sigma^2=\mathrm{SSE}/n$ entering as a plug-in
+prefactor and not as a coordinate. There is therefore no $\partial\sigma^2/\partial\bm{\theta}$
+term to keep or drop: the scale direction is not in the parameter vector at all, which is
+also why the classical arm carries no score in the noise direction and why its mean squared
+standardized residual is pinned at one by construction.
+% ADDED 2026-08-04. A replication attempt stopped exactly here: "The first thing I could not do
+% was give the constant sigma^2 a number. The objective's argmin does not need it, but the score,
+% the reported Fisher, the reported interval, the sandwich and the whole 13-to-15-fold LSE
+% distortion all [do]." The paper never said the scale is marginalised, so a reader had no way to
+% form any of them. Source: legacy/qmodel.h:7382-7398 (the driver's own header, naming the
+% Jeffreys marginal and the (n/SSE) J^T J form) and :7566-7592 (sigma2_inv = n / SSE_v, and the
+% note that the prefactor uses primitive(SSE) so the AD chain does not differentiate through it).
+% The lineage of the marginalised form is moffatt2007responses (JGP).
+% OPEN, and it is a real question this paragraph does not settle: the six-parameter configuration
+% is described elsewhere as keeping the noise level FREE, which is incompatible with marginalising
+% the scale. Either that configuration runs through a different path, or the description is loose.
+% Check against the run configs before submission and make the two paragraphs agree.
 
 The six-parameter configuration is
 \texttt{ops/local/figure\_3\_time\_LSE.macroir}, and it feeds the time-resolved figure
@@ -480,9 +564,22 @@ enforces by matching \texttt{nsim\_10000} in the filename, so a cell run at a sm
 ensemble cannot enter a map silently.
 % src: projects/eLife_2025/figures/paper_both/figure_4_common.R:31,41 (DATA_DIRS search path; nsim_10000 in the pattern)
 % src: projects/eLife_2025/figures/paper_both/figure_6.Rmd:80 (same three directories)
+The noise axis is a fixed ladder of twelve labels, and every cell of every algorithm sits on one
+of them:
+\begin{equation}
+  \text{label} \in \{0.05,\; 0.1,\; 0.2,\; 0.5,\; 1,\; 10,\; 10^2,\; 10^3,\; 10^4,\; 10^5,\; 10^6,\; 10^7\},
+  \label{eq:noise-ladder}
+\end{equation}
+which in the dimensionless noise $\tilde S$ of this section is one tenth of each. The ladder is
+denser below one, where the crossover the map measures sits, and by decades above it.
+% ADDED 2026-08-04. Three of five replication attempts stopped here: Methods gave the RANGE
+% ("noise labels from 0.05 to 10^6") and never the levels, so the sweep could not be instantiated.
+% The twelve values are the ones present on disk, from
+% papers/1_method/decisions/recompute/d4_distortion_envelopes.py re-run 2026-08-04, which prints
+% "noise levels present: 0.05 0.1 0.2 0.5 1 10 100 1000 10000 100000 1000000 10000000".
 Across the three directories, \texttt{IR} covers
 $N_{\mathrm{ch}} \in \{5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000\}$ and
-noise labels from $0.05$ to $10^6$; NR covers
+all twelve labels; NR covers
 $N_{\mathrm{ch}} \in \{10, 100, 1000, 10000\}$ and R covers those and additionally
 $5$, $20$ and $50$ at label $0.1$, with the highest labels run only at the larger
 channel counts and reaching $10^7$ at $N_{\mathrm{ch}} = 10^4$; MR and

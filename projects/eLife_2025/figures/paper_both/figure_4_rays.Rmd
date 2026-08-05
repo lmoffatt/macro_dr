@@ -1,0 +1,267 @@
+---
+title: "Figure 4 (tentative A) — three rays out of one corner: what each design axis does to each interval-aware / interval-naive pair"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+<!--
+TENTATIVE. Written 2026-08-04 to Luciano's design. Not numbered, not in the manuscript.
+
+THE DESIGN. Every other figure in this set marginalises or crosses the three design variables. This
+one holds two fixed and moves the third, out of a single corner:
+
+    ORIGIN   N_ch = 10,  noise label = 0.1,  Delta*k_off = 0.01
+
+and then three rays, one per axis. The corner is chosen so that the INTERVAL effect is negligible
+there: at Delta*k_off = 0.01, and with p_open = 1/2 so the relaxation rate is twice k_off, the
+averaging correction is of order 2 per cent. That is what makes the origin a VERIFICATION point.
+
+WHY THE ORIGIN IS NOISE 0.1 AND NOT 0.05. At 0.05 the only member on disk is IR. NR, INR and R have
+no cell there, so 0.05 cannot be a shared origin.
+
+WHAT IT TESTS, and the prediction, stated so it can fail:
+
+  (1) AT THE ORIGIN the two members of each pair must agree to within about 2 per cent, because at
+      Delta*k_off = 0.01 there is almost nothing to average. INR -> NR and IR -> R is a LIMIT the
+      code must satisfy, and it is a limit that does not come from the code under test. This is the
+      cheapest exactness anchor available for the interval half of the implementation, and it needs
+      no run. If the pair does not close at the origin, either the interval is not short enough,
+      which shows as a gap that scales with Delta, or something is wrong.
+  (2) ALONG N_ch both members of a pair should walk together toward 1 in the SAMPLE part (the
+      per-sample Gaussian becomes exact) and SEPARATE in the CORRELATION part (which is what
+      conditioning on the interval ends removes). That is the double dissociation, resolved by axis.
+  (3) ALONG THE INTERVAL the pairs should open, and the opening is the interval axis measured.
+  (4) ALONG NOISE both should return to 1, because instrumental noise buries the gating fluctuation.
+
+THE ONE-AT-A-TIME LIMIT, stated because it bites here. Rays cannot see interactions, and there is a
+known one: the R-to-IR gap on the k_off correlation grows from about 0.11 at N_ch = 10 to about 0.55
+at N_ch = 10^4 (Figure 4-figure supplement 4). So the interval ray launched from N_ch = 10 shows the
+SMALLEST separation this design can produce. The origin is the right place to verify coincidence and
+the wrong place to demonstrate separation. The companion notebook figure_4_interval_pairs.Rmd runs
+the interval axis from both ends of the channel axis for that reason.
+
+TWO ANCHORS IN ONE FIGURE, and they must not be read as three views of one computation. The bias row
+is on battery_sim_G at theta_sim, because at theta_pool the score vanishes by construction and the
+bias is zero there by definition. The sample and correlation rows are on battery_pool_G at
+theta_pool, which is where the information comparison is clean. The row strip says which.
+
+THE BOOTSTRAP, verified against the code, because what it resamples decides what the bar means.
+
+  IT IS THE CLASSICAL NONPARAMETRIC BOOTSTRAP, not the Poisson one. generate_bootstrap_indices
+  (legacy/bootstrap.h:44) draws n indices uniformly with replacement at fixed resample size, and
+  bootstrap_it pre-draws every replicate's indices serially so the result is seed-reproducible
+  independently of the thread count. There is a Moment_poisson_bootstrap class in the tree; it is
+  never instantiated anywhere and is dead code. Do not describe this as a Poisson bootstrap.
+
+  IT RESAMPLES GROUPS, NOT RECORDINGS. src/core/likelihood.cpp:4278 says so in capitals, and :4622
+  gives the reason: the per-group theta-hat are the iid units, and each resampled group is expanded
+  to its recordings inside the computation. With group_size 100 over 10^4 recordings that is about a
+  hundred units, and the same comment warns that few groups collapse the intervals. The width of the
+  bar therefore depends in part on how the ensemble was grouped, which is a design decision and not
+  a property of the estimator. B = 100 replicates, readable from the bootstrap_count column.
+
+  THE CENTRE IS THE MEDIAN, quantile_level 0.5, and not the emitted mean. Every quantity here is a
+  nonlinear functional of accumulated moments, a ratio of matrices or a product of eigenvalues, so
+  the mean over replicates is not the statistic of the full ensemble: there is a Jensen bias, and
+  this project has already measured one instance (the affine-invariant distance emitted as
+  E_boot[d_AI] is biased up near the identity). For a positive right-skewed bootstrap distribution
+  the mean sits above the median, which pushes a distortion away from 1 and would manufacture
+  exactly the gap this figure exists to test.
+
+  DO NOT TRANSFER THIS READING to the time-resolved diagnostics. Those go through
+  bootstrap_it_two_to_Probit with two INDEPENDENT index sets and no pairing, and the header of
+  bootstrap_it_two states that there the bootstrap is a comparison-of-estimators tool and not a
+  re-recording-variance estimator. Different family, different meaning.
+
+TRAP inherited from supplement 4: the delta dependence is NOT monotone and carries a kappa ~ 1e5
+corner at Delta*k_off = 1, where the sample distortion deflates to about 0.44. The right-hand end of
+the interval ray will misbehave and the caption has to own it rather than be surprised by it.
+
+TRAP: the "noise" label is not the physical noise. current_noise = label/1000, and the dimensionless
+noise is one tenth of the label. The axis here is the label, as everywhere else in this set.
+
+ILSE is absent. The classical arm has no interval-aware sibling on disk yet, so the third pair
+(LSE vs ILSE) is declared in PAIRS and will appear on the next knit once those cells exist.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+suppressMessages({ library(tidyverse) })
+```
+
+```{r constants}
+DATA_DIRS <- c("../data/1c2ae6f", "../data/87889e6", "../data/0ffbda7", "../data/1f7138b")
+
+# pair = (interval-naive, interval-aware). LSE/ILSE stays declared and will light up when it exists.
+PAIRS <- tribble(
+  ~pair,      ~naive,       ~aware,
+  "LSE/ILSE", "macro_LSE",  "macro_ILSE",
+  "NR/INR",   "macro_NR",   "macro_INR",
+  "R/IR",     "macro_R",    "macro_IR"
+)
+PAIR_COL <- c("LSE/ILSE" = "#999999", "NR/INR" = "#D55E00", "R/IR" = "#0072B2")
+
+ORIGIN <- list(nch = 10, noise = "0.1", interval = 0.01)
+
+# NOTE: every strip label below is parsed as plotmath (label_parsed), so a literal space is a
+# syntax error. Spaces are written as ~ and the labels must stay valid R expressions.
+QTY <- tribble(
+  ~qty,     ~component,                                            ~battery,           ~lab,                         ~diag,
+  "bias",   "Probit_statistics_Gaussian_Distortion_Induced_Bias",  "battery_sim_G",    "bias~at~theta[sim]",         FALSE,
+  "sample", "Probit_statistics_Gaussian_Sample_Distortion",        "battery_pool_G",   "sample~at~theta[pool]",      TRUE,
+  "corr",   "Probit_statistics_Likelihood_Correlation_Distortion", "battery_pool_G",   "correlation~at~theta[pool]", TRUE
+)
+# diag: the two distortions are MATRICES and the figure wants their diagonal, so param_index must
+# equal param_col. The bias is a VECTOR: its param_col is empty, the equality evaluates to NA, and
+# filtering on it silently drops every bias row. That is why an earlier knit produced no bias PDF.
+
+PARAMS  <- c(off = 1, Num_ch_mean = 5)          # the two carrier directions
+PAR_LAB <- c(off = "k[off]", Num_ch_mean = "N[ch]")
+
+findf <- function(nch, algo, z, kind) {
+  f <- file.path(DATA_DIRS,
+       sprintf("figure_3_G_nch_%d_nsim_10000_%s_noise_%s_%s.csv", nch, algo, z, kind))
+  f <- f[file.exists(f)]
+  if (!length(f)) NA_character_ else f[1]
+}
+
+# every (algo, nch, noise) cell present on disk, so the rays are built from what exists
+CELLS <- expand_grid(algo = unique(c(PAIRS$naive, PAIRS$aware)),
+                     nch  = c(5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000),
+                     z    = c("0.05","0.1","0.2","0.5","1","10","100","1000","10000","100000","1000000")) %>%
+  mutate(has = pmap_lgl(list(nch, algo, z), ~ !is.na(findf(..1, ..2, ..3, "battery_pool_G")))) %>%
+  filter(has) %>% select(-has)
+cat("cells on disk:", nrow(CELLS), "\n")
+```
+
+```{r reader}
+read_qty <- function(nch, algo, z, qrow) {
+  f <- findf(nch, algo, z, qrow$battery)
+  if (is.na(f)) return(NULL)
+  read.csv(f, skip = 1, stringsAsFactors = FALSE) %>%
+    filter(component_path == qrow$component,
+           if (qrow$diag) param_index == param_col else TRUE, param_index %in% PARAMS,
+           statistic == "value",
+           probit == "quantile", quantile_level %in% c(0.025, 0.5, 0.975)) %>%
+    transmute(algo = algo, nch = nch, noise = z,
+              interval = as.numeric(interval_in_tau),
+              param = names(PARAMS)[match(param_index, PARAMS)],
+              key = case_when(quantile_level == 0.5   ~ "mid",
+                              quantile_level == 0.025 ~ "lo",
+                              TRUE                    ~ "hi"),
+              value)
+}
+
+# a ray is: hold two of the three fixed at the origin, sweep the third over what both members have
+ray_cells <- function(axis, naive, aware) {
+  a <- CELLS %>% filter(algo %in% c(naive, aware))
+  if (axis == "nch")      a <- a %>% filter(z == ORIGIN$noise)
+  if (axis == "noise")    a <- a %>% filter(nch == ORIGIN$nch)
+  if (axis == "interval") a <- a %>% filter(nch == ORIGIN$nch, z == ORIGIN$noise)
+  # keep only design points where BOTH members exist, so every comparison is like for like
+  a %>% group_by(nch, z) %>% filter(n_distinct(algo) == 2) %>% ungroup()
+}
+
+dat <- pmap_dfr(PAIRS, function(pair, naive, aware) {
+  pmap_dfr(QTY, function(qty, component, battery, lab, diag) {
+    qrow <- list(component = component, battery = battery, diag = diag)
+    map_dfr(c("nch", "interval", "noise"), function(axis) {
+      cc <- ray_cells(axis, naive, aware)
+      if (!nrow(cc)) return(NULL)
+      pmap_dfr(cc, function(algo, nch, z) read_qty(nch, algo, z, qrow)) %>%
+        { if (!nrow(.)) . else
+            (if (axis == "interval") . else filter(., interval == ORIGIN$interval)) } %>%
+        mutate(pair = pair, qty = qty, axis = axis,
+               member = if_else(algo == naive, "interval-naive", "interval-aware"),
+               x = case_when(axis == "nch" ~ nch,
+                             axis == "noise" ~ as.numeric(noise),
+                             TRUE ~ interval))
+    })
+  })
+})
+stopifnot(nrow(dat) > 0)
+
+d <- dat %>%
+  pivot_wider(names_from = key, values_from = value) %>%
+  mutate(qty  = factor(qty, levels = QTY$qty, labels = QTY$lab),
+         axis = factor(axis, levels = c("nch", "interval", "noise"),
+                       labels = c("N[ch]", "Delta %.% k[off]", "noise~label")),
+         member = factor(member, levels = c("interval-naive", "interval-aware")))
+cat("curve points:", nrow(d), " pairs:", paste(unique(as.character(d$pair)), collapse = " "), "\n")
+```
+
+```{r plot, fig.width = 7.0, fig.height = 7.6}
+# ONE PAIR PER COLUMN, AND EACH PAIR ON ITS OWN Y SCALE. facet_grid cannot do the second part: its
+# free scales are shared along a row, so putting the pairs in the columns of one grid forces
+# NR/INR and R/IR onto a common axis and the smaller of the two collapses. Each pair is therefore its
+# own plot, composed side by side with patchwork, which is what figure_4_supp_common.R already does.
+#
+# NO DASHED LINES. Both members are solid and separated by colour alone.
+#
+# SCALES follow figure_6B.Rmd, the format reference for the line figures here: raw values in the
+# data, the transform done by scale_x_log10 and scale_y_log10 with explicit breaks.
+#
+# BIAS AND DISTORTION ARE SEPARATE FIGURES, and that is forced. A distortion is a ratio null at 1 and
+# belongs on a log axis; a bias is already in log10 parameter units, is null at 0 and takes both
+# signs, so it cannot share one.
+suppressMessages(library(patchwork))
+MEM_COL  <- c("interval-naive" = "#D55E00", "interval-aware" = "#0072B2")
+DIST_BRK <- c(0.5, 0.7, 0.9, 1, 1.1, 1.3, 1.6, 2, 3, 5)
+base_theme <- theme_bw(base_size = 8, base_family = "Helvetica") +
+  theme(panel.grid.minor = element_blank(), panel.spacing = unit(.14, "cm"),
+        strip.text = element_text(size = 7), strip.text.y = element_text(angle = 0, size = 6.5),
+        axis.text = element_text(size = 6), legend.position = "bottom",
+        legend.key.size = unit(.6, "lines"), legend.text = element_text(size = 7.5),
+        plot.title = element_text(size = 8, hjust = .5),
+        plot.margin = margin(3, 4, 2, 3))
+
+one_pair <- function(dd, pr, logy, ylab) {
+  g <- ggplot(filter(dd, pair == pr), aes(x, mid, colour = member, fill = member)) +
+    geom_hline(yintercept = if (logy) 1 else 0, colour = "grey55", linewidth = .3) +
+    geom_linerange(aes(ymin = lo, ymax = hi), linewidth = .45, alpha = .8) +
+    geom_line(linewidth = .5) + geom_point(size = .9) +
+    scale_x_log10() +
+    scale_colour_manual(values = MEM_COL) + scale_fill_manual(values = MEM_COL) +
+    labs(x = NULL, y = ylab, colour = NULL, fill = NULL, title = pr) + base_theme
+  if (logy) g <- g + scale_y_log10(breaks = DIST_BRK, labels = as.character(DIST_BRK))
+  g
+}
+
+for (pp in names(PARAMS)) {
+  for (blk in list(list(sel = QTY$lab[-1], logy = TRUE,  tag = "distortion",
+                        ylab = "distortion (null = 1)", h = 7.2,
+                        fac = facet_grid(axis + qty ~ ., scales = "free_y",
+                                         labeller = label_parsed)),
+                   list(sel = QTY$lab[1],  logy = FALSE, tag = "bias",
+                        ylab = expression("bias  ("*log[10]~units*")"), h = 4.4,
+                        fac = facet_grid(axis ~ ., scales = "free_y",
+                                         labeller = label_parsed)))) {
+    dd <- d %>% filter(param == pp, qty %in% blk$sel)
+    prs <- unique(as.character(dd$pair))
+    if (!length(prs)) next
+    gl <- lapply(prs, function(pr)
+      one_pair(dd, pr, blk$logy, if (pr == prs[1]) blk$ylab else NULL) + blk$fac)
+    g <- wrap_plots(gl, nrow = 1) +
+      plot_annotation(subtitle = parse(text = PAR_LAB[pp])) +
+      plot_layout(guides = "collect") & theme(legend.position = "bottom")
+    print(g)
+    ggsave(sprintf("Figure_4_rays_%s_%s.pdf", blk$tag, pp), g,
+           width = 3.1 * length(prs), height = blk$h)
+  }
+}
+```
+
+```{r origin-check}
+# THE VERIFICATION NUMBER. At the origin each pair must close. Anything above a few per cent is the
+# result, not a rounding issue.
+cat("\n=== closure at the origin (N_ch", ORIGIN$nch, "noise", ORIGIN$noise,
+    "Delta*k_off", ORIGIN$interval, ") ===\n")
+d %>%
+  filter(axis == "N[ch]", x == ORIGIN$nch) %>%
+  select(pair, qty, param, member, mid) %>%
+  pivot_wider(names_from = member, values_from = mid) %>%
+  mutate(rel_gap = abs(`interval-aware` - `interval-naive`) /
+                   pmax(abs(`interval-naive`), 1e-12)) %>%
+  arrange(desc(rel_gap)) %>%
+  print(n = 40)
+```
