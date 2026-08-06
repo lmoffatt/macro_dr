@@ -126,12 +126,46 @@ macro_IR = build_likelihood_function(model =model,
             micro_approximation        = false,
             taylor_qdt_approximation   = false )
 
-# ---- the seventh: nonlinearsqr / LSE (family = 2, non-recursive, averaging = 1) ----
+# ---- the seventh: nonlinearsqr, averaged over the interval (family = 2, av = 1) ----
 # All six parameters stay free (Log10): this script only EVALUATES at par_tr, it
-# never optimizes, so the LSE's flat directions are harmless here and the parameter
+# never optimizes, so the least-squares flat directions are harmless here and the parameter
 # indexing stays aligned with the macro blocks.
+#
+# NAMING, and it is the reason the block below exists. This arm is averaging_approximation = 1,
+# so by the instantaneous/interval axis the rest of the set is organised on it is ILSE and not
+# LSE. figures/paper_both/figure_4_magnitude_anisotropy.Rmd already labels it ILSE and records
+# that the relabel is pending everywhere else. The variable and the output path are left as
+# `lse` / `..._LSE` here so that nothing reading them breaks today; renaming them is one pass
+# together with figure_1.Rmd's token map and the body roster, to be done AFTER the run below
+# lands, never before, because until then `..._LSE.csv` on disk holds av = 1 data and repointing
+# the name would silently relabel it.
 lse = build_likelihood_function_with_family(model = model,
             adaptive_approximation = 0, recursive_approximation = 0, averaging_approximation = 1,
+            variance_approximation = 1, taylor_variance_correction = 0,
+            family_approximation       = 2,
+            variance_form_approximation = 0,
+            taylor_qdt_approximation   = false )
+
+# ---- the eighth: nonlinearsqr, NOT averaged (family = 2, av = 0) ----
+# ADDED 2026-08-05. This is the column the set has been missing, and it is what completes the
+# instantaneous/interval pairing at every level of the stochasticity ladder: LSE with ILSE, NR
+# with INR, R with IR. Identical to the block above in every switch except
+# averaging_approximation, so the pair isolates the acquisition average on the one member a
+# reader already knows, with nothing else moving: the predicted band is one constant
+# sigma_hat^2 in both, and what changes on the panel is whether the prediction is a point at
+# the sample or a segment across the interval.
+#
+# WHY THE WHOLE FILE HAS TO BE RE-RUN and not this arm alone: every panel of figure 1 folds the
+# SAME simulated trace, so an arm run on its own would fold a different one and its column would
+# not belong on the page. That is the warning at the top of this file and it applies here.
+#
+# ONE THING TO CHANGE BEFORE THE RUN IS WORTH ANYTHING: fC_LSE in
+# figures/paper_both/figure_1_panels.R draws the least-squares row B in the instantaneous style,
+# and says so ("POINT mean at step_middle (NR-style), NOT an interval-spanning segment"). As it
+# stands the two least-squares columns would render identically and the pair would show nothing.
+# The averaged one has to draw the interval-spanning segment, as the macro interval members do.
+lse_av0 = build_likelihood_function_with_family(model = model,
+            adaptive_approximation = 0, recursive_approximation = 0, averaging_approximation = 0,
             variance_approximation = 1, taylor_variance_correction = 0,
             family_approximation       = 2,
             variance_form_approximation = 0,
@@ -182,6 +216,14 @@ simulation = simulation)
 
 diagnostic_file_LSE = write_csv(experiment= experiment, simulation = simulation, likelihood = likelihood_diagnostic_LSE,
    path= "figures/data/figure_1_likelihood_diagnostic_LSE")
+
+# the eighth panel — the un-averaged least squares, av = 0. Written under its own name rather
+# than repointing _LSE, so that if this run does not complete nothing on disk is mislabelled.
+likelihood_diagnostic_LSE_av0 = calc_likelihood_diagnostic(likelihood_algorithm =lse_av0, parameters=par_tr, experiment =experiment,
+simulation = simulation)
+
+diagnostic_file_LSE_av0 = write_csv(experiment= experiment, simulation = simulation, likelihood = likelihood_diagnostic_LSE_av0,
+   path= "figures/data/figure_1_likelihood_diagnostic_LSE_av0")
 
 # ---- IR-only extras (kept from figure_1.macroir; no notebook reads these today) ----
 likelihood_predictions = calc_likelihood_predictions(likelihood_algorithm =macro_IR, parameters=par_tr, experiment =experiment,

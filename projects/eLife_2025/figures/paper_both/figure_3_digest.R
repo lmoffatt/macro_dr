@@ -33,7 +33,9 @@
 
 suppressPackageStartupMessages({library(data.table)})
 
-ALL   <- c("LSE", "NR", "NMR", "INR", "R", "MR", "VR", "IR")
+# LSE_av0 added 2026-08-05: the un-averaged least-squares arm of figure_3_time.macroir. NMR is the
+# pre-2026-08-01 name of INR and is kept only so an old dump still digests.
+ALL   <- c("LSE", "LSE_av0", "NR", "NMR", "INR", "R", "MR", "VR", "IR")
 args  <- commandArgs(trailingOnly = TRUE)
 ALGOS <- if (length(args)) args else ALL
 PIDX  <- c(0L, 1L, 2L, 3L, 4L, 5L)

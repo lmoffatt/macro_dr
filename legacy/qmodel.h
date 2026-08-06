@@ -4481,8 +4481,28 @@ class Macro_DMR {
             get<taylor_strength>(out()) = taylor_strength(0.0);
 
             get<Chi2>(out()) = std::move(chi2);
+            // The THREADED state: the occupancy the window closes with, which is the prior the
+            // next window opens with. Correct as it stands and left alone; for av=0 it is the
+            // two half steps p_start·P_half·P_half, i.e. one full interval.
             get<P_mean_t2_y0>(out())() = std::move(r_P_mean());
             get<P_Cov_t2_y0>(out())() = std::move(r_P_cov());
+            // The EVALUATION state, added 2026-08-05, and only for av=0, where it differs from
+            // the two above. It is the occupancy the prediction in y_mean was actually taken
+            // from: p_start advanced by P_half, i.e. the middle of the acquisition window, where
+            // the sample sits. Without it the figure-1 dump of a non-recursive av=0 member
+            // carries the window-close occupancy while its y_mean comes from the mid-window one,
+            // so the prior row and the prediction row describe different instants and the two
+            // av=0 members disagree on an occupancy they in fact share. Verified before the
+            // change: recovering P from NR's own y_mean, P = (baseline - y_mean)/(N·i), gives
+            // 0, 0.0906, 0.2256, 0.3161, 0.3767, 0.4174, exactly the series the nonlinearsqr
+            // av=0 arm emits, and not the series NR was emitting.
+            // P_mean_t15_y0 is an existing slot of Algo_State_Dynamic_Space (t1.5 = mid-window,
+            // y0 = before this window's observation), so nothing new is plumbed. It is left
+            // unfilled for av>0, where the evaluation state IS the window start and the
+            // interval average lives in gmean_i instead; unfilled slots are not written out.
+            if constexpr (averaging::value == 0) {
+                get<P_mean_t15_y0>(out())() = p_P_mean();
+            }
             return out;
         }
     }
@@ -7483,22 +7503,52 @@ class Macro_DMR {
             double yi = y()[i_step].value();
 
             // Per-interval mean + P_mean propagation, sharing the accumulators.
-            // t_P is the endpoint transition (P for av>0, P_half for av=0);
-            // t_gmean_i is the interval mean single-channel current (gmean_i for
-            // av>0, the bare conductance g for av=0) — mirroring
-            // safely_calculate_Algo_State_non_recursive's r_y_mean.
-            auto process = [&](auto const& t_P, auto const& t_gmean_i) -> Maybe_error<bool> {
+            //
+            // TWO MATRICES, NOT ONE, and that distinction is the whole of the av=0 correctness
+            // (fixed 2026-08-05; before this the lambda took a single t_P and used it for both
+            // roles, which for av=0 advanced the threaded state by HALF an interval per step and
+            // evaluated the mean at the window start instead of at the sample).
+            //
+            //   t_P_step  the propagator for the THREADED state. One full acquisition interval per
+            //             step, for every member. Never a half step: the recording advances by Δ
+            //             whatever instant the prediction is evaluated at.
+            //   t_P_eval  carries a COPY of the state to the instant the prediction is made at.
+            //             Unused for av>0, where the interval average is taken with gmean_i on the
+            //             window-start state. P_half for av=0, where the sample sits at the middle
+            //             of the window. The copy is what keeps the half step from leaking into
+            //             the thread, exactly as safely_calculate_Algo_State_non_recursive does it
+            //             (qmodel.h:4369, `auto p_P_mean = get<P_mean>(t_prior())` by value).
+            //
+            // t_gmean_i is the interval mean single-channel current (gmean_i for av>0, the bare
+            // conductance g for av=0). ACCEPTANCE TEST for the av=0 arm: its y_mean must equal
+            // NR's interval by interval, since both are the deterministic mean at the same instant
+            // and they differ only in the variance they report. The av=1 arm already matches INR
+            // digit for digit, and its fits are unbiased over the whole design plane, which is why
+            // that branch is left untouched here.
+            auto process = [&](auto const& t_P_step, auto const& t_gmean_i,
+                               auto const& t_P_eval) -> Maybe_error<bool> {
                 auto& p_P_mean = get<P_mean>(t_patch());
+                // The state the prediction is evaluated at. A copy; for av>0 it is the threaded
+                // state itself and no step is taken.
+                auto p_eval = p_P_mean();
+                if constexpr (averaging::value == 0) {
+                    auto Maybe_eval = to_Probability(p_eval * t_P_eval());
+                    if (!Maybe_eval.valid())
+                        return Maybe_eval.error();
+                    p_eval = std::move(Maybe_eval.value());
+                }
                 auto r_y_mean =
-                    build<y_mean>(Nch * getvalue(p_P_mean() * t_gmean_i) + y_baseline());
+                    build<y_mean>(Nch * getvalue(p_eval * t_gmean_i) + y_baseline());
                 // Pass 1: retain every interval (NaN ones included, so the
                 // Evolution stays index-aligned with the recording).
                 if constexpr (wants_evo) {
                     ev_ymean.push_back(r_y_mean);
                     ev_y.push_back(yi);
-                    // the PRIOR (pre-propagation) mean, i.e. the open-loop state that
-                    // produced mu_i — figure 1's "prior open probability" row.
-                    ev_pmean.push_back(var::primitive(p_P_mean()));
+                    // the open-loop state that produced mu_i — figure 1's "prior open
+                    // probability" row. It is the EVALUATION state, so for av=0 it is the
+                    // occupancy at the sample and for av>0 the occupancy at the window start,
+                    // which is in both cases the instant the row is drawn at.
+                    ev_pmean.push_back(var::primitive(p_eval));
                 }
                 if (!std::isnan(yi)) {
                     auto dy = yi - r_y_mean();
@@ -7514,7 +7564,7 @@ class Macro_DMR {
                 }
                 // Propagate P_mean even across NaN (pre-agonist) intervals: the
                 // state must advance so every post-prefix μ_i is correct.
-                auto Maybe_r_P_mean = to_Probability(p_P_mean() * t_P());
+                auto Maybe_r_P_mean = to_Probability(p_P_mean() * t_P_step());
                 if (!Maybe_r_P_mean.valid())
                     return Maybe_r_P_mean.error();
                 p_P_mean() = std::move(Maybe_r_P_mean.value());
@@ -7528,7 +7578,9 @@ class Macro_DMR {
                         "k=" + std::to_string(i_step) + " | calc_Qdt | " +
                         Maybe_t_Qdt.error()()));
                 auto t_Qdt = std::move(Maybe_t_Qdt.value());
-                auto ok = process(get<P>(t_Qdt), get<gmean_i>(t_Qdt)());
+                // t_P_eval is unused under av>0; the full-interval P is passed for both roles so
+                // the lambda has a well-formed argument to deduce.
+                auto ok = process(get<P>(t_Qdt), get<gmean_i>(t_Qdt)(), get<P>(t_Qdt));
                 if (!ok)
                     return Maybe_error<MacroState>(error_message(
                         "k=" + std::to_string(i_step) + " | nonlinearsqr step | " + ok.error()()));
@@ -7539,7 +7591,17 @@ class Macro_DMR {
                         "k=" + std::to_string(i_step) + " | calc_Qdtg | " +
                         Maybe_t_Qdtg.error()()));
                 auto t_Qdtg = std::move(Maybe_t_Qdtg.value());
-                auto ok = process(get<P_half>(t_Qdtg), get<g>(m)());
+                // Qdtg carries only P_half (qmodel_types.h:1232), so the full-interval propagator
+                // is P_half squared, which is exact because P_half = expm(Q·Δ/2). The same
+                // squaring idiom is used by calc_Qdtg_taylor at qmodel.h:2331.
+                auto const& t_P_half = get<P_half>(t_Qdtg);
+                auto Maybe_P_full = to_Transition_Probability(t_P_half() * t_P_half());
+                if (!Maybe_P_full)
+                    return Maybe_error<MacroState>(error_message(
+                        "k=" + std::to_string(i_step) + " | P_half squared | " +
+                        Maybe_P_full.error()()));
+                auto t_P_full = std::move(Maybe_P_full.value());
+                auto ok = process(t_P_full, get<g>(m)(), t_P_half);
                 if (!ok)
                     return Maybe_error<MacroState>(error_message(
                         "k=" + std::to_string(i_step) + " | nonlinearsqr step | " + ok.error()()));

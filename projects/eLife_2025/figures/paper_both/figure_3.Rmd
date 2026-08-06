@@ -130,10 +130,17 @@ PSEL <- c(k_off = 1L, N_ch = 5L)          # set to c(k_off = 1L) for the one-par
 # statement is that the whole family fails AND IR is the exception, and the exception has to be
 # visible next to the failures.
 ROSTER <- "family"
-LAB  <- c(LSE = "LSE", NR = "NR", INR = "INR", R = "R", MR = "MR", VR = "VR", IR = "IR")
-FLAB <- c(LSE = "Least\nSquares", NR = "Non-\nRecursive", INR = "Interval Non-\nRecursive",
+LAB  <- c(LSE = "LSE", ILSE = "ILSE", NR = "NR", INR = "INR", R = "R", MR = "MR", VR = "VR", IR = "IR")
+FLAB <- c(LSE = "Least\nSquares", ILSE = "Interval Least\nSquares",
+          NR = "Non-\nRecursive", INR = "Interval Non-\nRecursive",
           R = "Recursive", MR = "Mean\nRecursive", VR = "Variance\nRecursive",
           IR = "Interval\nRecursive")
+# DIGEST TOKEN PER KEY, and the two least-squares entries are deliberately crossed. The dump written
+# as ..._LSE is averaging_approximation = 1, so on the instantaneous/interval axis it is ILSE; the
+# un-averaged arm added to figure_3_time.macroir on 2026-08-05 writes ..._LSE_av0 and is LSE. The
+# files keep their names so nothing already reading them is silently relabelled, and the crossing is
+# resolved here and only here, exactly as figure_1.Rmd does it.
+DTOK <- c(LSE = "LSE_av0", ILSE = "LSE", NR = "NR", INR = "INR", R = "R", MR = "MR", VR = "VR", IR = "IR")
 # `ref` is NA_character_ and not the logical NA, so that vapply over the roster stays type-stable
 # whether or not the roster has references.
 mk <- function(k, ref = NA_character_) list(key = k, ref = ref, lab = LAB[[k]], flab = FLAB[[k]],
@@ -141,7 +148,9 @@ mk <- function(k, ref = NA_character_) list(key = k, ref = ref, lab = LAB[[k]], 
 STEPS <- if (ROSTER == "steps") {
   list(mk("INR", "NR"), mk("MR", "R"), mk("VR", "MR"))
 } else {
-  lapply(c("LSE", "NR", "INR", "R", "MR", "VR", "IR"), mk)
+  # ILSE inserted next to LSE, 2026-08-05, so the two least-squares arms read as the pair they are.
+  # Everything after them keeps the cost-ladder order the header describes.
+  lapply(c("LSE", "ILSE", "NR", "INR", "R", "MR", "VR", "IR"), mk)
 }
 HASREF <- !is.na(STEPS[[1]]$ref)
 DEFAULT <- ROSTER == "family" && length(PSEL) == 2
@@ -155,8 +164,9 @@ B    <- 400    # bootstrap replicates over recordings
 # Every member that appears anywhere, member or reference, read once.
 NEED <- unique(na.omit(c(vapply(STEPS, `[[`, "", "key"), vapply(STEPS, function(s) s$ref, ""))))
 dg <- setNames(lapply(NEED, function(a) {
-  f <- sprintf("../data/digest/figure_3_digest_%s.rds", a)
-  if (!file.exists(f)) stop("missing digest for ", a, ": run figure_3_digest.R ", a)
+  f <- sprintf("../data/digest/figure_3_digest_%s.rds", DTOK[[a]])
+  if (!file.exists(f)) stop("missing digest for ", a, " (dump token ", DTOK[[a]],
+                            "): run figure_3_digest.R ", DTOK[[a]])
   readRDS(f)
 }), NEED)
 
@@ -176,7 +186,10 @@ PAR[, param := factor(names(PSEL)[match(param_index, PSEL)], levels = names(PSEL
 # descends from PAR, which is C to G. The legend has to say so, or the missing curve reads as a
 # rendering failure (Luciano, 2026-07-30).
 PAR_ALL <- copy(PAR)                       # kept whole: the degeneracy check needs the dropped curve
-PAR <- PAR[!(param == "N_ch" & key == "LSE")]
+# Neither least-squares arm separates the channel number from the unitary current: the mean current
+# depends on them only through their product, and it is the gating variance, absent from both, that
+# breaks the tie. The exclusion therefore covers ILSE as well as LSE (widened 2026-08-05).
+PAR <- PAR[!(param == "N_ch" & key %in% c("LSE", "ILSE"))]
 tmap   <- unique(SCAL[key == NEED[1], .(sample_index, t, agonist)])[order(sample_index)]
 n_samp <- nrow(tmap)
 setorder(SCAL, key, simulation_index, sample_index)
@@ -385,7 +398,12 @@ rng <- function(D, s, cols, incl = NULL) {
 # reference line and the MR-and-VR-against-IR difference, which is the number this figure exists
 # for, disappears. figure_3.Rmd splits exactly rows B, D, F and G and leaves A, C and E shared;
 # this figure inherits that choice rather than making its own, so the two can be read row for row.
-NAIVE <- intersect(COLS, c("LSE", "NR", "INR", "NMR"))
+# ILSE added 2026-08-05. It is open-loop like the other three: no update, so its accumulated
+# information ratio fails by the same order and it belongs on the same axis as LSE, NR and INR,
+# not on the recursive one where anything omitted from this list silently lands. The block is
+# now four and four. NMR is the pre-2026-08-01 name of INR and is kept so an old roster still
+# splits correctly.
+NAIVE <- intersect(COLS, c("LSE", "ILSE", "NR", "INR", "NMR"))
 blkof <- function(lab) if (lab %in% NAIVE) "naive" else "rec"
 KEYBLK <- setNames(vapply(STEPS, function(s) blkof(s$lab), ""), vapply(STEPS, `[[`, "", "key"))
 # The first column of each block carries the y numbers; only the first of the figure carries the

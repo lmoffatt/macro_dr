@@ -34,8 +34,16 @@ source("figure_1_panels.R")
 
 ```{r roster}
 # target ladder; a column auto-drops if its per-interval diagnostic dump is not on disk yet (LSE)
-COLS_TARGET <- c("LSE", "NR", "R", "IR")
-.tok <- c(LSE = "LSE", NR = "NR", R = "R", IR = "IR")   # data-file token per column
+# ROSTER OF SIX, 2026-08-05. The instantaneous/interval pairing at each level of the stochasticity
+# ladder: LSE with ILSE (no gating stochasticity), NR with INR (per-sample variance, open loop),
+# R with IR (recursion). MR and VR are the partial interval corrections, off this 3x2 grid, and stay
+# in Figures 2 and 3 where the claim that the ladder stops being an ordering needs them.
+COLS_TARGET <- c("LSE", "ILSE", "NR", "INR", "R", "IR")
+# Data-file token per column. The two least-squares tokens are deliberately crossed: the file
+# written as ..._LSE is averaging_approximation = 1 and is therefore ILSE, and the un-averaged arm
+# added on 2026-08-05 is ..._LSE_av0 and is LSE. The files keep their names so that nothing already
+# reading them is silently relabelled; the crossing is resolved here and only here.
+.tok <- c(LSE = "LSE_av0", ILSE = "LSE", NR = "NR", INR = "INR", R = "R", IR = "IR")
 COLS <- COLS_TARGET[file.exists(paste0("../data/figure_1_likelihood_diagnostic_", .tok[COLS_TARGET], ".csv"))]
 message("figure_1 roster present: ", paste(COLS, collapse = ", "))
 ```

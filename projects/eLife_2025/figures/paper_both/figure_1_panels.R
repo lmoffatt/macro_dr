@@ -17,9 +17,10 @@ noise=1e-4 *fs/nsamples
 # is labelled with row i of `algorithms`. A wrong filename errors at read.csv; a wrong
 # ORDER silently mislabels a whole column. Edit them together, always.
 filenames=c(
+  "../data/figure_1_likelihood_diagnostic_LSE_av0",
   "../data/figure_1_likelihood_diagnostic_LSE",
   "../data/figure_1_likelihood_diagnostic_NR",
-  "../data/figure_1_likelihood_diagnostic_MNR",
+  "../data/figure_1_likelihood_diagnostic_INR",
   "../data/figure_1_likelihood_diagnostic_R",
   "../data/figure_1_likelihood_diagnostic_MR",
   "../data/figure_1_likelihood_diagnostic_VR",
@@ -29,8 +30,9 @@ filenames=c(
 )
 
 algorithms=c("LSE"
+             ,"ILSE"
              ,"NR"
-             ,"NMR"
+             ,"INR"
              ,"R"
              ,"MR"
              ,"VR"
@@ -82,7 +84,15 @@ d_LSE=d%>%filter(algo=="LSE", scope=="evolution", value_row==1| is.na(value_row)
   select(sample_index,step_start,step_middle,step_end,component,patch_current,value)%>%
   pivot_wider(names_from = component, values_from = value)
 
-d_NMR=d%>%filter(algo=="NMR", scope=="evolution", value_row==1| is.na(value_row),  is.na(value_col), !is.na(step_start))%>%mutate(component= component_path %>%
+# ILSE: least squares WITH the acquisition average (av = 1). Same extraction as LSE above;
+# the family emits the same keys for both arms, verified against both dumps on 2026-08-05.
+d_ILSE=d%>%filter(algo=="ILSE", scope=="evolution", value_row==1| is.na(value_row),  is.na(value_col), !is.na(step_start))%>%mutate(component= component_path %>%
+           str_replace("^Algo_State_Dynamic\\.", "") %>%
+           str_replace("^Patch_State\\.", ""))%>%
+  select(sample_index,step_start,step_middle,step_end,component,patch_current,value)%>%
+  pivot_wider(names_from = component, values_from = value)
+
+d_INR=d%>%filter(algo=="INR", scope=="evolution", value_row==1| is.na(value_row),  is.na(value_col), !is.na(step_start))%>%mutate(component= component_path %>%
            str_replace("^Algo_State_Dynamic\\.", "") %>%
            str_replace("^Patch_State\\.", ""))%>%
   select(sample_index,step_start,step_middle,step_end,component,patch_current,value)%>%
@@ -146,7 +156,7 @@ xcommon <- coord_cartesian(xlim = XLIM)
 # --- common y-scales, recomputed FROM THE DATA so they adapt if the data changes (no hardcoding) ---
 .dP <- function(x) unlist(x[, grepl("^P_mean", names(x)), drop = FALSE])          # every P(open) column
 .dI <- function(x) c(-x$patch_current+1, -x$y_mean+1, -x$y_mean+1 - sqrt(x$y_var), -x$y_mean+1 + sqrt(x$y_var))  # current (with +1 baseline compensation)
-.algos <- list(d_NR, d_NMR, d_R, d_MR, d_VR, d_IR)
+.algos <- list(d_NR, d_INR, d_R, d_MR, d_VR, d_IR)
 YP  <- range(unlist(lapply(.algos, .dP)), na.rm = TRUE)                           # prior & posterior share this
 YI  <- range(c(-d_s$patch_current, unlist(lapply(.algos, .dI))), na.rm = TRUE)    # observation row
 
@@ -258,10 +268,26 @@ fE_IR
 
 
 ## -----------------------------------------------------------------------------
+# ROW A, THE INSTANT EACH MEMBER PREDICTS AT (2026-08-05). The x is set by the averaging axis and
+# NOT by which P_mean key the member happens to emit. A member with av = 0 predicts the current at
+# the SAMPLE, which sits at the middle of the acquisition window, so its prior is drawn at
+# step_middle; a member with av = 1 predicts the average OVER the window, whose prior is the
+# occupancy the window opens with, so it is drawn at step_start.
+#   step_middle   LSE, NR, R      (av = 0, instantaneous)
+#   step_start    ILSE, INR, IR   (av = 1, interval)
+# Aligning by the key's own meaning instead (t2_y0 at step_end, t20_y1 at step_start) was tried and
+# is wrong: it puts NR half an interval late, because what row A shows is the state that produced
+# the prediction drawn in row B, not wherever the emitted key happens to sit.
+# NR reads P_mean_t15_y0, the mid-window state, and not P_mean_t2_y0. The engine emits both since
+# 2026-08-05: t2_y0 is the occupancy the window CLOSES with, which is the prior threaded into the
+# next window, and t15_y0 is the one the prediction is taken FROM, half an interval in. NR is av=0,
+# so those differ, and row A wants the second. Verified against the rebuilt dump: t15_y0 equals the
+# nonlinearsqr av=0 arm's emitted series to seven decimals (0.0906346, 0.2255942, 0.3160603,
+# 0.3767015, 0.4173506), which is the same occupancy recovered independently from NR's own y_mean.
 fB_NR<-ggplot(d_NR)+
-  geom_point(aes(x=step_middle, y=P_mean_t2_y0, color="Markov & prior"), linewidth = 1, alpha=1)+
-geom_curve(aes(x=lag(step_middle), xend = step_middle, y=lag(P_mean_t2_y0),
-   yend = P_mean_t2_y0, color="Markov & prior"),curvature = 0.6,  angle = 90, ncp=10,linetype = 1, linewidth = 0.5, arrow=markov_arrow)+
+  geom_point(aes(x=step_middle, y=P_mean_t15_y0, color="Markov & prior"), linewidth = 1, alpha=1)+
+geom_curve(aes(x=lag(step_middle), xend = step_middle, y=lag(P_mean_t15_y0),
+   yend = P_mean_t15_y0, color="Markov & prior"),curvature = 0.6,  angle = 90, ncp=10,linetype = 1, linewidth = 0.5, arrow=markov_arrow)+
   sem_scale + ylab("P(open)") + common_theme+x_only_ticks + guides(colour="none") + xcommon
 
 fB_NR
@@ -293,14 +319,35 @@ geom_curve(aes(x=lag(step_middle), xend = step_middle, y=lag(P_mean_t20_y1),
    yend = P_mean_t20_y1, color="Markov & prior"),curvature = 0.6,  angle = 90, ncp=10,linetype = 1, linewidth = 0.5, arrow=markov_arrow)+
   sem_scale + ylab("P(open)") + common_theme+x_only_ticks + guides(colour="none") + xcommon
 
-# fC_LSE = NR's row-B ERRORBAR style on the CONSTANT sigma_hat^2, so every errorbar is the SAME width
-# (the flat least-squares noise scale). POINT mean at step_middle (NR-style), NOT an interval-spanning
-# segment; innovation arrow to the observation. Same code as fC_NR — the only difference from NR is
-# that y_var here is one constant, so the widths do not breathe.
+# THE LEAST-SQUARES PAIR, 2026-08-05. LSE is av = 0 and ILSE is av = 1, and they differ in the data:
+# at the first interval y_var reads 8.39 for the un-averaged arm against 0.94 for the averaged one.
+# The pair is drawn so that the ONE thing that changes is the thing the pair is about. Both bands are
+# a single constant sigma_hat^2, so neither breathes with the gating; what differs is whether the
+# prediction is a POINT at the sample (av = 0, NR's grammar) or a SEGMENT across the interval
+# (av = 1, the grammar the macro interval members use). This is the reason the pair earns a column:
+# on NR/INR and R/IR the band width moves as well, so two things move at once, and here only one does.
 fC_LSE<-ggplot(d_LSE)+
   geom_errorbar(aes(x=step_middle, ymin=-y_mean+1-sqrt(y_var), ymax=-y_mean+1+sqrt(y_var),width=0.0005, color="Markov & prior"), alpha=1)+
   geom_segment(aes(x=step_start, xend= step_end, y=-patch_current+1, color="observation & innovation"), linewidth=1, alpha=1)+
   geom_point(aes(x=step_middle,  y=-y_mean+1, color="Markov & prior"), linewidth=1)+
+  geom_segment(aes(x=(step_start+step_end)/2, xend=(step_start+step_end)/2, y=-y_mean+1, yend=-patch_current+1, color="observation & innovation"),
+               arrow=pred_arrow, linewidth=0.5, na.rm=TRUE)+
+  scale_fill_manual(values = SEM, guide = "none") +
+  sem_scale + ylab("predicted current (pA)") + common_theme+x_only_ticks + guides(colour="none") + xcommon
+
+fB_ILSE<-ggplot(d_ILSE)+
+  geom_point(aes(x=step_start, y=P_mean_t20_y1, color="Markov & prior"), linewidth = 1, alpha=1)+
+geom_curve(aes(x=lag(step_start), xend = step_start, y=lag(P_mean_t20_y1),
+   yend = P_mean_t20_y1, color="Markov & prior"),curvature = 0.6,  angle = 90, ncp=10,linetype = 1, linewidth = 0.5, arrow=markov_arrow)+
+  sem_scale + ylab("P(open)") + common_theme+x_only_ticks + guides(colour="none") + xcommon
+
+# fC_ILSE = fC_INR's interval grammar (rect over the window, mean drawn as a segment across it) on the
+# CONSTANT least-squares variance, so every rectangle has the same height and only its span says that
+# the prediction is an interval average.
+fC_ILSE<-ggplot(d_ILSE)+
+  geom_rect(aes(xmin=step_start, xmax=step_end, ymin=-y_mean+1-sqrt(y_var), ymax=-y_mean+1+sqrt(y_var), fill="Markov & prior"), alpha=0.3)+
+  geom_segment(aes(x=step_start, xend= step_end, y=-patch_current+1, color="observation & innovation"), linewidth=1, alpha=1)+
+  geom_segment(aes(x=step_start, xend= step_end, y=-y_mean+1, color="Markov & prior"), linewidth=1)+
   geom_segment(aes(x=(step_start+step_end)/2, xend=(step_start+step_end)/2, y=-y_mean+1, yend=-patch_current+1, color="observation & innovation"),
                arrow=pred_arrow, linewidth=0.5, na.rm=TRUE)+
   scale_fill_manual(values = SEM, guide = "none") +
@@ -321,17 +368,17 @@ fE_NR
 
 
 ## -----------------------------------------------------------------------------
-fB_NMR<-ggplot(d_NMR)+
-  geom_point(aes(x=step_start, y=d_NMR$P_mean_t2_y0, color="Markov & prior"), linewidth = 1, alpha=1)+
-geom_curve(aes(x=lag(step_start), xend = step_start, y=lag(P_mean_t2_y0),
-   yend = P_mean_t2_y0, color="Markov & prior"),curvature = 0.6,  angle = 90, ncp=10,linetype = 1, linewidth = 0.5, arrow=markov_arrow)+
+fB_INR<-ggplot(d_INR)+
+  geom_point(aes(x=step_start, y=lag(P_mean_t2_y0), color="Markov & prior"), linewidth = 1, alpha=1)+
+geom_curve(aes(x=lag(step_start), xend = step_start, y=lag(lag(P_mean_t2_y0)),
+   yend = lag(P_mean_t2_y0), color="Markov & prior"),curvature = 0.6,  angle = 90, ncp=10,linetype = 1, linewidth = 0.5, arrow=markov_arrow)+
   sem_scale + ylab("P(open)") + common_theme+x_only_ticks + guides(colour="none") + xcommon
 
-fB_NMR
+fB_INR
 
 
 ## -----------------------------------------------------------------------------
-fC_NMR<-ggplot(d_NMR)+
+fC_INR<-ggplot(d_INR)+
   geom_rect(aes(xmin=step_start, xmax=step_end, ymin=-y_mean+1-sqrt(y_var), ymax=-y_mean+1+sqrt(y_var), fill="Markov & prior"), alpha=0.3)+
   geom_segment(aes(x=step_start, xend= step_end, y=-patch_current+1, color="observation & innovation"), linewidth=1, alpha=1)+
   geom_segment(aes(x=step_start, xend= step_end, y=-y_mean+1, color="Markov & prior"), linewidth=1)+
@@ -339,12 +386,12 @@ fC_NMR<-ggplot(d_NMR)+
                arrow=pred_arrow, linewidth=0.5, na.rm=TRUE)+
   scale_fill_manual(values = SEM, guide = "none") +
   sem_scale + ylab("predicted current (pA)") + common_theme+x_only_ticks + guides(colour="none") + xcommon
-fC_NMR
+fC_INR
 
 
 
 ## -----------------------------------------------------------------------------
-fE_NMR<-ggplot(d_NMR)+
+fE_NMR<-ggplot(d_INR)+
  # geom_segment(aes(x=step_start, xend=step_end, y=logL))+
   geom_line(aes(x=step_end,  y=cumsum(logL), color="logLikelihood"))+
   geom_point(aes(x=step_end,  y=cumsum(logL), color="logLikelihood"))+
@@ -519,7 +566,13 @@ legend_line  <- geom_line(data = data.frame(role = "channel current", x = NA_rea
 # VR's spelled-out name follows the roster's own logic: the prefix letter says WHAT the
 # conditioning is about (Mean, Variance, Interval), so V = Variance. It is one string,
 # changed here and nowhere else if the paper settles on another wording.
-FULL <- c(LSE = "Least Squares", NR = "Non-Recursive", MNR = "Mean Non-Recursive", R = "Recursive",
+# Keyed by the PRINTED abbreviation, which is what colhead() receives through .DISP.
+# The interval prefix reads the same way throughout: I means the quantity is conditioned on the
+# acquisition interval rather than on an instant, so ILSE is least squares on the interval-averaged
+# mean and INR is the open-loop gating likelihood on the same average. MNR was this member's printed
+# name until 2026-08-01; the data key, the file token and the header now all read INR.
+FULL <- c(LSE = "Least Squares", ILSE = "Interval Least Squares",
+          NR = "Non-Recursive", INR = "Interval Non-Recursive", R = "Recursive",
           MR = "Mean Recursive", VR = "Variance Recursive", IR = "Interval Recursive")
 # column headers live in their OWN strip row (colhead) so the top-left panel is free to carry the
 # row's filter-phase title, facet_grid style (algorithms on top, phases on the left of each row).
@@ -556,15 +609,15 @@ scI  <- scale_y_continuous(limits = YI)     # observation current (full-data ran
 # every other column keeps tick MARKS only. x-NUMBERS live on the bottom row (D). ---
 
 # panel registries, so a roster is just a vector of names
-.DAT <- list(LSE = d_LSE, NR = d_NR, NMR = d_NMR, R = d_R, MR = d_MR, VR = d_VR, IR = d_IR)
-.FB  <- list(LSE = fB_LSE, NR = fB_NR, NMR = fB_NMR, R = fB_R, MR = fB_MR, VR = fB_VR, IR = fB_IR)
-.FC  <- list(LSE = fC_LSE, NR = fC_NR, NMR = fC_NMR, R = fC_R, MR = fC_MR, VR = fC_VR, IR = fC_IR)
+.DAT <- list(LSE = d_LSE, ILSE = d_ILSE, NR = d_NR, INR = d_INR, R = d_R, MR = d_MR, VR = d_VR, IR = d_IR)
+.FB  <- list(LSE = fB_LSE, ILSE = fB_ILSE, NR = fB_NR, INR = fB_INR, R = fB_R, MR = fB_MR, VR = fB_VR, IR = fB_IR)
+.FC  <- list(LSE = fC_LSE, ILSE = fC_ILSE, NR = fC_NR, INR = fC_INR, R = fC_R, MR = fC_MR, VR = fC_VR, IR = fC_IR)
 .FD  <- list(R = fD_R, MR = fD_MR, VR = fD_VR, IR = fD_IR)     # non-recursive members (LSE, NR, NMR) have no posterior update
-.NAIVE <- c("LSE", "NR", "NMR")
+.NAIVE <- c("LSE", "ILSE", "NR", "INR")
 # A roster is written in DATA keys. The mean-non-recursive algorithm is a pre-existing wart: its data
 # key is NMR, its file token and its printed header are MNR (see the filenames/algorithms vectors and
 # the FULL map). Keep the two apart here rather than propagating the wart into the roster.
-.DISP <- c(LSE = "LSE", NR = "NR", NMR = "MNR", R = "R", MR = "MR", VR = "VR", IR = "IR")
+.DISP <- c(LSE = "LSE", ILSE = "ILSE", NR = "NR", INR = "INR", R = "R", MR = "MR", VR = "VR", IR = "IR")
 
 # hgt (2026-08-05): the body figure and its supplement need different heights. At 7.5 in the
 # Figure 1 float was 102.5 pt taller than a page could hold with its 287-word legend, and LaTeX

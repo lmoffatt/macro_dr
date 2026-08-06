@@ -110,10 +110,14 @@ dlik_IR = calc_dlikelihood_predictions(likelihood_algorithm = macro_IR, paramete
 file_IR = write_csv(experiment = experiment, simulations = simulations, likelihood = dlik_IR,
    path = "figures/data/figure_3_time_dlik_IR")
 
-# ---- LSE (nonlinearsqr, family=2): the off-lattice incumbent, non-recursive. Evaluated at par_tr
-# (NO MLE here), so its flat directions are harmless — no need to fix i / Current_Noise (that is only
-# for the figure_2 battery, which optimizes). Its C++ dlikelihood arm is routed (likelihood.cpp:960).
-# Its per-interval y_var is the constant sigma_hat^2 with ZERO derivative, so I_t = dmu^2/sigma_hat^2. ----
+# ---- ILSE (nonlinearsqr, family=2, av=1): least squares on the INTERVAL-AVERAGED mean, the
+# off-lattice incumbent, non-recursive. Evaluated at par_tr (NO MLE here), so its flat directions are
+# harmless — no need to fix i / Current_Noise (that is only for the figure_2 battery, which
+# optimizes). Its C++ dlikelihood arm is routed (likelihood.cpp:960). Its per-interval y_var is the
+# constant sigma_hat^2 with ZERO derivative, so I_t = dmu^2/sigma_hat^2.
+# NAMING: this is the arm the rest of the set still calls LSE, and the output path keeps that name so
+# nothing reading it breaks. On the instantaneous/interval axis it is ILSE, and the pair is completed
+# by the block below. Rename both together when the set-wide relabel happens. ----
 lse = build_likelihood_function_with_family(model = model, adaptive_approximation = 0,
    recursive_approximation = 0, averaging_approximation = 1, variance_approximation = 1,
    taylor_variance_correction = 0, family_approximation = 2, variance_form_approximation = 0,
@@ -122,3 +126,30 @@ dlik_LSE = calc_dlikelihood_predictions(likelihood_algorithm = lse, parameters =
    experiment = experiment, data_series = simulations)
 file_LSE = write_csv(experiment = experiment, simulations = simulations, likelihood = dlik_LSE,
    path = "figures/data/figure_3_time_dlik_LSE")
+
+# ---- LSE (nonlinearsqr, family=2, av=0): least squares on the INSTANTANEOUS mean. Added 2026-08-05.
+# The one flag that differs from the block above is averaging_approximation, which switches the
+# per-interval mean from P·gmean_i (the interval-mean conductance, INR's mean model) to the bare
+# conductance evaluated half an interval in (NR's mean model), so this member and NR share a mean and
+# differ only in whether the gating fluctuations are modelled at all. That statement is now verified
+# rather than assumed: on the figure-1 recording the two agree in y_mean to 8.9e-16 interval by
+# interval, and only y_var differs.
+#
+# IT IS RUN FROM THIS FILE AND NOT AS A SEPARATE SCRIPT, which is the whole reason the block is here.
+# ops/local/figure_3_time_LSE_g.macroir was written for exactly this arm and never run; it reproduces
+# the ensemble by repeating seed = 20260722, and its own header says the patch_current column has to
+# be checked row for row against this file's dump before any cross-algorithm comparison is believed.
+# Folding the arm into the run that makes the ensemble removes that check and the way it can fail.
+#
+# WHY IT COULD NOT BE RUN BEFORE: the av=0 branch of nonlinearsqr propagated the threaded occupancy by
+# P_half, half an acquisition interval per step, and evaluated the mean before advancing, so the
+# member drifted half a step further behind on every interval. Fixed 2026-08-05 in
+# legacy/qmodel.h:7490. Any dump of this arm predating that fix is wrong and must not be used.
+lse_av0 = build_likelihood_function_with_family(model = model, adaptive_approximation = 0,
+   recursive_approximation = 0, averaging_approximation = 0, variance_approximation = 1,
+   taylor_variance_correction = 0, family_approximation = 2, variance_form_approximation = 0,
+   taylor_qdt_approximation = false)
+dlik_LSE_av0 = calc_dlikelihood_predictions(likelihood_algorithm = lse_av0, parameters = par_tr,
+   experiment = experiment, data_series = simulations)
+file_LSE_av0 = write_csv(experiment = experiment, simulations = simulations, likelihood = dlik_LSE_av0,
+   path = "figures/data/figure_3_time_dlik_LSE_av0")
