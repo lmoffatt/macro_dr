@@ -687,6 +687,14 @@ it.
 % because E[D] = 0 under that law.
 % src of the derivation: papers/1_method/decisions/recompute/mr_vs_ir_boxes.py
 
+\subsection*{How the two parts of the distortion compose}
+
+These compose exactly. The exact identity is
+\[ \mathbf{C}=\mathbf{K}\,\mathbf{R}\,\mathbf{K}^\top,\qquad \mathbf{K}=\mathbf{H}^{-1/2}\,\mathbf{J}_s^{1/2}, \]
+which holds as algebra for any $\mathbf{H}$ and $\mathbf{J}_s$, since substituting the definitions collapses the chain. The factor $\mathbf{K}$ satisfies $\mathbf{K}\mathbf{K}^\top=\mathbf{C}_s$, so it is a legitimate square-root factor of the sample distortion, but it is not the symmetric principal square root, and the form $\mathbf{C}=\mathbf{C}_s^{1/2}\,\mathbf{R}\,\mathbf{C}_s^{1/2}$ holds only where $\mathbf{H}$ and $\mathbf{J}_s$ commute. What composes with no assumption at all is the information volume,
+\[ \log\det\mathbf{C}=\log\det\mathbf{C}_s+\log\det\mathbf{R}, \]
+an exact identity because the determinant is multiplicative. The per-parameter diagonal, the trace, the eigenvalues and the Frobenius norm do not compose across the split; only the volume does, and only the volume is decomposed in the maps.
+
 \subsection*{The same construction in the linear-filtering frame}
 
 Everything above was Gaussian conditioning: a joint law over (state, recorded value), its three

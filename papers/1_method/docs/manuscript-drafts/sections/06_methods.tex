@@ -624,9 +624,7 @@ which costs nothing here because the recordings are independent and identically
 distributed and $10^4$ divides by both group sizes used.
 % src: src/core/likelihood.cpp:4101-4113 (contiguous blocks, idx = g*gsize+k; remainder dropped with a warning)
 The optimiser is Gauss--Newton with Levenberg damping, warm-started at the
-simulation truth. The script sets the damping schedule (initial damping $10$, growth
-factor $3$, maximum damping $10^{10}$) and three limits: at most $100$ iterations, a
-relative gradient tolerance of $10^{-6}$ and a value tolerance of $10^{-10}$.
+simulation truth. Its damping schedule and its three convergence limits are in Supplementary File~1.
 % src: projects/eLife_2025/ops/local/figure_3_mle.macroir:93-95 (lambda_kickoff=10, lambda_factor=3, lambda_max=1e10, grad_rtol=1e-6, dvalue_tol=1e-10; max_iter=gn_max_iter is injected)
 % src: projects/eLife_2025/ops/slurm/dispatch_figure_3.sh:107 (GN_MAX_ITER default 100 -> injected as gn_max_iter)
 What stops most fits, however, is a fourth criterion the script cannot reach. The
@@ -714,6 +712,8 @@ paper is taken from it.
 % src: projects/eLife_2025/ops/slurm/dispatch_figure_3.sh:98 (H_RELS default 1e-5)
 % src: papers/_program/provenance.md#5 (433ed13 = numerical anchor, superseded for the body)
 % src: papers/1_method/decisions/D-0_freeze_and_rerun_scope.md (body moved to the Gaussian anchor)
+
+One edge case governs how a cell is summarised, and it is by design rather than by accident. The anchor can be near-singular where a parameter is unidentifiable, which happens once the open population relaxes (Figure~\ref{fig:time}--figure supplements 1 and 2); there we diagonalize $\mathbf{H}$ and retain the eigenmodes whose eigenvalue exceeds a tolerance set relative to the largest, $\lambda_i > \lambda_{\max}\cdot 10^{-10}$, evaluate every inverse power on that retained subspace alone, and leave the quantity undefined, not finite, when the retained subspace is empty. The dimension $d$ of Eq.~\ref{eq:magnitude-anisotropy} is the dimension of that subspace, so a cell where a direction has been dropped is summarised over fewer directions than one where none has. Undefined is not zero, and the maps render those cells in grey to keep the two apart.
 
 Comparing the score covariance $J$ against the Fisher information is the sandwich, or
 information-matrix-equality, diagnostic \citep{white1982maximum}: equality
@@ -848,34 +848,18 @@ carry information and coarse on the side where they do not.
 % The twelve values are the ones present on disk, from
 % papers/1_method/decisions/recompute/d4_distortion_envelopes.py re-run 2026-08-04, which prints
 % "noise levels present: 0.05 0.1 0.2 0.5 1 10 100 1000 10000 100000 1000000 10000000".
-Across the three directories, \texttt{IR} covers
-$N_{\mathrm{ch}} \in \{5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000\}$ and
-all twelve levels; NR covers
-$N_{\mathrm{ch}} \in \{10, 100, 1000, 10000\}$ and R covers those and additionally
-$5$, $20$ and $50$ at $\widetilde{S} = 0.01$, with the highest levels run only at the larger
-channel counts and reaching $\widetilde{S} = 10^6$ at $N_{\mathrm{ch}} = 10^4$; MR and
-VR cover the same channel numbers at $\widetilde{S} \in \{0.01, 0.1, 1\}$; and the least-squares arm
-covers $30$ cells on $N_{\mathrm{ch}} \in \{10, 100, 1000, 10000\}$, with $\widetilde{S}$ from
-$0.01$ up to $10^3$, $10^4$, $10^5$ and $10^6$ respectively.
-% src: projects/eLife_2025/figures/data/1c2ae6f + 87889e6 + 0ffbda7 (per-algorithm nch and noise sets, nsim_10000 files)
+Coverage is deliberately not a rectangle and it differs by member: the boundary-conditioned
+member spans eleven channel counts from $5$ to $10^4$ across all twelve noise levels, and every
+other member covers less. The per-member cell manifest is in Supplementary File~1.
 The noise range is deliberately not rectangular: the highest levels were run only
 at the larger channel numbers, where the crossover the map measures sits. The figure
 code auto-detects which cells exist on disk at render time and prints the detected grid
 into the render log, so the cell set behind each figure is recoverable from that log.
 % src: projects/eLife_2025/figures/paper_both/figure_4_common.R:52-70 (autodetect_cells; detected grid printed on every render)
 
-Each grid cell is reduced through five stages: the per-group MLE cloud; the pooled
-joint fit $\theta_{\mathrm{pool}}$; the score at both anchors, whose
-across-replicate covariance is $J$ and whose per-interval Gaussian terms sum to the
-anchor $\bar G$; the diagnostic battery at each anchor; and the
-empirical-versus-theoretical distortion capstone, anchored at
-$\theta_{\mathrm{pool}}$. Each cell writes five comma-separated-value families (the
-estimate cloud, the pooled fit, the two anchor batteries, and the capstone). The
-scripts number these stages one, two, four, five and six; the gap at three is the
-numerical-Fisher stage, which the Gaussian anchor removes and which the numbering
-keeps visible. On the grid-production lane the cloud stage and the capstone are
-dropped, because no map reads them there; the cells that need a cloud are produced
-by the separate script that keeps that stage.
+Each grid cell is reduced through five stages, from the per-group estimate cloud to the
+empirical-against-theoretical distortion capstone, each writing its own family of
+comma-separated-value files; the stages and their outputs are listed in Supplementary File~1.
 % src: projects/eLife_2025/ops/local/figure_3_mle_LSE.macroir:105-178 (stages 1, 2, 4, 5, 6; five CSV families per cell)
 % src: projects/eLife_2025/ops/local/figure_3_mle.macroir:150-157 (stage 3 = numerical Fisher, present only on the superseded lane)
 % src: projects/eLife_2025/ops/local/figure_4_LSE.macroir:105-119,168-171 (Stage 1 and Stage 6 removed on the grid lane)
@@ -893,13 +877,9 @@ documented per file.
 % src: papers/_program/provenance.md#2 (run ledger; hash-stamped row 1; hash-named data dirs)
 % src: papers/1_method/decisions/D-0_freeze_and_rerun_scope.md (each CSV self-stamps its hash; multi-commit provenance accepted)
 
-The production batteries ran under SLURM at $32$ CPUs per task and $48\;\mathrm{GB}$
-of memory ($96\;\mathrm{GB}$ for the parameter-recovery lane), with the linear-algebra
-back end pinned to a single thread so that OpenMP parallelises the per-simulation and
-bootstrap loops. The environment variable
-\texttt{MACRODR\_\allowbreak AXIS\_\allowbreak SERIAL=1} is
-load-bearing: it serialises the internal grid-combination loop, without which memory
-grows with the number of concurrent combinations and the jobs exhaust memory.
+The production batteries ran under SLURM with the linear-algebra back end pinned to a single
+thread so that OpenMP parallelises the per-simulation and bootstrap loops; the resource
+settings and the one environment variable that is load-bearing are in Supplementary File~1.
 % src: papers/_program/provenance.md#2,#9 (SLURM 32 CPU, 48/96 GB, BLAS 1 thread, MACRODR_AXIS_SERIAL=1)
 % src: projects/eLife_2025/ops/slurm/dispatch_figure_3.sh:196-205 (CPUS 32, MEM 48G, MACRODR_AXIS_SERIAL=1)
 

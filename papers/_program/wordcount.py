@@ -22,7 +22,7 @@ DEFAULT = os.path.normpath(os.path.join(
 MAIN = ["01_introduction.tex", "02_theory_full.tex", "03_diagnostics.tex",
         "04_results.tex", "05_discussion.tex"]
 EXCLUDED = ["00_abstract.tex", "06_methods.tex", "07_backmatter.tex",
-            "08_appendix_members.tex"]
+            "08_appendix_derivation.tex", "09_appendix_members.tex"]
 
 BENCH = [("median", 5209), ("p75", 6543), ("p90", 8017), ("p95", 9066),
          ("Munch e62714", 11515), ("longest of 413", 13300)]
@@ -92,7 +92,7 @@ ENVS_DROP = ["equation", "align", "equation*", "align*", "gather", "gather*",
 
 def words(text):
     text = strip_comments(text)
-    text, caps = remove_macro_groups(text, ["caption", "figsupp", "label",
+    text, caps = remove_macro_groups(text, ["caption", "captionof", "figsupp", "label",
                                             "includegraphics", "src"])
     for env in ENVS_DROP:
         text = re.sub(r"\\begin\{" + re.escape(env) + r"\}.*?\\end\{"
