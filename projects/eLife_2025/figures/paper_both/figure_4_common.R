@@ -1,4 +1,5 @@
 ## figure_4_common.R — shared machinery for the TWO figure-4 halves.
+source("noise_units.R")  # the one definition of S_tilde and of when to convert
 ##
 ## Figure 4 was split in two (Luciano, 2026-07-23): one figure for the FIRST moment (bias) and one
 ## for the SECOND (information distortion), BOTH carrying the ellipse block and BOTH on the merged
@@ -31,8 +32,13 @@ library(patchwork)
 # the rest of the R session, so knit one notebook per session or the four-member figure inherits it.
 ALGOS    <- if (exists("FIG4_ALGOS")) FIG4_ALGOS else
   c("nonlinearsqr", "macro_NR", "macro_R", "macro_IR")
+# `nonlinearsqr` is averaging_approximation = 1, i.e. least squares on the INTERVAL-AVERAGED mean,
+# so on the instantaneous/interval axis its name is ILSE, and LSE is the av = 0 arm that lands on
+# disk as `nonlinearsqr_g`. Relabelled here 2026-08-06, following figure_1.Rmd and figure_3.Rmd,
+# which made the same correction when the un-averaged runs appeared. The default ROSTER is
+# untouched: no supplement grows a column, only the word on its box changes.
 ALGO_LAB <- if (exists("FIG4_ALGO_LAB")) FIG4_ALGO_LAB else
-  c(nonlinearsqr = "LSE", macro_NR = "NR", macro_R = "R", macro_IR = "IR")
+  c(nonlinearsqr = "ILSE", macro_NR = "NR", macro_R = "R", macro_IR = "IR")
 
 NCHS      <- c(10, 100, 1000, 10000)
 DATA_DIRS <- if (exists("FIG4_DATA_DIRS")) FIG4_DATA_DIRS else
@@ -344,8 +350,11 @@ panel <- function(i, algo) {
     scale_linewidth_manual(values = c(empirical = .5, Fisher = .7, corrected = .85), guide = "none") +
     labs(x = expression(log[10]~k[off]), y = expression(log[10]~N[ch]),
          title = paste0(ALGO_LAB[[algo]], "   ·   ", pt$lab, "  ", pt$what),
-         subtitle = bquote(N[ch] == .(pt$nch) ~ "," ~ sigma == .(pt$noise) ~ "," ~
-                           Delta %.% k[off] == .(pt$dlt))) +
+         # the subtitle showed `sigma == <label>`: wrong symbol (sigma is the predictive s.d.
+         # in the paper) and the raw label, which is 10*S_tilde.  Both fixed 2026-08-06.
+         subtitle = bquote(N[ch] == .(pt$nch) ~ "," ~
+                           widetilde(S) == .(dimensionless_noise(as.numeric(pt$noise))) ~ "," ~
+                           widetilde(Delta) == .(pt$dlt))) +
     theme_bw(base_size = 8, base_family = "Helvetica") +
     theme(panel.grid.minor = element_blank(),
           plot.title = element_text(size = 7.5, hjust = .5, face = "bold", margin = margin(b = 1)),
@@ -395,12 +404,15 @@ X_BRK <- log10(c(.01, .1, 1))
 # fixed set would silently stop labelling the new ones. Powers of ten, thinned to at most five.
 Y_DEC <- sort(unique(as.numeric(GRID$z)))
 Y_BRK <- log10(Y_DEC[seq(1, length(Y_DEC), by = max(1, ceiling(length(Y_DEC) / 5)))])
-Y_LAB <- formatC(10^Y_BRK, format = "g", digits = 3)
+# Ticks and title in DIMENSIONLESS units (2026-08-06). The stored value is the sweep label,
+# which is ten times S_tilde; joins and file matching keep using it raw and only the display
+# converts, which is the rule in noise_units.R.
+Y_LAB <- formatC(dimensionless_noise(10^Y_BRK), format = "g", digits = 3)
 
 # ONE row factor, not nested facets: levels ordered parameter-major, algorithm-minor, so the four
 # algorithms of a parameter are always adjacent and the ladder reads top-to-bottom in each block.
 # (algorithm, parameter) pairs that must NOT be shown, because the comparison would not be
-# like-for-like (Luciano, 2026-07-23). LSE x N_ch: nonlinearsqr fits with unitary_current FIXED, so
+# like-for-like (Luciano, 2026-07-23). least squares x N_ch: it fits with unitary_current FIXED, so
 # the mean alone pins N_ch and the N*i ridge that limits the other three simply does not exist for
 # it. Side by side that reads as LSE winning the count, when what happened is that it assumed the
 # hard part away. LSE therefore appears in the k_off rows only. Applies to every map built through
@@ -419,11 +431,20 @@ Y_LAB <- formatC(10^Y_BRK, format = "g", digits = 3)
 # in the sigma_noise column without a word. Excluded here rather than remapped, because the
 # like-for-like argument reaches the same verdict: LSE has no unitary current at all (it is held
 # fixed, which is why the Num_ch_mean exclusion above exists) and no free noise scale.
+#
+# BOTH least-squares arms are excluded, and for the same reasons: `nonlinearsqr_g` (LSE, av = 0)
+# and `nonlinearsqr` (ILSE, av = 1) differ only in the mean model, not in what they parameterise,
+# so they share the four-parameter indexing above. Verified 2026-08-06 off `param_name` in
+# ../data/a202e03: LSE writes 0 = on, 1 = off, 2 = Current_Baseline, 3 = Num_ch_mean, exactly as
+# ILSE does.
 EXCLUDE_ROWS <- tibble::tribble(
-  ~algo,          ~param,
-  "nonlinearsqr", "Num_ch_mean",
-  "nonlinearsqr", "unitary_current",
-  "nonlinearsqr", "Current_Noise")
+  ~algo,            ~param,
+  "nonlinearsqr",   "Num_ch_mean",
+  "nonlinearsqr",   "unitary_current",
+  "nonlinearsqr",   "Current_Noise",
+  "nonlinearsqr_g", "Num_ch_mean",
+  "nonlinearsqr_g", "unitary_current",
+  "nonlinearsqr_g", "Current_Noise")
 
 .rowlab <- function(p, a) sprintf("atop(%s, bold(\"%s\"))", PARAM_MATH[p], ALGO_LAB[a])
 rowfac <- function(d, params) {
@@ -471,7 +492,7 @@ mapblock <- function(d, zvar, pal, brk, params, top = FALSE, bottom = FALSE,
     facet_grid(prow ~ nchf, labeller = label_parsed, scales = "free_y", space = "free_y") +
     scale_x_continuous(breaks = X_BRK, labels = c(".01", ".1", "1")) +
     scale_y_continuous(breaks = Y_BRK, labels = Y_LAB) +
-    labs(y = "noise") +
+    labs(y = "dimensionless instrumental noise") +
     theme_bw(base_size = 8, base_family = "Helvetica") +
     # GREY PANEL, not white: grey is the absence of data, white inside the filled region is
     # calibration. Against a white panel the two would be the same picture.
@@ -481,7 +502,7 @@ mapblock <- function(d, zvar, pal, brk, params, top = FALSE, bottom = FALSE,
           axis.title.y = element_text(size = 8), strip.text.y = element_text(size = 6.5, angle = 0),
           plot.margin = margin(2, 2, 2, 2)) +
     (if (top) theme(strip.text.x = element_text(size = 7.5)) else theme(strip.text.x = element_blank())) +
-    (if (bottom) labs(x = expression(Delta %.% k[off])) else
+    (if (bottom) labs(x = expression(widetilde(Delta) == Delta %.% k[off])) else
        theme(axis.title.x = element_blank(), axis.text.x = element_blank()))
 }
 
@@ -556,7 +577,7 @@ mapblock_byNch <- function(d, zvar, pal, brk, param, top = FALSE, bottom = FALSE
                scales = "free_y", space = "free_y") +
     scale_x_continuous(breaks = X_BRK, labels = c(".01", ".1", "1")) +
     scale_y_continuous(breaks = Y_BRK, labels = Y_LAB) +
-    labs(y = "noise") +
+    labs(y = "dimensionless instrumental noise") +
     theme_bw(base_size = 8, base_family = "Helvetica") +
     theme(panel.background = element_rect(fill = "grey85", colour = NA),
           panel.grid.minor = element_blank(), panel.spacing = unit(0.12, "cm"),
@@ -564,6 +585,6 @@ mapblock_byNch <- function(d, zvar, pal, brk, param, top = FALSE, bottom = FALSE
           axis.title.y = element_text(size = 8), strip.text.y = element_text(size = 6.5, angle = 0),
           plot.margin = margin(2, 2, 2, 2)) +
     (if (top) theme(strip.text.x = element_text(size = 7.5)) else theme(strip.text.x = element_blank())) +
-    (if (bottom) labs(x = expression(Delta %.% k[off])) else
+    (if (bottom) labs(x = expression(widetilde(Delta) == Delta %.% k[off])) else
        theme(axis.title.x = element_blank(), axis.text.x = element_blank()))
 }

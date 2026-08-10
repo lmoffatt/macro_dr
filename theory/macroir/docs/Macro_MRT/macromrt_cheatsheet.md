@@ -43,9 +43,15 @@ State-dependent variance:
 V \, = \epsilon^2_{0\to t} + N_{\mathrm{ch}}\,(\boldsymbol{\mu}_0\cdot\overline{\boldsymbol{\sigma}^2}_0).
 \]
 
-(MR drops the boundary cross-covariance term that IR carries via
-\(\widetilde{\gamma^{T}\Sigma\gamma}\); MRT inherits this drop and only
-adds the Taylor σ² correction.)
+(MRT as specified here drops the boundary cross-covariance term that IR
+carries via \(\widetilde{\gamma^{T}\Sigma\gamma}\), and only adds the
+Taylor σ² correction.)
+
+> **Not true of production `macro_MR` (2026-08-06).** MR carries the un-lifted
+> \(\overline{\gamma}_0^{T}\Sigma\overline{\gamma}_0\) together with the **total** per-\(i_0\)
+> variance, and the difference from IR's lifted form is exactly what the total-versus-residual switch
+> compensates. At the same prior MR and IR predict the **same** total variance; the difference between
+> them is the gain. Canonical: `papers/1_method/figures_build_plan.md:195-245`.
 
 ## Innovation and Effective Direction
 \[

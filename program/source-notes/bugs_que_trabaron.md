@@ -68,6 +68,39 @@ completo escribía dos veces las off-diagonales una vez que el espejado entra en
 agrega la canaria `to_Probability_displacement`, que chequea que las filas sumen cero. Es
 decir: se arregla la causa y se instala el detector que lo habría cazado en enero.
 
+**Se llevó puesto un hallazgo del paper.** Esto se estableció el 2026-08-07, con los audios del
+10 de mayo rescatados del grupo 12, dos días después del arreglo. El primero, de 33 segundos, es
+una retractación:
+
+> "Una de las paradojas que yo veía en los datos era que más información era menos. Y bueno, eso
+> resulta que no es verdad. O sea, si yo tengo más resolución temporal, tengo igual o más
+> resolución en el valor de los parámetros. Ese efecto paradójico era simplemente porque había un
+> error de código, estaba mal de programa."
+
+La paradoja es la del 21 de abril de 2026, medida en plena ventana del bug, sobre la que había
+decidido escribir que no la entendía: "honestidad intelectual ante todo", "tenemos que hacer un
+paper más o menos humano, mostrar que uno no entiende eso me parece que está bueno". Era un
+artefacto. La versión correcta y más fina llega el 11 de julio, ya post-arreglo: aumentar la
+resolución temporal no mejora la resolución de las constantes cinéticas, pero sí la del número
+de canales y la conductancia.
+
+Verificado el 2026-08-07: la afirmación paradójica **no aparece en ninguna sección del
+manuscrito**. Sobrevivía solo en las notas de fuente, que quedaron corregidas.
+
+**Y el diagnóstico lo cazó.** En el audio del mismo día a las 19:36, la observación que le da la
+vuelta al asunto:
+
+> "Una idea un tanto osada sería volver el error a una virtud, es decir, mostrar los datos, los
+> análisis que yo había hecho con el algoritmo erróneo, mostrando que justamente no daban bien,
+> en el sentido de que no se verificaba la matriz de distorsión de la información, daba un valor
+> grande o cercano a dos. Entonces eso ponerlo como un indicador de que es una forma de encontrar
+> errores."
+
+O sea que la matriz de distorsión marcó el bug antes de que él supiera que había un bug, dando
+alrededor de dos donde tenía que dar uno. Es el mejor argumento posible para la tesis del paper
+(el diagnóstico es un test de validez) y viene de una experiencia propia y documentada. Que la
+propuesta de contarlo esté sin usar es raro.
+
 **El costo que no se ve en el código**: este es el bug que le dio origen a Luthier. En el audio
 del 25 de mayo, hablando de reescribir MacroIR como un sistema que se testee a sí mismo:
 

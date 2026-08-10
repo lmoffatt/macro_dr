@@ -213,7 +213,7 @@ g <- ggplot(Q[dlt %in% DLT3 & emp <= LIM[2] * 3], aes(theo, emp, colour = dltf, 
   geom_line(linewidth = .4) +
   facet_grid(nchf ~ lab, labeller = label_parsed) +
   coord_cartesian(xlim = LIM, ylim = LIM * 2) +
-  scale_colour_manual(values = PAL, name = expression(Delta %.% k[off])) +
+  scale_colour_manual(values = PAL, name = expression(widetilde(Delta))) +
   scale_linetype_manual(values = c(reported = "22", sandwich = "solid"), name = NULL) +
   labs(x = expression("theoretical quantile, " * chi[p]^2),
        y = expression("empirical squared Mahalanobis distance " * d^2)) +

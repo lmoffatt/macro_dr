@@ -45,6 +45,8 @@ TRAP: the "noise" column label is the run label, not the physical noise. current
 -->
 
 ```{r setup, include=FALSE}
+source("noise_units.R")  # the one definition of S_tilde and of when to convert
+.sfmt <- function(z) formatC(dimensionless_noise(as.numeric(z)), format = "g", digits = 3)
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 library(tidyverse)
 ```
@@ -88,7 +90,7 @@ d <- raw %>% filter(probit == "mean") %>% group_by(across(all_of(KEY))) %>%
   mutate(pkey   = names(PIDX)[match(param_index, PIDX)],
          nch_f  = factor(Num_ch, levels = NCHS),
          param  = factor(pkey, levels = names(PIDX), labels = unname(PARAM_LAB)),
-         noise_f = factor(sprintf("sigma == %s", noise), levels = sprintf("sigma == %s", NOISES)))
+         noise_f = factor(sprintf("widetilde(S) == %s", .sfmt(noise)), levels = sprintf("widetilde(S) == %s", .sfmt(NOISES))))
 
 cat("figure_5:", nrow(cells), "IR cells, N_ch", paste(NCHS, collapse = "/"),
     "x noise", paste(NOISES, collapse = "/"), ";", nrow(d), "surviving (param, cell, interval) points\n")
@@ -108,7 +110,7 @@ fig5 <- function(yv, ylo, yhi, ylab, spacing = 0.10, legend = "bottom") {
     scale_x_log10(breaks = c(.01, .1, 1), labels = c(".01", ".1", "1")) +
     scale_y_log10() +
     scale_colour_viridis_d(name = expression(N[ch]), end = .92, direction = -1) +
-    labs(x = expression(Delta %.% k[off]), y = ylab) +
+    labs(x = expression(widetilde(Delta) == Delta %.% k[off]), y = ylab) +
     theme_bw(base_size = 9, base_family = "Helvetica") +
     theme(panel.grid.minor = element_blank(), panel.spacing.x = unit(spacing, "cm"),
           legend.position = legend, legend.title = element_text(size = 8),

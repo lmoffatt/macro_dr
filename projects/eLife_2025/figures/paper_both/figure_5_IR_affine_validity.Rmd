@@ -26,6 +26,7 @@ Machinery shared from figure_4_common.R.
 -->
 
 ```{r setup, include=FALSE}
+source("noise_units.R")  # the one definition of S_tilde and of when to convert
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 ```
 
@@ -79,7 +80,10 @@ print(as.data.frame(aff %>% group_by(part) %>% summarise(m = median(m), .groups 
 
 ```{r render, fig.width = 11, fig.height = 5.6}
 X_BRK_N <- log10(c(10, 100, 1000, 10000))
-Y_BRK_N <- log10(as.numeric(NOISE_F)); Y_LAB_N <- NOISE_F
+# Display in DIMENSIONLESS units (2026-08-06): the stored value is the sweep label, ten times
+# S_tilde. Joins keep the raw value; only what a reader sees is converted (noise_units.R).
+Y_BRK_N <- log10(as.numeric(NOISE_F))
+Y_LAB_N <- formatC(dimensionless_noise(as.numeric(NOISE_F)), format = "g", digits = 3)
 aff <- aff %>% mutate(lx = log10(Num_ch), ly = log10(as.numeric(noise)),
                       zz = pmin(pmax(log10(m), min(AFF_BREAKS)), max(AFF_BREAKS)),
                       part = factor(part, levels = names(COMP)),
@@ -96,7 +100,7 @@ ggplot(aff, aes(lx, ly, z = zz)) +
   facet_grid(part ~ ivlab, labeller = label_parsed) +
   scale_x_continuous(breaks = X_BRK_N, labels = c("10", "100", "1e3", "1e4")) +
   scale_y_continuous(breaks = Y_BRK_N, labels = Y_LAB_N) +
-  labs(x = expression(N[ch]), y = "noise",
+  labs(x = expression(N[ch]), y = "dimensionless instrumental noise",
        title = "IR validity map: affine distortion (rows: total / sample / correlation), by interval") +
   theme_bw(base_size = 7.5, base_family = "Helvetica") +
   theme(panel.background = element_rect(fill = "grey90"), plot.title = element_text(size = 9),

@@ -11,7 +11,7 @@
 
 - **TWO papers, split on the macro/micro boundary** (2026-07-23, superseding the three-paper split of
   2026-07-20). The former papers 1 and 2 are **merged into one broad macro paper** aimed at eLife;
-  the micro paper (the multinomial boundary) stays separate. The map and the N_ch partition are in
+  the micro paper (the microscopic boundary) stays separate. The map and the N_ch partition are in
   `program.md`; do not restate them here.
 - **Why the merge, since it reverses a decision three days old.** The alternative was macro-method to
   eLife and a near-identical usage-map paper after it. Desk rejections at one journal are **not
@@ -186,7 +186,7 @@ unmentioned.
 
 - **One paper** → three (2026-07-20) → **two** (2026-07-23, §1). The 1|2 cut was the artificial one
   (mid against high N_ch, single-channel noise scale against fraction-of-total) and is deleted. The
-  surviving split is the natural one, the Gaussian macro closure against the multinomial micro one.
+  surviving split is the natural one, the Gaussian macro closure against the exact discrete micro one.
 - **`paper-2.md`** → archived 2026-07-28 under `archive/`, with a migration ledger. It is the ancestor
   of both the current body roster and the region map, so it is archived rather than deleted.
 - **A-strict** ("the non-recursive members are named once in Theory and measured in no figure") →

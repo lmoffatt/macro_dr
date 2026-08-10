@@ -187,7 +187,7 @@ one_pair <- function(dd, pr, logy, ylab, fac) {
     geom_line(linewidth = .5) + geom_point(size = .9) +
     scale_x_log10(breaks = X_BRK, labels = as.character(X_BRK)) +
     scale_colour_manual(values = MEM_COL) + scale_fill_manual(values = MEM_COL) +
-    labs(x = expression(Delta %.% k[off]), y = ylab, colour = NULL, fill = NULL, title = pr) +
+    labs(x = expression(widetilde(Delta) == Delta %.% k[off]), y = ylab, colour = NULL, fill = NULL, title = pr) +
     fac + base_theme
   if (logy) g <- g + scale_y_log10(breaks = DIST_BRK, labels = as.character(DIST_BRK))
   g

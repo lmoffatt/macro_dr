@@ -26,6 +26,8 @@
 ## Sourced by: figure_4.Rmd, figure_4_supplement_sample_corr.Rmd,
 ##             figure_4_supplement_recursive_ladder.Rmd
 
+source("noise_units.R")  # the one definition of S_tilde and of when to convert
+
 suppressMessages({ library(tidyverse); library(patchwork) })
 
 # ---- typesetting and furniture ------------------------------------------------------------
@@ -220,7 +222,16 @@ YB <- Y_BRK[Y_BRK > min(YLIM$lo)]
 # scale whose edges it never has to hit, and not free here, where the low criterion IS an edge.
 CRIT_SOL <- max(DIST_SOL)   # 1.15, strict, ALWAYS solid
 CRIT_DSH <- max(DIST_DSH)   # 2,    loose,  ALWAYS dashed
-SH_FAC <- c(1.03, 1.07, CRIT_SOL, 1.35, CRIT_DSH, 5, 10, 100, 1000)
+# 1.01 ADDED 2026-08-06, and it is the innermost cut the scale can honestly carry. The white band
+# used to run 0.971 to 1.03, i.e. everything within three per cent of the null was one colour.
+# Counted on the six-member roster of Figure 4, that band held 975 of 2149 cells, of which 843 sit
+# at EXACTLY 1 because their bootstrap interval brackets it and Dconf collapses them there. The
+# split at one per cent divides the remaining 132 almost in half, 67 inside and 65 between one and
+# three per cent, and 96 of those 132 are R and IR: it is the pair the fine end of the scale exists
+# to separate, and until now they shared a colour. So the new band is neither empty nor a noise
+# floor dressed as structure — the CI collapse is what guarantees the second, since a cell whose
+# interval reaches the null cannot land in it at all.
+SH_FAC <- c(1.01, 1.03, 1.07, CRIT_SOL, 1.35, CRIT_DSH, 5, 10, 100, 1000)
 SH_L   <- c(rev(-log10(SH_FAC)), log10(SH_FAC))
 SH_PAL <- bandcols(SH_L)
 SH_LAB <- fmtnum(10^SH_L)
@@ -434,7 +445,7 @@ blk <- function(a, side, nchs, ylab, ystrip, xlab, se_lines = TRUE, outer = "mem
                        labels = if (xlab) c("0.01", "", "1") else c("", "", "")) +
     # the swept label is ten times the dimensionless noise (NOISE_AXIS_UNITS.md); display only
     scale_y_continuous(breaks = YB, expand = c(0, 0),
-                       labels = parse(text = fmtnum(10^YB / 10))) +
+                       labels = parse(text = fmtnum(dimensionless_noise(10^YB)))) +
     labs(x = NULL, y = if (ylab) "dimensionless instrumental noise" else NULL) +
     theme_bw(base_size = 8, base_family = "Helvetica") +
     theme(panel.background = element_rect(fill = "grey85", colour = NA),

@@ -41,7 +41,7 @@ mechanically, which is what makes this a check rather than a promise.
 | `_program/` | everything the three papers share: the machinery, the model, the axes, provenance, nomenclature, bibliography, submission mechanics | never cites a paper |
 | `1_method/` | paper 1: R, MR, VR, IR — what a likelihood must condition on | nearly drafted |
 | paper 2 | the usage map: LSE, NR, R, IR — do you need a likelihood at all | **a stub in `_program/paper-2.md` until it starts drafting** |
-| paper 3 | the multinomial boundary: micro_R, micro_IR | **a stub in `_program/paper-3.md` until it starts drafting** |
+| paper 3 | the microscopic boundary: micro_R, micro_IR | **a stub in `_program/paper-3.md` until it starts drafting** |
 
 **Papers 2 and 3 get folders when they get manuscripts, not before.** Structure built ahead of content
 rots: `01_workboard.md` was born with 25 checkboxes and retired with all 25 unticked, including the

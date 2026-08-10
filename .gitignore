@@ -172,6 +172,11 @@ compile_commands.json
 
 .claude/
 
+
+program/source-notes/
+
+docs/bibliography/
+
 tmp/
 
 runs/

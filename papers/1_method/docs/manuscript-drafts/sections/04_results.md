@@ -19,7 +19,7 @@ cost ladder; recovery clouds at one cell; the calibration cascade in time; the d
 moment; the information budget per parameter; and the usage map. **[SETTLED SINCE]** The archived plan
 had five figures and an `R`-versus-`IR` arc.
 
-**Framing the maps force.** The three named regimes (multinomial, telegraphic, Gaussian) are the two
+**Framing the maps force.** The three named regimes (microscopic, telegraphic, Gaussian) are the two
 approximations' **asymptotic corners, not territories with borders**. The map shows a gradient; the
 corners explain its direction. Write that into both Theory and Results so they do not read as two
 different claims.

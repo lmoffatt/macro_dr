@@ -141,7 +141,7 @@ one_pair <- function(dd, pr, ycol, ylo, yhi, ylab) {
     scale_x_log10(breaks = X_BRK, labels = as.character(X_BRK)) +
     scale_colour_manual(values = MEM_COL) + scale_fill_manual(values = MEM_COL) +
     facet_grid(nlab ~ ., scales = "free_y", labeller = label_parsed) +
-    labs(x = expression(Delta %.% k[off]), y = ylab, colour = NULL, fill = NULL, title = pr) +
+    labs(x = expression(widetilde(Delta) == Delta %.% k[off]), y = ylab, colour = NULL, fill = NULL, title = pr) +
     base_theme
 }
 

@@ -121,6 +121,39 @@ recursion subtracts at each step what it has just seen. The same blindness cover
 an experimenter cannot separate and has no reason to: whether the approximation is adequate, and
 whether the code that computes it is correct.
 
+That is not a hypothetical. Nine kinetic schemes for the P2X$_2$ receptor were ranked by Bayesian
+evidence twice over the same outside-out patch recordings, in work of our own, and the two rankings
+were not the same \citep{moffatt2025bayesian}. What separated them was the recursion. Both
+likelihoods averaged the current over the acquisition interval and both carried the same gating
+variance; one conditioned each interval on the data already observed and the other did not. That the
+ranking moved with the approximation was reported. Which of the two orderings to believe was not,
+because it turns on how far each likelihood's reported information sits from the information it
+delivers, and that had never been measured for either.
+% ADDED 2026-08-07, 116 words. Owner: the desk-rejection pass recorded at 00_abstract.tex note 1f.
+% WHY HERE. The paragraph above ends on the two questions an experimenter cannot separate and then
+% went straight to the classical apparatus, so "this" in "The apparatus that answers this" had an
+% abstract antecedent. This paragraph is that same sentence with a date and a receptor, and it hands
+% the reader to the apparatus with a concrete thing for it to answer. It rides the section's thread
+% rather than cutting it: the thread is that the memory of the gating process is both what carries
+% the information and what lets a model track the data without earning it, and this is the case where
+% the unearned tracking reached a mechanism.
+% NO NEW CONCEPTS. Recursion, the acquisition interval, conditioning on data already observed and the
+% gating variance are all defined in the lineage paragraph above, which already cites this same
+% paper for the interval-conditioned member.
+% THE AXIS DISCIPLINE IS LOAD-BEARING, see 00_abstract.tex note 1f(i). "What separated them was the
+% recursion" is exact: the two runs behind Figs 1d and 1e of that paper shared averaging over the
+% acquisition interval and the same gating variance term and differed in the recursion alone. Never
+% write "MacroIR against MacroINR" or "the boundary-conditioned member" here. The object that ran
+% there is not the member specified in Theory, so naming it as IR would be false, and the axis
+% wording is both true and the axis this paper measures.
+% "WERE NOT THE SAME", NOT "PUT DIFFERENT MECHANISMS FIRST", which is the stronger sentence: that
+% paper numbers nine schemes I-IX in its main text and eleven I-XI in Table S1 with no published
+% mapping, so the identity of the top-ranked scheme under each likelihood cannot be checked from the
+% record. Upgrade only on a first-hand check.
+% WHAT THIS PARAGRAPH MUST NOT DO is adjudicate. It says the ordering moved and that nothing in that
+% analysis could say which to believe. The matching declining sentence is at 05_discussion.tex, in
+% the paragraph that carries the evidence bridge; the two must stay consistent.
+
 The apparatus that answers this is classical. For a correctly specified likelihood the score, the
 gradient of the log-likelihood with respect to the parameters, has mean zero at the parameters that
 generated the data, and its covariance across independent recordings equals the Fisher information
@@ -167,6 +200,26 @@ at every design cell, and it is the most favourable case for a Gaussian treatmen
 therefore a lower bound on the error for anything richer. Open probability, stationary protocols and
 larger schemes are left out for reasons that follow from the same design, and are stated with the
 results.
+% [BESSEL-BOUND] OPEN 2026-08-06. Canonical note at 02_theory.tex, under the Bessel paragraph.
+% THE CLAUSE AT RISK is "held at fixed spectral density so that shortening the interval raises the
+% noise in each sample and leaves the noise per unit bandwidth unchanged". That is exactly right
+% for the simulator and it has a physical ceiling on a real rig, which the sentence does not say.
+% A real amplifier's noise is flat only up to its own anti-alias filter: once the window falls
+% below the filter's response time the per-sample variance stops rising as 1/Delta and the excess
+% appears as correlation between neighbouring samples instead. So the interval axis of this study
+% is realisable on a bench down to about Delta = a few / f_c and no further, unless the filter is
+% opened with it, which costs noise.
+% WHY IT IS WORTH A CLAUSE RATHER THAN A PARAGRAPH. The same dimensionless group, f_c*Delta,
+% governs both this and the observable's kernel (canonical note, items i and ii), so the two
+% departures are one departure seen from two sides, and both vanish at the same rate. Nothing in
+% the paper's measurements changes: the simulator's noise IS white by construction and the sweep
+% is over a model, which this paragraph already says. What is missing is that the shortest
+% intervals of the sweep are the ones a bench cannot deliver at fixed spectral density, and that
+% is the same corner where the boundary-conditioned member's advantage is largest.
+% [OPEN] Either a subordinate clause here ("... unchanged, which a real amplifier delivers down
+% to its anti-alias filter's response time and no further") or nothing here and one sentence in
+% the Discussion's Bessel paragraph. Do NOT put it in both; this paragraph is already the densest
+% in the section.
 
 Two things come out of the map, and they answer different readers. The first is where each
 approximation misreports what the data determine, including the most complete one, since a method
@@ -189,7 +242,8 @@ fit effectively has for every interval it believes it has, and it costs nothing,
 going to be made anyway. Two design variables that look as though they should matter, the channel
 count and the instrumental noise, enter the answer through that one statistic and through nothing
 else. The acquisition interval does not, and the reader knows it, because they chose it when they set
-the sampling rate. Those two numbers together say what a classical fit is doing to the width of the
+the sampling rate, as they did the analogue filter, which contributes to the same statistic on a
+record sampled faster than its own bandwidth. Those two numbers together say what a classical fit is doing to the width of the
 interval it reports, in units a reader can act on: a distortion of $1.15$ is a $7\%$ error on a
 confidence interval, $2$ is $41\%$, and $4$ turns a nominal $95\%$ interval into about $68\%$.
 % src: projects/eLife_2025/figures/paper_both/figure_6B.Rmd (header, measured points 1 to 5): tau_int
@@ -201,3 +255,34 @@ confidence interval, $2$ is $41\%$, and $4$ turns a nominal $95\%$ interval into
 % CORRECTED 2026-08-04: an earlier draft of this paragraph said the residual autocorrelation alone
 % locates a recording, and quoted a factor of two at three. Both were wrong, and figure_6B.Rmd had
 % already measured the right version.
+% [BESSEL-BOUND] CLOSED HERE 2026-08-07 by the fifteen-word clause the note below asked for
+% ("as they did the analogue filter, which contributes to the same statistic on a record sampled
+% faster than its own bandwidth"). The other two sites, 03_diagnostics.tex beside the
+% residual-whiteness check and the scope clause in the design paragraph above, are still open, and
+% the canonical note with the bound and the script stays at 02_theory.tex under the Bessel
+% paragraph. What was bought: the paragraph no longer asserts that two design variables enter the
+% answer and nothing else does, on a record where a third one demonstrably enters, and the repair
+% rides the sentence's own logic rather than contradicting it, because the filter is a number the
+% reader chose exactly as they chose the sampling rate. What was NOT bought and must not be read
+% in: no size for the contribution is stated here, deliberately, because stating it commits to the
+% expansion, which belongs in Theory. Original note follows.
+% [BESSEL-BOUND] OPEN 2026-08-06. Canonical note at 02_theory.tex; the argument for why this
+% particular sentence needs guarding is at 03_diagnostics.tex, beside the residual-whiteness
+% check.
+% THIS PARAGRAPH MAKES THE PAPER'S ONE OFFER TO A READER WITH DATA IN HAND: "the integrated
+% autocorrelation of the standardized least-squares residual ... costs nothing, since the fit was
+% going to be made anyway". On a real recording that statistic also picks up the analogue filter,
+% which contributes a lag-one residual correlation of 0.075/(f_c*Delta) on its own, 8.6% where
+% the acquisition window equals the filter's inverse cutoff. The offer is sound where the record
+% is sampled at or below the filter's bandwidth and misleading where it is not, and the reader
+% cannot tell the two apart from the number alone: a filter and a badly correlated fit both push
+% tau_int up.
+% ALSO EXPOSED, and it is the same fix: "Two design variables that look as though they should
+% matter, the channel count and the instrumental noise, enter the answer through that one
+% statistic and through nothing else." On an oversampled record a THIRD variable enters it, the
+% filter setting, and that one the reader also chose, like the sampling rate. The sentence's own
+% logic therefore extends to it rather than being broken by it, which is the cheapest repair:
+% name the filter alongside the sampling rate in the clause that already says the reader knows
+% the acquisition interval because they set it.
+% COST: about fifteen words. This is the highest-value fifteen words the Bessel scoping buys
+% anywhere in the manuscript, because it is the only place a reader is told to act.

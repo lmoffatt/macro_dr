@@ -39,7 +39,7 @@ SRC <- c(bias  = "figure_4_source_data_bias.csv",
 
 # Every member with runs on disk. NOT the calling notebook's roster: the point is that one build
 # serves all six. A member added here costs one sweep the first time and nothing after.
-FIG4_ALL_MEMBERS <- c("nonlinearsqr", "macro_NR", "macro_INR", "macro_R",
+FIG4_ALL_MEMBERS <- c("nonlinearsqr_g", "nonlinearsqr", "macro_NR", "macro_INR", "macro_R",
                       "macro_MR", "macro_VR", "macro_IR")
 
 .fast_read <- local({

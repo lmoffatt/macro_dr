@@ -27,9 +27,9 @@ El relato de solo audios afirma que no existe un grupo "MacroIR 11" y que entre 
 y el 22 de marzo de 2026 el paper estuvo parado. Las dos cosas hay que revisarlas, y la
 evidencia es del propio repositorio.
 
-La carpeta `Chat de WhatsApp con MacroIR 11/` existe, sin trackear en git, con 8 audios:
-uno del 11 de febrero, dos del 13 de febrero y cinco del 6 de marzo (estos últimos sin
-transcribir todavía). El del 13 de febrero empieza así:
+La carpeta `Chat de WhatsApp con MacroIR 11/` existe, sin trackear en git, con 8 audios
+transcriptos: uno del 11 de febrero, dos del 13 de febrero y cinco del 6 de marzo. El del 13
+de febrero empieza así:
 
 > "Estuve varios días trabajando toda la semana con Macro IR, con el paper, trabajando
 > fundamentalmente en la teoría de la deformación de la log-likelihood."
@@ -185,8 +185,30 @@ distorsión y la descompone en componente de sample y componente de correlación
 problema de las regiones sin información cinética. Es una semana de trabajo completa, con
 teoría, código y planificación editorial, que el relato de solo audios no tenía.
 
-**Semana del 2/3.** Cinco audios el 6 de marzo, sin transcribir en esta carpeta. Es el audio
-donde dice "Macro IR me quedó totalmente fuera de mi mente por alguna razón".
+**Semana del 2/3.** Cinco audios el 6 de marzo, en el grupo 11, y no son lo que el relato de
+solo audios suponía. No hay lamento por haber abandonado el proyecto (esa frase, "Macro IR me
+quedó totalmente fuera de mi mente por alguna razón", viene de un audio del mismo día en el
+grupo Ideas 8, que no está en este repositorio). Estos cinco son una sesión de diseño, y
+arranca con "vuelve macro IR".
+
+Lo que queda fijado ese día. Primero, el criterio de la figura: tiene que mostrar indicadores
+de que el algoritmo funciona o no funciona, en condiciones donde sea plausible que funcione o
+que no. Es el mapa de validez en embrión, cuatro meses y medio antes de la Figura 6. Segundo,
+el razonamiento por regímenes: MacroNR debería andar cuando el ruido instrumental es mucho
+mayor que la fluctuación de los canales, y al bajar el ruido debería aparecer inflación de la
+varianza; MacroIR hace falta cuando la corriente cambia dentro del intervalo por relajación y
+no por fluctuación aleatoria. Tercero, los ejes del estudio: señal a ruido, número de canales,
+Δt sobre el τ más chico, y un cuarto que es la complejidad cinética medida por el número de
+estados. Ese cuarto eje se cae después: el paper se queda en dos estados.
+
+Y en el último, de 31 segundos, nombra la tesis:
+
+> "Creo que la idea mía es que Macro IR desacoplaría mejor la correlación de las likelihood
+> entre medidas sucesivas. Eso es lo que debería ser. El smoking gun es ese. Para eso desarrollé
+> esa medición, esa variable. Sería la que saltaría."
+
+El 29 de julio, casi cinco meses después, el mensaje del paper se resume en una palabra:
+autocorrelación. Estaba dicho, y dicho como predicción a confirmar, el 6 de marzo.
 
 **Semanas del 9/3 y del 16/3.** Once commits, cero audios: bootstrap implementado y compilando
 (12/3), regularización de `idm_matrix` removida, "boost and analysis runs" y la implementación
@@ -251,12 +273,23 @@ recursivos, o sea que durante cuatro meses la distorsión de MacroIR salió más
 real, y quedaba tapado por la renormalización de `to_Probability`, así que nunca falló, solo
 sesgó. El análisis completo está en [bugs_que_trabaron.md](bugs_que_trabaron.md).
 
-Los audios no lo registran. El último antes del arreglo es del 6 de mayo y habla de bajarle
-la complejidad cognitiva al loop de MacroR; el siguiente es del 18 y ya está en el abstract.
-El arreglo cae en el medio de doce días de silencio. La única mención en todo el corpus es de
-pasada el 25 de mayo, como ejemplo de tiempo perdido, dentro de una digresión sobre Luthier:
-"uno pierde tanto tiempo con estas cosas, y date cuenta por ejemplo con eso, con el error con
-las matrices simétricas".
+Los audios sí lo registran, pero eso se supo tarde. El 2026-08-07 aparecieron ocho audios del
+10 de mayo y uno del 15 en el grupo 12, que no estaban cuando se escribió la primera versión de
+este relato y que caen justo dos días después del arreglo. El de las 15:58, de 33 segundos, es
+una retractación de un hallazgo del paper:
+
+> "Una de las paradojas que yo veía en los datos era que más información era menos. Y bueno, eso
+> resulta que no es verdad. [...] Ese efecto paradójico era simplemente porque había un error de
+> código, estaba mal de programa."
+
+Es la paradoja del 21 de abril, medida en plena ventana del bug, sobre la que había decidido
+escribir que no la entendía. La versión correcta llega el 11 de julio. Y en el audio de las
+19:36 propone usar los datos viejos como demostración de que el diagnóstico detecta errores de
+código, porque con el algoritmo roto la matriz de distorsión daba cerca de dos.
+
+Fuera de ese día, la única mención en todo el corpus es de pasada el 25 de mayo, como ejemplo de
+tiempo perdido, dentro de una digresión sobre Luthier: "uno pierde tanto tiempo con estas cosas,
+y date cuenta por ejemplo con eso, con el error con las matrices simétricas".
 
 El resto de las dos semanas: `a7d6ff9` monoide de micro_ir, `01483ad` (10/5) "CI should be
 working again. MicroIR bug solved", y el 14 `a3241c0`, que arregla la fórmula de los momentos

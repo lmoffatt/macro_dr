@@ -119,7 +119,7 @@ g <- ggplot(d, aes(lx, m, colour = alab, fill = alab)) +
              labeller = labeller(prow = label_value, ncol_lab = label_parsed)) +
   scale_x_continuous(breaks = X_BRK, labels = c(".01", ".1", "1")) +
   scale_colour_manual(values = ALGO_COL) + scale_fill_manual(values = ALGO_COL) +
-  labs(x = expression(Delta %.% k[off]), y = "log10 units (null = 0)", colour = NULL, fill = NULL,
+  labs(x = expression(widetilde(Delta) == Delta %.% k[off]), y = "log10 units (null = 0)", colour = NULL, fill = NULL,
        title = "R against IR at constant relative noise (noise = 10 x N_ch, r = 10), nsim 1000",
        subtitle = paste("point estimate with its 95% bootstrap interval, NOT CI-shrunk:",
                         "a band covering 0 may mean calibrated OR underpowered")) +

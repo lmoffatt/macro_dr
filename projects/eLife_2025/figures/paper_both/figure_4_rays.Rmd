@@ -185,7 +185,7 @@ d <- dat %>%
   pivot_wider(names_from = key, values_from = value) %>%
   mutate(qty  = factor(qty, levels = QTY$qty, labels = QTY$lab),
          axis = factor(axis, levels = c("nch", "interval", "noise"),
-                       labels = c("N[ch]", "Delta %.% k[off]", "noise~label")),
+                       labels = c("N[ch]", "widetilde(Delta)", "noise~label")),
          member = factor(member, levels = c("interval-naive", "interval-aware")))
 cat("curve points:", nrow(d), " pairs:", paste(unique(as.character(d$pair)), collapse = " "), "\n")
 ```

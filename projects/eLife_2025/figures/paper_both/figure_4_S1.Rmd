@@ -66,9 +66,14 @@ a band.
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 suppressMessages({ library(tidyverse) })
 source("figure_4_supp_common.R")
+# The one definition of the dimensionless noise, and the rules for when to convert. Joins and file
+# matching stay on the RAW label; only what a reader sees is converted. See noise_units.R.
+source("noise_units.R")
 ```
 
 ```{r data}
+# label -> S_tilde for display, formatted so 0.01 does not print as 1e-02 in a strip.
+fmt_snoise <- function(z) formatC(dimensionless_noise(as.numeric(z)), format = 'g', digits = 3)
 COMPS    <- c(sample = SAMP, corr = CORR)
 COMP_LAB <- c(sample = "sample", corr = "correlation")
 PARAMS   <- c(off = 1, Num_ch_mean = 5)             # the two carrier directions
@@ -91,8 +96,11 @@ d <- pmap_dfr(CELLS, function(algo, nch, z)
          prow  = factor(sprintf("atop(%s, \"%s\")", PAR_LAB[param], COMP_LAB[comp]),
                         levels = as.vector(t(outer(names(PARAMS), names(COMPS),
                           function(p, c) sprintf("atop(%s, \"%s\")", PAR_LAB[p], COMP_LAB[c]))))),
-         ncol  = factor(sprintf("sigma == %s", noise),
-                        levels = sprintf("sigma == %s", NOISES)),
+         # Facet strips carry the DIMENSIONLESS noise, not the stored label: the Results prose that
+         # cites this supplement quotes S_tilde, and a strip in the other scale contradicts it by a
+         # factor of ten. `noise` itself stays raw, because the join and the file matching use it.
+         ncol  = factor(sprintf("widetilde(S) == %s", fmt_snoise(noise)),
+                        levels = sprintf("widetilde(S) == %s", fmt_snoise(NOISES))),
          lx = log10(Num_ch))
 stopifnot(nrow(d) > 0, !any(is.na(d$prow)), !any(is.na(d$ncol)))
 cat("F4-S1:", nrow(d), "curve points; k_off & N_ch, N_ch", paste(NCHS, collapse = "/"),

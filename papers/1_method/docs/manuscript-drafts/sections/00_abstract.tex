@@ -1,5 +1,5 @@
 \begin{abstract}
-Kinetic schemes are usually fitted to macroscopic ion-channel currents by least squares on the deterministic mean, leaving the gating fluctuations unmodelled. Likelihoods that use them, including Bayesian recursive filters, are two decades old and little used: a filter tracks the data even when the uncertainty it reports is wrong. The test is classical: at the true parameters the score, the log-likelihood's derivative, averages to zero, and its covariance across recordings equals the Fisher information it reports. We measure bias and distortion along a seven-rung ladder from least squares to a filter conditioned on both ends of each acquisition interval, for a two-state scheme over channel number, noise and acquisition interval, against exact simulations of the process they approximate. The boundary-conditioned filter is calibrated over most of the sweep, departing toward few channels and low noise, where the occupancy Gaussian is misspecified. Least squares becomes calibrated once instrumental noise exceeds gating noise, which happens at an instrumental variance proportional to channel number. No measured recording gives both the unitary current and a trustworthy least-squares error bar, the two boundaries one to three decades of noise apart. The boundary-conditioned likelihood (MacroIR) is available for R and Python with its score and information, so an experimenter can fit their own recording. 
+Kinetic schemes are usually fitted to macroscopic ion-channel currents by least squares on the deterministic mean, leaving the gating fluctuations unmodelled. Likelihoods that use them, including Bayesian recursive filters, are two decades old and little used: a filter tracks the data even when the uncertainty it reports is wrong. In our own comparison of nine gating schemes for the P2X$_2$ receptor, dropping the recursion changed the ranking. The test is classical: at the true parameters the score, the log-likelihood's derivative, averages to zero, and its covariance across recordings equals the Fisher information it reports. We measure bias and distortion along a ladder from least squares to a filter conditioned on both ends of each acquisition interval, for a two-state scheme over channel number, noise and acquisition interval, against exact simulations of the process they approximate. The boundary-conditioned filter is calibrated over most of the sweep, departing toward few channels and low noise, where the Gaussian moment closure on the occupancy is misspecified. Least squares becomes calibrated once instrumental noise exceeds gating noise, which happens at an instrumental variance proportional to channel number. No region of the measured plane gives both information about the unitary current and a trustworthy least-squares error bar, the two boundaries one to three decades of noise apart.
 \end{abstract}
 
 
@@ -51,6 +51,14 @@ Kinetic schemes are usually fitted to macroscopic ion-channel currents by least 
 %     conditioned on both ends of the acquisition interval" names the endpoints and the size
 %     in eleven words. Seven = LSE + NR + INR + R + MR + VR + IR (02_theory.tex, Table 1).
 %     See the verify list: the body walks four of them.
+%     COUNT OPEN, 2026-08-06. The least-squares rung split into two arms on the window axis, LSE
+%     (instantaneous mean, av = 0) and ILSE (interval-averaged mean, av = 1), so the implemented and
+%     measured set is EIGHT and Figure 3 now draws eight columns. "Seven-rung" stays literally true
+%     of THIS sentence, whose scope is the sweep over channel number, noise and interval: only ILSE
+%     is on the grid (zero nonlinearsqr_g files under figures/data), and LSE is measured at the one
+%     cell of Figure 3. A referee who counts Figure 3's columns will still find eight. The word is
+%     left alone because the abstract is at budget; the choice is seven-with-the-sweep-scope as it
+%     stands, or "eight" plus a clause saying seven of them are swept.
 %
 % (d) ONE WORD FOR ONE PROPERTY: "calibrated", five times. The previous version alternated
 %     honest / honestly / calibrated / departing for the same property in three consecutive
@@ -314,6 +322,69 @@ Kinetic schemes are usually fitted to macroscopic ion-channel currents by least 
 %     RULE CHECK on A and B: no "only" (rule 4); "the recursion" is the functional description and
 %     not the product name (rule 5); both are two-sided and carry no direction convention (1i).
 %
+% 1f. FOUR CHANGES, 2026-08-07, and the section is 211 words by wc (was 208). The occasion is a
+%     desk-rejection review: every outside read agrees the risk at eLife is that a Senior Editor
+%     with fifteen minutes files this under "another recursive filter", and three of these four are
+%     about the first thirty seconds of that reading. The fourth is a correction.
+%
+%     (i) +19, THE P2X2 SENTENCE, third position, after "the uncertainty it reports is wrong":
+%         "In our own comparison of nine gating schemes for the P2X$_2$ receptor, dropping the
+%         recursion changed the ranking."
+%         WHAT IT BUYS. Sentence 2 asserts that a filter can be miscalibrated without showing it;
+%         until now nothing in the section said the consequence has ever been observed. This is the
+%         observation, it is peer-reviewed, it is on real recordings, and it is a mechanism ranking
+%         rather than an error bar, which is the register an eLife editor is screening for.
+%         THE AXIS DISCIPLINE, and it is not optional. Say "dropping the recursion", never
+%         "MacroIR against MacroINR" and never "the boundary-conditioned member". The two runs
+%         behind moffatt2025bayesian Fig 1d/1e shared the interval averaging and the gating
+%         variance and differed in the recursion alone, which is exactly the axis this paper
+%         measures; but the object that ran there is NOT the member Theory specifies, so any
+%         wording that identifies it with IR is false. Same rule in 01_introduction.tex and in the
+%         cover letter.
+%         WHY "THE RANKING" AND NOT "WHICH SCHEME RANKED FIRST", which is the stronger sentence and
+%         is one word away: the main text of that paper numbers nine schemes I-IX and its Table S1
+%         numbers eleven I-XI, and the mapping between the two is not published, so the identity of
+%         the top-ranked scheme under each likelihood cannot be checked from the published record.
+%         "Changed the ranking" is carried by the paper's own sentence (p.2, "Model ranking was
+%         sensitive to likelihood approximation") and by Figs 1d and 1e. UPGRADE ONLY on a
+%         first-hand check of the mapping.
+%
+%     (ii) -1, "a seven-rung ladder" -> "a ladder". Closes the count inconsistency note (c) left
+%         open on 2026-08-06: the implemented and measured set is EIGHT and Figure 3 draws eight
+%         columns, so a referee who counts finds a discrepancy in the abstract's own first
+%         quantitative word. The count is discharged in Theory, which already states it
+%         (02_theory.tex:385, "Eight in all: five on the lattice, VR beside MR, and the two
+%         least-squares arms"). The family is still named by its endpoints in the same sentence,
+%         which is what note (c) says the word was bought for.
+%
+%     (iii) +5 AND A CORRECTION, sentence 7: "No measured recording gives both the unitary current
+%         and..." -> "No region of the measured plane gives both information about the unitary
+%         current and...". Two defects, one repair. There are no recordings in this paper, so the
+%         live wording asserted something about real records that the study never touched, and
+%         01_introduction.tex:191-196 and 05_discussion.tex:122 both already say "no region of the
+%         measured plane". And eliding "information about" made the sentence claim the unitary
+%         current cannot be obtained at all, which is false and is contradicted by the map's own
+%         region 1. This is the one change here that would have been worth making anyway.
+%
+%     (iv) -23 / +4, THE AVAILABILITY SENTENCE IS CUT and part of what it frees pays for the
+%         Gaussian-closure gloss that note 4 calls the first thing to buy: "where the occupancy
+%         Gaussian is misspecified" -> "where the Gaussian moment closure on the occupancy is
+%         misspecified". Two independent readers tripped on the unglossed term from opposite
+%         directions (note 4), and the six words say it is a moment closure and not a
+%         linear-Gaussian state-space model, which is the question one of them asked.
+%         WHY THE AVAILABILITY SENTENCE GOES, having survived four rounds. It was the closer, and
+%         as the closer it put the section's last words on a named product. Read cold against
+%         sentence 2 it completes an arc, "this family is broken, here is mine", which is the
+%         rule-5 failure mode at full length and is the single most likely thing to make an editor
+%         file this as algorithm promotion. Cutting it lands the section on the criterion-free
+%         ordering result, which is the strongest and most checkable thing the paper has. eLife
+%         collects software in the Code Availability field and 07_backmatter.tex:5 carries it, so
+%         nothing is lost except the position. Note 1c's argument (researchers should run their own
+%         experiments with it, not replicate this paper) is unaffected: it argues for the software
+%         existing and being findable, not for it closing the abstract.
+%         [REVERSIBLE] Restore from note 1c's text if the closer is wanted back; it costs the
+%         ordering result's position and 23 words.
+%
 % 2. PROVENANCE, keyed by the words the sentence opens with.
 %
 % "Kinetic schemes are usually fitted" -> 02_theory.tex:89-95 (LSE fits the deterministic
@@ -329,6 +400,23 @@ Kinetic schemes are usually fitted to macroscopic ion-channel currents by least 
 %   likelihoods are little used, not that the fluctuations or their temporal correlation
 %   were unused.
 %
+% "In our own comparison of nine" -> moffatt2025bayesian, main text p.2 ("Model ranking was
+%   sensitive to likelihood approximation: the control method (MacroINR) systematically
+%   underestimated evidence for schemes with conformational intermediates, underscoring the
+%   importance of rigorous handling of temporal correlations") and its Figs 1d and 1e, the same
+%   nine schemes ranked under two likelihoods with two orderings. Evidences by thermodynamic
+%   integration over tempered likelihoods, PT-MCMC, on outside-out patch recordings from HEK293
+%   cells expressing rat P2X2, 0.2 ms ATP pulses at 0.1-10 mM, n = 5 to 12 patches per condition.
+%   WHAT THE SENTENCE CLAIMS AND WHAT IT DOES NOT. It claims the ordering moved with the
+%   approximation. It does not claim which of the two orderings is right, which is 05_discussion's
+%   declining sentence and needs the evidences recomputed. It does not name the members: see 1f(i)
+%   for why "dropping the recursion" is the only wording the record supports.
+%   EXPOSURE, and it is worth knowing before a referee finds it. That paper's Table S1 shows two of
+%   its non-recursive runs at effective sample sizes 3 and 4 with R-hat 1.21 and 1.16, against its
+%   own declared ESS >= 1800 and R-hat < 1.01. That weakens the non-recursive ordering further and
+%   does not rescue the recursive one, which is consistent with this sentence and with the
+%   declining sentence in the Discussion. Do not strengthen either past that.
+%
 % "At the true parameters" -> 03_diagnostics.tex; the diagnostic is classical (Huber 1967,
 %   White 1982, Golden, Henley, White & Kashner) and the sentence states the identities
 %   rather than claiming them (rule 6). The four words "The test is classical:" were cut for
@@ -340,7 +428,16 @@ Kinetic schemes are usually fitted to macroscopic ion-channel currents by least 
 %   figures/data/{1c2ae6f,87889e6,0ffbda7}.
 %
 % "The boundary-conditioned filter" -> decisions/recompute/d4_distortion_envelopes.py over
-%   1c2ae6f + 87889e6 + 0ffbda7 (1977 of 2100 points within 15%, i.e. 94.1%; the 123
+%   1c2ae6f + 87889e6 + 0ffbda7.
+%   THE LIVE NUMBER IS 2116 OF 2268 (93%), from the 2026-08-04 re-run of the same committed
+%   script over the same three directories. It is what 05_discussion.tex:17 and
+%   04_results.tex:426 both print. The 1977 of 2100 (94.1%) recorded below is SUPERSEDED and is
+%   kept only so that a future pass does not reintroduce it: every denominator grew between the
+%   two runs, so cells landed in those directories after the first numbers were taken, and the
+%   noise axis is twelve levels and not eleven. The abstract quotes no count, which is why this
+%   is a comment repair and not a text one; see 05_discussion.tex:18-25 for the standing risk
+%   that these directories are called a freeze and are not behaving as one.
+%   SUPERSEDED FIGURES, for recognition only (1977 of 2100 points within 15%, i.e. 94.1%; the 123
 %   departures sit at N_ch <= 500 and noise <= 0.5, 45 of them at N_ch 10, none above
 %   N_ch 500 and none above noise 0.5, and by interval they favour the short end, 28/29/27 at
 %   0.01/0.02/0.05 against 3 at 0.5, so "toward few channels and low noise" and not "at long
@@ -361,14 +458,23 @@ Kinetic schemes are usually fitted to macroscopic ion-channel currents by least 
 %   figures/paper_both/figure_6.html (crossing table and fitted log-log slopes 1.01 and 1.03
 %   at Delta*k_off = 0.1), 04_results.tex:187-189 and 05_discussion.tex:38.
 %
-% "No measured recording" -> 01_introduction.tex:39 and 05_discussion.tex:38, both from
+% "No region of the measured plane" (opened "No measured recording" until 2026-08-07, see 1f(iii))
+%   -> 01_introduction.tex:191-196 and 05_discussion.tex:122, both from
 %   figures/paper_both/figure_6.html: there is no region of the measured plane in which the
 %   fluctuations still carry information about the unitary current or the channel number and
 %   the classical error bar is simultaneously trustworthy, the two boundaries separated by
 %   one to three decades of instrumental noise everywhere they were measured. The abstract
-%   claims the unitary current alone, which is the safer subset.
+%   claims the unitary current alone, which is the safer subset, and now says "information
+%   about" it, which is what was measured; the bare noun claimed the parameter is unobtainable.
+%   Each boundary is fitted through four measured crossings at one acquisition interval
+%   (05_discussion.tex:123), so the sentence must stay two-sided and criterion-free: it is an
+%   ORDERING of two boundaries and survives a looser criterion moving each by a decade.
 %
-% "The boundary-conditioned filter ships" -> 07_backmatter.tex:5-6 and the repository at
+% "The boundary-conditioned filter ships" -> SENTENCE CUT 2026-08-07, see 1f(iv). Everything
+%   below stays because it is the evidence for what the software does and does not support, and
+%   it governs 07_backmatter.tex and the Code Availability field, which is where the claim now
+%   lives. Nothing below may be upgraded there either.
+%   ORIGINAL ENTRY: 07_backmatter.tex:5-6 and the repository at
 %   ~/Code/macroir (Luciano, 2026-07-29): bindings/r and bindings/python over one
 %   self-contained C++ core, MIT. Read against the source, api.hpp:435 LogLikResult returns
 %   logL, the TOTAL score (n_par) and the TOTAL Gaussian Fisher (n_par x n_par) for a
@@ -397,6 +503,20 @@ Kinetic schemes are usually fitted to macroscopic ion-channel currents by least 
 %     The 219-word version never touched the title's own promise.
 %   - The reachability half of the map as its own sentence. It is carried inside sentence 7,
 %     which is the only place the two questions of Figure 6 meet in the abstract.
+%   - [BESSEL-BOUND, added 2026-08-06] The acquisition kernel. The abstract says "acquisition
+%     interval" and never says that a real recording arrives through a Bessel filter, and it
+%     should stay that way: the scope statement is a Theory and Discussion job, it costs 25 words
+%     that do not exist at 208, and the abstract makes no claim the omission falsifies. Sentence
+%     4's "acquisition interval" is the observable and is accurate. Canonical note, with the
+%     bound and the script, at 02_theory.tex under the Bessel paragraph.
+%     THE ONE EXPOSED SENTENCE IS 8, "so an experimenter can fit their own recording", which is
+%     the only one addressed to real data. It survives, because the fit macroir performs models
+%     the acquisition window and a reader's record can be block-averaged to it; what does not
+%     survive unqualified is the residual-whiteness check offered in the body, whose three sites
+%     carry their own notes (01_introduction.tex, 03_diagnostics.tex, 04_results.tex). No change
+%     here; this entry exists so the next pass does not re-open it, and so that if a referee
+%     raises the filter the answer is known to be in Theory and not owed by the abstract.
+%     Same reasoning covers 07_backmatter.tex:5, which scopes the library and not the observable.
 %
 % 4. VERIFY BEFORE SUBMISSION.
 %   - "seven-rung": the body walks four (LSE, NR, R, IR) and the supplement carries the full

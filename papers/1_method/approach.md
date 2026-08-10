@@ -160,8 +160,17 @@ Figure 6B.* See §7 for what the gift is and §6 for what it deliberately is not
 fails" is a proverb with n = 2 whose two instances the author built, which invites the reading that MR
 and VR are straw men. The mechanism is in hand and is far stronger. MR uses the TOTAL conductance
 variance per start state while IR uses the residual variance conditioned on both interval ends, and
-because gvar_total = Σ_j gvar_ij + Var_j[gmean_ij], MR dumps the end-state spread into the observation
-variance instead of resolving it through the boundary cross-covariance in the GAIN. **A partial
+because gvar_total = Σ_j gvar_ij + Var_j[gmean_ij], MR carries the end-state spread as plain
+observation noise where IR carries the same magnitude in the state-coupled term, so only IR's routing
+lets that spread reach the GAIN. The two therefore predict the SAME total variance from the same
+prior; what MR cannot do is resolve it. <!-- CORRECTED 2026-08-06: this beat used to say MR "dumps the
+end-state spread into the observation variance instead of resolving it", which reads as MR predicting
+more variance than IR. It does not, at equal state: the boundary term enters gSg with a plus and ms
+with a minus and cancels (verified term by term against legacy/qmodel.h:4568-4619, numerically on
+random fields, and on the figure-1 dumps, where MR = IR = 1.048475625791748 while they still share a
+prior). The misallocation is real and it is what the beat needs; it just shows up in the gain, and in
+the variance only after the gains have driven the priors apart. Canonical: figures_build_plan.md
+§195-245. --> **A partial
 interval correction cannot interpolate because what is missing is not in the variance, it is in the
 gain.** That is why MR is WORSE than R rather than sitting between R and IR: 1.30 to 1.56 in size
 against R's 1.09 to 1.24, and 1.36 to 1.40 in shape against R's flat 1.18.

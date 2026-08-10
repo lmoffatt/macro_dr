@@ -38,6 +38,19 @@ contribution. Compared with MacroIR, the boundary cross-correlation
 term $N_{\mathrm{ch}}\widetilde{\gamma^{T}\Sigma\gamma}$ is absent;
 this is the central structural difference between the M and I families.
 
+> **CORRECTION 2026-08-06, and `papers/1_method/00_plan.md:143` sends readers here for the mechanism,
+> so it matters.** Two things above do not describe the production M-family member (`macro_MR`),
+> whatever they describe of MRT. (i) The $V$ written here has no population term: the production
+> `y_var` is $\epsilon^2 + \Nch\,\overline{\gamma}_0^{T}\Sigma\overline{\gamma}_0 + \Nch\,\mu^{T}
+> \mathrm{gvar}$ for *every* averaging value (`legacy/qmodel.h:4568-4585`), so MR carries the
+> un-lifted $\overline{\gamma}_0^{T}\Sigma\overline{\gamma}_0$ rather than nothing. (ii) The
+> $(\overline{\sigma^2}_0)_{i_0}=\sum_{i_t}P\,\overline{V}_{i_0\to i_t}$ defined above is the
+> **residual** form; production MR uses the **total** form $\mathrm{gsqr}_i-\mathrm{gmean}_i^2$
+> (`legacy/qmodel.h:4609-4611`). Put back together, the boundary term IR adds to $\mathrm{gSg}$ is
+> exactly the one it removes from $\mathrm{ms}$, so **at the same prior MR and IR predict the same
+> total variance** and the structural difference between the families is the **gain**, not a missing
+> variance term. Canonical: `papers/1_method/figures_build_plan.md:195-245`.
+
 The MRT measurement update is a rank-1 quasi-Laplace correction. With
 innovation $\delta=\overline{y}^{\mathrm{obs}}-\overline{y}^{\mathrm{pred}}$
 and effective direction

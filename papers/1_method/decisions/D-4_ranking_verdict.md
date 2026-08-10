@@ -144,9 +144,19 @@ The category error behind the confusion is real and worth one sentence in Method
 is about the **parameter covariance**; "overestimates variance" was about the **predicted per-interval
 observable variance** `y_var`, a different object. The tidy story that MR overestimates the observable
 variance because it drops a subtractive boundary term does **not** hold for the production algorithms:
-that subtractive term lives only in the cut Taylor branch, and in the production path IR *adds* a term,
-which points the other way. **Do not assert an observable-variance direction for MR.** Settling it
-needs the `y_var` comparison in §4, which is an `awk` over data already on disk.
+that subtractive term lives only in the cut Taylor branch.
+
+**SETTLED 2026-08-06, and this closes the §4 item.** The `y_var` comparison was run. In the production
+path the boundary term IR *adds* to `gSg` is exactly the one it *removes* from `ms`, so the two cancel
+and **at the same prior MR and IR predict the same observable variance**: on the figure-1 dumps, same
+recording, `MR = IR = 1.048475625791748` at every interval where they still share a prior. Along a
+recording they diverge, because the predictive variance divides the gain and the gains differ: MR then
+runs +69% to +81% above IR. `VR` is strictly below both from any state, by `μᵀVar_j[gmean_ij|i]`
+(0.378085 at that same interval). So the observable-variance direction for MR against IR is: equal at
+equal state, above along a recording. Verified three ways (term by term against
+`legacy/qmodel.h:4568-4619`; numerically on random fields, difference 0.0 and structural; and on the
+dumps). Canonical: `../figures_build_plan.md:195-245`. The earlier "IR *adds* a term, which points the
+other way" is withdrawn: it read one half of the cancellation.
 
 ### 2.2 IR's corner: two-sided, and the old number was one-sided
 
@@ -174,9 +184,9 @@ rate directions, a different measure of a different object.
 
 ## 4. What this file still cannot settle
 
-- **The observable per-interval variance direction for MR against IR.** The columns are already in the
-  time-resolved dumps (`figure_3_time_dlik_{MR,IR}.csv`); dedup the ×2 row duplication first
-  (`../../_program/provenance.md` §6, trap 1). No new run.
+- ~~**The observable per-interval variance direction for MR against IR.**~~ **CLOSED 2026-08-06**, on
+  the figure-1 per-interval dumps rather than the time-resolved ones: equal at equal prior, MR +69% to
+  +81% along a recording, VR below both. See §2.1 above and `../figures_build_plan.md:195-245`.
 - **The sign convention** (§1a). A code read against the producer, roughly an hour, and every region
   boundary depends on it.
 - **The ~100-channel threshold (D-J).** It does not fall out of this table. IR's k_off distortion at

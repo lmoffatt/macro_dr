@@ -25,7 +25,7 @@ Of the $2268$ points at which the boundary-conditioned member was measured, one 
 % cell list into the script so the number is stable, or re-quote at submission and say the date.
 An experimenter who does not want to consult a map can use that member everywhere, and where its reported interval is the wrong width is the few-channel corner. Where it is wrong, the correction that repairs it is the one the diagnostic already supplies: at $N_{\mathrm{ch}}=10$ its nominal $95\%$ region covers $0.914$ of the estimates under the covariance it reports and $0.947$ to $0.949$ under the sandwich, over a thousand fits in six parameters. % src: projects/eLife_2025/figures/paper_both/figure_4_supplement_5.html (IR, N_ch 10, noise 0.05, 1000 fits at group size 100)
 
-That member is an approximation and is not exempt from the failure this paper is about. Over the same grid its distortion runs from $0.645$, at $N_{\mathrm{ch}}=10$ with noise label $0.05$ and $\Delta\!\cdot\!k_{\mathrm{off}}=0.01$ on the channel-number direction, where it over-states its own uncertainty, to $1.701$, at $N_{\mathrm{ch}}=5$ with noise label $0.1$ and $\Delta\!\cdot\!k_{\mathrm{off}}=1$ on the closing rate, where it under-states it. % src: papers/1_method/decisions/recompute/d4_distortion_envelopes.py (min and max of the diagonal distortion over the three data directories)
+That member is an approximation and is not exempt from the failure this paper is about. Over the same grid its distortion runs from $0.645$, at $N_{\mathrm{ch}}=10$ with $\widetilde{S} = 0.005$ and $\widetilde{\Delta}=0.01$ on the channel-number direction, where it over-states its own uncertainty, to $1.701$, at $N_{\mathrm{ch}}=5$ with $\widetilde{S} = 0.01$ and $\widetilde{\Delta}=1$ on the closing rate, where it under-states it. % src: papers/1_method/decisions/recompute/d4_distortion_envelopes.py (min and max of the diagonal distortion over the three data directories)
 The departure is two-sided, and that is how it should be read: the reported interval moves in both directions as the channel count falls, and the approximation does not become safe by erring conservatively on average. Both excursions sit where the open population is a small integer count whose distribution is visibly discrete, which is where the occupancy Gaussian, the first of the family's two closures, is expected to degrade. No channel count is named as the point at which that closure becomes misspecified, and the reason is a limit of this design rather than a gap in the measurement: with the open probability held at one half throughout, a channel count and an open-channel count differ by a fixed factor of two that nothing here can separate, so a threshold stated in channels would be stated in the wrong unit. What is measured instead is where each parameter stops being reachable at all, below $17$ channels for the channel count and below $52$ for the opening rate. The boundary also moves with the instrumental noise, downward as the noise rises, because instrumental variance makes the emission more Gaussian and so relaxes the closure while hurting everything else. % src: the reachability floors are the manuscript's preferred statement over "about 100", recorded at sections/00_abstract.md:53-54
 % RESOLVED 2026-08-04. The bracket [THRESHOLD-DJ] stood here since the D-J decision was opened. It is
 % closed by declining to name a threshold: the channels-or-openings ambiguity is already declared in
@@ -34,19 +34,107 @@ The departure is two-sided, and that is how it should be read: the reported inte
 
 A second boundary of the family's validity is argued here from its premise and has not been measured. Every member above least squares assumes that the instrumental contribution to a recorded interval is Gaussian and white, entering the predictive variance as one additive constant and leaving no memory between intervals. Recordings depart from that description, through the two-level switching of a trapped charge in the headstage and through the flicker component of the amplifier, and the discrepancy literature for models of this class already argues that unmodelled structure of exactly this kind, rather than independent Gaussian error, is what the residuals of a fitted electrophysiology model carry \cite{lei2020considering}. % PENDING-BIB: lei2020considering is in biblio_full.bib and not yet in biblio.bib; repoint or merge.
 Where such a departure is large, the diagnostic would report a distortion that belongs to the noise model rather than to the gating closure, and the score alone does not separate the two. We have not run it. The simulator emits Gaussian white instrumental noise only, no cell with any other noise process exists in the sweep, and nothing in this paper measures the size of the effect. This is an expectation from the closure's premise rather than a result, and the way to settle it is to simulate the alternative noise process and repeat the same measurement.
+% [BESSEL-BOUND] OPEN 2026-08-06. Canonical note at 02_theory.tex, under the Bessel paragraph.
+% THESE TWO PARAGRAPHS ARE ONE DEPARTURE SEEN TWICE, and the next one already half says so ("The
+% same amplifier stage carries a second departure of the same shape"). The algebra closes the
+% circle: the residual Bessel kernel lands, at leading order, in exactly the place this paragraph
+% names, the whiteness of the instrumental contribution. It moves a fraction 0.147/(f_c*Delta) of
+% each recorded value's variance into its two neighbours, conserving the total, and it is second
+% order rather than first on any component carrying its own correlation time, so the KINETIC part
+% of the predictive variance is not where it goes.
+% WHY THAT IS WORTH SAYING HERE. This paragraph's own position is that the departure is "argued
+% from its premise and has not been measured", which is right for the trapped-charge and flicker
+% processes it names, because their size depends on the rig. The filter's contribution is
+% different in kind: it is set by two numbers the experimenter chose, the filter cutoff and the
+% acquisition window, so its size is computable in advance and is not a rig-dependent unknown.
+% Leaving the two undifferentiated understates what is known about one of them.
+% [OPEN] One sentence at the end of this paragraph distinguishing them, or one clause in the next
+% paragraph. The next paragraph is the better host, since it is where the filter is named.
 
-The same amplifier stage carries a second departure of the same shape, and this one we adopt knowingly. A recording is low-pass filtered before it is digitised, normally by a Bessel filter, so the measurement kernel of a real experiment is that filter's impulse response, while the observable used here, in the simulator and in every likelihood alike, is the uniform average over the acquisition window (Theory). The uniform window is the first approximation to that kernel and it is the one that makes the family well posed, since it keeps all of the weight of a recorded value inside a single interval, which is the interval whose two ends the calibrated member conditions on. A Bessel kernel moves both premises of this paragraph at once: it spreads weight across interval boundaries, so successive recorded values are correlated through the signal itself, and it colours $\eta_t$. Neither effect is measured here. Extending the recursion to a general kernel with its coloured noise, and then re-running this same diagnostic against it, is the natural next step, and until it is taken the numbers above describe uniformly averaged recordings.
+The same amplifier stage carries a second departure of the same shape, and this one we adopt knowingly. A recording is low-pass filtered before it is digitised, normally by a Bessel filter, so the measurement kernel of a real experiment is that filter's impulse response, while the observable used here, in the simulator and in every likelihood alike, is the uniform average over the acquisition window (Theory). The uniform window is the first approximation to that kernel and it is the one that makes the family well posed, since it keeps all of the weight of a recorded value inside a single interval, which is the interval whose two ends the calibrated member conditions on. A Bessel kernel moves both premises of this paragraph at once: it spreads weight across interval boundaries, so successive recorded values are correlated through the signal itself, and it colours $\eta_t$. Neither effect is measured here. Extending the recursion to a general kernel with its coloured noise, and then re-running this same diagnostic against it, is the natural next step, and until it is taken the numbers above describe uniformly averaged recordings. That step is not a small one: convolving an amplifier's kernel explicitly, at a \SI{10}{\kilo\hertz} Bessel setting with \SI{50}{\kilo\hertz} digitisation, was estimated to raise the demand of a nine-scheme Bayesian comparison by more than tenfold \cite{moffatt2025bayesian}.
+% ADDED 2026-08-07, one sentence, and it changes what this paragraph concedes. As it stood, the
+% uniform window read as a simplification adopted for convenience and the reader had no way to tell
+% whether anyone had weighed the alternative. A published estimate of the cost says it was weighed,
+% and it converts "we did not do it" into "it is a separate piece of work with a price", which is
+% the same register the closing section uses for the other companions.
+% THE GUARDRAIL IS IN THE SENTENCE AND MUST STAY. What was estimated at more than tenfold is a
+% NINE-SCHEME BAYESIAN COMPARISON, not a likelihood evaluation. Do not compress it to "the filtered
+% kernel costs ten times more": that is a different and unmeasured claim, and this paragraph is the
+% one a referee will quote back.
+% THIS DOES NOT CLOSE [BESSEL-BOUND]. The open decision below is whether to state the size of the
+% residue, which is linear-filter algebra and costs no runs. A cost figure is not a bound and does
+% not substitute for one; if anything it sharpens the case for stating the bound, since the
+% expensive route is now visibly expensive.
+% [BESSEL-BOUND] OPEN 2026-08-06, and this paragraph is where the decision has to be taken,
+% because it is the one a referee will quote back. Canonical note, with the numbers and the
+% script, at 02_theory.tex under the Bessel paragraph.
+% WHAT THIS PARAGRAPH DOES NOW. It concedes the kernel completely and prices it at nothing: "the
+% numbers above describe uniformly averaged recordings" says the study is about a model of the
+% measurement and leaves a reader with no way to tell whether their own record is inside or
+% outside that model. That is a larger concession than the algebra requires. The objection it is
+% braced against ("this does not apply to real recordings") survives it intact.
+% WHAT CAN BE SAID INSTEAD, at no experimental cost, since all of it is linear-filter algebra:
+%   1. THE CONDITION. The composite kernel departs from the uniform window by an amount governed
+%      by one dimensionless group, the window against the filter's response time. The residue is
+%      first order in its reciprocal and is confined to adjacent recorded values: a variance
+%      misallocation of 0.147/(f_c*Delta) and a lag-one correlation of half that, so 3% and 1.5%
+%      at f_c*Delta = 5, against 15% and 8.6% at f_c*Delta = 1.
+%   2. WHY AVERAGING IS A SCOPE STATEMENT AND NOT A WORKAROUND. Because the observable of this
+%      family IS the integral over the window, block-averaging a record to a coarser window
+%      produces exactly the observable every member is written for, at any decimation factor and
+%      with no aliasing question. A point-sampling likelihood cannot say that. So "average the
+%      record down to the filter's bandwidth, then analyse" leaves the residual Bessel kernel as
+%      the single unmodelled piece, and item 1 is its size.
+%   3. THE CONCESSION THAT TRAVELS WITH IT, and it should be made plainly because it is what
+%      makes the rest credible. f_c*Delta of a few is a JOINT constraint. At the short end of
+%      this paper's own interval axis it would demand a filter of tens of kilohertz, where the
+%      amplifier's noise rises. The regime where the boundary-conditioned member's advantage is
+%      largest, windows comparable to the relaxation, is therefore the regime where a bench
+%      cannot deliver the condition for free. That is the argument for the filtered version, and
+%      it is sharper than "the natural next step".
+%   4. THE ONE THING AVERAGING DOES NOT REPAIR: the interval holding the concentration jump. The
+%      filter displaces and smears the transient by about 0.69/f_c, a fixed time, so that
+%      interval is outside the expansion at any Delta. Discard or flag it.
+% WHAT MUST NOT BE CLAIMED. That averaging was VALIDATED. It was not: no cell in this study has a
+% filter in it, and no run is planned for one (the filtered member is a separate paper). The
+% register is the one this section already uses two paragraphs up for the noise model, an
+% expectation from a premise, except that here the premise yields a number instead of a
+% direction. Say the error scales as the reciprocal of the group with the stated constant, and
+% stop there.
+% ALSO WORTH KNOWING, though it is a defence and not a claim: the residue's leading effect is a
+% downward bias on the gating variance, which is the direction of the classical filtering bias on
+% the unitary current in fluctuation analysis (Sigworth 1980, Heinemann and Conti). Reproducing a
+% known result with no free constant is cheap corroboration if a referee presses. Neither PDF is
+% in docs/bibliography/, so nothing is cited from them yet.
+% [OPEN, Luciano's call] Two shapes. (a) Keep this paragraph as the concession and add items 1
+% and 2 as two sentences, moving item 3 into the closing perimeter paragraph where the companion
+% papers are named. (b) Rewrite the paragraph around the condition, with the concession as its
+% last sentence. (b) is the stronger position and costs about 120 words; (a) costs 50.
 
-What buys the calibration is conditioning at both ends of the acquisition interval. Conditioning on the start alone does not buy it, and at the reference cell it costs. The one-endpoint member and the boundary-conditioned member assign the same total variance to the observed interval average, from the same state, and they book it differently: the spread of the interval mean across end states enters the one-endpoint member as observation noise, while the boundary-conditioned member carries it as a covariance between the interval current and the occupancy at the end of the window, which is the numerator of the Kalman gain (Eq.~\ref{eq:mu-post}). The whole distance between the two therefore lies in the update. On the ellipse-area measure at $N_{\mathrm{ch}}=100$, noise label $0.1$ and $\Delta\!\cdot\!k_{\mathrm{off}}=0.1$, the one-endpoint member reads $1.63$ against $1.01$ for the boundary-conditioned one, and it is also worse than the instantaneous recursive filter at $1.17$, so the intermediate rung does not interpolate between the two ends of the step it sits in. % src: papers/1_method/decisions/D-4_ranking_verdict.md §1a (recompute/d4_headline_and_nch_trend.py, freeze + Gaussian anchor)
+What buys the calibration is conditioning at both ends of the acquisition interval. Conditioning on the start alone does not buy it, and at the reference cell it costs. The one-endpoint member and the boundary-conditioned member assign the same total variance to the observed interval average, from the same state, and they book it differently: the spread of the interval mean across end states enters the one-endpoint member as observation noise, while the boundary-conditioned member carries it as a covariance between the interval current and the occupancy at the end of the window, which is the numerator of the gain in Eq.~\ref{eq:mu-post}. The whole distance between the two therefore lies in the update. On the ellipse-area measure at $N_{\mathrm{ch}}=100$, $\widetilde{S} = 0.01$ and $\widetilde{\Delta}=0.1$, the one-endpoint member reads $1.63$ against $1.01$ for the boundary-conditioned one, and it is also worse than the instantaneous recursive filter at $1.17$, so the intermediate rung does not interpolate between the two ends of the step it sits in. % src: papers/1_method/decisions/D-4_ranking_verdict.md §1a (recompute/d4_headline_and_nch_trend.py, freeze + Gaussian anchor)
 
 A supplement takes that step in its two algebraic halves and confirms a prediction that was registered before the run. The variance-recursive member removes the end-state spread from the observation variance without restoring it in the gain, and the prediction was that its reported uncertainty would come out worse than the one-endpoint member's, over-confident and more so. It does. % src: papers/1_method/decisions.md ("VR must run before the figures", 2026-07-22: measured on the Gaussian anchor at N_ch 100 / noise 0.1 / Delta = 0.1 tau; the ellipse ratios themselves belong to the retired R/MR/VR/IR ladder and are quoted only in the supplement)
 The reading carries one qualification the algebra makes obligatory: the predictive variance divides the gain, so altering the variance form also moves the update, and the two halves are not a clean separation into a variance step and a gain step. This is a supplement result and the body's claim does not rest on it.
 
-The diagnosis is Milescu's, now measured. \citet{milescu2005maximum} named the local time correlation of the current as the dominant error of estimates that do not filter, and that correlation is what the distortion decomposition isolates. Interval by interval every rung reports its information correctly; the miscalibration appears in how the intervals accumulate. It is visible directly in the autocorrelation of the score, which at lag one on the closing rate is $-0.0043 \pm 0.0043$ for \texttt{IR}, indistinguishable from zero, against $0.191 \pm 0.004$ for \texttt{R}, $0.864 \pm 0.0019$ for \texttt{NR} and $0.856 \pm 0.0022$ for \texttt{LSE} (six-parameter configuration, Methods). % src: projects/eLife_2025/figures/paper_both/figure_3.html (caption-numbers chunk; lag-one score ACF, k_off)
+The diagnosis is Milescu's, now measured. \citet{milescu2005maximum} named the local time correlation of the current as the dominant error of estimates that do not filter, and that correlation is what the distortion decomposition isolates. Interval by interval every rung reports its information correctly; the miscalibration appears in how the intervals accumulate. It is visible directly in the autocorrelation of the score, which at lag one on the closing rate is $-0.0043 \pm 0.0043$ for \texttt{IR}, indistinguishable from zero, against $0.191 \pm 0.004$ for \texttt{R}, $0.864 \pm 0.0019$ for \texttt{NR} and $0.856 \pm 0.0022$ for either least-squares arm (six-parameter configuration, Methods). % src: projects/eLife_2025/figures/paper_both/figure_3.html (caption-numbers chunk; lag-one score ACF, k_off)
 Conditioning on both interval ends leaves a white score. A likelihood member that skips an endpoint reads sequential structure as independent evidence, which is how a per-interval identity that holds everywhere can accumulate into an information ratio off by more than an order of magnitude. The accumulated ratio of least squares is not read this way: its information presumes one constant residual variance, which the simulator violates, so its factor of fifteen measures the size of that break rather than a failure of accumulation, and it sits above the calibrated value at the per-step level too (Diagnostics). % src: projects/eLife_2025/figures/paper_both/figure_3_supplement_1.html (LSE per-step median log10(J_t/F_t) = +0.183889, and identical to six decimals for all four parameters, which is the constant-variance premise showing itself: the parameter cancels out of Var(s_t)/F_t)
 
-\citet{delcore2025parameter} argue against filtering on cost, since the moment integration and the correction step run between every pair of samples. The cost is real, and what it buys is now quantified in units of misreported uncertainty. Where the instrumental noise is large next to the gating variance the cheaper members recover: at $N_{\mathrm{ch}}=10^4$ the closing-rate distortion of the instantaneous recursive filter falls from $1.42$ at noise label $0.1$ to $1.03$ at label $100$ and $1.00$ at label $1000$, and least squares follows the same path about three decades higher in noise. % src: projects/eLife_2025/figures/paper_both/figure_4_distortion.html ("DOES NOISE CURE IT" table, k_off medians by noise and N_ch)
-In that part of the plane the filter's expense is hard to justify on calibration alone. Toward few channels and short intervals the correlation part of the distortion grows, and the degrees-of-freedom count a non-conditioned fit uses is wrong by a factor that no compute saving offsets: at noise label $0.1$ the integrated autocorrelation of the standardized residual is $9.26$ for least squares and $3.93$ for the open-loop member, against $1.008$ for the boundary-conditioned filter, so the classical fit behaves as though it had about nine times more independent observations than the recording supplies. % src: projects/eLife_2025/figures/paper_both/figure_4_supplement_8.html (residual integral-lag by algorithm and noise, median over N_ch and interval)
+\citet{delcore2025parameter} argue against filtering on cost, since the moment integration and the correction step run between every pair of samples. The cost is real, and what it buys is now quantified in units of misreported uncertainty. How much cost it is depends on the scheme and the implementation rather than on anything measured here, and one published figure gives its scale: a Bayesian comparison of nine schemes for a ligand-gated receptor with a member of this family took twelve to fifty-two days per scheme on sixteen to thirty-two cores \cite{moffatt2025bayesian}.
+% ADDED 2026-08-07. The section argues against Del Core and Mirams on cost and said "the cost is
+% real" without a single number anywhere in the manuscript, which is the cheapest request a referee
+% can make and the one this paragraph invites by name.
+% WHY THIS NUMBER AND NOT A BENCHMARK. It is published, it is on a real inference at a real scheme
+% size, and it needs nothing re-run. The per-evaluation ratios in the 2026-08-04 comment block below
+% (1.4x to 5x against a least-squares evaluation) stay unprinted: that block records that none of
+% them was re-derived from a primary artifact in this repo, and printing an unverified timing in a
+% paper about the distance between what is reported and what is delivered is the worst available
+% place to be caught.
+% WHAT THE CLAUSE BEFORE IT DOES. "depends on the scheme and the implementation rather than on
+% anything measured here" is the same scope guard the closing section already applies to the cost
+% comparison ("this paper has one model, one implementation and one machine"), so the figure is
+% offered as a scale and not as a benchmark, and it cannot be quoted back as one.
+Where the instrumental noise is large next to the gating variance the cheaper members recover: at $N_{\mathrm{ch}}=10^4$ the closing-rate distortion of the instantaneous recursive filter falls from $1.42$ at $\widetilde{S} = 0.01$ to $1.03$ at $\widetilde{S} = 10$ and $1.00$ at $\widetilde{S} = 100$, and least squares follows the same path about three decades higher in noise. % src: projects/eLife_2025/figures/paper_both/figure_4_distortion.html ("DOES NOISE CURE IT" table, k_off medians by noise and N_ch)
+In that part of the plane the filter's expense is hard to justify on calibration alone. Toward few channels and short intervals the correlation part of the distortion grows, and the degrees-of-freedom count a non-conditioned fit uses is wrong by a factor that no compute saving offsets: at $\widetilde{S} = 0.01$ the integrated autocorrelation of the standardized residual is $9.26$ for least squares and $3.93$ for the open-loop member, against $1.008$ for the boundary-conditioned filter, so the classical fit behaves as though it had about nine times more independent observations than the recording supplies. % src: projects/eLife_2025/figures/paper_both/figure_4_supplement_8.html (residual integral-lag by algorithm and noise, median over N_ch and interval)
 The first moment is a separate charge on the same trade. The instantaneous filter carries a bias in the channel number of $35$ to $40\%$ that does not shrink over four decades of channel count, and no error-bar correction touches it. % src: projects/eLife_2025/figures/paper_both/figure_4_bias.html (R N_ch bias 0.126 / 0.148 / 0.138 / 0.138 in log10, median over 7 intervals, noise 0.1)
 The map states both halves, so a reader can locate a recording on it and see which side of the trade it sits on.
 
@@ -61,13 +149,74 @@ The shape does not hold for every rung, and that is itself the finding: the non-
 The ordering of the boundaries on the map is what an experimenter can act on. There is no region of the measured plane in which the fluctuations still carry information about the unitary current or the channel number and the classical error bar is simultaneously trustworthy; the two boundaries are separated by one to three decades of noise everywhere measured, and the boundary at which the classical interval becomes honest runs with fitted log-log slopes of $1.01$ and $1.03$, so it scales as instrumental noise proportional to channel number. % src: projects/eLife_2025/figures/paper_both/figure_6.html (crossing table and fitted log-log slopes, q = lse, Delta.k_off = 0.1)
 Each of those boundaries is fitted through four measured crossings at one acquisition interval. The map is a concept map, not a phase diagram. Its boundaries are level sets of continuous diagnostics, so a looser criterion moves each of them by up to a decade in noise without changing the layout.
 That scaling was predicted from the mechanism, since the gating variance grows with the channel count while the instrumental variance does not, and it is then measured as a slope. The concession that travels with it is that least squares recovers the rates, with a rate bias at or near zero over the same plane; what it gets wrong is how well it says it recovered them. % src: projects/eLife_2025/figures/paper_both/figure_4_bias.html (LSE k_off bias 0.00891 / 0.000164 / 0 / 0)
-The scope of the comparison travels with it too. The classical arm of the design-plane and map results is the four-parameter configuration of Methods, least squares on the deterministic mean current with the unitary current held fixed; the time-resolved comparison uses the six-parameter configuration, and no least-squares quantity is carried across the two. This paper does not benchmark non-stationary fluctuation analysis, no variance-mean regression is run anywhere in it, and nothing above is a measured comparison against that method.
+The scope of the comparison travels with it too. The classical arm of the design-plane and map results is \texttt{ILSE} in the four-parameter configuration of Methods, least squares on the interval-averaged deterministic mean current with the unitary current held fixed; the time-resolved comparison uses the six-parameter configuration and carries both least-squares arms, and no least-squares quantity is carried across the two configurations. This paper does not benchmark non-stationary fluctuation analysis, no variance-mean regression is run anywhere in it, and nothing above is a measured comparison against that method.
 
 As an algorithm, MacroIR is an integrated-measurement augmented Kalman filter, a device long known in control and target tracking \cite{zadrozny1988gaussian}, and its predictions coincide with that construction to about $10^{-8}$. % src: docs/bibliography/MacroIR_prior_art_map.md (verified 1e-8)
 What is specific here is the realization for an exact continuous-time Markov chain of channel occupancies, its use at the populations simulated in this paper, from $5$ to $10^{4}$ channels, where the single-molecule integrated filters do not reach, and the measurement of what the cheaper members cost. % src: papers/1_method/decisions/recompute/d4_distortion_envelopes.py (N_ch range of the measured grid)
-The device is conceded; the continuous-time realization \cite{moffatt2025bayesian} and the validity map are the contribution, and the recursive lineage they extend is \cite{moffatt2007estimation} and \cite{munch2022bayesian}.
+The device is conceded; the continuous-time realization derived here and the validity map are the contribution, the recursive lineage they extend is \cite{moffatt2007estimation} and \cite{munch2022bayesian}, and the family's first application to macroscopic recordings is \cite{moffatt2025bayesian}.
+% CORRECTED 2026-08-07. The sentence read "the continuous-time realization \cite{moffatt2025bayesian}
+% and the validity map are the contribution", which attributed the realization to that paper. The
+% realization is this manuscript's, in Theory; that paper is the family's first application. The
+% identical repair is at 06_methods.tex, in the IR paragraph. Reason in full there: the abstract and
+% the Introduction now both cite that paper for the ranking result, so a referee will open it, and
+% no sentence here may equate its implementation with the member specified in Theory.
+
+\citet{munch2022bayesian} asked this paper's question of a filter of this family, and answered it by counting: over repeated simulated data sets they recorded how often the true rate matrix falls inside a highest-density credibility volume of a given probability mass, and compared that count against the binomial rate an exact posterior would produce. Their filter holds the rate across masses from zero to $0.95$ where the rate-equation approach does not, and they proposed the exercise as a general way of assessing an algorithm's validity. Three things separate it from what is done here. What their count tests is a posterior, so the prior and the sampler are inside the verdict together with the likelihood, and their own microscopic-reversibility prior is visible in the behaviour of one equilibrium constant; the identities used here are evaluated on the likelihood alone, at parameters that are known, with no prior and no sampler. What their count returns is a probability that a region holds the truth; what is returned here is a matrix, which says by how much and in which parameter the reported uncertainty departs and separates what each interval commits from what accumulates across them. And a coverage rate costs one posterior fit per replicate at every design point, which is what keeps such a study to a line of conditions, while a score and an information evaluated at known parameters cost one pass each, which is what puts $560$ cells within reach.
+On the two axes of this study their filter maps the instantaneous occupancy to the observation rather than conditioning on the ends of an acquisition interval, which places it with the instantaneous recursive member; what it generalizes is the emission, through state-dependent open-channel noise and a second, fluorescence observable, and it is that generalization that costs them the analytical update and obliges a closure at two moments of their own. The window they treat in the other direction, recommending minimal analogue filtering and a higher sampling rate in place of a model of the acquisition kernel, which moves an experiment along the interval axis swept here.
+% ADDED 2026-08-07, and it is the single most requested item of the desk-rejection pass: every
+% outside read predicted that an editor would ask how this differs from the paper eLife already
+% published in this problem class, and the manuscript answered it nowhere.
+% VERIFIED FIRST-HAND 2026-08-07 against docs/bibliography/Munch_2022_Bayesian_Kalman_IonChannels_eLife.pdf.
+% Claim by claim, with where it is checked:
+%   - PLACEMENT. Their Eq. 3 is n_{t+1} = T n_t + omega_t with T = exp(K dt), and their Eq. 4 is
+%     y_t = H n_t + nu_t: the observation is a linear map of the INSTANTANEOUS state, with no
+%     average over the window anywhere in the observation model (p.6, and Figure 2a's graphical
+%     model). The placement with the instantaneous recursive member is exact.
+%   - THE GENERALIZATION IS THE EMISSION. p.2: "Our approach generalizes the work of Moffatt, 2007
+%     by including state-dependent fluctuations such as open-channel noise and Poisson noise in
+%     additional fluorescence data." Both live in O(y_t | n_t). The follow-on sentence is the part
+%     worth having and was not in the earlier draft of this paragraph: "due to the state-dependent
+%     noise the central Bayesian update equation loses its analytical solution. We derived an
+%     approximation which is correct for the first two moments." So their emission generalization
+%     forces a moment closure in their update, which is the same kind of move this paper's two
+%     closures are, in a different place in the algorithm. Saying so is generous and true, and it
+%     is better than a bare contrast.
+%   - THE FILTERING RECOMMENDATION, p.2: "Instead of strong analog filtering of currents to reduce
+%     the noise, but with the inevitable signal distortions (Silberberg and Magleby, 1993), we
+%     suggest to apply the KF with higher analyzing frequency on minimally filtered data." That is
+%     the opposite design decision from this paper's, and it is a move along this study's own
+%     interval axis, which is why the last sentence says only that and stops. DO NOT extend it to
+%     "which is where the instantaneous member is worst": the interval-resolved distortion of R is
+%     not quoted anywhere in this section, and the claim would need a number this paragraph does
+%     not carry.
+% WHAT WAS WRONG IN THE 2026-08-07 FIRST DRAFT OF THIS PARAGRAPH, recorded so it is not rewritten
+% back in. It said their coverage "returns a pass rather than a size" and that the identities here
+% "can be swept over a design plane", implying theirs cannot. Both are false. They sweep a
+% probability mass from 0 to 0.95 and compare the empirical success rate against binomial
+% quantiles (p.16 and their Figure 5c), which is quantitative; and their Figure 9 reports
+% per-parameter HDCIs as functions of N_ch, so they sweep a design axis too. The honest
+% separations are the three now in the text: what is inside the verdict, what the output is, and
+% what each costs. The cost one is the strongest and was missing entirely.
+% WHAT MUST NOT BE ADDED: any claim that their filter was measured on this ladder. It was not, and
+% its generalization lives on an axis this study holds fixed, so putting it on the ladder means
+% reimplementing another group's emission model, which is a different paper. The placement clause
+% closes the question without opening that request.
+
+There is a reason this matters more as the inference improves rather than less. A method that cannot resolve a mechanism cannot mislead anyone about one. When we proposed that P2X$_2$ passes through a flip state before opening, the claim carried a signature that can be pointed to in the record, a delay before current appears, and other groups later confirmed it \cite{moffatthume2007responses}. % BIB: key added to biblio.bib 2026-08-07 for this sentence. biblio_full.bib carries a duplicate of it under moffatt2007responses, identical except for a note field; delete one of the two there.
+The asymmetric activation reported from the same recordings two decades later has no such signature and rests on ratios of evidence between schemes \cite{moffatt2025bayesian}. A conclusion of that kind is a function of the likelihood that produced it, so whatever an approximation gets wrong about the information in a record passes into the mechanism it selects, and the resolution that makes such a conclusion reachable is what makes its calibration worth measuring.
 
 The full distortion matrix is reported, rather than a scalar summary, because it is the input to the next question. Near the maximum the same matrix propagates into the Bayesian evidence through a volume term $\tfrac12\log\det\mathbf{C}$ and an effective-sample rescaling $\alpha^\star=p/\operatorname{tr}\mathbf{C}$, so whether model comparison under an approximate likelihood ranks mechanisms correctly is decided by the object measured here. That correction is derived elsewhere and is stated only as motivation. It is one bridge of a programme that assembles exact simulation, an approximate likelihood and its correction into inference on real recordings \cite{moffatt2025bayesian}.
+The two orderings of the P2X$_2$ comparison cited above were produced by likelihoods that differ in the property measured here, and what this paper supplies is how far the reported information of such a likelihood sits from the information it delivers. Which of those two orderings is right is a further question: it needs the volume and effective-sample terms above and the evidences recomputed, and neither is done here.
+% ADDED 2026-08-07, and it is the sentence that keeps the P2X2 citation honest. The abstract and the
+% Introduction both now say the ranking moved with the approximation. Without this, a reader can
+% take the manuscript to be claiming that the recursive ordering is the right one, which nothing
+% here measures: this paper reports parameter-level calibration, and an evidence ratio needs the two
+% terms named earlier in this paragraph plus a recomputation. Saying so converts an unclaimed
+% implication into a stated boundary, and it is the same boundary 01_introduction.tex states at the
+% end of its P2X2 paragraph. The two must stay consistent.
+% DIRECTION-FREE ON PURPOSE. It says "how far", never "over-counts" or "under-counts". Standing
+% blocker 1 (README.md, and 00_abstract.tex note 1i) is the direction convention, and every claim in
+% the abstract was deliberately written to survive its flipping. This one does too.
 
 % ADDED 2026-08-04. Material from approach.md section 8, worked out with Luciano on 2026-08-03
 % (21:27 to 21:42) and previously homeless. The prose deliberately carries NO numbers: every figure
@@ -138,4 +287,42 @@ here.
 % pattern presented as confirmations, with the last obtained by elimination, invites the reader to
 % discount all of them.
 
-The perimeter of these claims is a model, and it is declared as one. The scheme is two states with the open probability held at $0.5$; the protocol is a single concentration jump; the data are simulated, because a diagnostic that compares what a likelihood delivers against what it reports needs a known truth to mean anything; and the inference is likelihood only, with no prior and no evidence computation. The two-state scheme isolates the closure's own error with no confounding from scheme misspecification, and the fixed open probability means that a channel count and an opening count differ throughout by a factor of two that no measurement in this paper can settle. Richer schemes, the stationary regime, the few-channel boundary, the filtered measurement kernel and experimental data are named companions rather than omissions. The machinery itself is not specific to ion channels: simulate a process exactly, test the score against the simulation, sandwich the Fisher information, read off the distortion. It applies to any approximate likelihood for a process that can be simulated exactly but whose likelihood cannot be written down, which is most of stochastic biophysics.
+The perimeter of these claims is a model, and it is declared as one. The scheme is two states with the open probability held at $0.5$; the protocol is a single concentration jump; the data are simulated, because a diagnostic that compares what a likelihood delivers against what it reports needs a known truth to mean anything; and the inference is likelihood only, with no prior and no evidence computation. The two-state scheme isolates the closure's own error with no confounding from scheme misspecification, and the fixed open probability means that a channel count and an opening count differ throughout by a factor of two that no measurement in this paper can settle. What the channel-number axis carries at $p=0.5$ is the gating variance, so a reader whose receptor sits at another open probability can match it by entering the map at $4Np(1-p)$ in place of the channel count $N$; the substitution is exact for the variance and says nothing about the skewness of the open population, which vanishes at $p=0.5$ and which no cell here probes. Richer schemes, the stationary regime, the few-channel boundary, the filtered measurement kernel and experimental data are named companions rather than omissions.
+Two of those companions a reader need not wait for. The software carries the calibrated member with its score and its Fisher information and the exact simulator, so the two identities can be run on another scheme, at another open probability, by whoever wants the answer for their own model rather than an extrapolation from this one; what it does not carry is least squares, the open-loop member or the recursive member on instantaneous samples, so the comparison between rungs is reproducible only from the engine.
+% ADDED 2026-08-07, two items from the desk-rejection pass, and both answer the objection raised in
+% every outside read of the abstract: two states only, against four to six in the paper eLife
+% already published in this problem class.
+% (1) THE OPEN-PROBABILITY RULE. This paragraph already declared the p = 0.5 scope and left the
+% reader with an ambiguity and no repair. The gating variance of the open population is N p (1-p),
+% which is N/4 at p = 0.5, so matching it gives N_eff = 4 N p (1-p): a receptor with a thousand
+% channels at p = 0.05 enters the map where a hundred and ninety would at p = 0.5, which is a
+% factor of five and not a relabelling. WHY THIS IS NOT A MEASUREMENT AND MUST NOT BE WRITTEN AS
+% ONE: it is a variance match read off the model's own binomial, in the same register this section
+% uses for the noise-model departure, an expectation from a premise. The residual it does not cover
+% is named in the sentence and is the honest half: the binomial skewness goes as (1-2p), so p = 0.5
+% is the one value at which the open population is symmetric, and a low-open-probability receptor
+% has a skewed occupancy that nothing in this sweep touches. That is why the rule is offered and a
+% P_open sweep is still a companion.
+% (2) THE LIBRARY SENTENCE, which note 1c of 00_abstract.tex records as "the only real answer to the
+% two-state objection" and as being nowhere in the manuscript. It is here rather than in the
+% abstract because it is a capability and not a measurement. The second half is not padding: it is
+% scoped exactly to 07_backmatter.tex:5, which says the library implements the boundary-conditioned
+% member, the exact simulator and a Gauss-Newton fit and NOT the other rungs. Claiming a reader can
+% reproduce the ladder would be false and is the failure mode that the abstract's own closer was
+% cut for. The machinery itself is not specific to ion channels: simulate a process exactly, test the score against the simulation, sandwich the Fisher information, read off the distortion. It applies to any approximate likelihood for a process that can be simulated exactly but whose likelihood cannot be written down, which is most of stochastic biophysics.
+% [BESSEL-BOUND] OPEN 2026-08-06. Canonical note at 02_theory.tex; the paragraph that has to
+% decide is the Bessel one above, item 3 of its note.
+% "THE FILTERED MEASUREMENT KERNEL" IS ONE OF FIVE COMPANIONS IN A LIST HERE, and it is the only
+% one of the five whose absence a reader might take as invalidating the paper rather than as
+% narrowing it: the other four are choices about the model, while this one is about whether the
+% observable matches an actual instrument. It currently gets the same weight as the others.
+% IF THE BOUND GOES INTO THE BESSEL PARAGRAPH, this list is where its consequence belongs, in one
+% clause: the filtered kernel is a companion because the residue is small wherever the record is
+% analysed at or below the filter's bandwidth, and it becomes the subject of its own paper
+% precisely where it is not, at windows short against the filter's response, which is the same
+% short-interval corner where the boundary-conditioned member's advantage is largest. That single
+% clause converts a list entry into a motivated programme item and is the cheapest place in the
+% manuscript to say why the filtered member is being built.
+% CROSS-CHECK: papers/_program/decisions.md:178 already treats "a Bessel-filter high-fidelity
+% redo" as a separate piece of work, so the programme layer and this list agree; what neither
+% carries is the criterion that says when the redo is needed.

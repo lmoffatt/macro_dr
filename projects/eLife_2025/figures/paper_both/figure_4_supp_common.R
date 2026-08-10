@@ -4,6 +4,7 @@
 # must stay identical across the three or a reader comparing them is comparing rendering, not data.
 
 suppressMessages({ library(tidyverse); library(patchwork) })
+source("noise_units.R")  # the one definition of S_tilde and of when to convert
 
 ALGOS    <- c("macro_R", "macro_IR")
 ALGO_LAB <- c(macro_R = "R", macro_IR = "IR")
@@ -110,7 +111,11 @@ add_unident <- function(d, smin, smax, kap) d %>%
 # one map block: rows = parameter (outer) then algorithm (inner), columns = N_ch.
 X_BRK <- log10(c(.01, .1, 1))
 # y breaks from the auto-detected NOISES, so the noise-100 row (added when the grid extended) is labelled
-.ydec <- sort(unique(as.numeric(NOISES))); Y_BRK <- log10(.ydec); Y_LAB <- formatC(.ydec, format = "g", digits = 3)
+# Ticks and title in DIMENSIONLESS units (2026-08-06). The stored value is the sweep label,
+# which is ten times S_tilde; joins and file matching keep using it raw and only the display
+# converts, which is the rule in noise_units.R.
+.ydec <- sort(unique(as.numeric(NOISES))); Y_BRK <- log10(.ydec)
+Y_LAB <- formatC(dimensionless_noise(.ydec), format = "g", digits = 3)
 rowfac <- function(d) {
   lv <- as.vector(t(outer(PARAM_ORD, ALGOS,
           function(p, a) sprintf("atop(%s, bold(\"%s\"))", PMATH[p], ALGO_LAB[a]))))
@@ -130,7 +135,7 @@ mapblock <- function(d, zexpr, pal, brk) {
     facet_grid(prow ~ nchf, labeller = label_parsed) +
     scale_x_continuous(breaks = X_BRK, labels = c(".01", ".1", "1")) +
     scale_y_continuous(breaks = Y_BRK, labels = Y_LAB) +
-    labs(x = expression(Delta %.% k[off]), y = "noise") +
+    labs(x = expression(widetilde(Delta) == Delta %.% k[off]), y = "dimensionless instrumental noise") +
     theme_bw(base_size = 8, base_family = "Helvetica") +
     theme(panel.grid.minor = element_blank(), panel.spacing = unit(0.1, "cm"),
           legend.position = "none", axis.text = element_text(size = 6),
@@ -154,7 +159,7 @@ mapblock_byNch <- function(d, zexpr, pal, brk) {
     facet_grid(nchf ~ prow, labeller = label_parsed, scales = "free_y", space = "free_y") +
     scale_x_continuous(breaks = X_BRK, labels = c(".01", ".1", "1")) +
     scale_y_continuous(breaks = Y_BRK, labels = Y_LAB) +
-    labs(x = expression(Delta %.% k[off]), y = "noise") +
+    labs(x = expression(widetilde(Delta) == Delta %.% k[off]), y = "dimensionless instrumental noise") +
     theme_bw(base_size = 8, base_family = "Helvetica") +
     theme(panel.grid.minor = element_blank(), panel.spacing = unit(0.1, "cm"),
           legend.position = "none", axis.text = element_text(size = 6),

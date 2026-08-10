@@ -14,7 +14,7 @@ belongs to the macro paper because it is the question its anchor method answers.
 | | The question | What is at stake | Control variables | Methods |
 |---|---|---|---|---|
 | **macro** | Do you need a likelihood at all, and if so what must it condition on? | the **interval-likelihood closure** (conductance over one interval → Gaussian), plus the prior question of whether the gating signal is above the instrumental noise | N_ch and instrumental noise, **faceted by N_ch**; interval 1 → 0.01 τ | body: `LSE`, `NR`, `R`, `IR`; supplement: `MR`, `VR`, `NMR` |
-| **micro** | Where does the Gaussian occupancy closure break, and where is the exact solver worth its cost? | the **macro closure** (multinomial → Gaussian); degrades at few channels | the **effective fluctuating count** N_ch·p(1−p), not N_ch alone (§5) | `micro_R`, `micro_IR` against macro `R`, `IR` |
+| **micro** | Where does the Gaussian occupancy closure break, and where is the exact solver worth its cost? | the **macro closure** (exact discrete occupancy distribution → Gaussian); degrades at few channels | the **effective fluctuating count** N_ch·p(1−p), not N_ch alone (§5) | `micro_R`, `micro_IR` against macro `R`, `IR` |
 
 **The 1|2 cut was the artificial one.** It separated mid from high N_ch and the single-channel noise
 scale from the fraction-of-total, and both distinctions dissolve once the figures facet by N_ch: at
@@ -93,7 +93,7 @@ few-channel degradation, which one or two annotated cells already supply (§6).
 ## 5. The micro paper's control variable is not N_ch
 
 If low P_open behaves like reduced N_ch (recorded as a planned experiment in the design notes), then
-what decides the multinomial regime is the number of channels that actually fluctuate, of order
+what decides the microscopic regime is the number of channels that actually fluctuate, of order
 **N_ch·p(1−p)**, not N_ch. At the P_open = 0.5 fixed everywhere today the two coincide up to a
 factor and the difference is invisible. The moment the micro paper moves off 0.5 they separate, and
 "the Gaussian breaks below N_ch = X" becomes false as stated, because X depends on P_open.
@@ -111,7 +111,7 @@ N_ch and it needs correcting later.
 
 **The micro attribution anchor for the macro paper already exists:** `micro_IR`, N_ch = 10, nsim = 10000,
 noise 0.1 — the macro paper's floor, its canonical n_sims, its canonical noise. Its job is to attribute IR's
-own low-N_ch degradation: micro_IR keeps the exact multinomial occupancy *and* the interval
+own low-N_ch degradation: micro_IR keeps the exact occupancy distribution *and* the interval
 treatment, so if it is calibrated at 10 channels where macro IR is not, the degradation belongs to
 the occupancy closure and therefore to the micro paper. **One or two annotated cells, not a column** —
 a full micro column re-opens the roster question the split just closed.

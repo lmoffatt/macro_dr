@@ -24,48 +24,55 @@ that each is fixed by three switches on a single set of equations.
 
 All members share the quantities built from the rate matrix $\mathbf{Q}$ and the recording
 filter for a window of length $\Delta$: the transition matrix $\mathbf{P}(\Delta)$; the
-boundary-conditioned single-channel moments $\overline{\Gamma}_{i_0\to i_t}$ and
-$\overline{V}_{i_0\to i_t}$; the start-conditioned mean conductance $\bar{\bm{\gamma}}_0$ of
+boundary-conditioned single-channel moments $\bar{\gamma}_{i\to j}$ and
+$\bar{v}_{i\to j}$; the start-conditioned mean conductance $\bar{\bm{\gamma}}_0$ of
 Eq.~\ref{eq:gammabar}; the start-conditioned interval variance
-$\bm{\sigma}^2_{\bar{\gamma}_0}$; and, for the members that ignore the acquisition
+$\mathbf{w}$; and, for the members that ignore the acquisition
 averaging, the instantaneous per-state conductance vector $\bm{\gamma}$. Two matrices
 collect the boundary weights,
 \begin{equation}
-  G_{i_0 i_t} \;=\; \overline{\Gamma}_{i_0\to i_t}\,P_{i_0\to i_t}(\Delta),
+  G_{i\to j} \;=\; \bar{\gamma}_{i\to j}\,P_{i\to j}(\Delta),
   \qquad
-  H_{i_0 i_t} \;=\; \overline{\Gamma}^2_{i_0\to i_t}\,P_{i_0\to i_t}(\Delta).
+  H_{i\to j} \;=\; \bar{\gamma}^2_{i\to j}\,P_{i\to j}(\Delta).
   \label{eq:GH}
 \end{equation}
 
 \subsection*{The tilde operator}
 
-The tilde is a lift, a modulation and a collapse. An object carried on the $K$ states is
-lifted to the $K^2$ boundary pairs $(i_0,i_t)$, multiplied there by the interval weights
-$\overline{\Gamma}$, $\overline{V}$ and $\mathbf{P}(\Delta)$, and summed back down over the
-pair index. Its two specializations are the ones the likelihood needs. The bilinear tilde is
-the scalar of Eq.~\ref{eq:tilde}, which contracts the boundary covariance twice. The vector
-tilde is the gain,
-\begin{equation}
-  \mathbf{g} \;=\; \widetilde{\bm{\gamma}^\top\bm{\Sigma}}
-  \;=\; \mathbf{P}(\Delta)^\top\bigl(\bm{\Sigma}_0-\mathrm{diag}(\bm{\mu}_0)\bigr)\bar{\bm{\gamma}}_0
-  \;+\; \mathbf{G}^\top\bm{\mu}_0,
-  \label{eq:vector-tilde}
-\end{equation}
-which contracts it once and leaves a $K$-vector, the cross-covariance between the occupancy
-at the end of the window and the interval current. Both are evaluated in $K\times K$
-arithmetic; the $K^2\times K^2$ boundary covariance is never built.
+Over a bold symbol, the tilde marks a contraction taken on the $K^2$ boundary pairs $(i\to j)$
+rather than on the $K$ states. (Over a scalar it means something else, a quantity in the natural
+units of the model, as in $\widetilde{\Delta}$ and $\widetilde{S}$; the two uses are disjoint and
+never meet in one expression.) It is not a new operator: its two cases are the two contractions the update of
+Eq.~\ref{eq:macror} already has, $\bm{\gamma}^\top\bm{\Sigma}\bm{\gamma}$ and
+$\bm{\Sigma}\bm{\gamma}$, evaluated there with the boundary objects substituted. Both are written out in the Theory section, the
+bilinear one as the scalar of Eq.~\ref{eq:tilde} and the vector one as the gain
+$\mathbf{g}_{0\to\Delta}=\widetilde{\bm{\gamma}^\top\bm{\Sigma}}$ of Eq.~\ref{eq:vector-tilde}, and both
+collapse to $K\times K$ arithmetic once the boundary covariance Eq.~\ref{eq:sig-bnd} is
+substituted, so the $K^2\times K^2$ object is never built. The matrices $\mathbf{G}$ and
+$\mathbf{H}$ of Eq.~\ref{eq:GH} are what tells the two apart, one power of $\bar{\gamma}$
+against two.
+% MOVED 2026-08-06. The vector tilde was stated here and only referred to in words in the body,
+% which sent a reader looking for the gain out of the section that introduces it. The equation now
+% lives at 02_theory.tex next to Eq. tilde and keeps the label eq:vector-tilde, so every reference
+% here still resolves; this paragraph points at it rather than restating it, which is already how
+% it treats the bilinear case.
+% AMENDED the same day, with the Theory section's rewrite onto Luciano's own derivation. The
+% paragraph opened "The tilde is a lift, a modulation and a collapse", which promised a piece of
+% apparatus where there is only MacroR's own quadratic form and gain read on the pairs. Saying that
+% plainly costs nothing and removes the reader's suspicion that a K^2 machine is being hidden.
 
 \subsection*{One cycle, three switches}
 
 Every member on the lattice runs the same four steps on each window: propagate the occupancy
 Gaussian (Eqs.~\ref{eq:mu-prop} and~\ref{eq:sig-prop}), predict the observation
-(Eqs.~\ref{eq:ypred} and~\ref{eq:pred-var}), update by the scalar Kalman correction
+(Eqs.~\ref{eq:ypred} and~\ref{eq:pred-var}), condition on the recorded average
 (Eqs.~\ref{eq:mu-post} and~\ref{eq:sig-post}), and either carry the posterior to the next
 window or discard it. Three switches fix which member is being run.
 
-\paragraph{Switch 1: the window, $\mathrm{av}\in\{0,1,2\}$.} It selects the conductance
-object, and with it the second term of the predictive variance and the gain. At
-$\mathrm{av}=0$ the observation is treated as an instantaneous sample taken at the centre of
+\paragraph{Switch 1: the window.} It has three settings, an instant, the state at the
+window's start, and the states at both of its ends, and it selects the conductance object,
+and with it the second term of the predictive variance and the gain. At the instantaneous
+setting the observation is treated as a sample taken at the centre of
 the window: the occupancy is propagated there first, by $\mathbf{P}(\Delta/2)$, the conductance
 is $\bm{\gamma}$, and, with $\bm{\Sigma}$ read in that mid-window frame,
 \begin{equation}
@@ -74,14 +81,14 @@ is $\bm{\gamma}$, and, with $\bm{\Sigma}$ read in that mid-window frame,
   \mathbf{g} \;\to\; \mathbf{P}(\Delta/2)^\top\bm{\Sigma}\,\bm{\gamma}.
   \label{eq:av0}
 \end{equation}
-At $\mathrm{av}=1$ the same two expressions hold with $\bar{\bm{\gamma}}_0$ in place of
-$\bm{\gamma}$ and the full $\mathbf{P}(\Delta)$ in the gain, since the conductance is
+At the start-conditioned setting the same two expressions hold with $\bar{\bm{\gamma}}_0$ in
+place of $\bm{\gamma}$ and the full $\mathbf{P}(\Delta)$ in the gain, since the conductance is
 conditioned on the state at the window's start and the whole window remains to be crossed;
 the contraction is still an ordinary quadratic form on the $K$ states.
 The trailing propagator in the gain is not decoration. It carries the update from the frame in
 which the observation was formed to the frame the next window starts in, which is the end of
-the current window, so it is the remaining half at $\mathrm{av}=0$ and the whole window at
-$\mathrm{av}=1$. Omitting it, or using the full window where half is called for, leaves the
+the current window, so it is the remaining half at the instantaneous setting and the whole
+window at the start-conditioned one. Omitting it, or using the full window where half is called for, leaves the
 rank-one down-date in the wrong frame, and the symptom is specific and was observed: a spike in
 the distortion-induced bias of the recursive instantaneous member at long intervals and large
 channel counts.
@@ -93,10 +100,17 @@ channel counts.
 % Distortion-Induced-Bias spike in macro_R at long intervals / large Num_ch (fixed 2026-05-10)").
 % Found by a replication audit, which noticed the appendix and that file disagree.
 % CHECK BEFORE SUBMISSION: whether Delta/2 is exactly what the code uses, or whether P_half is
-% defined against a different reference point (legacy/qmodel.h:4508-4515). At $\mathrm{av}=2$ the
+% defined against a different reference point (legacy/qmodel.h:4508-4515).
+% FIXED 2026-08-06. The line above used to end "(legacy/qmodel.h:4508-4515). At $\mathrm{av}=2$ the",
+% so the opening of the next body sentence was inside the comment and the printed paragraph ran
+% "... at long intervals and large channel counts. conductance is conditioned on both endpoints".
+% Same failure as the one repaired at 02_theory.tex:82 on the same day, in a different file: a
+% sentence restarted on a commented line. Whenever a comment block is inserted mid-paragraph here,
+% check that its last line carries no body text.
+At the boundary setting the
 conductance is conditioned on both endpoints and the two expressions become the tildes,
-Eq.~\ref{eq:tilde} and Eq.~\ref{eq:vector-tilde}. The step from $\mathrm{av}=1$ to
-$\mathrm{av}=2$ therefore does two things at once: it replaces $\bm{\Sigma}_0$ by
+Eq.~\ref{eq:tilde} and Eq.~\ref{eq:vector-tilde}. The step from the start state to the
+boundary therefore does two things at once: it replaces $\bm{\Sigma}_0$ by
 $\bm{\Sigma}_0-\mathrm{diag}(\bm{\mu}_0)$ and adds the boundary term ($\bm{\mu}_0^\top
 \mathbf{H}\mathbf{1}$ in the variance, $\mathbf{G}^\top\bm{\mu}_0$ in the gain). The
 subtracted diagonal is not a second approximation: the within-channel part it removes is
@@ -110,20 +124,21 @@ above; it changes only what is fed to the next one.
 
 \paragraph{Switch 3: the interval variance, total or residual.} It selects the third term of
 Eq.~\ref{eq:pred-var}, which is present only when the acquisition averaging is modelled at
-all ($\mathrm{av}\ge 1$):
+all, that is at either of the two interval settings of switch~1:
 \begin{equation}
-  \bigl(\bm{\sigma}^2_{\bar{\gamma}_0}\bigr)_{i_0} =
+  \bigl(\mathbf{w}\bigr)_{i} =
   \begin{cases}
-    \sum_{i_t} P_{i_0\to i_t}(\Delta)\bigl[\overline{V}_{i_0\to i_t}
-      + \bigl(\overline{\Gamma}_{i_0\to i_t}-(\bar{\gamma}_0)_{i_0}\bigr)^2\bigr]
+    \sum_{j} P_{i\to j}(\Delta)\bigl[\bar{v}_{i\to j}
+      + \bigl(\bar{\gamma}_{i\to j}-\bar{\gamma}_{i\to\cdot}\bigr)^2\bigr]
       & \text{total,}\\[4pt]
-    \sum_{i_t} P_{i_0\to i_t}(\Delta)\,\overline{V}_{i_0\to i_t}
+    \sum_{j} P_{i\to j}(\Delta)\,\bar{v}_{i\to j}
       & \text{residual.}
   \end{cases}
   \label{eq:variance-form}
 \end{equation}
 The two differ by the spread of the interval mean across end states, which is
-Eq.~\ref{eq:mr-vr}. The switch is free only at $\mathrm{av}=1$. At $\mathrm{av}=2$ the
+Eq.~\ref{eq:mr-vr}. The switch is free only where the window is conditioned on the start
+state alone. With both endpoints conditioned on, the
 residual form is forced whatever the flag says, for the same reason the diagonal is
 subtracted in switch~1: the between-endpoint spread is already carried by the boundary term,
 so the total form would count it twice. % src: legacy/qmodel.h:4557 (averaging==2 || variance_form==residual selects the residual branch)
@@ -134,14 +149,14 @@ so the total form would count it twice. % src: legacy/qmodel.h:4557 (averaging==
 \begin{center}
 \begin{tabularx}{\linewidth}{@{}lccl>{\raggedright\arraybackslash}X@{}}
 \toprule
-Member & $\mathrm{av}$ & recursive & interval variance & what it is \\
+Member & window & recursive & interval variance & what it is \\
 \midrule
-\texttt{NR}  & 0 & no  & --- & instantaneous samples, windows independent \\
-\texttt{R}   & 0 & yes & --- & instantaneous samples, posterior carried forward \\
-\texttt{INR} & 1 & no  & total & \texttt{NR} with the window average restored \\
-\texttt{MR}  & 1 & yes & total & \texttt{R} with the window average restored \\
-\texttt{VR}  & 1 & yes & residual & \texttt{MR} with switch~3 flipped, gain unchanged \\
-\texttt{IR}  & 2 & yes & residual (forced) & \texttt{VR} with the boundary terms restored \\
+\texttt{NR}  & an instant & no  & --- & instantaneous samples, windows independent \\
+\texttt{R}   & an instant & yes & --- & instantaneous samples, posterior carried forward \\
+\texttt{INR} & the start & no  & total & \texttt{NR} with the window average restored \\
+\texttt{MR}  & the start & yes & total & \texttt{R} with the window average restored \\
+\texttt{VR}  & the start & yes & residual & \texttt{MR} with switch~3 flipped, gain unchanged \\
+\texttt{IR}  & both ends & yes & residual (forced) & \texttt{VR} with the boundary terms restored \\
 \bottomrule
 \end{tabularx}
 \captionof{table}{The six members of the lattice as settings of the three switches. Reading down the
@@ -153,35 +168,59 @@ dispatched are in Table~\ref{tab:family}.}
 \end{center}
 
 One consequence of the two switches acting together is worth stating, because it is easy to
-read the table as saying otherwise. \texttt{MR} and \texttt{IR} predict the \emph{same} total
-variance. Expanding the total form of Eq.~\ref{eq:variance-form} and using
-$\sum_{i_t}P_{i_0\to i_t}(\Delta)=1$ and $\sum_{i_t}P_{i_0\to i_t}(\Delta)\overline{\Gamma}_{i_0\to i_t}
-=(\bar{\gamma}_0)_{i_0}$,
+read the table as saying otherwise. Evaluated at the \emph{same} prior, \texttt{MR} and
+\texttt{IR} assign the interval average the same total variance. Expanding the total form of
+Eq.~\ref{eq:variance-form} and using
+$\sum_{j}P_{i\to j}(\Delta)=1$ and $\sum_{j}P_{i\to j}(\Delta)\bar{\gamma}_{i\to j}
+=\bar{\gamma}_{i\to\cdot}$,
 \begin{equation}
-  \bm{\mu}_0^\top\bm{\sigma}^2_{\bar{\gamma}_0}\big|_{\text{total}}
+  \bm{\mu}_0^\top\mathbf{w}\big|_{\text{total}}
   \;=\;
-  \bm{\mu}_0^\top\bm{\sigma}^2_{\bar{\gamma}_0}\big|_{\text{residual}}
+  \bm{\mu}_0^\top\mathbf{w}\big|_{\text{residual}}
   \;+\; \bm{\mu}_0^\top\mathbf{H}\mathbf{1}
   \;-\; \bar{\bm{\gamma}}_0^\top\mathrm{diag}(\bm{\mu}_0)\,\bar{\bm{\gamma}}_0,
   \label{eq:mr-ir-identity}
 \end{equation}
 and the two extra pieces are exactly what switch~1 moves from the third term of
-Eq.~\ref{eq:pred-var} into the second when $\mathrm{av}$ goes from $1$ to $2$. The
+Eq.~\ref{eq:pred-var} into the second when the window goes from the start state to both
+ends. The
 decompositions differ, the sum does not. What does change between the two members is the
-gain, and that is the whole of the \texttt{MR}-to-\texttt{IR} difference.
+gain, and at a common prior that is the whole of the \texttt{MR}-to-\texttt{IR} difference.
+It does not follow that the two report the same variance on a recording. The predicted
+variance divides the gain, so a member's variance sets the state the next window opens with:
+the moment the gains differ the priors differ, and every quantity downstream of the prior,
+the predicted variance included, differs with them. The identity above is between the two
+maps from a prior to a predicted variance, and it is tested only where the two members still
+hold the same prior.
+% ADDED 2026-08-06. The paragraph asserted the identity without saying at what it is evaluated,
+% which reads as a claim about a recording. On the figure-1 dumps MR and IR agree to the last
+% printed digit at every interval where they still share a prior and separate at the first update
+% after that. Source: papers/1_method/figures_build_plan.md:199-220, re-verified against
+% legacy/qmodel.h:4568-4619 on 2026-08-06 (the boundary cross term enters gSg with + and ms with -
+% and cancels; MR's contraction against the full P_Cov supplies exactly the piece the total form
+% subtracts). Numbers are realization-dependent (the illustrative run is seeded with the random
+% sentinel) and stay out of the body.
 
-Two of the six pairs isolate a single algebraic change and are the ones the Results use.
-Stepping \texttt{MR} to \texttt{VR} flips switch~3 and touches nothing else, so it measures
-what the variance form alone is worth. Stepping \texttt{VR} to \texttt{IR} restores the
-boundary terms in both the variance and the gain and leaves the variance form where it
-already was, so it measures what conditioning on the second endpoint alone is worth. The two
-steps together are the \texttt{R}-to-\texttt{IR} gap.
+Two of the six pairs isolate one algebraic change at the point where it is made, and they are
+the ones the Results use. Stepping \texttt{MR} to \texttt{VR} flips switch~3, and stepping
+\texttt{VR} to \texttt{IR} restores the boundary terms in both the variance and the gain
+while leaving the variance form where it already was. Neither step is confined to what it
+flips, and the reason is the same one as above: the predictive variance divides the gain, so
+flipping switch~3 moves the update as well, and the two steps are separable in the algebra
+without being separable in what a recording does with them. The two together are the
+\texttt{R}-to-\texttt{IR} gap.
+% CORRECTED 2026-08-06. This paragraph carried the slogan "MR to VR flips switch 3 and touches
+% nothing else", which papers/1_method/figures_build_plan.md:212, papers/_program/program.md:78,
+% papers/1_method/decisions.md:161 and CONTINUE_HERE.md:88 all retire, in those documents' own
+% words, because the predictive variance divides the gain: VR's smaller variance changes its update
+% immediately and its propagated mean one step later. 05_discussion.tex:104 already states the
+% qualification; this appendix contradicted it.
 
 \subsection*{Least squares, which is off the lattice}
 
 Classical nonlinear least squares has no setting of the three switches. It propagates the
-mean occupancy alone, $\bm{\mu}^{\mathrm{prop}} = \mathbf{P}(\Delta)^\top\bm{\mu}_0$, with no
-covariance and no update, predicts $\bar{y}^{\mathrm{pred}}$ from Eq.~\ref{eq:ypred}, and
+mean occupancy alone, $\bm{\mu}_\Delta = \mathbf{P}(\Delta)^\top\bm{\mu}_0$, with no
+covariance and no update, predicts $\bar{y}^{\mathrm{pred}}_{0\to\Delta}$ from Eq.~\ref{eq:ypred}, and
 assigns one constant variance to every residual, fitted as the residual sum of squares over
 the number of samples. Neither term of Eq.~\ref{eq:pred-var} that depends on the gating
 survives, and there is no gain, so no occupancy object is ever conditioned on the data. It

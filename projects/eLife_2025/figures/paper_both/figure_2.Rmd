@@ -53,7 +53,7 @@ ANCHOR <- "gaussian"
 # grouping and the FILE is the provenance record. Each algorithm resolves to the first directory
 # holding a complete set for it.
 if (ANCHOR == "gaussian") {
-  DATA_DIRS <- c("../data/1f7138b", "../data/1c2ae6f", "../data/0ffbda7", "../data/87889e6")
+  DATA_DIRS <- c("../data/a202e03", "../data/1f7138b", "../data/1c2ae6f", "../data/0ffbda7", "../data/87889e6")
   FILE_PRE <- "figure_3_G_"; BAT_SUF <- "_G"; COMP_PRE <- "Gaussian_"
 } else if (ANCHOR == "numeric") {
   DATA_DIRS <- "../data/433ed13"
@@ -77,11 +77,15 @@ REP_INTERVAL <- 0.1
 # macro_INR, not macro_NMR: the latter is the build that lost the N*ms term between a3e0a89 and
 # 1f7138b and is a different algorithm, not an older spelling (nomenclature.md). 1f7138b leads the
 # search path so the corrected member resolves from the run made for this figure.
-ROSTER   <- c("nonlinearsqr","macro_NR","macro_INR","macro_R","macro_MR","macro_VR","macro_IR")
+# EIGHT columns since 2026-08-06: the un-averaged least-squares arm landed at this cell. The two
+# arms are ONE flag apart (dispatch_figure_3_LSE.sh:144-146): nonlinearsqr is averaging=1 (ILSE) and
+# nonlinearsqr_g is averaging=0 (LSE), family=2 for both. nonlinearsqr_g resolves from a202e03, the
+# commit that corrected the av=0 fold; that correction is av=0 ONLY, so no other column moves.
+ROSTER   <- c("nonlinearsqr_g","nonlinearsqr","macro_NR","macro_INR","macro_R","macro_MR","macro_VR","macro_IR")
 # NMR and INR are two DIFFERENT algorithms, not two spellings: NMR is the build that lost the
 # N*ms term between a3e0a89 and 1f7138b, INR is the corrected one (nomenclature.md). Both keys
 # stay so the readers can tell them apart; the ROSTER above says which one is drawn.
-ALGO_LAB <- c(nonlinearsqr="LSE", macro_NR="NR", macro_NMR="NMR", macro_INR="INR",
+ALGO_LAB <- c(nonlinearsqr_g="LSE", nonlinearsqr="ILSE", macro_NR="NR", macro_NMR="NMR", macro_INR="INR",
               macro_R="R", macro_MR="MR", macro_VR="VR", macro_IR="IR")
 
 PARAM_IDX <- c(on = 0, off = 1, unitary_current = 2, Current_Noise = 3, Num_ch_mean = 5)
@@ -104,7 +108,7 @@ read_skip1 <- function(path) read.csv(path, skip = 1, stringsAsFactors = FALSE)
 # figure_3_LSE_; the macro/Gaussian grid uses FILE_PRE. Per-algo prefix so the LSE column resolves
 # from its own files while NR/R/IR resolve from the Gaussian ones. Its battery still carries the
 # Gaussian_ components and the _G suffix, so COMP_PRE / BAT_SUF are unchanged.
-.pre    <- function(a) if (identical(a, "nonlinearsqr")) "figure_3_LSE_" else FILE_PRE
+.pre    <- function(a) if (startsWith(a, "nonlinearsqr")) "figure_3_LSE_" else FILE_PRE
 .stem   <- function(dir, a) file.path(dir,
   sprintf("%snch_%d_nsim_%d_%s_noise_%s", .pre(a), REP_NCH, REP_NSIM, a, REP_NOISE))
 .needed <- function(stem) paste0(stem, c("_mle_cloud_runs.csv",
@@ -483,12 +487,14 @@ DIET <- theme(panel.spacing.x = unit(6, "pt"), panel.spacing.y = unit(4, "pt"),
               legend.text = element_text(size = PT),
               strip.text = element_text(size = PT, margin = margin(1.2, 1.2, 1.2, 1.2)))
 
-# LSE holds the unitary current and the noise level Fixed AT THE SIMULATED VALUES, so it has no
-# cloud in any pair that involves them: its estimates would sit exactly on a line and the area
-# ratio the panel reports would be 0/0. The cell stays, to keep the columns aligned, and says so.
-NOLSE <- setdiff(ALGOS, "nonlinearsqr")
+# BOTH least-squares arms hold the unitary current and the noise level Fixed AT THE SIMULATED
+# VALUES, so neither has a cloud in any pair that involves them: their estimates would sit exactly
+# on a line and the area ratio the panel reports would be 0/0. The cells stay, to keep the columns
+# aligned, and say so. Four such cells since the av=0 arm joined, two per least-squares column.
+LSE_ARMS <- intersect(c("nonlinearsqr_g", "nonlinearsqr"), ALGOS)
+NOLSE <- setdiff(ALGOS, LSE_ARMS)
 note_cell <- function(px, py, lab) {
-  d <- data.frame(algo = factor(ALGO_LAB["nonlinearsqr"], levels = ALGO_LV),
+  d <- data.frame(algo = factor(unname(ALGO_LAB[LSE_ARMS]), levels = ALGO_LV),
                   x = unname(TRUTH[px]), y = unname(TRUTH[py]))
   geom_text(data = d, aes(x = x, y = y), label = lab, size = PT/.pt, colour = "grey45",
             lineheight = 1.05, inherit.aes = FALSE)

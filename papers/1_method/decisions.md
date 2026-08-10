@@ -63,8 +63,10 @@
     Recursive". It is the control that turns "MR's problem is the gain, not the variance" from algebra
     into measurement, and it fired. **Do not describe it as "MR→VR changes only the variance, VR→IR
     only the gain":** the predictive variance divides the gain, so the variance step moves the update
-    too, and IR's *total* predicted variance is algebraically equal to MR's
-    (`figures_build_plan.md` §F1-2).
+    too, and **at the same prior** IR's *total* predicted variance is algebraically equal to MR's
+    (`figures_build_plan.md` §F1-2). Along a recording it is not: the gains drive the priors apart and
+    MR then runs 69% to 81% above IR (figure-1 dumps, re-verified 2026-08-06). VR is below both from
+    any state.
   - **`INR` is a supplement member, not dropped** (2026-07-29). The old "no literature attribution"
     reason was false: it is `MacroINR` in print. See `../_program/decisions.md` §2.
   - **`NMR` is kept as a named object, second class but real** (Luciano, 2026-07-31): the defective
@@ -105,7 +107,7 @@
   what closes the flank that adding LSE was meant to close, now closed by a stated scope instead
   (`../_program/program.md` §7). Without it the paper reads as living only where IR wins by
   construction.
-- **N_ch 10 … 10⁴.** The floor of 10 is where the multinomial boundary begins, which is why paper 1
+- **N_ch 10 … 10⁴.** The floor of 10 is where the microscopic boundary begins, which is why paper 1
   needs the micro attribution anchor below. The three papers' N_ch ranges are chosen jointly
   (`../_program/program.md` §2, still open).
 

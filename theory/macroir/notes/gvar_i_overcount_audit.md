@@ -1,9 +1,27 @@
 ---
 date: 2026-05-12
-status: finding
+status: resolved-in-code (the published-figures question stays open)
 scope: MacroIR predictive variance, MacroIRT dispatch
-affects: published eLife 2025 figures, current legacy/qmodel.h
+affects: published eLife 2025 figures (historical); legacy/qmodel.h (fixed)
 ---
+
+> **RESOLVED IN THE LIVE KERNEL, 2026-08-06, verified against `legacy/qmodel.h:4587-4613`.** The `ms`
+> lambda in `safely_calculate_Algo_State_recursive` computes the `gvar_i` flavour on the fly from
+> `gsqr_i` / `gtotal_ij` / `gmean_ij` and never reads the `gvar_i` FIELD at all, so neither Qdt
+> dispatch path can move the predictive variance any more; the kernel comment at :4589-4591 points
+> back at this file. Consequence, which is the thing to carry forward: at the same prior `MR` and
+> `IR` now assign the recorded interval the **same** total predictive variance (the boundary term
+> enters `gSg` with a plus and `ms` with a minus and cancels), so the whole `MR`-to-`IR` difference at
+> equal state is the **gain**. Measured on the figure-1 dumps: `MR = IR = 1.048475625791748` while
+> they still share a prior, then `MR` runs +69% to +81% above `IR` once the gains have driven the
+> priors apart; `VR` is below both. Canonical statement and numbers:
+> `papers/1_method/figures_build_plan.md:195-245`.
+>
+> **What is NOT resolved:** whether the 2025 published figures, which ran the defective form, change
+> under the fix. That is the erratum question and it is open elsewhere; nothing below settles it.
+>
+> Everything after this block is the May-2026 diagnosis, kept as the dated record of the finding.
+> `papers/1_method/00_plan.md:143` sends readers here for the *mechanism*, not for the verdict.
 
 # Finding: MacroIR over-counts predictive variance via gvar_i confusion
 
@@ -15,9 +33,11 @@ affects: published eLife 2025 figures, current legacy/qmodel.h
    - **Expected residual conditional variance**: `Σⱼ Pᵢⱼ · gvar_ij = (gtotal_var_ij)·𝟏`
    These differ by `Var_j[gmean_ij | i]` — the variance across end states of
    the boundary-conditioned mean current.
-2. **MacroIR (av=2) double-counts** that variance-of-conditional-mean term:
-   it appears once in the IR tilde scalar `gSg` and again inside `gvar_i`
-   when `gvar_i` is the *total* form (Qdtm-style).
+2. **MacroIR (av=2) double-counted** that variance-of-conditional-mean term
+   whenever `gvar_i` was taken in the *total* form (Qdtm-style): it appeared
+   once in the IR tilde scalar `gSg` and again inside `gvar_i`. (Past tense
+   as of 2026-08-06; the live kernel builds the residual form on the fly and
+   the double count is gone. See the resolution block above.)
 3. **The eLife 2025 paper's MacroIR** uses the *total* form
    (`gsqr_i − gmean_i²`) almost always, so the published figure_2 results are
    subject to this over-count. In ill-conditioned regimes where the eigen
@@ -209,19 +229,25 @@ which numerical path succeeded**. In the submission:
 - **Ill-conditioned regimes** (eigen failed → Taylor fallback):
   Qdt-style residual → MacroIR is correct.
 
-This is a silent regime-dependent change in semantics. The current
-`legacy/qmodel.h` preserves the same two formulas in the same two functions,
-so this inconsistency is still present.
+This is a silent regime-dependent change in semantics. The two formulas still
+sit in the same two functions (`calc_Qdtm_eig` / `calc_Qdt_eig`), but as of
+2026-08-06 the recursive predictive-variance path no longer consumes the
+`gvar_i` FIELD, so neither dispatch path can change the predictive variance
+any more (`legacy/qmodel.h:4587-4613`, and the kernel comment at :4589-4591).
+The ambiguity survives in the field name; the consequence does not.
 
 ---
 
 ## Implications for the eLife 2025 paper
 
-1. **MacroIR's predictive variance is biased upward** by
+1. **MacroIR's predictive variance was biased upward** by
    `N·μ·(Σⱼ Pᵢⱼ · gmean_ij² − gmean_i²)` per interval, in the parameter
    regimes where the eigen path succeeds (which is essentially all of the
    published figures). The bias is a genuine probabilistic miscount, not a
-   numerical artifact.
+   numerical artifact. **Past tense as of 2026-08-06 for the live kernel**,
+   where that term is exactly the one `ms` now subtracts, so `IR`'s total
+   equals `MR`'s at the same prior. It remains present tense for the 2025
+   published figures, which is the open erratum question.
 2. **The size of the bias depends on the model**: the larger
    `Var_j[gmean_ij | i]` is — i.e., the more the conditional-mean current
    spreads across end states — the larger the over-count. For
@@ -291,9 +317,12 @@ of the kernel, with a comment pointing back to this document.
    with a pointer to this note.
 2. **Decide on submission-fidelity vs corrected-results** for any followup
    paper.
-3. **If correcting**: implement `gvar_i_residual` in the av=2 + vc=false
-   branch of `safely_calculate_Algo_State_recursive`
-   ([legacy/qmodel.h:4063](../../../legacy/qmodel.h#L4063)).
+3. ~~**If correcting**~~ **DONE (landed by 2026-07)**: `gvar_i_residual` is
+   implemented in `safely_calculate_Algo_State_recursive`, built on the fly
+   and selected by `averaging::value == 2 || variance_form::value ==
+   variance_residual`
+   ([legacy/qmodel.h:4598-4613](../../../legacy/qmodel.h#L4598-L4613); the old
+   pointer to :4063 is stale).
 4. **Optional, if pursuing IRT seriously**: revert `Macror`
    ([legacy/qmodel.h:4769-4798](../../../legacy/qmodel.h#L4769-L4798)) to
    call `safely_calculate_y_mean_yvar_Pmean_PCov` so the Taylor block

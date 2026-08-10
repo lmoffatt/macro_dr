@@ -98,7 +98,15 @@ ensemble-averaged open-channel contribution:
 MacroIR adds a third term, $\Nch\widetilde{\gamma^{T}\Sigma\gamma}$,
 that captures the boundary cross-correlation between channel state and
 current. MacroMRT \emph{drops} this term --- it is the central structural
-difference between the M and I families. The MRT-vs-IRT comparison is
+difference between the M and I families.
+% CORRECTION 2026-08-06. True of MRT as specified here, FALSE of the production M-family member
+% macro_MR, and this file is read for the latter. macro_MR carries the un-lifted
+% \Nch \bar{\gamma}_0^T \Sigma \bar{\gamma}_0 (legacy/qmodel.h:4568-4585, the gSg term is added for
+% every averaging value), and Eq. V above uses the RESIDUAL \sbar while production MR uses the TOTAL
+% form gsqr_i - gmean_i^2 (qmodel.h:4609-4611). Assembled, the boundary term IR adds to gSg is exactly
+% the one it removes from ms, so at the same prior macro_MR and macro_IR predict the SAME total
+% variance and the structural difference is the GAIN. Canonical:
+% papers/1_method/figures_build_plan.md:195-245. The MRT-vs-IRT comparison is
 designed precisely to attribute the IR gain (if any) to this term and
 the boundary-lifted cross-covariance, holding the σ² Taylor correction
 fixed.

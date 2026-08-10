@@ -1,4 +1,4 @@
-# Paper 3 — the multinomial boundary (stub)
+# Paper 3 — the microscopic boundary (stub)
 
 > Updated: 2026-07-20. A stub, not a folder. It becomes `3_micro/` when it starts drafting.
 > Its place in the program: `program.md` §1. Nothing here is settled unless `decisions.md` says so.
@@ -8,19 +8,20 @@
 **Where does the Gaussian occupancy closure break, and where does the exact solver stop being worth
 its cost?**
 
-This is the macro closure: the multinomial distribution of channel occupancies replaced by a
+This is the macro closure: the exact distribution of channel occupancies (one probability per
+occupancy vector; multinomial only while it is propagated without conditioning) replaced by a
 multivariate Gaussian, valid for large N_ch by the central limit theorem, degrading at few channels.
 Paper 1 owns the *other* closure (the interval likelihood). The two are siblings, one paper each.
 
 ## Roster
 
-`micro_R` and `micro_IR`, against macro `R` and `IR`. The micro members keep the exact multinomial
-occupancy; the comparison isolates the closure.
+`micro_R` and `micro_IR`, against macro `R` and `IR`. The micro members keep the exact occupancy
+distribution, one probability per occupancy vector; the comparison isolates the closure.
 
 ## The control variable is probably not N_ch
 
 If low P_open behaves like reduced N_ch (recorded as a planned experiment in the design notes), then
-what decides the multinomial regime is the number of channels that actually **fluctuate**, of order
+what decides the microscopic regime is the number of channels that actually **fluctuate**, of order
 **N_ch·p(1−p)**, not N_ch. At the P_open = 0.5 fixed everywhere today the two coincide up to a factor
 and the difference is invisible. The moment this paper moves off 0.5 they separate, and the sentence
 "the Gaussian breaks below N_ch = X" becomes false as written, because X depends on P_open.

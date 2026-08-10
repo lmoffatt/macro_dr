@@ -47,6 +47,11 @@ says how the single-channel conductance is treated within an interval.
 | `VR`  | true      | 1   | residual |
 | `IR`  | true      | 2   | residual (+ boundary gain) |
 
+**The last column is the internal conductance-variance form, NOT the predicted observable variance.**
+Reading it as the latter produces the wrong conclusion that `IR` predicts less than `MR`; it predicts
+the same, at the same prior, because the boundary term `IR` restores in `gSg` is exactly the one the
+residual form drops from `ms`. See the qualifier paragraph below.
+
 **`INR` (false, 1, total) is the published `MacroINR`, the Comm Biol 2025 control.** Two readings of
 the `I` are available and **they name the same algorithm**, which is why the bridge needs no
 lawyering. Read compositionally it is **I**nterval (the averaged conductance, `av = 1`) +
@@ -90,10 +95,17 @@ pure correlation distortion, which only recursion removes. Recompute:
 `papers/1_method/decisions/recompute/d3_interval_vs_recursion_2x2.py`; roster consequence: Q-5 in
 `papers/1_method/decisions.md`.
 
-The suffix (`N` / `R`) is the occupancy axis: non-recursive or recursive. The prefix is the
+The suffix (`NR` / `R`) is the occupancy axis: non-recursive or recursive. The prefix is the
 conductance axis: none for the instantaneous conductance, `M` for the mean conductance, `I` for the
 interval-conditioned (boundary) mean conductance, which above the non-recursive base collapses onto
 the mean conductance.
+
+> **CORRECTED 2026-08-06 (Luciano).** This line read "The suffix (`N` / `R`)", which does not parse:
+> `NR` ends in `R`, so the one member the letter is there to mark as non-recursive comes out
+> recursive. The split that works on all six names is `NR` against `R` (`NR`, `INR` end in the first;
+> `R`, `MR`, `VR`, `IR` in the second). Caught while writing the naming rule into the manuscript,
+> where it had never appeared: `02_theory.tex`, the paragraph after the two axis paragraphs, now
+> states this rule in the body, so the two must be kept in step.
 
 **`VR` opens a third axis: the form of the interval variance.** `MR` and `VR` share `(recursive, av) =
 (true, 1)` and differ only in whether the interval variance is the total per-start-state form or the
@@ -117,8 +129,28 @@ forms because only one was ever run; now one does.
 
 Two concrete differences drive the whole ladder:
 
-- `MR → VR` replaces the total variance with the residual variance and changes nothing else.
-- `VR → IR` adds the boundary cross-covariance term N·γᵀΣγ in the **gain** and changes nothing else.
+- `MR → VR` replaces the total variance with the residual variance.
+- `VR → IR` adds the boundary cross-covariance term N·γᵀΣγ, which enters **both** the predictive
+  variance and the **gain**.
+
+**Neither step is confined to what it flips, and "changes nothing else" must not be written of
+either** (2026-08-06; retired in `program.md` §78, `../1_method/decisions.md:161`,
+`../1_method/CONTINUE_HERE.md:88` and `figures_build_plan.md:212`, and now in the manuscript). The
+predictive variance divides the gain, so flipping the variance form moves the update at once. The
+two steps are separable in the algebra without being separable in what a recording does with them.
+
+**And the identity needs its qualifier.** At the SAME PRIOR, `MR` and `IR` assign the interval the
+same total predictive variance: the boundary term enters `gSg` with a plus and `ms` with a minus and
+cancels, and `MR`'s contraction against the full `P_Cov` supplies exactly the `γ̄ᵀdiag(μ)γ̄` the total
+form subtracts. So at equal state the whole `MR`→`IR` difference is the gain. Along a RECORDING they
+do not report the same variance, because the gain makes the priors diverge: on the figure-1 dumps
+`MR = IR = 1.048475625791748` at every interval where they still share a prior, then `MR` runs +69%
+to +81% above `IR`. `VR` is below both from any state, by `μᵀVar_j[gmean_ij|i]` (0.378085 at that
+same interval), so **`VR` is not "`MR`'s mean with `IR`'s variance"**: `IR`'s *total* predicted
+variance is `MR`'s, and the residual form is a component `IR` uses inside a different decomposition.
+Verified 2026-08-06 against `legacy/qmodel.h:4568-4619` term by term, numerically on random fields
+(difference 0.0, structural), and on the dumps; numbers and the fuller statement in
+`../1_method/figures_build_plan.md:195-245`.
 
 `av` literally counts the conditioned endpoints (0 instantaneous, 1 start, 2 boundary); the flag is
 self-documenting. The variance axis is not in `av`, which is why it needs its own letter.
@@ -155,19 +187,61 @@ identifier falls out.
 practical regime" (`decisions.md` §6). The ladder still makes `IR` the top rung, and that structural
 point stands; what is retired is stating a one-band result as a global verdict.
 
+## `ILSE`: the window axis crosses the root question (2026-08-06)
+
+**The least-squares rung splits in two.** The window axis is not the family's property: the recording
+is an interval average, so *any* method predicting it chooses between the mean at an instant and the
+mean over the window, least squares included. `averaging_approximation` is live on the `family = 2`
+branch and is the only flag that separates them.
+
+| Name | av | data key | dump token | mean model |
+|---|---|---|---|---|
+| `LSE`  | 0 | `nonlinearsqr_g` | `..._LSE_av0` | deterministic mean at the sampling instant |
+| `ILSE` | 1 | `nonlinearsqr`   | `..._LSE`     | deterministic mean averaged over the interval |
+
+**THE TOKENS ARE CROSSED.** The file written `..._LSE` is av = 1 and is therefore `ILSE`. Kept that
+way on purpose so nothing already reading it is silently relabelled; the crossing is resolved in
+`figure_1.Rmd` and `figure_3.Rmd` and nowhere else.
+
+**Each arm shares its mean model EXACTLY with the macroscopic member at the same `av`**, and differs
+only in the predictive variance. Measured from the figure-1 dumps 2026-08-06, 12 intervals:
+max|LSE − NR| = 8.882e-16, max|ILSE − INR| = 2.220e-16, max|LSE − ILSE| = 5.469e-02.
+
+**Where each is measured.** `ILSE` is the ONLY least-squares arm on the design grid: zero
+`nonlinearsqr_g` files under `figures/data`, so every plane/map/cloud number the paper quotes as
+"LSE" is `ILSE`. `LSE` proper is measured only at the single cell of figure 3 (both arms produced by
+one run of `figure_3_time.macroir`, git `ccd26f9-dirty`, 2026-08-05) and drawn in figure 1.
+
+**The av = 0 branch was BROKEN before 2026-08-05**: it propagated the occupancy by `P_half` and
+evaluated the mean before advancing, so the member fell half a step further behind every interval.
+Fixed at `legacy/qmodel.h:7490`. Any `LSE_av0` dump predating that is wrong.
+
+**FIGURE LABELS THAT STILL LAG.** These print `LSE` for the av = 1 arm and want `ILSE`:
+`figure_2.Rmd:84`, `figure_4_common.R:35`, `figure_4.Rmd:258`, `figure_6.Rmd`,
+`figure_3_supplement_{1,2,3}.Rmd`. **Hazard**: in the figure-4 family the label string is used as a
+key (the N_ch exclusion in `figure_4_common.R`), so a blind rename can silently un-drop a column that
+must not be drawn. `figure_4_rays.Rmd:83-84` has the crossing BACKWARDS in prose (calls the on-disk
+arm interval-naive); the dispatcher case list is authoritative.
+
+**Count.** The implemented and measured set is now EIGHT (`LSE`, `ILSE`, `NR`, `INR`, `R`, `MR`,
+`VR`, `IR`); figure 3 draws all eight, the grid runs seven. The abstract still says "seven-rung",
+scoped to the sweep — open, see `00_abstract.tex` COUNT OPEN note.
+
 ## The ladder, for the Methods presentation
 
 | Conditioned on | Members | Conductance model |
 |---|---|---|
-| the gating fluctuations are not modelled | `LSE` | the deterministic mean current only |
+| the gating fluctuations are not modelled | `LSE`, `ILSE` | the deterministic mean current only, at the sampling instant (`LSE`) or averaged over the interval (`ILSE`) |
 | no endpoints | `NR`, `R` | instantaneous; the averaging is ignored |
 | one endpoint (the start) | `MR`, `VR` | interval-mean given the initial state (`VR` uses the residual variance) |
 | endpoints not distinguishable | `INR` | interval-mean; with no update the two endpoint columns coincide |
 | two endpoints (the boundary) | `IR` | interval-mean given both boundary states; interior marginalized |
 | the full trajectory | (exact) | intractable; the stochastic simulation supplies it as ground truth |
 
-`IR` is the top rung below intractability. **The body walks `LSE → NR → R → IR`**, a monotone ladder
-of cost; `MR` and `VR` split the R → IR step and live in a supplement (`program.md` §1).
+`IR` is the top rung below intractability. **Superseded 2026-08-06**: the body no longer walks a
+single chain `LSE → NR → R → IR`. Figure 1 walks the 3×2 grid, three levels of the gating description
+crossed with the window setting: `LSE`/`ILSE`, `NR`/`INR`, `R`/`IR`. `MR` and `VR` split the R → IR
+step and live in a supplement (`program.md` §1).
 
 `INR` gets its own row rather than sitting with `MR` and `VR`, because it does not condition on one
 endpoint *by choice*: without a gain the question does not apply to it, which is the degeneracy in the

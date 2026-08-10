@@ -169,7 +169,17 @@ El 16, en un audio de 23 minutos, llega el gráfico que estaba buscando: la cros
 
 El 17, en varias tandas, resuelve cómo traducir la matriz de distorsión en una corrección de la evidencia usando la aproximación de Laplace, y arma la lista de lo que falta calcular: determinantes de las matrices de distorsión, K efectivos, cross-correlación con lag máximo configurable.
 
-### Semana del 20 de abril: la paradoja confirmada
+### Semana del 20 de abril: la paradoja confirmada (RETRACTADA el 10 de mayo)
+
+> **Corrección agregada el 2026-08-07.** Lo que sigue en esta sección es lo que se creyó en
+> abril, y es un artefacto. El 10 de mayo de 2026, dos días después de arreglarse el bug de las
+> matrices simétricas (`b7ad53a`), Luciano lo retracta en un audio de 33 segundos: "ese efecto
+> paradójico era simplemente porque había un error de código, estaba mal de programa. Si yo tengo
+> más resolución temporal, tengo igual o más resolución en el valor de los parámetros". La
+> paradoja se midió con el bug vivo (ventana 2026-01-02 a 2026-05-08). La versión correcta y más
+> fina es la del 11 de julio: más resolución no mejora las constantes cinéticas, pero sí el número
+> de canales y la conductancia. La afirmación paradójica no llegó al manuscrito. Ver
+> [bugs_que_trabaron.md](bugs_que_trabaron.md) §1.
 El 21, en un audio de 14 minutos:
 
 > "Para mi sorpresa absoluta, el error de los parámetros corregido por la covarianza del score me daba constante. Vos tomabas una medición cada un tau o cien, el error es prácticamente el mismo. [...] Es como que hay un mecanismo de compensación perfecto, pero que no pude formular matemáticamente."
@@ -288,7 +298,7 @@ El último audio, con el micrófono abierto por si se le ocurre algo más, deja 
 1. **29 sep 2025.** Sin tokens y sin avanzar, decide que los tests de validez son el paper y manda la refundación del software a segundo plano.
 2. **6 nov 2025.** Se da cuenta de que puede prescindir del MCMC. Eso saca la mitad del contenido planeado y vuelve el trabajo escribible.
 3. **30 dic 2025.** El test del gradiente no distingue MR de IR. La crisis empuja hacia la Fisher Information Matrix y, en enero, hacia la matriz de distorsión.
-4. **21 abr 2026.** La resolución de los parámetros no mejora con el sample rate. Decide publicar lo que no entiende.
+4. ~~**21 abr 2026.** La resolución de los parámetros no mejora con el sample rate. Decide publicar lo que no entiende.~~ **RETRACTADO.** Era un artefacto del bug de las matrices simétricas; lo desmiente él mismo el 10 de mayo de 2026. El giro real de esa fecha es otro: decidir publicar algo que no se entiende, criterio que sobrevive aunque el hallazgo que lo motivó haya sido falso.
 5. **29 abr 2026.** Micro IR da identidad exacta. El diagnóstico queda validado por construcción.
 6. **28 jul 2026.** MacroR no lo usa nadie: hay que comparar contra cuadrados mínimos. Todo se junta en un solo paper y aparece el mapa de regiones de uso.
 

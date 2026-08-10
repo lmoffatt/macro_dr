@@ -1,5 +1,17 @@
 # Figure 2 caption
 
+> **STALE 2026-08-06. Do not quote any number below.** This file describes the retired four-column
+> version (R / MR / VR / IR with an IR correlation corner as panel B). The figure now runs eight
+> columns (both least-squares arms since 2026-08-06) and three parameter pairs, it draws a fourth ellipse (the Fisher one resized to the
+> empirical area) and a third annotated number (the shape ratio), and its numbers have moved.
+> The authoritative caption is the one in
+> `papers/1_method/docs/manuscript-drafts/sections/04_results.tex`, at the `fig:clouds` float.
+> Two claims below are contradicted by measurement: "VR is the most over-confident member of the
+> ladder" (`NR` and `ILSE` are, by an order of magnitude; VR is the most over-confident
+> of the *recursive* members) and "the open circle sitting on the filled circle means the theory
+> predicts that bias" (it holds on k_off only; see
+> `papers/1_method/decisions/recompute/fig2_first_moment.R`).
+
 **Figure 2. Uncertainty calibration and bias along the interval-likelihood ladder.**
 
 Each simulated recording is a patch of N_ch = 100 two-state (closed ⇌ open) channels. From it the four model parameters are estimated by maximum likelihood: the opening and closing rates k_on and k_off, the unitary current i, and the channel number N_ch, all on a base-10 log scale. The estimation is repeated over 10,000 independent recordings under each rung of the recursive ladder: R (Recursive), MR (Mean Recursive), VR (Variance Recursive) and IR (Interval Recursive). The four differ only in what the likelihood conditions the interval-averaged conductance on, so the columns read left to right as one added piece of interval structure at a time. Every panel is centred on the true parameter value, marked by a cross.

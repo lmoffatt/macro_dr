@@ -203,14 +203,156 @@ fA
 
 
 ## ----fB_IR--------------------------------------------------------------------
-fB_IR<-ggplot(d_IR)+
-  geom_segment(aes(x=lag(step_start), xend = lag(step_end), y=lag(P_mean_t10_y1), yend = lag(P_mean_t20_y1), color="Bayes & posterior"), linewidth = 1, alpha=ORIG_ALPHA)+
-  geom_segment(aes(x=lead(step_start), xend = lead(step_end), y=P_mean_t20_y1, yend =lead( P_mean_t11_y0), color="Markov & prior"), linewidth = 1, alpha=1)+
-geom_curve(aes(x=lag(step_middle), xend = step_middle, y=lag(P_mean_t10_y1)/2+ lag(P_mean_t20_y1)/2,
-   yend = lag(P_mean_t20_y1)/2+ P_mean_t11_y0/2, color="Markov & prior"),curvature = 0.6,  angle = 90, ncp=10,linetype = 1, linewidth = 0.5, arrow=markov_arrow)+
-  sem_scale + ylab("P(open)") + common_theme+x_only_ticks + guides(colour="none") + xcommon
+## IR's state is a PAIR of endpoint occupancies plus the covariance between them, not a trajectory
+## across the interval, so it is drawn as two marks tied by a dashed arc and not as a segment: a
+## segment claims a path inside the interval that the algorithm never computes, and a straight tie
+## keeps tracing that path even when dashed, which is why the tie bows.
+## The tie is a quadratic Bezier built in INCHES. The panel box is not square and it changes shape
+## between the 7.0 in body figure and the 5.6 in supplement, so a bow defined in normalised units
+## comes out a different shape in each. Being parametric is what lets the operation arrows land ON the
+## arcs instead of on the chord, a straight line that is not drawn: the Bayes arrow is anchored where
+## each arc crosses the interval midpoint (ir_y_at), exactly, at both of its ends.
+##
+## WHERE THE MARKOV STEP STARTS. At the shared disc, not at the middle of the previous pair: only ONE
+## marginal crosses an interval boundary. The propagation takes the occupancy at t_j and builds the
+## joint over (t_j, t_j+1); the previous interval's start state is marginalised out and does not
+## enter, which is the Markov property. An arrow leaving the middle of the previous arc would claim
+## that the whole pair feeds the step. Where it ENDS is unchanged, the middle of the arc it produces,
+## because what the step delivers is the pair and not either of its endpoints: the right endpoint on
+## its own is one more marginal, and the covariance would be left out of the picture.
+##
+## THE SHARED INSTANT. The right end of the posterior pair of interval j IS the left end of the
+## prior pair of interval j+1: one instant with two roles, which is why a single-coloured mark reads
+## wrong there. It is a disc split down the middle, the left half in the colour of the posterior it
+## closes and the right half in the colour of the prior it opens, the split following the time axis
+## so that left is before and right is after. The alpha convention decides which half is faded (full
+## for the state the panel produces, faded for the one it carries in), so the two halves swap
+## strength between the prior row and the posterior row. Both rows draw the same marks; they differ
+## only in that swap and in the operation arrow.
+##
+## COST: these two panels are the only ones in this file that are NOT window-agnostic. They need the
+## crop and the panel box, so build_figure() computes both and builds them per call instead of
+## building once and cropping.
+IR_N_ARC   <- 61          # odd, so index (n+1)/2 IS t = 0.5
+IR_TIE_LWD <- 0.35        # thinner than the operation arrows (0.5): the tie must not read as one
+IR_TIE_LTY <- "dashed"
+IR_RHO     <- 0.033       # disc radius, inches; ~20% over a size-1.5 point, the only two-role mark
+IR_PT_R    <- 0.027       # radius of a size-1.5 point, inches (0.375 * its fontsize)
+IR_GAP     <- 0.006       # air between an arrowhead or tail and the mark it points at
 
-fB_IR
+# data <-> inches, for one panel box (pw, ph in inches)
+ir_gmap <- function(xr, yr, pw, ph) list(
+  x2i = function(x) (x - xr[1]) / diff(xr) * pw, y2i = function(y) (y - yr[1]) / diff(yr) * ph,
+  i2x = function(u) xr[1] + u / pw * diff(xr),   i2y = function(v) yr[1] + v / ph * diff(yr), ph = ph)
+
+ir_arc <- function(x1, y1, x2, y2, g, n = IR_N_ARC) {
+  u1 <- g$x2i(x1); u2 <- g$x2i(x2); v1 <- g$y2i(y1); v2 <- g$y2i(y2)
+  nu <- -(v2 - v1); nv <- u2 - u1; L <- sqrt(nu^2 + nv^2)      # chord rotated +90 deg, |n| = chord
+  off <- min(0.15 * L, 0.12 * g$ph)                            # apex offset in inches, capped so a
+  cu <- (u1 + u2)/2 + 2*off*nu/L                               # wide panel does not get a balloon
+  cv <- (v1 + v2)/2 + 2*off*nv/L
+  t <- seq(0, 1, length.out = n)
+  data.frame(x = g$i2x((1-t)^2*u1 + 2*t*(1-t)*cu + t^2*u2),
+             y = g$i2y((1-t)^2*v1 + 2*t*(1-t)*cv + t^2*v2))
+}
+ir_ok <- function(dd) which(complete.cases(dd[, c("x1","y1","x2","y2")]))
+
+ir_tie <- function(dd, g, alpha) {
+  i <- ir_ok(dd); if (!length(i)) return(NULL)
+  p <- do.call(rbind, lapply(i, function(k) {
+    a <- ir_arc(dd$x1[k], dd$y1[k], dd$x2[k], dd$y2[k], g); a$id <- k; a$role_ <- dd$role_[k]; a }))
+  geom_path(data = p, aes(x = x, y = y, group = id, colour = role_),
+            linetype = IR_TIE_LTY, linewidth = IR_TIE_LWD, alpha = alpha, na.rm = TRUE)
+}
+ir_mid <- function(dd, g) {                                    # exact arc midpoints, one per pair
+  m <- (IR_N_ARC + 1)/2; out <- data.frame(mx = rep(NA_real_, nrow(dd)), my = rep(NA_real_, nrow(dd)))
+  for (k in ir_ok(dd)) { a <- ir_arc(dd$x1[k], dd$y1[k], dd$x2[k], dd$y2[k], g)
+    out$mx[k] <- a$x[m]; out$my[k] <- a$y[m] }
+  out
+}
+# pull the two ends of a chord in by d1 and d2 INCHES, so an arrow stops short of the marks it runs
+# between instead of emerging from under them
+ir_shrink <- function(x1, y1, x2, y2, g, d1, d2) {
+  u1 <- g$x2i(x1); u2 <- g$x2i(x2); v1 <- g$y2i(y1); v2 <- g$y2i(y2)
+  L <- sqrt((u2 - u1)^2 + (v2 - v1)^2); L[!is.na(L) & L == 0] <- NA
+  fu <- (u2 - u1)/L; fv <- (v2 - v1)/L
+  data.frame(x    = g$i2x(u1 + d1*fu), y    = g$i2y(v1 + d1*fv),
+             xend = g$i2x(u2 - d2*fu), yend = g$i2y(v2 - d2*fv))
+}
+ir_y_at <- function(dd, g, x0) {                               # where an arc crosses a vertical line
+  out <- rep(NA_real_, nrow(dd))
+  for (k in intersect(ir_ok(dd), which(!is.na(x0)))) {
+    a <- ir_arc(dd$x1[k], dd$y1[k], dd$x2[k], dd$y2[k], g, n = 801)
+    out[k] <- a$y[which.min(abs(a$x - x0[k]))] }
+  out
+}
+# Half of the shared-instant disc, as a grob in ABSOLUTE units placed at a data coordinate. Built as
+# a polygon in data space it came out an ellipse, because that needs the true panel box and the
+# estimate below is off by ~15% in aspect; in inches it is round whatever the box turns out to be,
+# and the radius is exact. Only the position is data-driven.
+ir_disc <- function(pts, side, role, g, alpha, n = 28) {
+  pts <- pts[complete.cases(pts), , drop = FALSE]; if (!nrow(pts)) return(NULL)
+  th <- if (side == "left") seq(pi/2, 3*pi/2, length.out = n) else seq(-pi/2, pi/2, length.out = n)
+  gb <- grid::polygonGrob(x = grid::unit(0.5, "npc") + grid::unit(IR_RHO * cos(th), "in"),
+                          y = grid::unit(0.5, "npc") + grid::unit(IR_RHO * sin(th), "in"),
+                          gp = grid::gpar(fill = adjustcolor(SEM[[role]], alpha.f = alpha), col = NA))
+  lapply(seq_len(nrow(pts)), function(i)
+    annotation_custom(gb, xmin = pts$x[i], xmax = pts$x[i], ymin = pts$y[i], ymax = pts$y[i]))
+}
+
+## the state pairs, one per acquisition interval j:
+##   posterior j : (start_j, P_mean_t10_y1_j)     -> (end_j, P_mean_t20_y1_j)
+##   prior     j : (start_j, P_mean_t20_y1_{j-1}) -> (end_j, P_mean_t11_y0_j)
+## so the shared instant is (start_j, P_mean_t20_y1_{j-1}). A posterior's right end is shared with
+## the next prior's left end EXCEPT in the last interval, which has no next prior and keeps a circle.
+ir_pairs <- function(d) {
+  v <- d %>% transmute(xs = step_start, xm = step_middle, xe = step_end,
+                       post_y1 = P_mean_t10_y1, post_y2 = P_mean_t20_y1,
+                       pri_y1  = lag(P_mean_t20_y1), pri_y2 = P_mean_t11_y0)
+  list(v = v,
+       post = with(v, data.frame(x1=xs, y1=post_y1, x2=xe, y2=post_y2, role_="Bayes & posterior")),
+       pri  = with(v, data.frame(x1=xs, y1=pri_y1,  x2=xe, y2=pri_y2,  role_="Markov & prior")),
+       share  = data.frame(x = v$xs, y = v$pri_y1),
+       post_l = data.frame(x = v$xs, y = v$post_y1),
+       pri_r  = data.frame(x = v$xe, y = v$pri_y2),
+       post_r = data.frame(x = v$xe, y = v$post_y2)[is.na(lead(v$pri_y1)), , drop = FALSE])
+}
+IRP <- ir_pairs(d_IR)
+
+## the marks, identical in both state rows; a_post / a_pri carry the produced-vs-carried-in swap
+ir_marks <- function(g, P, a_post, a_pri) c(
+  list(ir_tie(P$post, g, a_post), ir_tie(P$pri, g, a_pri),
+       geom_point(data = P$post_l, aes(x, y, colour = "Bayes & posterior"), alpha = a_post, na.rm = TRUE),
+       geom_point(data = P$post_r, aes(x, y, colour = "Bayes & posterior"), alpha = a_post, na.rm = TRUE),
+       geom_point(data = P$pri_r,  aes(x, y, colour = "Markov & prior"),    alpha = a_pri,  na.rm = TRUE)),
+  ir_disc(P$share, "left",  "Bayes & posterior", g, a_post),   # one layer per disc: annotation_custom
+  ir_disc(P$share, "right", "Markov & prior",    g, a_pri))    # does not vectorise over positions
+
+ir_prior_panel <- function(g, P = IRP) {
+  # ORIGIN at the shared disc, the only thing that crosses the boundary; destination unchanged, the
+  # middle of the arc, because what the step produces is the pair and not either of its ends
+  m <- ir_mid(P$pri, g)
+  ar <- ir_shrink(P$v$xs, P$v$pri_y1, m$mx, m$my, g, IR_RHO + IR_GAP, 0)
+  ggplot() + ir_marks(g, P, ORIG_ALPHA, 1) +
+    geom_curve(data = ar, aes(x = x, y = y, xend = xend, yend = yend, colour = "Markov & prior"),
+               curvature = 0.6, angle = 90, ncp = 10, linewidth = 0.5,
+               arrow = markov_arrow, na.rm = TRUE) +
+    scale_fill_manual(values = SEM, guide = "none") +
+    sem_scale + ylab("P(open)") + common_theme + x_only_ticks + guides(colour="none") + xcommon
+}
+ir_post_panel <- function(g, P = IRP) {
+  x0 <- P$v$xm                                                  # anchored on both arcs at the same
+  ar <- data.frame(x = x0, y = ir_y_at(P$pri, g, x0),           # x, so the update arrow is vertical
+                   xend = x0, yend = ir_y_at(P$post, g, x0))
+  ggplot() + ir_marks(g, P, 1, ORIG_ALPHA) +
+    geom_segment(data = ar, aes(x = x, y = y, xend = xend, yend = yend, colour = "Bayes & posterior"),
+                 linewidth = 0.5, arrow = bayes_arrow, na.rm = TRUE) +
+    scale_fill_manual(values = SEM, guide = "none") +
+    sem_scale + ylab("P(open)") + common_theme + x_only_ticks + guides(colour="none") + xcommon
+}
+
+# registry default, for the whole recording; build_figure() rebuilds both with the real crop and box
+fB_IR <- ir_prior_panel(ir_gmap(XLIM, YP, 1.06, 1.18))
 
 
 ## -----------------------------------------------------------------------------
@@ -228,28 +370,9 @@ fC_IR
 
 ## -----------------------------------------------------------------------------
 
-# Pre-calculate to avoid NA/length errors in the plot call
-plot_data_clean_IR <- d_IR %>%
-  mutate(
-    # Handle the lag NA by replacing or filtering if necessary
-    y_start = lag(P_mean_t20_y1),
-    y_end = P_mean_t11_y0,
-    y_mid_start = (y_start / 2) + (y_end / 2),
-    y_mid_end = (P_mean_t10_y1 / 2) + (P_mean_t20_y1 / 2)
-  ) %>%
-  filter(!is.na(y_start)) # Remove the NA introduced by lag
-fD_IR <- ggplot(plot_data_clean_IR) +
-  geom_segment(aes(x = step_start, xend = step_end, y = y_start, yend = y_end, color = "Markov & prior"),
-               linewidth = 1, alpha = ORIG_ALPHA) +
-  geom_segment(aes(x = step_start, xend = step_end, y = P_mean_t10_y1, yend = P_mean_t20_y1, color = "Bayes & posterior"),
-               linewidth = 1) +
-  geom_curve(aes(x = step_middle, y = y_mid_start,
-                 xend = step_middle, yend = y_mid_end, color = "Bayes & posterior"),
-             linewidth = 0.5, curvature = -0.9,  angle = 180, ncp=10,
-             arrow = bayes_arrow) +
-  sem_scale + common_theme +
-  xlab("time (ms)") + ylab("P(open)") + guides(colour="none") + xcommon+x_only_ticks
-fD_IR
+# Same marks as the prior row with the produced/carried-in strengths swapped (see the block above);
+# registry default only, build_figure() rebuilds it with the real crop and panel box.
+fD_IR <- ir_post_panel(ir_gmap(XLIM, YP, 1.06, 1.18))
 
 
 
@@ -647,6 +770,18 @@ build_figure <- function(sel, outfile, cols, hgt = 7.5, wdt = 7.0) {
   yI <- range(c(-win(d_s)$patch_current, unlist(lapply(dW, .dI))), na.rm = TRUE)
   if (!is.null(sel)) { yP <- pad(yP); yI <- pad(yI) }
 
+  # IR's two state rows are rebuilt HERE and nowhere else: their tie lives in physical space, so it
+  # needs this call's crop AND the panel box. The box is the figure minus the axis furniture, and it
+  # is only an ESTIMATE (measured off a 7.0 x 6.05 in render with six columns: panels came out about
+  # 0.9 x 0.76 in). Nothing breaks if it is off. It sets the proportion of the tie's bow and nothing
+  # else: the arrow anchors are exact whatever the estimate, since the midpoint is computed through
+  # the same map that draws the arc, and the disc is drawn in absolute units.
+  FB <- .FB; FD <- .FD
+  if ("IR" %in% cols) {
+    gIR <- ir_gmap(xlim, yP, (wdt - 1.6) / length(cols), (hgt - 3.0) / 4)
+    FB[["IR"]] <- ir_prior_panel(gIR); FD[["IR"]] <- ir_post_panel(gIR)
+  }
+
   # windowed cumulative logL, re-anchored to 0 at the window start
   lw <- function(df) {
     d <- dplyr::arrange(win(df), step_end)
@@ -689,7 +824,7 @@ build_figure <- function(sel, outfile, cols, hgt = 7.5, wdt = 7.0) {
     guides(colour = guide_legend(override.aes = list(linetype = 1, shape = NA, linewidth = 1.0)))
 
   rowA <- lapply(cols, function(cl) {
-    p <- .FB[[cl]] + chan_P
+    p <- FB[[cl]] + chan_P
     if (cl == first) cell(legendise(p), yP, cl, tag = "A", yl = expression(P[open]), title = "Markov & prior")
     else cell(p, yP, cl)
   })
@@ -699,7 +834,7 @@ build_figure <- function(sel, outfile, cols, hgt = 7.5, wdt = 7.0) {
     else cell(p, yI, cl)
   })
   rowC <- lapply(cols, function(cl) {
-    p <- if (cl %in% .NAIVE) noUpd() else .FD[[cl]] + chan_P
+    p <- if (cl %in% .NAIVE) noUpd() else FD[[cl]] + chan_P
     if (cl == first) cell(p, yP, cl, tag = "C", yl = expression(P[open]), title = "Bayes & posterior")
     else cell(p, yP, cl)
   })

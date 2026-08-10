@@ -43,7 +43,7 @@ For a misspecified approximation, tests 2 and 3 land at different points, and th
 
 Then we accept that we are dealing not with true likelihoods but with approximations, and we ask whether we can find a procedure to improve the approximation. We found such a procedure: an expression for the corrected bias of the MLE parameters and one for their corrected variance. Near the maximum, the same distortion propagates to the Bayesian evidence through two channels, a volume correction ½ log det C and an effective-sample rescaling α⋆ = p / tr C, so the correction is what keeps model comparison valid under an approximate likelihood. (Stated here as motivation; the derivation is deferred to a later program component.)
 
-Now, what is the nature of the main algorithm we are presenting? The algorithm represents the predictive (prior) state of the channel population, the density that assigns a probability to each combination of channel states, by a multivariate Gaussian. That density is exactly multinomial when channels are independent (equivalently, the maximum-entropy closure given only the mean occupancies), and the Gaussian is its large-N limit. The higher moments the closure discards do not vanish; they reappear later as the correlation distortion the diagnostics measure.
+Now, what is the nature of the main algorithm we are presenting? The algorithm represents the predictive (prior) state of the channel population, the density that assigns a probability to each combination of channel states, by a multivariate Gaussian. That density is exactly multinomial only while it is propagated without conditioning (independent channels start multinomial and propagation preserves the family); the first Bayes update takes it out of the family and nothing returns it, so what the Gaussian replaces is a general distribution over occupancy vectors, whose size grows with N_ch while (μ, Σ) does not. The Gaussian is the large-N limit of that distribution. The higher moments the closure discards do not vanish; they reappear later as the correlation distortion the diagnostics measure.
 
 ## 0) Goal in one sentence
 
@@ -66,12 +66,16 @@ validation machinery plus the within-family map it produces, MacroIR's own failu
 **The two-level structure (root question + endpoint ladder) is owned by `../_program/program.md` §1.**
 Paper 1 lives entirely on the lower level, the ladder: it takes as given that gating fluctuations are
 being modelled and asks only what the Gaussian is conditioned on. `VR` splits the MR→IR step of that
-ladder into two, isolating variance from gain (`../_program/decisions.md` §2).
+ladder into two, flipping the variance form first and adding the boundary term second
+(`../_program/decisions.md` §2). The two are separable in the algebra and not in what a recording does
+with them: the predictive variance divides the gain, so the variance step already moves the update.
+Do not write "isolating variance from gain" (retired 2026-08-06 wherever it was copied).
 
 Every method paper 1 studies makes **two Gaussian approximations**:
 
-1. **Macro approximation.** The multinomial distribution of channel occupancies is replaced by a
-   multivariate Gaussian. Valid for large N_ch; degrades for few channels (multinomial regime). **This
+1. **Macro approximation.** The exact distribution of channel occupancies (one probability per
+   occupancy vector; multinomial only while unconditioned) is replaced by a multivariate Gaussian.
+   Valid for large N_ch; degrades for few channels (microscopic regime). **This
    is paper 3's subject, not paper 1's.** Paper 1 meets it only at its N_ch = 10 floor, where the one
    micro anchor cell attributes it (§2, `decisions.md`).
 2. **Interval-likelihood approximation.** The conductance distribution over one measurement interval
@@ -79,7 +83,7 @@ Every method paper 1 studies makes **two Gaussian approximations**:
    distribution. Degrades for intervals much shorter than the relaxation time (telegraphic regime).
    **This is paper 1's subject.**
 
-Three regimes result: multinomial (few channels, paper 3), telegraphic (very short intervals,
+Three regimes result: microscopic (few channels, paper 3), telegraphic (very short intervals,
 paper 1's failure edge), and Gaussian (many channels, moderate intervals, where IR is ideal). Because
 IR is an approximation it must fail somewhere; paper 1 locates that failure and shows it is the
 predicted degradation of the interval closure, not a coding artifact.
@@ -111,7 +115,7 @@ keeps the paper from reading as though it lived only where IR wins by constructi
 
 ### Out of scope (owned by another paper or a later component)
 - `LSE` and `NR` → **paper 2**. `NMR` → dropped from the program. Micro as a subject, and the
-  multinomial boundary → **paper 3**.
+  microscopic boundary → **paper 3**.
 - Band C (instrumental-noise-dominated) → paper 2.
 - More than two states, the stationary regime, experimental data → later components.
 - The posterior information-distortion framework and full model comparison → later; the likelihood-side

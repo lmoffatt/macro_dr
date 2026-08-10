@@ -6,6 +6,35 @@ output: html_document
 ---
 
 <!--
+SIX MEMBERS SINCE 2026-08-06: LSE / ILSE / NR / INR / R / IR, and the first two are a RENAME plus
+an addition, so read this before comparing against any earlier render.
+
+  What every file in this set called LSE is `nonlinearsqr` with averaging_approximation = 1, i.e.
+  least squares on the INTERVAL-AVERAGED mean. On the instantaneous/interval axis that is ILSE,
+  and it is relabelled here accordingly. Nothing about the column changed except the word on its
+  box.
+
+  LSE is now the av = 0 arm, which lands on disk as `nonlinearsqr_g` and reaches the figure from
+  `../data/a202e03`. The one flag between them switches the per-interval mean from P·gmean_i (the
+  interval-mean conductance, INR's and ILSE's mean model) to the bare conductance half an interval
+  in (NR's). So the roster now carries the interval term at all three levels of the ladder:
+  LSE/ILSE without a variance model, NR/INR without the recursion, R/IR with both.
+
+  figure_1.Rmd and figure_3.Rmd made the same correction on 2026-08-05; this is Figure 4 catching
+  up, and figure_4_common.R's DEFAULT label was corrected with it (`nonlinearsqr = "ILSE"`), so
+  the supplements on the four-member roster stop calling the averaged arm LSE. Their roster is
+  untouched: no supplement grows a column.
+
+THE SWEEP IS PARTIAL AND THAT IS VISIBLE, not hidden. Measured 2026-08-06, `nonlinearsqr_g` has
+13 cells with BOTH batteries: noise 0.1 / 1 / 10 at every N_ch, plus 100 at N_ch 10. Three levels
+is exactly MIN_CONTOUR_LEVELS, so the block contours rather than tiling, but it reaches four to
+five decades short of ILSE's staircase and the rest of the column renders grey, which is what
+"not run" should look like. The files are landing in batches (the directory went from 29 to 48
+during the session this was written), and nothing here has to be undone as they do: the grid is
+auto-detected per knit and the source-data stamp counts the input files, so a new run appears on
+the next render with no edit. If a later batch drops below three noise levels for some reason the
+tile branch takes over on its own.
+
 FIVE MEMBERS SINCE 2026-07-31: LSE / NR / INR / R / IR, in cost-ladder order. The four-member
 version of this file is `../archive/figure_4_SUPERSEDED_20260731.Rmd`, with its render beside it;
 before that, the R-vs-IR comparative map of the same name is `figure_4_SUPERSEDED_20260730.Rmd`
@@ -32,11 +61,22 @@ masking the grey20 panel borders and taking the panel width and the panel band:
     members/half   columns   x in/decade   y in/decade   isotropy   cell     page
         3.5          14        0.2067        0.2037       98.6 %   1.50 mm  7.40 x 7.27
         4.5          18        0.1567        0.1527       97.5 %   1.14 mm  7.40 x 5.85
+        5.5          20        0.1375        0.1372       99.8 %   1.00 mm  7.40 x 5.42
 
 There is no arrangement of five members at the old cell size: it would ask 0.0606 x 7 x 18 = 7.64
 in of panels against the 5.64 the page leaves. The four rows stay exactly proportional to the
 noise each N_ch reaches (0.1528 / 0.1529 / 0.1527 / 0.1526 in per decade), so what the promotion
 cost is a point of isotropy, not the row grammar.
+
+THE SIXTH MEMBER COSTS A CELL, and 1.00 mm is where this arrangement runs out. The sixth column
+per half takes 0.0192 in per decade off the x scale, and since the figure is isotropic by
+construction the page shortens with it, 5.85 to 5.42 in. A cell is now exactly one millimetre
+across, which still resolves the seven intervals but leaves no room for a seventh member: at 22
+columns it would be 0.90 mm and the noise structure inside a cell stops being readable before the
+page runs out of height. If a seventh is ever promoted, the arrangement has to change (drop an
+N_ch column, or move a member to a supplement) rather than the cell shrinking again. Nothing here
+constrains the height: the constraint is the isotropy plus the 7.4 in width, and the height
+follows from both.
 
 TWO MEASUREMENTS THAT DISAGREE WITH THE OLD HEADER, and the discrepancy is worth knowing before
 anyone re-solves anything. That header claimed 0.2121 across and 0.2124 down for the four-member
@@ -54,6 +94,16 @@ because the split depends only on the column count and the row spans, and `tmp/m
 puts 0.179 at x 0.1567, y 0.1562, 99.7 per cent. A new column count costs one round of three
 candidates and no data at all. Nothing here is read off the code any more, which is how the
 four-member file carried a wrong scale for weeks.
+
+At 20 columns it is 0.1595, x 0.1375 against y 0.1372, 99.8 per cent, from two rounds of three
+(0.152 / 0.157 / 0.162 -> 94.5 / 98.0 / 101.5, then 0.1595 / 0.160 / 0.1605 -> 99.8 / 100.1 /
+100.5). DO NOT take it from the formula the render prints: that formula puts 0.1595 at 0.1374,
+which happens to be close here and was 5 per cent out at 18 columns. The harness gained a case
+for this figure's own composition on the way, `20body`, with `18body` beside it as a control that
+returns the 0.179 / 99.7 already in this file. The control matters because the earlier grid
+entries all render with `drawn_axis = TRUE` and one inner level per side, and neither is what this
+notebook does: with the axis strip in the x row no block prints tick labels, and without it the
+first block prints them inside the map row, where they take height off the panels.
 
 INR IS ONE NOISE LEVEL SO FAR, and the figure shows that honestly. `../data/1f7138b` holds noise
 0.1 at all four N_ch, both batteries, run at the commit that restored the interval conductance
@@ -73,8 +123,14 @@ NR, was reading the bug.
 
 WHAT THE FIFTH COLUMN IS FOR. NR is the non-recursive path without the interval variance and INR
 is the same path with it, so the pair isolates the interval term from the recursion, and with R
-and IR the four make the 2x2 of (recursion x interval). Measured at noise 0.1, medians over the
-seven intervals, from the cells this file reads:
+and IR the four make the 2x2 of (recursion x interval). The sixth column extends that grid rather
+than adding to it: LSE/ILSE is the same interval contrast one rung further down, where there is no
+variance model at all, so the figure now reads as three pairs on one axis instead of a 2x2 with a
+lone classical baseline beside it. Numbers for the new pair are NOT tabulated here yet — take them
+off the render, since the sweep is still landing and any table written today would be stale by the
+next knit.
+
+Measured at noise 0.1, medians over the seven intervals, from the cells this file reads:
 
                        N_ch:      10       100      1000     10000
     bias in N_ch       NR     +0.0876  +0.0868  +0.0859  +0.0865
@@ -108,11 +164,13 @@ flag it, or to take the subscripts out of the strips.
 
 ROSTER OVERRIDE, and why the default was NOT flipped. `figure_4_common.R` reads FIG4_ALGOS /
 FIG4_ALGO_LAB / FIG4_DATA_DIRS if they exist and falls back to the four-member roster otherwise.
-This figure declares them; the default is left alone deliberately, because every supplement that
-sources the same file (6, 7, 8, 9, 10, 11) would then grow an INR row that has one noise level and
-therefore cannot be contoured, i.e. would render as an empty row until the sweep lands. FLIP THE
-DEFAULT once INR has its staircase, and look at those six then. Until it is flipped the variables
-stay set for the rest of the R session, so knit one notebook per session.
+This figure declares them; the default MEMBER LIST is left alone deliberately, because every
+supplement that sources the same file (6, 7, 8, 9, 10, 11) would then grow rows with too few
+noise levels to contour, i.e. would render as tiles or as empty rows until those sweeps land.
+FLIP THE DEFAULT once INR and LSE both have their staircases, and look at those six then.
+The default LABEL was corrected on 2026-08-06 (`nonlinearsqr` reads ILSE), which changes one word
+on every supplement's box and nothing else. Until the member list is flipped the variables stay
+set for the rest of the R session, so knit one notebook per session.
 
 REPLACES, in order: the four-member figure of this name (2026-07-31,
 `../archive/figure_4_SUPERSEDED_20260731.Rmd`); the R-vs-IR comparative map before it (2026-07-30,
@@ -123,9 +181,10 @@ display item at any scale.
 WHAT IT IS. One figure, two halves, lettered A (bias) and B (distortion). Columns nest three
 deep: moment, then member, then parameter (k_off | N_ch). Rows are the channel count, each row
 given a height proportional to the range of instrumental noise the sweep reaches at that count,
-so a decade of noise is the same physical distance in every row. LSE holds one column per half:
-its unitary current is Fixed, so a channel-number comparison against it is not like for like
-(EXCLUDE_ROWS). The letter sits inside the moment's own label bar, at its left end, so it costs
+so a decade of noise is the same physical distance in every row. BOTH least-squares members hold
+one column per half: they fit with the unitary current Fixed, so a channel-number comparison
+against either is not like for like (EXCLUDE_ROWS, which covers `nonlinearsqr_g` as of
+2026-08-06). The letter sits inside the moment's own label bar, at its left end, so it costs
 no height; the three header bars (moment, member, parameter) stand `BOX_GAP` apart, which is two
 thirds of the gap between members, so the nesting is read down as well as across.
 
@@ -191,6 +250,16 @@ of the three are commensurable and the distortion fill is the odd one out; plott
 would put all three in one unit. Cells past a factor 2 would go from 320 to 235 of 1638, and past
 1.15 from 574 to 463. Luciano's call, and it should be made before the caption is written.
 
+A CUT AT ONE PER CENT, added 2026-08-06. The innermost band used to run 0.971 to 1.03, so
+everything within three per cent of the null was one colour. It now splits at 0.99 / 1.01. The
+count that justifies it is in `figure_4_layout.R` where `SH_FAC` is declared: of the 975 cells
+that band held, 843 sit at exactly 1 because their bootstrap interval brackets it, and the split
+divides the remaining 132 almost evenly, 96 of them R and IR. It costs a little saturation
+everywhere else, since `bandcols` resamples the same ramp over nineteen bands instead of
+seventeen, and it costs two more labels on the bar, which the alternating layout absorbs.
+It changes EVERY figure on this layout that takes the default scale, by construction; those
+renders are stale until they are knitted again.
+
 The bands are declared as FACTORS (`SH_FAC`) and the two validity criteria are members: 1.15 and
 2, mirrored. So the iso-lines run ALONG a colour boundary rather than cutting a band, the bar
 carries 1.15 and 2 as printed labels, and the lines need no legend of their own. Before
@@ -249,15 +318,18 @@ knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 ```
 
 ```{r common, include=FALSE}
-# The roster, declared BEFORE the source so figure_4_common.R picks it up; its defaults are the
-# four-member ones and are untouched. Order is the cost ladder, and INR sits where it belongs:
-# the interval term without the recursion, between the member that has neither and the one that
-# has only the recursion. ../data/1f7138b is appended last, so it only ever supplies files the
-# three frozen dirs do not have, which today is macro_INR and nothing else.
-FIG4_ALGOS     <- c("nonlinearsqr", "macro_NR", "macro_INR", "macro_R", "macro_IR")
-FIG4_ALGO_LAB  <- c(nonlinearsqr = "LSE", macro_NR = "NR", macro_INR = "INR",
-                    macro_R = "R", macro_IR = "IR")
-FIG4_DATA_DIRS <- c("../data/1c2ae6f", "../data/87889e6", "../data/0ffbda7", "../data/1f7138b")
+# The roster, declared BEFORE the source so figure_4_common.R picks it up; only its LABEL for the
+# averaged least-squares arm was corrected there, not its member list. Order is the cost ladder,
+# and the two interval-aware members sit where they belong: ILSE beside LSE and INR beside NR, in
+# each case the interval term added to the level below. The two extra dirs are appended last, so
+# each only ever supplies files the three frozen ones do not have: ../data/1f7138b brings
+# macro_INR and ../data/a202e03 brings nonlinearsqr_g, and neither shadows anything.
+FIG4_ALGOS     <- c("nonlinearsqr_g", "nonlinearsqr", "macro_NR", "macro_INR",
+                    "macro_R", "macro_IR")
+FIG4_ALGO_LAB  <- c(nonlinearsqr_g = "LSE", nonlinearsqr = "ILSE", macro_NR = "NR",
+                    macro_INR = "INR", macro_R = "R", macro_IR = "IR")
+FIG4_DATA_DIRS <- c("../data/1c2ae6f", "../data/87889e6", "../data/0ffbda7", "../data/1f7138b",
+                    "../data/a202e03")
 source("figure_4_common.R")
 ```
 
@@ -282,8 +354,14 @@ SIDES <- list(
        data = dplyr::filter(stat, comp == "total"),  zf = function(x) log10(x$Dconf)))
 ```
 
-```{r render, fig.width = 7.4, fig.height = 5.95}
-# 0.179 nominal, MEASURED: x 0.1567, y 0.1562, 99.7 per cent isotropic, off a synthetic render of
-# this same layout at 18 columns (tmp/calib_fig4.R, tmp/measure_fig4.py). 0.1755 was 97.5.
-fig4_render(SIDES, per_row = 0.179, out = "Figure_4.pdf")
+```{r render, fig.width = 7.4, fig.height = 5.42}
+# 0.1595 nominal, MEASURED: x 0.1375, y 0.1372, 99.8 per cent isotropic, off a synthetic render of
+# this same layout at 20 columns (tmp/calib_fig4.R case "20body", tmp/measure_fig4.py). Two rounds
+# of three candidates: 0.152 / 0.157 / 0.162 gave 94.5 / 98.0 / 101.5, then 0.1595 / 0.160 / 0.1605
+# gave 99.8 / 100.1 / 100.5.
+# The same harness was run at 18 columns as a CONTROL and returned 0.179 -> x 0.1567, y 0.1562,
+# 99.7 per cent, which is exactly what this file carried for the five-member roster. The harness is
+# therefore measuring this figure and not a cousin of it; the 18-column case is kept in
+# tmp/calib_fig4.R for the next time the roster moves.
+fig4_render(SIDES, per_row = 0.1595, out = "Figure_4.pdf")
 ```

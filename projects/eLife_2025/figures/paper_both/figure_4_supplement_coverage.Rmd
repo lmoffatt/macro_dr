@@ -170,7 +170,7 @@ g <- ggplot(CV, aes(dlt, cover, colour = lab, linetype = factor(gs))) +
   scale_colour_manual(values = PAL, name = NULL) +
   scale_linetype_manual(values = c(`10` = "22", `100` = "solid"),
                         name = "recordings\npooled") +
-  labs(x = expression(Delta %.% k[off]),
+  labs(x = expression(widetilde(Delta) == Delta %.% k[off]),
        y = "fraction of fits whose nominal 95% region contains the reference") +
   theme_bw(base_size = 8, base_family = "Helvetica") +
   theme(panel.grid.minor = element_blank(), legend.position = "right",

@@ -41,6 +41,11 @@ dimensionless_noise <- function(label) label * S_TILDE_PER_LABEL
 # (figure_6 does this to put real recording configurations on the map).
 noise_label <- function(S_tilde) S_tilde / S_TILDE_PER_LABEL
 
-# Axis title for a scale drawn in dimensionless units. The tilde is the notation used in
-# NOISE_AXIS_UNITS.md and in the Methods.
-NOISE_AXIS_LAB <- expression(paste("instrumental noise  ", tilde(S), " = S ", k[off], " / ", i^2))
+# Axis titles for scales drawn in dimensionless units. The tilde is the notation used in
+# NOISE_AXIS_UNITS.md and in the Methods, where it has one meaning: the quantity in the natural
+# units of the model, time in tau = 1/k_off and current in the unitary current i. So S_tilde for
+# the noise and Delta_tilde = Delta*k_off for the acquisition interval, which the figures used to
+# spell out as the product.
+NOISE_AXIS_LAB <- expression(paste("instrumental noise  ", widetilde(S), " = S ", k[off], " / ", i^2))
+
+INTERVAL_AXIS_LAB <- expression(widetilde(Delta) == Delta %.% k[off])

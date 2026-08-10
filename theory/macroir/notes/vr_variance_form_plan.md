@@ -6,11 +6,25 @@
 > Paper context: paper 1's mechanism (`papers/1_method/decisions.md`, `[[project_vr_variance_form]]`).
 
 ## 0. What VR is
-`VR` = `MR`'s mean and gain (av=1, start-conditioned, no boundary cross-cov) + `IR`'s **residual**
-predictive variance (instead of `MR`'s total). It differs from MR only in the observation variance,
-from IR only in the mean/gain. Roster step: `R → MR → VR → IR`, where **MR→VR is the variance step**
-and **VR→IR is the gain step**. Paper 1's thesis needs VR to come out **over-confident** (real variance
-removed without the boundary gain); if VR is calibrated, the "MR's problem is the gain" thesis falls.
+`VR` = `MR`'s mean and boundary-free gain (av=1, start-conditioned, no boundary cross-cov), with the
+total per-start-state conductance variance replaced by the **residual** one. Roster step:
+`R → MR → VR → IR`. Paper 1's thesis needs VR to come out **over-confident** (real variance removed
+without the boundary gain); if VR is calibrated, the "MR's problem is the gain" thesis falls. It did
+come out over-confident, and more so than MR (`papers/1_method/decisions.md` §2).
+
+> **CORRECTED 2026-08-06, and this paragraph was wrong in two ways that matter for anyone reading the
+> plan as a spec.** It said `VR` carries "`IR`'s residual predictive variance" and "differs from IR
+> only in the mean/gain", and it called `MR→VR` *the* variance step and `VR→IR` *the* gain step.
+> (i) **`IR`'s total predicted variance is `MR`'s, not `VR`'s.** At the same prior the boundary term
+> enters `gSg` with a plus and `ms` with a minus and cancels, so `MR` and `IR` assign the interval the
+> same variance and `VR` is strictly below both, by `μᵀVar_j[gmean_ij|i]`. The residual form is a
+> component `IR` uses inside a different decomposition, not `IR`'s answer. Measured on the figure-1
+> dumps: `MR` = `IR` = 1.048475625791748, `VR` = 0.378085, at the last interval where the three still
+> share a prior. (ii) **Neither step is confined to what it flips**: the predictive variance divides
+> the gain, so `MR→VR` moves the update at once and `VR→IR` moves both the variance and the gain.
+> That slogan is retired in `papers/_program/nomenclature.md`, `program.md` §78,
+> `papers/1_method/decisions.md:161`, `CONTINUE_HERE.md:88` and now in the manuscript. Full statement
+> and provenance: `papers/1_method/figures_build_plan.md:195-245`.
 
 ## 1. THE LINCHPIN — the residual is already computed on the MR path
 The predictive-variance block runs for **both** av=1 and av=2 (`qmodel.h:4532`,
@@ -54,6 +68,13 @@ Today the `ms` residual-vs-total split keys on `averaging::value == 2` (`qmodel.
 residual *for free* from that test. If you replace that test with `variance_form::value == residual`,
 then **IR must be built with variance_form=residual or it silently reverts to the total variance** — a
 regression in the published algorithm, and the worst kind because it compiles and runs.
+
+> **LANDED, and it took the safe option (verified 2026-08-06).** The live selector is the OR guard,
+> `averaging::value == 2 || variance_form::value == variance_residual`
+> (`legacy/qmodel.h:4600-4601`), so IR keeps the residual form whatever flag it is dispatched with and
+> the regression above cannot happen. `uses_variance_form_aproximation` and
+> `variance_total`/`variance_residual` are at `legacy/qmodel_types.h:101-106`, and `macro_VR` is wired
+> through `dispatch_figure_3_G.sh:200`.
 
 Two ways to write the `ms` selector; pick with eyes open:
 
@@ -140,9 +161,16 @@ variance Fixes. Same `create_parameters` as MR/IR. Only the algorithm flag diffe
 ## 5. Verification ladder
 - **(0) same μ as MR:** VR's predictive MEAN must equal MR's exactly (same av=1 mean path). Diff = 0 at
   fixed θ, one recording. Catches a wrong mean/gain branch.
-- **(1) variance below MR, at/above IR:** VR's predicted `y_var` = MR's minus `N·μ·Var_j[gmean_ij|i]`
+- **(1) variance below MR AND below IR:** VR's predicted `y_var` = MR's minus `N·μ·Var_j[gmean_ij|i]`
   (the residual removes the end-state spread). Check `y_var(VR) < y_var(MR)` per interval, and that
   VR's `y_var` equals IR's `ms` term but with MR's `gSg` (no boundary cross-cov in the mean part).
+  <!-- CORRECTED 2026-08-06: the label read "at/above IR", which is the same retired belief §0 fixed.
+  IR's TOTAL predicted variance equals MR's at the same prior, so VR is strictly below IR too. On the
+  figure-1 dumps, at the last interval where the three share a prior: MR = IR = 1.048475625791748,
+  VR = 0.378085. As written this acceptance check would have failed on the correct implementation. -->
+- **(1b) MR and IR agree, from the same prior:** `y_var(MR) == y_var(IR)` to rounding while the two
+  still share a state. This is the control that says the variance form was flipped and nothing else
+  moved; it fails the moment one of the two gains is wrong.
 - **(2) score/Fisher:** consistent Newton pair, as for the other macro members (no special handling).
 - **(3) the paper's question:** the parameter-space distortion `C = H^{-1/2} J H^{-1/2}`. Prediction:
   VR over-confident (C_ii > 1), MORE than MR if the gain is what MR was implicitly relying on. If
