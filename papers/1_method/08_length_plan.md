@@ -7,24 +7,39 @@ Methods, back matter and appendices all excluded).
 
 ## The target
 
-**8,000 counted words of main text, with 8,500 as the line above which the draft is not accepted.**
+**About 9,200 counted words of main text.** Revised upward from 8,000 on 2026-08-09, after Phase 1
+made the retained Theory measurable rather than estimated. Luciano's call, with the trimming beyond
+it left to him.
 
-8,000 is the 90th percentile of published articles. 7,000 is the 82nd and buys nothing an editor
-distinguishes, while forcing the Discussion below the published median of 1,184, which is where the
-paper's concessions live. Above 8,500 the paper is in the top 8% and needs an argument for it that
-nothing in the manuscript currently makes.
+The original target was 8,000, the 90th percentile of published articles, on a budget that put
+Theory at 1,700. That 1,700 was wrong: it counted the two-axis block and the closure box at their
+compressed targets and forgot everything else in the section. Measured against what Phase 1 actually
+left, the floor is about 2,650: apertura and notation 250, the observable 255, the two closures 490,
+least squares and the two axes 850 which are the vocabulary the Results are written in and cannot
+move, the boundary state 143, the update with the sufficiency concession and the posterior-as-prior
+closure about 400, the top of the ladder 71, and 200 for the new paragraph on how the algorithms
+were derived. The budget below therefore sums to about 9,150.
+
+9,200 is the 95th percentile. Two things make it defensible where 11,000 would not be. Münch
+`e62714`, the article eLife already published in this problem class, runs 11,515 and sits at the
+99.3rd; and this paper carries a Theory section, which almost no article in the survey does, so the
+comparison that matters is against the theory-led shape rather than against the median.
+
+The alternative, taken and rejected: Results to 3,000 and the Discussion to 1,300, both near the
+published median, which lands 8,850. It was rejected because the Discussion is where the paper's
+concessions live, and the rule below says the target moves before a concession does.
 
 Baseline, measured today: **22,727**. That is 2.83× the p90 and 1.97× Münch e62714, the longest
 comparable article in the niche.
 
-| section | now | target | delta |
-|---|---|---|---|
-| Introduction | 2,026 | 1,200 | −826 |
-| Theory | 8,883 | 1,700 | −7,183 |
-| Diagnostics | 2,392 | 700 | −1,692 |
-| Results (prose) | 5,371 | 3,200 | −2,171 |
-| Discussion | 4,055 | 1,400 | −2,655 |
-| **total** | **22,727** | **8,200** | **−14,527** |
+| section | baseline | after phase 1 | target | still to go |
+|---|---|---|---|---|
+| Introduction | 2,026 | 2,026 | 1,200 | −826 |
+| Theory | 8,883 | 3,533 | 3,533 | 0, at its measured floor |
+| Diagnostics | 2,392 | 2,141 | 700 | −1,441 |
+| Results (prose) | 5,371 | 5,371 | 3,200 | −2,171 |
+| Discussion | 4,055 | 4,055 | 1,400 | −2,655 |
+| **total** | **22,727** | **17,126** | **10,033** | **−7,093** |
 
 Published medians for scale: Introduction 873, Results 3,066, Discussion 1,184. Every target above
 sits between the median and the p75 of what eLife prints, except Theory and Diagnostics, which have
@@ -194,7 +209,20 @@ Not length work, but every one of these lives in text that Phases 1 to 3 are rew
 them later means opening the same paragraphs twice.
 
 1. Methods states that the Gaussian and finite-difference Fisher constructions agree; the repo's own
-   measurement says they do not for the least-squares arm. One of the two has to change.
+   measurement says they do not for the least-squares arm. One of the two has to change. LUCIANO'S
+   CALL, and the ground was checked on 2026-08-10 so that the call is informed rather than open.
+   What is NOT wrong, verified against the producer: the anchor claim. `src/core/likelihood.cpp:3462`
+   builds `G_b = mean<Sum<Gaussian_Fisher_Information>>`, the ensemble mean of the per-recording sum,
+   and `figure_4_common.R:103` reads `Probit_statistics_Likelihood_Gaussian_Information_Distortion`
+   off the `battery_pool_G` and `battery_sim_G` families, so every number in the figures really is on
+   the Gaussian anchor. Note in passing that the codebase carries a second object,
+   `Likelihood_Information_Distortion`, anchored on the numerical Fisher instead ("F_b as the H
+   reference, numerical truth, not the cheap Gaussian-formula approximation", same file), and the
+   manuscript uses none of it. What remains wrong is only the sentence in Methods that offers battery
+   `433ed13` as the demonstration that the two constructions target the same information, against a
+   measurement that says they do not for the least-squares arm. Two honest exits: delete the claim
+   and say the battery is retained without being used, or report the disagreement, which makes it a
+   result and touches the least-squares distortion numbers.
 2. "Per interval every member reports its information correctly" is contradicted by its own bound:
    ILSE sits at +0.184 in log₁₀, a factor of 1.53, and MR at −0.229. Scope the sentence to the
    gating-aware members.
@@ -228,5 +256,6 @@ last, against the paper that then exists.
 | 2026-08-09 | baseline | 22,727 | commit 5e9f738. Theory 8,883, Discussion 4,055, Results 5,371, Diagnostics 2,392, Introduction 2,026 |
 | 2026-08-09 | 1, plumbing + move 1 | 21,724 | single master (`elife_paper.tex` at `02_theory_full`), `02_theory.tex` and `elife_paper_full.tex` retired to archives; Appendix 1 created as the derivation and the member spec renumbered to Appendix 2, both labelled, five hard-coded "Appendix~1" strings converted; the linear-filtering frame moved (−1,003). Not yet built. |
 | 2026-08-09 | 1, complete | 17,638 | Diagnostics: the composition identity to Appendix 1, the near-singular anchor convention to Methods (2,392 → 2,141). Methods: the cell manifest, the five reduction stages, the cluster settings and the optimiser schedule to Supplementary File 1, four pointers left behind (5,412 → 5,236). Two items of the plan did NOT execute. The Introduction's ARMA block is reassigned to Phase 3: the Discussion is itself 3× over its own budget so it is the wrong host, and a derivation appendix is the wrong genre for a comparison with the statistics literature. And Figure 5, see the entry below. Appendices hold 6,064 words. |
+| 2026-08-09 | 2, the Theory core | 17,126 | Theory 4,045 → 3,533. Opening and notation box 606 → 369, the observable 365 → 285, the two closures 1,343 → 908, and the new 218-word paragraph on how the algorithms were derived, inserted at the end of the interval update. Every block came in over its target and the three judges were right that the floors are real: the closures block at 490 had dropped the lumpability limitation, the non-factorizing posterior with its citation, the sentence that averaging over the window is itself what brings the law closer to Gaussian (which grep finds nowhere else in the manuscript), the instantaneous member's misspecification statement, and $\Gamma=\mathrm{diag}(\gamma)$, which is defined once and used eight times in Appendix 1. All five restored; the block sits at 908. The tilted semigroup and $\Gamma$ now live in the new paragraph, which is what the appendix's two "above" pointers resolve to. |
 | 2026-08-09 | 1, reverted | | **Figure 5 stays in the body, and the rule that says so is worth writing down.** The move to an appendix was made and undone the same day. It was scored on words and it should have been scored on the programme's own hard rule, that a claim in the abstract is body material: the abstract says the filter departs "toward few channels and low noise, where the Gaussian moment closure on the occupancy is misspecified", and Figure 5 is the figure behind that claim. Two further costs the word count does not see: elife.cls renames a figure inside an appendixbox, so Figure 5 would have been cited as "Appendix 3—figure 1", and a float cannot live in an appendixbox at all, so the move also cost the float. What it bought was 222 counted words, 1.5% of the 14,500 that have to go. The subsection is reassigned to Phase 3, where compressing it to about 150 words saves most of the same and breaks no rule. GENERAL LESSON for the rest of the pass: run every relocation past the abstract before running it past the budget. |
 | 2026-08-09 | 1, the Theory relocation | 17,889 | eight more blocks out of Theory, 3,835 words: the boundary-conditioned moments, the two generalization paragraphs, the three-step construction, the start-conditioned members, what separates them, both members against the exact law, and the verification tolerances to Appendix 1; the scoring equation, the initial condition and the symbol table to Methods. Theory 8,883 → 4,045, Methods 4,986 → 5,281, Appendix 1 at 4,654. Conservation checked: 3,835 out, 3,835 in plus 111 words of new connective text. Deviation from the plan, deliberate: the moment machinery went to the appendix rather than to Methods, which is where it belongs by the plan's own test (it derives γ̄ and v̄ rather than telling anyone what to evaluate) and which keeps Methods at p96 instead of p99. Not yet built. |

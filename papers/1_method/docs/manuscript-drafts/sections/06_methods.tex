@@ -686,9 +686,21 @@ describe only how they were computed.
 % src: papers/1_method/archive/03_metrics_diagnostics.md (diagnostic definitions owned there)
 
 Every diagnostic reported in this paper is anchored on the analytic Gaussian Fisher
-information $\bar G = \sum_t \mathrm{GFI}_t$, summed over intervals. This is the
-anchor the Diagnostics section writes $\mathbf{H}$, that is
-$\mathbf{H} = \bar G = \sum_t \mathrm{GFI}_t$. Its per-interval term is
+information, summed over the intervals of a recording and then averaged over the
+recordings of the ensemble, $\bar G = \mathbb{E}\bigl[\sum_t \mathrm{GFI}_t\bigr]$. This
+is the anchor the Diagnostics section writes $\mathbf{H}$, and the expectation is not
+decoration: for the recursive members the predictive moments of interval $t$ depend on the
+data already seen, so $\sum_t \mathrm{GFI}_t$ is itself a random matrix and the object the
+score covariance is compared against is its ensemble mean, taken over the same recordings
+that supply that covariance. Its per-interval term is
+% CORRECTED 2026-08-10 in the length pass. The sentence read "$\bar G = \sum_t \mathrm{GFI}_t$,
+% summed over intervals", with no expectation, while 03_diagnostics.tex defines the same object with
+% one. For the non-recursive members the two readings coincide and the discrepancy is invisible; for
+% the recursive members, which are what the paper is about, they are different objects.
+% VERIFIED against the producer rather than inferred: src/core/likelihood.cpp:3462 builds
+% G_b = mean<Sum<Gaussian_Fisher_Information>>, the ensemble mean of the per-recording sum, against
+% J = covariance<Sum<dlogL>> on the same ensemble. So Diagnostics was right and this was the
+% incomplete statement of the two.
 \[
   \mathrm{GFI}_t = \frac{(\partial_\theta \bar y_t)(\partial_\theta \bar y_t)^{\mathsf T}}{\sigma_t^2}
   + \frac{(\partial_\theta \sigma_t^2)(\partial_\theta \sigma_t^2)^{\mathsf T}}{2\,\sigma_t^4},
@@ -762,7 +774,14 @@ plot and the quantity the engine consumes differ by a fixed factor. The engine
 parameter is \texttt{Current\_Noise}, a white-noise power spectral density in units of
 $g^2\,\mathrm{s}$, and it reaches the likelihood only through the variance of one
 recorded point, $e_t = \mathrm{Current\_Noise}/\Delta_t$, with no correlation time of
-its own.
+its own. The sweep holds that density fixed and shortens the window, so the variance of
+one recorded point rises as $1/\Delta_t$ and the noise per unit bandwidth is unchanged.
+% MOVED HERE 2026-08-10 from the Introduction's design paragraph, in the length pass. The clause
+% read "held at fixed spectral density so that shortening the interval raises the noise in each
+% sample and leaves the noise per unit bandwidth unchanged", and it is a specification of the
+% sweep, which this section owns. CONSEQUENCE FOR [BESSEL-BOUND]: the Introduction's copy of the
+% clause is gone, so the bench-realisability guard the canonical note wanted to hang on it has
+% only two candidate sites left, here and the Discussion's Bessel paragraph.
 % src: legacy/qmodel.h:3740-3741 (Current_Noise enters only as e = S*fs/n_samp)
 % [BESSEL-BOUND] OPEN 2026-08-06. Canonical note at 02_theory.tex, under the Bessel paragraph.
 % "WITH NO CORRELATION TIME OF ITS OWN" IS THE PREMISE THE FILTER BREAKS, and this is the one

@@ -9,44 +9,38 @@
 % the Supplement is their derivation and the coincidence branches at index level.
 % AMENDED 2026-08-06: this line used to send E_2 and E_3 to Methods and the Supplement, and neither
 % carried them, so the two kernels were nowhere. They are in the body now, at matrix level.
+% COMPRESSED 2026-08-09 (length pass). 606 words -> 338. What went: the two paragraphs of the box
+% that COMMENTED on the convention instead of stating it ("Letters name states and the arrow names
+% the time relation..." and "The arrow says what the object is, not how it was obtained..."); the
+% dual-reading rule for pair-indexed quantities, with it the body's definitions of the entrywise
+% product and the ones vector, since no K^2 object is formed in the body any more and both symbols
+% are defined where they are used (08_appendix_derivation.tex, at the spectral kernels and at
+% Eq. tilde, and 06_methods.tex before the dictionary table); the binomial count of occupancy
+% vectors; and the closing "The rest of this section unpacks that sentence". Kept whole: the two-
+% state scope, both obstructions and their asymmetry (cost vs no closed form), and the availability
+% of the low-order moments. Added: "of duration $\Delta$" and "from state $i$ to state $j$", four
+% words each, because the cut paragraph was where the reader learned that the letters name states,
+% and $\Delta$ is not defined until the next subsection.
 
-A macroscopic current is the summed signal of a population of ion channels, each of
-which behaves as an independent continuous-time Markov chain over a small set of
-conformational states. We write $N_{\mathrm{ch}}$ for the number of channels and $K$ for
-the number of kinetic states of one channel ($K=2$ throughout this paper, carried % src: papers/_program/program.md §7 (model scope: two states)
-symbolically where it costs nothing). Each channel is governed by a generator (rate)
-matrix $\mathbf{Q}\in\mathbb{R}^{K\times K}$, whose transition matrix over an elapsed time
-$t$ is the row-stochastic $\mathbf{P}(t)=e^{\mathbf{Q}t}$ with entries $P_{i\to j}(t)$. A
-channel in state $k$ carries a conductance $\gamma_k$, and we collect these in the vector
+A macroscopic current is the summed signal of a population of ion channels, each an
+independent continuous-time Markov chain over a few conformational states. $N_{\mathrm{ch}}$
+is the number of channels and $K$ the number of kinetic states of one channel ($K=2$ % src: papers/_program/program.md §7 (model scope: two states)
+throughout this paper, carried symbolically). Each channel has a generator (rate) matrix
+$\mathbf{Q}\in\mathbb{R}^{K\times K}$, hence the row-stochastic transition matrix
+$\mathbf{P}(t)=e^{\mathbf{Q}t}$ over an elapsed time $t$, with entries $P_{i\to j}(t)$ from
+state $i$ to state $j$, and a conductance $\gamma_k$ in state $k$, collected in
 $\bm{\gamma}\in\mathbb{R}^{K}$.
 
 \begin{tcolorbox}[title={Three marks, and each one says one thing}, colback=gray!5, colframe=gray!55]
-\textbf{An arrow means the object spans the acquisition window.} $P_{i\to j}(\Delta)$ is a
-transition across it, $\bar\gamma_{i\to j}$ an average over it, $\bar y_{0\to\Delta}$ a recorded
-value formed from it. \textbf{No arrow means the object lives at one instant}: $\bm{\mu}_0$ and
-$\bm{\Sigma}_0$ are the occupancy mean and covariance where the window opens, $\bm{\mu}_\Delta$ and
-$\bm{\Sigma}_\Delta$ where it closes. \textbf{A dot in a slot means that end has been collapsed}, as
-in $\bar\gamma_{i\to\cdot}$. For a quantity conditioned on the pair the dot denotes the
-$P$-weighted collapse, $a_{i\to\cdot}:=\sum_j P_{i\to j}(\Delta)\,a_{i\to j}
-=\mathbb{E}[a\mid X_0=i]$, so a collapsed object is defined the moment its pair-resolved version is.
-For a probability the weight is already inside and the collapse is the plain margin.
-
-Letters name states and the arrow names the time relation. Collapsing one end does not remove the
-arrow, because the object still spans: $\bar\gamma_{i\to\cdot}$ is an average over the window
-conditioned on one of its ends, not a quantity at an instant.
-
-\smallskip
-\textbf{The arrow says what the object is, not how it was obtained.} $\bm{\Sigma}_\Delta$ carries
-no arrow even though a propagator was used to reach it, because it is the covariance of the
-occupancy at one time with itself.
-
-\smallskip
-A quantity indexed by pairs is written once and read according to the operator it meets, as a
-$K\times K$ matrix under an entrywise product and as a vector of length $K^2$ under a contraction
-against $\bm{\Sigma}_{0\to\Delta}$, the two being the same array. Throughout, $\circ$ is the
-entrywise product and $\mathbf{1}$ the vector of ones. Where a whole recording is in view rather
-than one window, a subscript $t$ indexes the window, as in $\bar y_t$; inside a window the two ends
-are $0$ and $\Delta$.
+\textbf{An arrow means the object spans the acquisition window}, of duration $\Delta$:
+$P_{i\to j}(\Delta)$ is a transition across it, $\bar\gamma_{i\to j}$ an average over it,
+$\bar y_{0\to\Delta}$ a recorded value formed from it. \textbf{No arrow means one instant}:
+$\bm{\mu}_0,\bm{\Sigma}_0$ are the occupancy mean and covariance where the window opens,
+$\bm{\mu}_\Delta,\bm{\Sigma}_\Delta$ where it closes. \textbf{A dot marks a collapsed end}:
+$a_{i\to\cdot}:=\sum_j P_{i\to j}(\Delta)\,a_{i\to j}=\mathbb{E}[a\mid X_0=i]$, as in
+$\bar\gamma_{i\to\cdot}$; for a probability the weight is already inside and the collapse is the
+plain margin. Across a recording a subscript $t$ indexes the window, as in $\bar y_t$; inside a window the two
+ends are $0$ and $\Delta$, and a collapsed object is defined the moment its pair-resolved version is.
 \end{tcolorbox}
 % NOTATION, aligned 2026-08-09 with the published form. The supplementary information of
 % moffatt2025bayesian, section S1.3, writes P_{i->j}(t), gamma_{i->j}(t), gamma_0 = (E[gamma_{i->.}])_i,
@@ -65,22 +59,18 @@ are $0$ and $\Delta$.
 % (iii) the SI's E_i for the collapsed second moment is not used: E_2 and E_3 are the divided
 %       differences here, and a third E would collide.
 
-The likelihood we need is the probability of a recorded sample given the kinetic
-parameters and the data seen so far. Writing it exactly calls for two separate objects. The
-first is a microscopic description of the population, one that keeps each channel as a
-discrete entity and carries the state of the ensemble as an integer occupancy vector. That
-description is explicit, and the recursion over it is the microscopic filter of
-\citet{moffatt2007estimation}, but the number of occupancy vectors is
-$\binom{N_{\mathrm{ch}}+K-1}{K-1}$, which is $N_{\mathrm{ch}}+1$ at $K=2$, and every sample
-costs the square of that, which puts it out of reach at the channel counts of a macroscopic
-recording. The second is the law of the
-conductance averaged over the acquisition window, conditional on that description, and this
-one has no closed expression at any channel count, although its low-order moments do. The
-two obstructions are of different kinds: the first is cost, the second is that the object
-is not available in closed form at all. Every likelihood that runs at macroscopic channel
-counts replaces both objects with Gaussians, and the members of the family studied here
-differ in which object the second Gaussian describes, in what each is conditioned on and in
-how its variance is accounted. The rest of this section unpacks that sentence.
+Writing the likelihood of a recorded sample exactly, given the kinetic parameters and the
+data so far, calls for two separate objects. The first is a microscopic description that
+keeps each channel discrete, the ensemble an integer occupancy vector; it is explicit, and
+the recursion over it is the microscopic filter of \citet{moffatt2007estimation}, but each
+sample costs the square of the number of occupancy vectors and is out of reach at
+macroscopic channel counts. The second is the law of the conductance averaged over the
+acquisition window given that description, which has no closed expression at any channel
+count, although its low-order moments do. The two obstructions differ in kind, cost for the
+first and no closed form at all for the second. Every likelihood that runs at these channel
+counts replaces both objects with Gaussians, and the members of the family studied here differ in which
+object the second Gaussian describes, what each is conditioned on and how its variance is
+accounted.
 % CORRECTED 2026-08-06. The paragraph read "Its exact form would require the distribution of
 % the interval-averaged conductance of the whole population, which has no closed expression",
 % which names one of the two obstructions and attributes the whole intractability to it. The
@@ -107,21 +97,16 @@ to the instantaneous current and the distinction is negligible; when $\Delta$ is
 to or longer than that relaxation the two diverge, and a likelihood built on instantaneous
 sampling describes the wrong random variable.
 
-Uniform weighting is a first approximation to what the electronics do. The analogue stage of a
-patch-clamp amplifier is normally a Bessel low-pass, chosen because its group delay is nearly
-flat and its step response barely overshoots, so the effective measurement kernel is that
-filter's impulse response, a smooth shape whose tails reach into the neighbouring intervals.
-The uniform window keeps the entire kernel inside one acquisition interval, which is what lets a
-likelihood conditioned on the two ends of that interval account for the averaging without
-reference to anything outside it. A Bessel kernel breaks that containment twice over: it
-correlates successive recorded values through the signal, and it colours the instrumental noise
-that Eq.~\ref{eq:obs-avg} takes to be white. We keep the uniform window throughout, in the
-simulator as well as in every likelihood (Methods), so that data and likelihood describe the same
-observable and the closures below are the approximation the diagnostic sees. The uniform window is
-itself an approximation to the impulse response of the anti-aliasing filter of a real recording, and
-the Discussion prices it; it does not enter the measurement here because the simulator and every
-member share it. Carrying a general kernel, with the coloured noise that comes with it, through
-the same construction is left to later work.
+Uniform weighting is a first approximation to what the electronics do. The effective measurement
+kernel is the impulse response of the amplifier's analogue Bessel low-pass, whose tails reach into
+the neighbouring intervals; the uniform window instead keeps the whole kernel inside one
+acquisition interval, which is what lets a likelihood conditioned on the two ends account for the
+averaging. A Bessel kernel also correlates successive recorded values through the signal and colours the noise that
+Eq.~\ref{eq:obs-avg} takes to be white. The simulator and every member share the uniform window
+(Methods), so data and likelihood describe the same observable and the window does not enter the
+measurement here; the closures below are the approximation the diagnostic sees. The Discussion
+prices the window, and carrying a general kernel through the same construction is left to later
+work.
 % CORRECTED 2026-08-04. The clause read "the closures below are the ONLY approximation under test",
 % which is a rule-4 universal and is contradicted by 05_discussion.tex, where the uniform window
 % against a Bessel kernel is conceded as a second approximation adopted knowingly. What keeps that
@@ -130,6 +115,15 @@ the same construction is left to later work.
 % ended the commented line and the next two lines carried no %, so they typeset as body text and
 % the paragraph closed with the fragment "member share it. kernel, with the coloured noise ...".
 % The sentence is restored whole as body text, which is what it reads as.
+% COMPRESSED 2026-08-09 (length pass). Gone from this paragraph: the reason a Bessel filter is the
+% one chosen (flat group delay, small step overshoot), which no later sentence uses; and the
+% duplicate concession "The uniform window is itself an approximation to the impulse response of
+% the anti-aliasing filter", which restated the paragraph's own opening sentence. All three parts
+% of the caveat are still here and in this order: the uniform window approximates the amplifier's
+% kernel; simulator and every member share it, so it is out of the measurement; a general kernel,
+% with its coloured noise, is later work. The "last two sentences of the paragraph above" that
+% [BESSEL-BOUND] below offers to replace are now the one beginning "The simulator and every member"
+% and the one beginning "The Discussion prices".
 %
 % =========================================================================================
 % [BESSEL-BOUND] OPEN 2026-08-06. THIS IS THE CANONICAL NOTE; eight other sites carry pointers
@@ -223,110 +217,83 @@ the same construction is left to later work.
 % 02_theory.tex:61 already calls describing the wrong random variable, and it compounds because
 % averaging is the operation that makes the law more Gaussian. Line 34 was adjusted in step ("which
 % object the second Gaussian describes").
+% COMPRESSED 2026-08-09, length pass. What left this subsection: the etymology of "closure" and the
+% fixed-dimension argument (both restated in the box's occupancy entry), the two "What is closed"
+% entries of the box, the lumpability and population-convolution excursus, and the tilted-semigroup
+% MGF sentence, which travels with Appendix 1. No claim, caveat or concession was dropped; the
+% instantaneous-member point the note above protects is now carried by the opening paragraph alone,
+% which is the only place it is stated, so it must not be cut from there.
 
-Two closures are available, on two different objects. Every member of the family makes the
-first, and every member ends up with a Gaussian for the recorded sample; what separates
-them is whether that Gaussian costs a second approximation. It does not for a member that
-predicts the current at an instant, because the instantaneous population current is
-$\bm{\gamma}$ contracted against the occupancy vector at that instant, a linear function of
-it, and the linear image of a Gaussian is Gaussian. It does for a member that predicts the interval
-average, which is a functional of the path taken inside the window and not a function of
-the occupancies at any one time. To close a
-distribution is to replace it, at that step, by the Gaussian with the same mean and
-covariance, discarding every higher moment. The word is borrowed from moment hierarchies,
-where that substitution lets a finite set of equations stand for an infinite one, and it
-fits here for the same reason: conditioning the occupancies on an observation takes them
-out of the multinomial family, and the conditional distribution after $t$ samples belongs
-to no fixed-dimensional family that survives both propagation and conditioning, so carrying
-it exactly means carrying one probability per occupancy vector, a count that grows with
-$N_{\mathrm{ch}}$, whereas $(\bm{\mu},\bm{\Sigma})$ is the same size at every step and at
-every channel count. Matching moments at each step is not the same as keeping them true
-across a recording: the update a closure licenses is itself approximate, so the pair carried
-forward drifts from the pair the exact filter would carry.
+To close a distribution is to replace it at that step by the Gaussian with the same mean and
+covariance, discarding every higher moment. Two closures are available, on two objects. Every member of the family makes the first, and every member ends up with a Gaussian for the
+recorded sample; what separates them is whether that Gaussian costs a second approximation. A member predicting the current at an instant does not need
+it: that current is $\bm{\gamma}$ contracted against the occupancies at one time, and the linear
+image of a Gaussian is Gaussian. A member predicting the interval average does, since the average
+is a functional of the path inside the window rather than of the occupancies at any one time. What
+an instantaneous member drops is the evolution of the channels inside the window, one snapshot
+standing in for the average the recording holds, which misspecifies the random variable rather than
+closing it, and the substitution runs in the unhelpful direction, since averaging over the window is
+itself what brings the law closer to Gaussian.
+Matching moments at each step does not keep them true across a recording: the update a closure
+licenses is itself approximate, so the carried pair drifts from the exact one.
 
 \begin{tcolorbox}[title={The two Gaussian approximations}, colback=gray!5, colframe=gray!55]
 \textbf{Occupancy closure.}
-\emph{Exact object:} one probability per occupancy vector, the microscopic description
-above, of a size that grows with $N_{\mathrm{ch}}$.
-\emph{Replacement:} a Gaussian carrying the per-channel pair $(\bm{\mu},\bm{\Sigma})$, the
-same size at every channel count; because the occupancies sum to one, $\bm{\Sigma}$ is
-singular and the Gaussian lives on the simplex.
-\emph{Validity:} two conditions, not one. The channel count must be high enough for the
-counts to behave as a continuum, which is the central limit theorem and fails as
-$N_{\mathrm{ch}}$ falls; and the recorded sample must not resolve the step in predicted
-current made by moving one channel between states, which fails as the instrumental noise
-falls. The second condition is why the boundary of the failing region in the Results runs
-across the plane of channel count against noise instead of down a line of constant
+\emph{Exact object:} one probability per occupancy vector, a count that grows with
 $N_{\mathrm{ch}}$.
-\emph{What is closed} depends on whether the occupancies are conditioned on the data. A
-member that only propagates them holds them exactly multinomial at every sample time, since
-independent channels start multinomial and propagation preserves the family, so its two
-carried moments are the true ones and the closure discards shape alone. A member that
-updates them on each sample leaves the multinomial family at the first update and never
-returns to it, and its carried moments are approximate from then on.
+\emph{Replacement:} a Gaussian in the per-channel pair $(\bm{\mu},\bm{\Sigma})$, the same size at
+every channel count; because the occupancies sum to one, $\bm{\Sigma}$ is singular and the Gaussian
+lives on the simplex.
+\emph{Validity:} two conditions, not one. The channel count must be high enough for the counts to
+behave as a continuum, which is the central limit theorem and fails as $N_{\mathrm{ch}}$ falls;
+and the recorded sample must not resolve the step in predicted current made by moving one channel
+between states, which fails as the instrumental noise falls. The second is why the boundary of the
+failing region in the Results runs across the plane of channel count against noise rather than
+down a line of constant $N_{\mathrm{ch}}$.
 
 \smallskip
 \textbf{Interval-signal closure.}
-\emph{Exact object:} the law of the conductance averaged over one acquisition window, a
-telegraph-like object (below) with no closed form; its low-order moments are available in
-closed form and are assembled from single-channel quantities (below).
-\emph{Replacement:} a Gaussian carrying those moments.
-\emph{Validity:} the window must span many transitions, or the instrumental noise must be
-large enough to make the departure immaterial. The second half of that is exact rather than
-heuristic: noise independent of the gating current leaves every cumulant of the recorded
-sample above the second unchanged while adding to its variance, so the standardized
-departures shrink as the noise grows.
-\emph{What is closed} depends on how much of the window the conductance is conditioned on,
-which is the ladder below. A member that predicts the current at an instant does not make
-this second closure, and the statement is about which object gets closed. Such a member
-does give the recorded sample a Gaussian: the instantaneous
-population current is $\bm{\gamma}$ applied to the occupancies at a single time, so it is a
-linear image of the occupancy Gaussian and is Gaussian already, at no further cost in
-moments. What it drops is the evolution of the channels inside the window, one snapshot
-standing in for the average the recording holds, which misspecifies the random variable
-rather than closing it. The substitution also runs in the unhelpful direction, since
-averaging over the window is itself what brings the law closer to Gaussian.
+\emph{Exact object:} the law of the conductance averaged over one acquisition window,
+telegraph-like and with no closed form (below).
+\emph{Replacement:} a Gaussian carrying its first two moments.
+\emph{Validity:} the window must span many transitions, or the instrumental noise must be large
+enough to make the departure immaterial. The second half is exact rather than heuristic: noise
+independent of the gating current adds to the variance of the recorded sample and leaves every
+cumulant above the second unchanged, so the standardized departures shrink as the noise grows.
 
 \smallskip
-The two are controlled by different quantities, the occupancy closure by the channel count
-and the interval-signal closure by the window measured against the gating timescale, while
-instrumental noise relaxes both by making the recorded sample more Gaussian. That is what
-makes them separable by design, and it is why the Results sweep a plane of channel count
-against noise at one window and then move the window along an axis of its own.
+The two are controlled by different quantities, the occupancy closure by the channel count and
+the interval-signal closure by the window measured against the gating timescale, while
+instrumental noise relaxes both by making the recorded sample more Gaussian. That makes them separable by design, and the Results sweep a
+plane of channel count against noise at one window before moving the window along an axis of its
+own.
 \end{tcolorbox}
 
-\emph{Telegraph-like} names the following object. A single channel switching among its
-conductance levels traces a piecewise-constant path, the random telegraph signal when
-$K=2$, and what the window delivers is its integral over one acquisition interval,
+\emph{Telegraph-like} names this object: a single channel switching among its conductance levels
+traces a piecewise-constant path, the random telegraph signal when $K=2$, and the window delivers
+its integral over one acquisition interval,
 \begin{equation}
   A_{0\to\Delta}=\int_0^{\Delta}\gamma\bigl(X_s\bigr)\,\mathrm{d}s,
   \label{eq:integrated-conductance}
 \end{equation}
 where $X_s$ is the state of the channel at time $s$. Its law is mixed: an atom at
-$\Delta\gamma_i$ holding the probability that the channel never left state $i$, and a
-continuous part from the paths that did switch. The moments, on the other hand, are cheap.
-Conditional on the states at the two ends of the window, the moment generating function of
-$A_{0\to\Delta}$ is one entry of the tilted semigroup $e^{(\mathbf{Q}+\alpha\bm{\Gamma})\Delta}$
-divided by the transition probability, with $\bm{\Gamma}=\mathrm{diag}(\bm{\gamma})$, so
-every moment is one derivative away and costs one matrix exponential, at any $K$.
+$\Delta\gamma_i$ carrying the probability of never leaving state $i$, and a continuous part from
+the paths that switched. Its density is a series over the number of transitions in the window,
+exact at every $K$, closed only at $K=2$, and proliferating with $K$. Having few distinct
+conductances does not rescue it, which is worth saying because channel models are exactly of that
+kind: every shut state carries $\gamma=0$ and the open states often share one $\gamma$, so
+$A_{0\to\Delta}$ is the open conductance times the time spent in the open aggregate however large
+$K$ is, and that aggregate is Markov only if $\mathbf{Q}$ is lumpable, which for the schemes that
+motivate this work it is not \citep{colquhoun1981stochastic}. The population multiplies the
+difficulty rather than adding to it: the laws of independent channels convolve, and a recorded
+sample constrains only the sum, so the posterior over channels does not
+factorize~\citep{moffatt2007estimation} and an exact recursive filter has to carry a distribution
+over joint occupancy vectors.
 % TODO citation: the two-state occupation-time density is classical (candidates to check and
 % add to biblio.bib: Takacs 1957, Acta Math Acad Sci Hungar; Pedler 1971, J Appl Prob 8:381).
 % Neither PDF is in docs/bibliography/ yet. The general-K series is the accumulated-reward
 % problem of performability analysis (Donatiello and Iyer 1987; de Souza e Silva and Gail
 % 1986; Sericola 1990s). Cut 2026-08-06 with the uniformization/B-spline paragraph.
-
-The density is another matter, and it is where $K$ enters: a series over the number of
-transitions inside the window, exact at every $K$ but closed only at $K=2$, with the terms
-proliferating from $K=3$ on. Having few distinct conductances does not rescue it, which is
-worth saying because channel models are exactly of that kind: every shut state carries
-$\gamma=0$ and the open states often share one $\gamma$, so $A_{0\to\Delta}$ is the open
-conductance times the time spent in the open aggregate however large $K$ is. That aggregate
-is Markov only if $\mathbf{Q}$ is lumpable, which for the schemes that motivate this work it
-is not \citep{colquhoun1981stochastic}. The population multiplies the difficulty rather than
-adding to it: the recorded current sums over channels, so the laws convolve and the pieces
-proliferate in $N_{\mathrm{ch}}$ as well, and a recorded sample constrains only the sum, so
-the posterior over channels does not factorize~\citep{moffatt2007estimation} and an exact
-recursive filter has to carry a distribution over joint occupancy vectors. The closure is
 % OPEN 2026-08-06. A clause here pointed at the Discussion for the other consequence of the same
 % aggregation, that distinct generators can produce identical current statistics. It was removed
 % because 05_discussion.tex carries no such passage: grep for aggregat/lumpab/identifiab across
@@ -334,25 +301,29 @@ recursive filter has to carry a distribution over joint occupancy vectors. The c
 % ("worth a Discussion sentence with the identifiability literature"); the sourced treatment is in
 % docs/bibliography/identifiability/ and the framing in _program/research_program.md (Bridge 2).
 % If that sentence gets written, restore the cross-reference here.
-indifferent to all of it. Replacing $A_{0\to\Delta}$ by a Gaussian truncates the transform at the
-second cumulant, and the moments that leaves it needing are single-channel objects that do
-not depend on $N_{\mathrm{ch}}$ or on the topology, delivered by two derivatives of that
-same $K\times K$ semigroup (below). That asymmetry, an exact law that degrades with $K$ and with
+% CONTEXT 2026-08-09: the aggregation passage that clause sat inside (few distinct conductances,
+% the lumpability caveat with colquhoun1981stochastic, the population convolution and the
+% non-factorizing posterior of moffatt2007estimation) went in the length pass, so the note has no
+% host sentence now; the open item stands. What the asymmetry sentence below needs from that
+% passage, the proliferation in N_ch, is folded into the density sentence above.
+% colquhoun1981stochastic survives at 01_introduction.tex:54 and moffatt2007estimation is cited
+% elsewhere in this section, so no bibliography entry is orphaned.
+The closure is indifferent to all of it: it discards every cumulant above the second, and the
+moments it keeps are closed-form single-channel objects, independent of $N_{\mathrm{ch}}$ and of
+the topology, two derivatives of one $K\times K$ matrix exponential
+(Appendix~\ref{app:derivation}). That asymmetry, an exact law that degrades with $K$ and with
 $N_{\mathrm{ch}}$ against moments that do neither, is what justifies the closure beyond the
 two-state case run here.
 
-The higher moments these closures discard do not vanish. They reappear in the data as
-temporal correlation that the likelihood does not predict, which is what the correlation
-term of the information-distortion decomposition measures (Diagnostics). Three regimes
-follow, and we name them here so the maps in the Results have vocabulary: the
-\emph{microscopic} regime (few channels, where the occupancy closure fails and only the
-microscopic description is exact), the
-\emph{telegraphic} regime (windows far shorter than the relaxation time, where the
-interval-signal closure fails), and the \emph{Gaussian} regime, where both closures hold
-because the channel count is high enough for the occupancy Gaussian while the window is long
-enough, or the instrumental noise large enough, for the interval-signal Gaussian. Any Gaussian likelihood of this
-kind must fail somewhere. The aim of this paper is to show that the failures are the
-predicted degradation of these two closures rather than defects of a particular algorithm.
+The higher moments these closures discard do not vanish. They reappear in the data as temporal
+correlation the likelihood does not predict, which is what the correlation term of the
+information-distortion decomposition measures (Diagnostics). Three regimes follow, named here so
+the maps in the Results have vocabulary: the \emph{microscopic} regime, few channels, where the
+occupancy closure fails and only the microscopic description is exact; the \emph{telegraphic}
+regime, windows far shorter than the relaxation time, where the interval-signal closure fails;
+and the \emph{Gaussian} regime, where both closures hold. Any Gaussian likelihood of this kind
+must fail somewhere. The aim of this paper is to show that the failures are the predicted
+degradation of these two closures rather than defects of a particular algorithm.
 
 % MOVED 2026-08-06 to 04_results.tex, into the paragraph that reads the five regions in order.
 % The paragraph that stood here mapped the three regimes onto the regions of the usage map. Half of
@@ -571,6 +542,37 @@ covariance, and stating the cost in the terms used here: the covariance equation
 for the more general noise model'', while ``mean and covariance just do not form a set of sufficient
 statistics anymore''. Two groups reached the same device from different motivations, which is worth
 more to a reader than either group's assurance.
+
+% NEW PROSE, 2026-08-09, Phase 2 of papers/1_method/08_length_plan.md, and the only new writing in
+% the pass. It replaces about 4,800 words of derivation that moved to 08_appendix_derivation.tex.
+% WHAT IT IS FOR: a reader who will not open the appendix should still know how the members were
+% built; a reader who will should know what is there. It states the construction, not its merits
+% (rule 5), and it says which steps are exact and which is the approximation rather than claiming
+% exactness for the whole (the appendix proves the split).
+% IT ALSO CARRIES A DEFINITION THE BODY WOULD OTHERWISE LOSE. The tilted semigroup and
+% $\bm{\Gamma}=\mathrm{diag}(\bm{\gamma})$ were defined once, inside the telegraph paragraph that
+% the closures compression cuts. Two lines of the appendix say "met above" and "as above" and both
+% resolve here. Do not delete the definition without repairing 08_appendix_derivation.tex:46 and :56.
+% IT MUST NOT DUPLICATE the sufficiency paragraph above it, which already says the update conditions
+% a Gaussian carrying the exact first two moments and is not the exact Bayesian update.
+What stops Eq.~\ref{eq:macror} from being used on the interval average is that the average is not a
+function of the occupancy at any one time, so no conductance vector on the $K$ states delivers its
+mean. On the $K^2$ pairs of states a channel occupies at the two ends of the window one does, and
+the construction of every interval member is that substitution carried out in three steps. Run the
+update on the pairs, with the pair-conditioned mean interval conductance $\bar\gamma_{i\to j}$ in
+place of $\bm{\gamma}$. Charge what the conductance still varies by once the pair is fixed, its
+variance $\bar v_{i\to j}$, to the noise term of Eq.~\ref{eq:macror-w}, which is legitimate because
+that fluctuation has mean zero given the counts and so enters neither the predicted mean nor the
+gain. Then marginalize the start index, which the next window has no use for.
+
+The two moments this asks for are cheap at any $K$. Both are derivatives at $\alpha=0$ of the tilted
+semigroup $e^{(\mathbf{Q}+\alpha\bm{\Gamma})\Delta}$, with
+$\bm{\Gamma}=\mathrm{diag}(\bm{\gamma})$, so each costs one matrix exponential and no object larger
+than $K\times K$ is formed in building them. Of the three steps the first two are exact, and the
+Gaussian replacement is where the approximation enters. Appendix~\ref{app:derivation} carries the
+derivation, the boundary covariance the pairs induce, the spectral form the implementation
+evaluates, and what separates the members that stop at the window's start from the one that
+conditions on both of its ends.
 
 In a recursive member the posterior pair $(\bm{\mu}^{\mathrm{post}}, \bm{\Sigma}^{\mathrm{post}})$
 becomes the prior for the next window; in a non-recursive member it is not carried forward,
