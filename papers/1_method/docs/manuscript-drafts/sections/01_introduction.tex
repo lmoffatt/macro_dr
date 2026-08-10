@@ -78,12 +78,11 @@
 %  - covariance fitting cost: "square of the number of samples" (moffatt2007estimation) vs "cube of
 %    the record length" (predecessor). Open. The wording below avoids the exponent.
 %
-% PENDING-BIB: katz1970membrane, katz1972statistical, anderson1973voltage, conti1980conductance,
-% sigworth1981covariance and lei2020considering live in biblio_full.bib (124 entries) and are absent
-% from biblio.bib (15 entries), which is what elife_paper.tex points at. Repoint \bibliography{biblio}
-% to biblio_full, or merge the six keys across. hodgkin1952quantitative, neher1977conductance and
-% colquhoun1981stochastic: colquhoun1981stochastic and neher1977conductance are in biblio_full;
-% hodgkin1952quantitative is in NEITHER and must be added.
+% PENDING-BIB CLOSED 2026-08-10. All six keys (katz1970membrane, katz1972statistical,
+% anderson1973voltage, conti1980conductance, sigworth1981covariance, lei2020considering) plus
+% hodgkin1952quantitative, colquhoun1981stochastic and neher1977conductance are in biblio.bib,
+% which now holds 26 entries, and every cite key in the eleven section files resolves against
+% it. The build emits no citation warning.
 
 A channel opens and shuts at random, and how long it stays in each conformation is the elementary
 random quantity of gating. What an experiment sees of it depends on how many channels contribute.

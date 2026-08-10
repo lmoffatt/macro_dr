@@ -234,15 +234,10 @@ and the one the gating variance carries.
 % leave once the 7 pt type has taken its space, so raising the type re-sizes the panels by itself.
 % The file is 7.00 x 6.07 in and renders at 7.425 x 6.44 in, since width=\linewidth inside fullwidth
 % enlarges it by 6.1%.
-% NEEDS RE-RENDER 2026-08-06. The roster went from seven columns to EIGHT: the un-averaged
-% least-squares arm (nonlinearsqr_g, averaging=0) landed at this cell from dirac and is in the .Rmd
-% ROSTER, and the old "LSE" column is relabelled ILSE, which is what it always was
-% (dispatch_figure_3_LSE.sh:144-146). The prose numbers are already the eight-column ones, recomputed
-% from the same files by decisions/recompute/fig2_*.R; the built PDF is still the seven-column one.
-% CHECK ON RE-RENDER: an eighth column takes width from every panel, and the 7 pt floor is measured
-% from the non-panel space, so confirm the type has not been squeezed under it before accepting the
-% output. If eight columns will not hold 7 pt, the fallback is to move VR to the supplement, which
-% is the column the ladder argument can most afford to lose (its role is carried by MR).
+% RE-RENDER DONE, note closed 2026-08-10. Figure_2.pdf and Figure_3.pdf both carry the eight
+% columns, verified by reading the column headers out of the built PDFs: LSE ILSE NR INR R MR
+% VR IR. The prose numbers were already the eight-column ones. The 7 pt floor still has to be
+% re-measured on the next render, which is the one part of the old note that is not discharged.
 \includegraphics[width=\linewidth]{Figure_2}
 \end{fullwidth}
 \caption{\textbf{Parameter recovery and the calibration of the reported interval, for the whole ladder at one design cell.} $N_{\mathrm{ch}}=100$, $\widetilde{S} = 0.01$, $\widetilde{\Delta}=0.1$; $10{,}000$ recordings in groups of ten, so one thousand maximum-likelihood estimates per member. Columns are the eight members, in ladder order, from least squares to the boundary-conditioned filter. The first two are the least-squares arms, \texttt{LSE} fitting the conductance at the sample and \texttt{ILSE} fitting it averaged over the acquisition window, and the pair \texttt{NR}, \texttt{INR} is the same one step taken inside the macroscopic family. Rows are three parameter pairs, each chosen because a different property separates the members in it: the kinetic pair ($\log_{10}k_{\mathrm{on}}$, $\log_{10}k_{\mathrm{off}}$), which the deterministic transient determines and on which every member including both least-squares arms competes; the amplitude pair ($\log_{10}N_{\mathrm{ch}}$, $\log_{10}i$), which only the gating fluctuations separate; and the noise pair ($\log_{10}\sigma$, $\log_{10}N_{\mathrm{ch}}$), where $\sigma$ is the instrumental noise level, a free parameter of every likelihood member, with a simulated value of $10^{-4}$. Each panel carries the cloud of estimates and four $95\%$ ellipses drawn at the cloud mean: the empirical covariance, the Fisher covariance the member reports, that same Fisher ellipse resized to the empirical area and otherwise untouched (thin, dot-dash), and the sandwich covariance. The blue number is the area of the empirical ellipse over the area of the corrected one. The two orange numbers are the same area ratio against the reported ellipse and, after it, the spread $\sqrt{\lambda_{\max}/\lambda_{\min}}$ of the reported covariance against the empirical one, written $\times\!\div$: they are the two eigenvalues of the distortion as a geometric mean and a spread, so a member is calibrated in size when the first reads $1.0$, calibrated in shape when the second does, and the resized ellipse falls on the empirical one only in the second case. Markers are the simulation truth, the mean of the cloud, and the truth displaced by the predicted bias. The four least-squares cells that are empty are empty by construction and say so: that configuration holds the unitary current and the noise level fixed at their simulated values, so those estimates would lie on a line and the area ratio would be $0/0$. Covariances are the Gaussian-Fisher family at the pooled estimate, scaled by the reciprocal of the group size. What the third row separates is in the text.}
@@ -295,7 +290,7 @@ on $k_{\mathrm{off}}$ is $-0.0043 \pm 0.0043$ for \texttt{IR}, indistinguishable
 $0.191 \pm 0.004$ for \texttt{R}, $0.864 \pm 0.0019$ for \texttt{NR} and $0.856 \pm 0.0022$ for
 either least-squares arm. % src: projects/eLife_2025/figures/paper_both/figure_3.html (caption-numbers chunk; lag-one score ACF, k_off)
 A positively correlated score makes the variance of its sum exceed the sum of the per-interval
-informations, which is how the per-interval identity holds while the accumulated one fails. The
+informations, which is how a per-interval identity that holds for the gating-aware members accumulates into a failure. The
 temporal correlation the two non-recursive members leave in their score is the local time correlation
 of the current that \citet{milescu2005maximum} named as the dominant error of independent-interval
 fitting, measured here at the level of the inference rather than the data.
