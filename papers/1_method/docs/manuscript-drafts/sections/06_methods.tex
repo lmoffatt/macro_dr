@@ -235,7 +235,7 @@ than the dispatched flag: IR is dispatched with the total flag, but with both en
 conditioned on the residual form is used regardless of it, because the between-endpoint
 spread is already carried by the boundary term. % src: legacy/qmodel.h:4557 (averaging==2 || variance_form==residual)
 Even so, taken from the same state MR and IR assign the interval average the same total
-variance, by two decompositions that rearrange into each other (Appendix~1), so what
+variance, by two decompositions that rearrange into each other (Appendix~\ref{app:members}), so what
 separates them is the gain; because that variance divides the gain, the states they carry
 part company at the first gated update and the variances they report along a recording part
 with them. VR keeps MR's mean and boundary-free gain and replaces the total per-start-state
@@ -295,9 +295,87 @@ correspondence stated and quantified in the Discussion.
 % support, and the member specified in Theory is the only object whose calibration is reported
 % here. Keep the citation as application and lineage; never as specification.
 The construction of the interval-averaged mean and variance, the boundary-state
-covariance, and the conditioning step that consumes them are derived in the Theory
-section and its supplement; we do not restate them here, beyond the regularizer of
-Eq.~\ref{eq:pseudocount} below.
+covariance, and the conditioning step that consumes them are derived in
+Appendix~\ref{app:derivation}; we do not restate them here, beyond the two objects every
+member scores with, the regularizer of Eq.~\ref{eq:pseudocount} below, and the
+correspondence between the symbols of that derivation and the names the implementation
+carries.
+
+\paragraph{The likelihood.} Every member of the family delivers, per window, a predicted mean
+$\bar y^{\mathrm{pred}}_t$ and a predicted variance $\sigma^2_{\mathrm{pred},t}$, and the recorded
+value is scored under the Gaussian they define,
+\begin{equation}
+  \log q_t \;=\; -\tfrac{1}{2}\Bigl[
+    \log\bigl(2\pi\sigma^2_{\mathrm{pred},t}\bigr)
+    + \frac{\delta_t^2}{\sigma^2_{\mathrm{pred},t}}\Bigr],
+  \qquad
+  \delta_t=\bar y^{\mathrm{obs}}_t-\bar y^{\mathrm{pred}}_t,
+  \label{eq:loglik}
+\end{equation}
+summed over windows. The recursion enters only through what
+$(\bar y^{\mathrm{pred}}_t,\sigma^2_{\mathrm{pred},t})$ are conditioned on: a recursive member
+carries $(\bm{\mu}^{\mathrm{post}},\bm{\Sigma}^{\mathrm{post}})$ of
+Eqs.~\ref{eq:mu-post} and~\ref{eq:sig-post} into the next window, so Eq.~\ref{eq:loglik} sums to
+$\log\prod_t q_t(\bar y_t\mid\bar y_{1:t-1})$; a non-recursive member propagates from the initial
+condition by Eqs.~\ref{eq:mu-prop} and~\ref{eq:sig-prop} alone and the same sum is
+$\log\prod_t m_t(\bar y_t)$. Nothing else in this section is used by the fit.
+
+\paragraph{The initial condition.} The recursion opens with the occupancy the model supplies and
+with the covariance that occupancy implies for one channel,
+\begin{equation}
+  \bm{\mu}_0 = \bm{\pi},
+  \qquad
+  \bm{\Sigma}_0 = \mathrm{diag}(\bm{\pi})-\bm{\pi}\bm{\pi}^\top .
+  \label{eq:init}
+\end{equation}
+For the schemes run here $\bm{\pi}$ is the first basis vector: the record opens at zero agonist
+with every channel shut, so $\bm{\Sigma}_0=\bm{0}$ and the spread the filter carries is generated
+entirely by the propagation of Eq.~\ref{eq:sig-prop}. Eq.~\ref{eq:init} is also the one moment at
+which $\bm{\Sigma}$ genuinely is a single channel's covariance; from the first update onward,
+conditioning on a shared recorded value correlates the channels and what the recursion carries is
+$\mathrm{Cov}(\mathbf{N})/N_{\mathrm{ch}}$, which is no single channel's covariance. Every factor of
+$N_{\mathrm{ch}}$ in this section comes from that distinction.
+% src: legacy/qmodel.h:6726-6740 (init: P_mean = P_initial, P_Cov = diagpos(P_mean) - XTX(P_mean),
+% with the comment stating the one-hot reading), and legacy/models_simple.h:57-58 for the two-state
+% scheme, where P_initial is the unit vector on state 0. Read first-hand 2026-08-09. NOT the
+% equilibrium: calc_Peq exists (qmodel.h:1333) and is not what init consumes.
+
+\paragraph{Every symbol against the name it carries in the implementation.}
+
+The equations of Appendix~\ref{app:derivation} are written with the objects the implementation forms, and the correspondence
+is one to one. It is given because a specification whose symbols cannot be found in the code is not
+a specification. $\circ$ is the entrywise product and $\mathbf{1}$ the vector of ones;
+$\overline{m}_{i\to j}=\mathbb{E}[\Delta^{-2}A^2_{0\to\Delta}\mid X_0=i,X_\Delta=j]$ is the
+pair-conditioned second moment, so that
+$\bar{v}_{i\to j}=\overline{m}_{i\to j}-\bar{\gamma}^2_{i\to j}$.
+
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+symbol & in the implementation & what it is \\
+\midrule
+$P_{i\to j}(\Delta)$ & \texttt{P} & transition over the window \\
+$\bar{\gamma}_{i\to j}$ & \texttt{gmean\_ij} & conductance averaged over the window, given the pair \\
+$G_{i\to j}=\bar{\gamma}_{i\to j}P_{i\to j}$ & \texttt{gtotal\_ij} & the same, weighted, so that it can be summed \\
+$\overline{m}_{i\to j}$ & \texttt{gsqr\_ij} & its second moment, given the pair \\
+$(\bar\gamma_0)_{i}$ & \texttt{gmean\_i} & $=\texttt{gtotal\_ij}\cdot\mathbf{1}$, Eq.~\ref{eq:gammabar} \\
+$\overline{m}_{i\to\cdot}$ & \texttt{gsqr\_i} & $=\texttt{gtotal\_sqr\_ij}\cdot\mathbf{1}$ \\
+$H_{i\to j}$, collapsed & \texttt{(gtotal\_ij $\circ$ gmean\_ij)}$\cdot\mathbf{1}$ & the square collapsed, not the collapse squared \\
+$\bar{v}_{i\to j}$ & \texttt{gvar\_ij} & present in the window object, unused by the recursion \\
+$\bm{\mu}_0$, $\bm{\Sigma}_0$ & \texttt{P\_mean}, \texttt{P\_Cov} & the state where the window opens \\
+$\bm{\Sigma}_0-\mathrm{diag}\,\bm{\mu}_0$ & \texttt{SmD} & the prior with its single-channel part removed \\
+$\bm{\gamma}^\top\bm{\Sigma}\bm{\gamma}$ and its tilde & \texttt{gSg} & what the state contributes to the variance \\
+$\bm{\mu}^\top\mathbf{w}$ & \texttt{ms} & the state-dependent noise, Eq.~\ref{eq:mr-vr} \\
+$\mathbf{g}_{0\to\Delta}$ & \texttt{gS} & state against current \\
+$\sigma^2_{0\to\Delta}$ & \texttt{y\_var} & the predictive variance \\
+\bottomrule
+\end{tabular}
+\end{center}
+% src, all read first-hand in legacy/qmodel.h: :1746-1774 (the window objects), :4540-4557 (the
+% state), :4574-4611 (gSg and ms), :4641-4643 (gS), :4585-4615 (y_var). The two slots of
+% Eq. mr-vr are the two lines of the code: gsqr_i - gmean_i o gmean_i for MR, and
+% gsqr_i - (gtotal_ij o gmean_ij).1 for IR (qmodel.h:4605-4611), so the pair-resolved variance
+% gvar_ij is neither consumed nor differentiated by the recursion.
 % CORRECTED 2026-08-06. Both sentences pointed at the Theory section for the Kalman correspondence,
 % which the Theory section never made: it stated the update, it verified nothing about Kalman
 % filters. The verification (coincidence to about 1e-8 with an integrated-measurement augmented
@@ -314,7 +392,7 @@ The single structural difference between the M and I families is that the
 one-endpoint members drop the boundary cross-covariance term
 $N_{\mathrm{ch}}\,\widetilde{\bm{\gamma}^\top\bm{\Sigma}\bm{\gamma}}$ that IR retains, the
 tilde being the boundary-pair contraction defined at Eq.~\ref{eq:tilde}. Every member is
-written out on one template in Appendix~1.
+written out on one template in Appendix~\ref{app:members}.
 % src: papers/_program/nomenclature.md (MR drops N*gamma^T Sigma gamma that IR keeps)
 
 Throughout the reported runs the remaining build flags were held fixed:

@@ -225,4 +225,6 @@ last, against the paper that then exists.
 
 | date | phase | main text | note |
 |---|---|---|---|
-| 2026-08-09 | baseline | 22,727 | Theory 8,883, Discussion 4,055, Results 5,371, Diagnostics 2,392, Introduction 2,026 |
+| 2026-08-09 | baseline | 22,727 | commit 5e9f738. Theory 8,883, Discussion 4,055, Results 5,371, Diagnostics 2,392, Introduction 2,026 |
+| 2026-08-09 | 1, plumbing + move 1 | 21,724 | single master (`elife_paper.tex` at `02_theory_full`), `02_theory.tex` and `elife_paper_full.tex` retired to archives; Appendix 1 created as the derivation and the member spec renumbered to Appendix 2, both labelled, five hard-coded "Appendix~1" strings converted; the linear-filtering frame moved (−1,003). Not yet built. |
+| 2026-08-09 | 1, the Theory relocation | 17,889 | eight more blocks out of Theory, 3,835 words: the boundary-conditioned moments, the two generalization paragraphs, the three-step construction, the start-conditioned members, what separates them, both members against the exact law, and the verification tolerances to Appendix 1; the scoring equation, the initial condition and the symbol table to Methods. Theory 8,883 → 4,045, Methods 4,986 → 5,281, Appendix 1 at 4,654. Conservation checked: 3,835 out, 3,835 in plus 111 words of new connective text. Deviation from the plan, deliberate: the moment machinery went to the appendix rather than to Methods, which is where it belongs by the plan's own test (it derives γ̄ and v̄ rather than telling anyone what to evaluate) and which keeps Methods at p96 instead of p99. Not yet built. |

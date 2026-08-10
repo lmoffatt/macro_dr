@@ -9,14 +9,13 @@
 % NOT sourced from theory/macroir/docs/Macro_IR/MacroIR_tilde.md, which its own header marks as
 % predating the corrected normalization.
 
-\appendix
-\setcounter{equation}{0}
-\renewcommand{\theequation}{A\arabic{equation}}
-
+% \appendix and the A-numbering are declared once, in 08_appendix_derivation.tex, which is input
+% before this file. Redeclaring them here would restart the counter and give two equations called A1.
 \begin{appendixbox}
+\label{app:members}
 \section*{The interval update, member by member}
 
-The Theory section gives the cycle for the boundary-conditioned member and names the two
+Appendix~\ref{app:derivation} gives the cycle for the boundary-conditioned member and names the two
 places where the others differ. This appendix writes every member out in one template, so
 that each is fixed by three switches on a single set of equations.
 
@@ -44,7 +43,7 @@ rather than on the $K$ states. (Over a scalar it means something else, a quantit
 units of the model, as in $\widetilde{\Delta}$ and $\widetilde{S}$; the two uses are disjoint and
 never meet in one expression.) It is not a new operator: its two cases are the two contractions the update of
 Eq.~\ref{eq:macror} already has, $\bm{\gamma}^\top\bm{\Sigma}\bm{\gamma}$ and
-$\bm{\Sigma}\bm{\gamma}$, evaluated there with the boundary objects substituted. Both are written out in the Theory section, the
+$\bm{\Sigma}\bm{\gamma}$, evaluated there with the boundary objects substituted. Both are written out in Appendix~\ref{app:derivation}, the
 bilinear one as the scalar of Eq.~\ref{eq:tilde} and the vector one as the gain
 $\mathbf{g}_{0\to\Delta}=\widetilde{\bm{\gamma}^\top\bm{\Sigma}}$ of Eq.~\ref{eq:vector-tilde}, and both
 collapse to $K\times K$ arithmetic once the boundary covariance Eq.~\ref{eq:sig-bnd} is
