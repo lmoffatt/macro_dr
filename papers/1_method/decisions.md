@@ -208,6 +208,44 @@ the predictive variance divides it. See `figures_build_plan.md` §F1-2 for the m
 
 ## The figure set (2026-07-22, revised same day)
 
+**REVISED 2026-08-10: SEVEN body figures, and the last three renumbered.** The τ_int decision panel
+entered the body as **Figure 5**, so the corner figure became **Figure 6** and the usage map
+**Figure 7**. The live roster is: 1 the filter step on the cost ladder (in Theory), 2 the recovery
+clouds at one cell, 3 the calibration cascade in time, 4 the design plane in both moments, 5 the
+distortion against the memory left in the least-squares residual, 6 where the calibrated member
+departs, 7 the usage map. The numbered list below is the 2026-07-28 state and is kept as history;
+where the two disagree, this block is the live one.
+
+*Why a seventh, since it is the one figure of the set with no abstract sentence behind it.* Checked
+against the hard rule in `../_program/figure_supplements_decision_guide.md` §6: every other body
+figure carries an abstract claim, and this one carries the Introduction's closing paragraph instead,
+which makes the offer (measure τ_int on your own record, no ensemble, no known truth) that had no
+display item anywhere in the paper. The count is not the constraint: that file's own census of 1,079
+eLife Version-of-Record articles puts the median at six body figures with 5–7 the modal band
+(n = 631), and volume correlates with the assessment's strength-of-evidence term at ρ = −0.028.
+
+*Two design choices settled with the promotion, and the producer's header owns both.* FOUR members
+(`ILSE`, `INR`, `R`, `IR`), the factorial of the two axes, because `R` is the only
+recursion-without-averaging member and without it the reader attributes the repair to the rest of the
+ladder in a lump. ONE shared y, because the vertical distance between members at one x is the
+quantity the figure delivers, and because `IR`'s internal structure on a free axis is the estimation
+floor of the statistic (1.043 ± 0.010), so a per-panel scale would draw the bootstrap at full panel
+height. The free-scale, own-τ_int reading is Figure 5—figure supplement 1.
+
+*File renames, 2026-08-10, in `figures/paper_both/`.* `figure_6B_four.Rmd` → `figure_5.Rmd`
+(`Figure_5.pdf`); `figure_6BB.Rmd` → `figure_5_S1.Rmd` (`Figure_5_S1.pdf`); the old `figure_5.Rmd` →
+`figure_6.Rmd` and `figure_6.Rmd` → `figure_7.Rmd`, with their `.html`, `.pdf` and `_caption.md`
+siblings; `figure_6B.Rmd` → `figure_5_variant_2members.Rmd` and `figure_6B_all.Rmd` →
+`figure_5_variant_8members.Rmd`, neither of them a display item. NOT renamed, on purpose: the parked
+`figure_5_budget*` and `figure_5_IR_*` families, whose 5 is the pre-2026-07-22 numbering and is
+already historical, and `figures/archive/figure_6_superseded_20260731/`, whose name is dated.
+
+*Owed on the new Figure 5, both in its producer's header.* The ill-conditioned corner (N_ch 10⁴,
+Δ·k_off 1) is not excluded although Figure 4 greys it by a rule it owns (`figure_4_common.R:216-224`,
+off-scale **and** κ > 3e4), and those cells alone set the floor of the shared axis: `R` has six below
+magnitude 0.9 and `LSE` twelve, every one of them in that corner, against none for `ILSE`, `INR`,
+`NR` and `IR`. And the x tick labels collide at four panels across 7 in; `c(1, 2, 5, 10, 20)` fits.
+
 **Five figures in the body, with supplements attached to parents.** The earlier eight-figure list
 (the one still described in `figures_build_plan.md` §6, now stale) was superseded within the day (see
 next block); the renumbering merged the IR-only map into the R-vs-IR map and demoted three figures to

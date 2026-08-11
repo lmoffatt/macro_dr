@@ -1,16 +1,32 @@
 ---
-title: "Figure 6B (four members) — distortion versus the memory left in the least-squares residual"
+title: "Figure 5 — distortion versus the memory left in the least-squares residual"
 author: "Luciano Moffatt"
 date: "`r Sys.Date()`"
 output: html_document
 ---
 
 <!--
-VARIANT of figure_6B.Rmd, 2026-08-10, at Luciano's request: the same panel with INR and R added to
-ILSE and IR. Nothing about the design changes. The x is still tau_int of the LEAST-SQUARES residual
-for every series, because that is what a reader has before choosing a method; see the note in
-figure_6B.Rmd for why that is the right independent variable and for why tau_int is not
-self-referential.
+PROMOTED TO THE BODY 2026-08-10 (Luciano) as Figure 5, and the set renumbered around it: the corner
+figure became Figure 6 and the usage map Figure 7. This file was figure_6B_four.Rmd; the eight-member
+own-tau_int companion (was figure_6BB.Rmd) is figure_5_S1.Rmd, this figure's supplement 1.
+WHY IT IS A BODY FIGURE. Every other figure in the set is indexed by the DESIGN (channel count,
+noise, sampling interval), which a reader of their own recording does not know. This one is indexed
+by a number they measure on their own record with no model and no fit. The Introduction's closing
+paragraph makes that offer and, until this promotion, nothing in the paper drew it.
+WHAT WAS SETTLED WITH IT, and neither is to be re-opened without a reason:
+  FOUR MEMBERS, not three. ILSE, INR, R, IR is the factorial of the two axes, and R is the only
+  recursion-without-averaging member; with R dropped, INR is the only one-axis member left and the
+  reader attributes the repair to the rest of the ladder in a lump, which 04_results explicitly
+  declines to say ("the family cannot be ordered on a single scale").
+  ONE SHARED Y, not a scale per panel. The vertical distance between members at the same x IS what
+  switching likelihood buys, and per-panel scales destroy exactly that. Second reason, and it is the
+  decisive one: IR's internal structure is the estimation floor of the statistic (1.043 +- 0.010,
+  see figure_5_variant_2members.Rmd item 4), so a free axis draws the bootstrap at full panel height.
+  The free-scale reading belongs to the supplement, which is what it is for.
+
+The x is tau_int of the LEAST-SQUARES residual for every series, because that is what a reader has
+before choosing a method; see the note in figure_5_variant_2members.Rmd for why that is the right
+independent variable and for why tau_int is not self-referential.
 
 WHY THESE FOUR. They are the 2x2 of the two axes: interval averaging (ILSE, INR have it in their
 name; R does not) crossed with recursion (R and IR recurse, ILSE and INR do not). So the panel reads
@@ -29,7 +45,8 @@ MEASURED 2026-08-10, and not written up anywhere else yet. The chunk below rebui
   that the least-squares ratio also carries the break of its constant-residual-variance premise,
   which is not an information-matrix-equality failure of the same kind.
 
-  POOLED OVER INTERVALS NO THRESHOLD EXISTS, which is the same fact as item (2) of figure_6B.Rmd.
+  POOLED OVER INTERVALS NO THRESHOLD EXISTS, which is the same fact as item (2) of
+  figure_5_variant_2members.Rmd.
   At criterion 1.15 the first distorted cell is at tau_int 1.074 while clean cells run to 1.861; at
   1.5 the pair is 1.205 and 1.861; at 2.0 it is 1.205 and 3.002. The reader needs two numbers.
 
@@ -38,18 +55,41 @@ MEASURED 2026-08-10, and not written up anywhere else yet. The chunk below rebui
   1.419, and 28 of 294 cells sit at or above 1.15, every one of them at N_ch = 10 and the worst at
   noise 0.05, against an estimation floor of 1.043 +- 0.010. That is the Gaussian moment closure on
   the occupancy going at few channels, which 00_abstract.tex already states and which item (4) of
-  figure_6B.Rmd records as "the only departures are at N_ch = 10". WRITING THIS AS ONE NUMBER IS
+  figure_5_variant_2members.Rmd records as "the only departures are at N_ch = 10". WRITING THIS AS ONE NUMBER IS
   THE MISTAKE THIS FIGURE EXISTS TO PREVENT: a scalar summary cannot express a member that is right
   in the typical direction and wrong across directions, which is the same point item (5) makes
   about least squares at tau_int 1.80.
+
+  R IS THE ONE THAT CAN BE MISREAD OFF THE PANEL, and the caption has to carry the reading. Pooled
+  over the twelve noise levels its magnitude median is 1.01, next to IR's 1.00, so the panel LOOKS
+  like it says R is calibrated while 04_results says R sits on a floor near 1.4 in k_off. Both are
+  right and the dilution is the reason: mag is det(GIDM)^(1/p) over all six directions and most
+  cells of the plane are at high noise where every member is calibrated. At noise 0.1 R reads a
+  magnitude of 1.143 (1.09-1.24 by channel count) with an anisotropy of 1.19-1.29, so its bar
+  reaches 1.48 and the failure is in the BAR, not in the point. This also closes the [OPEN] the
+  four-member note carried against decisions.md's 1.46 for R: same pooling, and 1.46 is INR's
+  median here, which is worth checking on its own given the NMR/INR history.
   Fraction of cells at or above 1.15 in SIZE, whole ladder:
   LSE 0.495, ILSE 0.524, NR 0.596, INR 0.600, R 0.148, MR 0.386, VR 0.333, IR 0.000.
   Medians and maxima of the size: ILSE 1.37 / 57.2, INR 1.46 / 33.1, NR 1.65 / 2217,
   R 1.01 / 1.26, IR 1.00 / 1.08.
 
-  [OPEN] R sits at a median of 1.01 here, next to IR's 1.00, while decisions.md attributes 1.46 to
-  it. Different anchor or different parameter is the likely explanation, but it has not been
-  checked, and until it is do not write that IR is the only member whose report can be believed.
+  [CLOSED 2026-08-10] The [OPEN] that stood here, on R reading 1.01 against decisions.md's 1.46,
+  is answered above: pooling over the noise axis, verified against the spectrum file. It was NOT
+  a different anchor; mag at the sim anchor differs from mag at pool by less than the pooling
+  effect. Do not reopen it as an anchor question.
+
+  TWO EDITS THIS FILE STILL OWES, neither of which changes what the figure says.
+  (i) THE ILL-CONDITIONED CORNER IS NOT EXCLUDED and it sets the floor of the shared axis. R has
+      six cells below magnitude 0.9 (minimum 0.590) and LSE twelve (minimum 0.074), and every one
+      of them is at N_ch = 10^4 with interval_in_tau = 1, which is the corner Figure 4 already
+      greys by a rule it owns: off-scale AND kappa > 3e4, figure_4_common.R:216-224, with the
+      kappa in the same cell_scalars file this notebook already reads. ILSE, INR, NR and IR have
+      no such cell. Applying that rule here costs a join and buys back about half a decade at the
+      bottom of the axis, which is height for every panel; leaving it, the body figure draws as a
+      measurement what Figure 4 greys as unidentified.
+  (ii) THE X TICK LABELS COLLIDE at four panels across 7 in: the breaks 1, 1.2, 1.5, 2, 3 render as
+      one smear at the left of each panel. c(1, 2, 5, 10, 20) fits, and the axis stays round.
 -->
 
 ```{r setup, include=FALSE}
@@ -81,7 +121,7 @@ dat <- spec %>%
          d = factor(sprintf("%g", interval_in_tau),
                     levels = sprintf("%g", sort(unique(interval_in_tau)))))
 
-cat(sprintf("figure_6B_four: %d marks over %d cells; per member: %s\n",
+cat(sprintf("figure_5: %d marks over %d cells; per member: %s\n",
             nrow(dat), n_distinct(dat[c("noise","Num_ch","interval_in_tau")]),
             paste(sprintf("%s=%d", levels(dat$member), as.integer(table(dat$member))),
                   collapse = " ")))
@@ -107,7 +147,7 @@ g <- ggplot(dat, aes(tau_int, mag, colour = d)) +
         strip.background = element_rect(fill = "grey92", colour = NA),
         strip.text = element_text(face = "bold", size = 8))
 
-ggsave("Figure_6B_four.pdf", g, width = 7.0, height = 3.6, device = cairo_pdf)
+ggsave("Figure_5.pdf", g, width = 7.0, height = 3.6, device = cairo_pdf)
 g
 ```
 

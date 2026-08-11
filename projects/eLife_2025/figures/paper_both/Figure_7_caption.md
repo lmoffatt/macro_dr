@@ -1,6 +1,9 @@
-# Figure 6 caption
+# Figure 7 caption
 
-**Figure 6. What a macroscopic recording can be asked for, and which method can deliver it: a usage map over channel number and instrumental noise.**
+<!-- RENUMBERED 2026-08-10: was Figure 6. Archive directory and archived variant filenames keep
+     their old number, which is dated and correct for what they are. -->
+
+**Figure 7. What a macroscopic recording can be asked for, and which method can deliver it: a usage map over channel number and instrumental noise.**
 
 The plane is the design space: the number of channels in the patch, N_ch, against the dimensionless instrumental noise, both on log scales. Every cell of it is filled, and the fill says which parameters survive there, counting a parameter as recovered when its distortion-corrected standard error is inside a factor of two. Five regions partition the plane. The key states each one as a recommendation, because a reader of this figure is choosing a method and a preparation rather than reading a diagnostic, and it lists them in their vertical order on the panel, so that it reads as a section through the map. In the near-white region nothing is measurable. In the amber one the rates alone survive and least squares is calibrated there, so the cheaper method is the one to use. In the pale green one the rates alone survive but least squares reports an interval that is too narrow, so the likelihood is needed. In the dark green one the unitary conductance i is recovered as well, together with the closing rate k_off and usually with the opening rate and the channel count; this is the region only the recursive likelihood can reach, for a reason given below. Violet is the corner in which the likelihood's own interval is not calibrated, whatever the yield, and it overrides the other four. Everything is at one acquisition interval, Δ·k_off = 0.1.
 
@@ -20,7 +23,7 @@ Two classes of line cross the plane and they are drawn differently because they 
 
 **What the map cannot decide.** It is a concept map and not a phase diagram. Its boundaries are level sets of continuous diagnostics, so the criterion moves them: loosening the measurability threshold from a factor of two to a factor of ten lifts the four parameter boundaries by a median factor of 9.0 to 14.4 in noise, and loosening the calibration threshold from a distortion of 1.15 to 1.30 lowers the other two by a factor of 0.50. The layout survives all of that and the positions do not, so no cell should be read to better than about a decade in noise. The amber region is the thinnest claim in the figure, resting on 3 cells, and it opens only above about 100 channels. All of it is the two-state scheme at a single open probability and a single concentration-jump protocol; under stationarity the mean is flat and the balance between the methods inverts.
 
-<!-- Source: projects/eLife_2025/figures/paper_both/figure_6.Rmd, chunk `map` (revision AM, adopted
+<!-- Source: projects/eLife_2025/figures/paper_both/figure_7.Rmd (was figure_6.Rmd), chunk `map` (revision AM, adopted
      2026-07-31; the AF-AL series, which filled cells by HOW MANY parameters survive instead of by
      WHICH, is in tmp/fig6/). The three superseded drawings of the same measurement are in
      figures/archive/figure_6_superseded_20260731/ and the notebook writes them straight there:
@@ -44,7 +47,7 @@ Two classes of line cross the plane and they are drawn differently because they 
      Numbers printed by the chunk on every render, including the cell-versus-line confusion table;
      re-read after a re-render. Subset counts, region counts and the criterion sensitivities are
      measured, not fitted. Noise displayed = swept label / 10 (NOISE_AXIS_UNITS.md).
-     CROSS-REFERENCE TO FIX: Figure_5_caption.md cites "the -0.56 slope of the region-0 boundary of
+     CROSS-REFERENCE TO FIX: Figure_6_caption.md (was Figure_5_caption.md) cites "the -0.56 slope of the region-0 boundary of
      Figure 6". That was the LSE-mixed k_off floor of the predecessor; this figure's region-0
      boundary is IR-sourced and has slope -0.50.
      Open: whether the lower vertex, where the map closes below N_ch 10, is pinned by running N_ch 2

@@ -1,28 +1,31 @@
 ---
-title: "Figure 5 — where MacroIR stops being calibrated, and why"
+title: "Figure 6 — where MacroIR stops being calibrated, and why"
 author: "Luciano Moffatt"
 date: "`r Sys.Date()`"
 output: html_document
 ---
 
 <!--
+RENUMBERED 2026-08-10: this figure is now FIGURE 6. It was Figure 5 until the tau_int decision
+panel (figure_5.Rmd) was promoted into the body ahead of it; the usage map moved to Figure 7.
+
 WHAT THIS FIGURE IS FOR. Figure 4 shows IR's panels nearly blank, which raises the question the
 abstract already answers in words: the boundary-conditioned filter is calibrated over most of the
 sweep, "departing toward few channels and low noise, where the Gaussian closure is misspecified".
-Figure 6 then uses that departure as the region-0 boundary of the usage map. Nothing between them
+Figure 7 then uses that departure as the region-0 boundary of the usage map. Nothing between them
 shows the data. This figure is that evidence, and it is the only place in the paper where the
 threshold in `05_discussion.tex` ([THRESHOLD-DJ]) can be read off.
 
 WHY IT CANNOT BE PART OF FIGURE 4. On Figure 4's shared scale, clipped at 10^+-3, a factor 1.46 is
 a faint tint. The departure lives between 0.6 and 1.6 and needs an axis, not a colour.
 
-THE LAYOUT. Each block is a design-plane grid in the same orientation as Figures 4 and 6: N_ch
+THE LAYOUT. Each block is a design-plane grid in the same orientation as Figures 4 and 7: N_ch
 increases to the right, instrumental noise increases upward, and inside every cell the horizontal
 axis is the sampling interval. The three blocks are the distortion and its two causes, so the
 figure says where, how much, with what confidence, and why, on one page.
 
 SAMPLING. N_ch runs in ~0.65-decade steps against noise in ~0.3-decade steps. That is not
-arbitrary: the region-0 boundary of Figure 6 has a fitted slope of -0.56 in
+arbitrary: the region-0 boundary of Figure 7 has a fitted slope of -0.56 in
 dlog10(noise)/dlog10(N_ch), so a decade of channels trades against ~0.56 decades of noise and the
 noise axis needs about twice the resolution to sample the field evenly.
 
@@ -175,7 +178,7 @@ g <- ttl / row / txt("dimensionless sampling interval") / key +
 
 ```{r render, fig.width = 7.4, fig.height = 4.83}
 g
-ggsave("Figure_5.pdf", g, width = 7.4, height = 4.83)
-cat("Figure_5.pdf: 7.40 x 4.83 in;",
+ggsave("Figure_6.pdf", g, width = 7.4, height = 4.83)
+cat("Figure_6.pdf: 7.40 x 4.83 in;",
     "N_ch", paste(NCH, collapse = ","), "x noise", length(NZ), "x three components\n")
 ```

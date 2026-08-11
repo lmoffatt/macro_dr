@@ -108,7 +108,7 @@ dat <- spec %>%
          d = factor(sprintf("%g", interval_in_tau),
                     levels = sprintf("%g", sort(unique(interval_in_tau)))))
 
-cat(sprintf("figure_6B: %d marks, %d cells, intervals %s\n",
+cat(sprintf("figure_5_variant_2members: %d marks, %d cells, intervals %s\n",
             nrow(dat), n_distinct(dat[c("noise","Num_ch","interval_in_tau")]),
             paste(levels(dat$d), collapse = " ")))
 ```
@@ -137,7 +137,7 @@ g <- ggplot(dat, aes(tau_int, mag, colour = d)) +
         strip.background = element_rect(fill = "grey92", colour = NA),
         strip.text = element_text(face = "bold", size = 8))
 
-ggsave("Figure_6B.pdf", g, width = 7.0, height = 3.6, device = cairo_pdf)
+ggsave("Figure_5_variant_2members.pdf", g, width = 7.0, height = 3.6, device = cairo_pdf)
 g
 ```
 

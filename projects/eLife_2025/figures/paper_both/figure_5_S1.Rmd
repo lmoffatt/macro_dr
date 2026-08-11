@@ -1,15 +1,16 @@
 ---
-title: "Figure 6BB — each member's distortion against the memory left in its own residual"
+title: "Figure 5—figure supplement 1 — each member's distortion against the memory left in its own residual"
 author: "Luciano Moffatt"
 date: "`r Sys.Date()`"
 output: html_document
 ---
 
 <!--
-FIGURE 6BB, 2026-08-10. Companion to figure_6B.Rmd: same data, one change, and it answers a
+FIGURE 5 SUPPLEMENT 1 (was figure_6BB.Rmd; renamed 2026-08-10 when the parent panel was promoted
+to the body as Figure 5). Companion to figure_5.Rmd and to figure_5_variant_2members.Rmd: same data, one change, and it answers a
 different question.
 
-figure_6B.Rmd and figure_6B_all.Rmd put EVERY member at the tau_int of the LEAST-SQUARES residual,
+figure_5.Rmd and its two variants put EVERY member at the tau_int of the LEAST-SQUARES residual,
 because that is the number a reader has in hand before choosing a method. A mark of IR at x = 17
 there does not say that IR left memory 17 in anything; it says that in a cell where the classical fit
 left memory 17, IR's distortion is 1.00.
@@ -24,7 +25,8 @@ READ THE TWO TOGETHER. If a member is clean in this panel and distorted in the o
 residual whiteness is not evidence that it is calibrated, which is the diagnostic blindness the paper
 argues for in words.
 
-Each panel has its own y scale, as in figure_6B_all.Rmd, and its own x scale here as well, because
+Each panel has its own y scale, as in figure_5_variant_8members.Rmd, and its own x scale here as
+well, because
 the members' own tau_int ranges do not overlap.
 Labels follow figure_4.Rmd:329.
 -->
@@ -42,7 +44,7 @@ LAB <- c(nonlinearsqr_g = "LSE", nonlinearsqr = "ILSE",
          macro_NR = "NR", macro_INR = "INR",
          macro_R = "R", macro_MR = "MR", macro_VR = "VR", macro_IR = "IR")
 
-# the only difference from figure_6B_all.Rmd: tau_int is joined PER ALGORITHM
+# the only difference from figure_5_variant_8members.Rmd: tau_int is joined PER ALGORITHM
 tau <- rd("figure_4_source_data_cell_scalars.csv") %>%
   filter(param == "lag", anchor == "pool", algo %in% names(LAB)) %>%
   transmute(algo, noise, Num_ch, interval_in_tau, tau_int = v)
@@ -61,7 +63,7 @@ dat <- spec %>%
          d = factor(sprintf("%g", interval_in_tau),
                     levels = sprintf("%g", sort(unique(interval_in_tau)))))
 
-cat(sprintf("figure_6BB: %d marks; per member: %s\n", nrow(dat),
+cat(sprintf("figure_5_S1: %d marks; per member: %s\n", nrow(dat),
             paste(sprintf("%s=%d", levels(dat$member), as.integer(table(dat$member))),
                   collapse = " ")))
 ```
@@ -85,7 +87,7 @@ g <- ggplot(dat, aes(tau_int, mag, colour = d)) +
         strip.background = element_rect(fill = "grey92", colour = NA),
         strip.text = element_text(face = "bold", size = 8))
 
-ggsave("Figure_6BB.pdf", g, width = 7.0, height = 4.8, device = cairo_pdf)
+ggsave("Figure_5_S1.pdf", g, width = 7.0, height = 4.8, device = cairo_pdf)
 g
 ```
 

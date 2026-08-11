@@ -1,11 +1,15 @@
 ---
-title: "Figure 6 — the usage map: what a macroscopic recording can be asked for, over the design space"
+title: "Figure 7 — the usage map: what a macroscopic recording can be asked for, over the design space"
 author: "Luciano Moffatt"
 date: "`r Sys.Date()`"
 output: html_document
 ---
 
 <!--
+RENUMBERED 2026-08-10: this figure is now FIGURE 7. It was Figure 6 until the tau_int decision
+panel was promoted into the body as Figure 5 and the corner figure became Figure 6. The archive
+directory name (archive/figure_6_superseded_20260731) keeps its old number on purpose: it is dated.
+
 WHAT THIS IS. One plane, N_ch x instrumental noise, partitioned by boundaries into the regimes that
 decide what a macroscopic recording can support. Unlike every other figure in this set it is NOT a
 heatmap: the content is the boundaries, so the cells are the input and the lines are the output.
@@ -92,7 +96,7 @@ DRNG <- c(0.01, 1)                # interval range spanned by the ribbons
 
 read_algo <- function(pat, algo, idx) {
   fs <- list.files(DATA_DIRS, pattern = pat, full.names = TRUE)
-  if (!length(fs)) stop("figure_6: no files for ", algo)
+  if (!length(fs)) stop("figure_7: no files for ", algo)
   map_dfr(fs, function(p) read.csv(p, skip = 1, stringsAsFactors = FALSE) %>%
     filter(component_path %in% c(DIST, SEC), statistic == "value", probit == "mean",
            param_index == param_col, param_index %in% idx) %>%
@@ -105,7 +109,7 @@ IR  <- read_algo("^figure_3_G_nch_[0-9]+_nsim_10000_macro_IR_noise_[0-9.eE+]+_ba
 LSE <- read_algo("^figure_3_LSE_nch_[0-9]+_nsim_10000_nonlinearsqr_noise_[0-9.eE+]+_battery_pool_G\\.csv$",
                  "LSE", c(kon = 0, koff = 1, Nch = 3))
 
-cat("figure_6: noise levels on disk, per algorithm and N_ch\n")
+cat("figure_7: noise levels on disk, per algorithm and N_ch\n")
 print(as.data.frame(bind_rows(IR, LSE) %>% distinct(algo, nch, noise) %>% count(algo, nch) %>%
       pivot_wider(names_from = algo, values_from = n, values_fill = 0)), row.names = FALSE)
 
@@ -149,10 +153,10 @@ CR <- MET %>% inner_join(DRAW, by = c("q", "par")) %>% inner_join(QQ, by = "q") 
             c2 = cross1(log10(noise), m, first(t2), first(rising)), .groups = "drop") %>%
   mutate(lx = log10(nch), pf = factor(unname(PARS[par]), levels = unname(PARS)))
 
-cat("\nfigure_6: boundary position (noise) at Delta.k_off =", DREF, ", strict criterion\n")
+cat("\nfigure_7: boundary position (noise) at Delta.k_off =", DREF, ", strict criterion\n")
 print(as.data.frame(CR %>% filter(D == DREF) %>% transmute(q, par, nch, noise = signif(10^c1, 3)) %>%
       pivot_wider(names_from = nch, values_from = noise, names_prefix = "N=")), row.names = FALSE)
-cat("\nfigure_6: fitted log-log slopes (d log10 noise / d log10 N_ch) at Delta.k_off =", DREF, "\n")
+cat("\nfigure_7: fitted log-log slopes (d log10 noise / d log10 N_ch) at Delta.k_off =", DREF, "\n")
 print(as.data.frame(CR %>% filter(D == DREF, is.finite(c1)) %>% group_by(q, par) %>% filter(n() >= 3) %>%
       summarise(slope = round(coef(lm(c1 ~ lx))[2], 2), n = n(), .groups = "drop")), row.names = FALSE)
 # BEST ACHIEVABLE SE, minimised over the whole noise sweep. A parameter whose best is already past
@@ -160,16 +164,16 @@ print(as.data.frame(CR %>% filter(D == DREF, is.finite(c1)) %>% group_by(q, par)
 # terminate. That is a physical statement, not missing data, so it is printed and annotated.
 BEST <- MET %>% filter(q == "se", D == DREF) %>% group_by(par, nch) %>%
   summarise(best = min(m), .groups = "drop")
-cat("\nfigure_6: best achievable SE over the whole noise sweep (> 0.3 = never measurable there)\n")
+cat("\nfigure_7: best achievable SE over the whole noise sweep (> 0.3 = never measurable there)\n")
 print(as.data.frame(BEST %>% pivot_wider(names_from = par, values_from = best) %>%
       mutate(across(where(is.numeric), ~signif(.x, 3)))), row.names = FALSE)
 NEVER <- BEST %>% group_by(par) %>% arrange(nch) %>%
   summarise(nch_min = if (min(best) > 0.3 || max(best) < 0.3) NA_real_ else
               10^approx(log10(best), log10(nch), xout = log10(0.3))$y, .groups = "drop")
-cat("\nfigure_6: N_ch below which the parameter is UNREACHABLE at any noise\n")
+cat("\nfigure_7: N_ch below which the parameter is UNREACHABLE at any noise\n")
 print(as.data.frame(NEVER %>% mutate(nch_min = round(nch_min))), row.names = FALSE)
 
-cat("\nfigure_6: how far the loose criterion moves each boundary (median factor in noise)\n")
+cat("\nfigure_7: how far the loose criterion moves each boundary (median factor in noise)\n")
 print(as.data.frame(CR %>% filter(D == DREF, is.finite(c1), is.finite(c2)) %>% group_by(q, par) %>%
       summarise(factor = round(median(10^(c2 - c1)), 2), n = n(), .groups = "drop")), row.names = FALSE)
 ```
@@ -459,7 +463,7 @@ POLY <- bind_rows(lapply(seq_len(nrow(PREP)), function(k) {
 }))
 # r over the whole footprint, not just its corners: the extrema sit where the diagonals start to bind.
 RR <- POLY %>% mutate(r = y - x) %>% group_by(name) %>% summarise(r_lo = min(r), r_hi = max(r))
-cat("\nfigure_6: three preparations, in the sweep's own label = 10 * S * k_off / i^2 = 10 * S_tilde\n")
+cat("\nfigure_7: three preparations, in the sweep's own label = 10 * S * k_off / i^2 = 10 * S_tilde\n")
 print(as.data.frame(PREP %>% left_join(RR, by = "name") %>% transmute(name,
       N_ch    = sprintf("%.3g - %.3g", n_lo, n_hi),
       tau_ms  = sprintf("%.3g - %.3g", tau_lo * 1e3, tau_hi * 1e3),
@@ -518,7 +522,7 @@ POLYC <- POLY %>% mutate(y = cl(y))
 NSTAR <- PREP %>% filter(n_hi > nstar * 1.001, ylo > YLIM[1]) %>%
   transmute(name, x = log10(nstar), y = ylo)
 OFFB  <- PREP %>% filter(ylo < YLIM[1])
-cat("\nfigure_6: preparation footprints, clipped to the panel\n")
+cat("\nfigure_7: preparation footprints, clipped to the panel\n")
 print(as.data.frame(PREP %>% transmute(name,
       floor_true = sprintf("%.3g", 10^ylo), floor_at_right_edge = sprintf("%.3g", 10^ylo_r),
       top = sprintf("%.3g", 10^yhi),
@@ -977,7 +981,7 @@ onalgo <- function(f, x, txt, dy = 0.22, pt = 8) {
 # The two small footprints ended exactly on N_ch 10 and 20, which are also two of the columns the
 # sweep was run at, so their vertical edges ran through a line of cells and the cells read as beads
 # threaded on the box. Moved to 8 and 18. READ BEFORE KEEPING THIS: whole cell's edges are DERIVED
-# in figure_6.Rmd, not chosen -- 20 = 100 pA / (10 pA x 0.5) and 1e4 = 5 nA / (1 pA x 0.5), so they
+# in figure_7.Rmd, not chosen -- 20 = 100 pA / (10 pA x 0.5) and 1e4 = 5 nA / (1 pA x 0.5), so they
 # encode Imin and Imax rather than a guess -- and nudging them means the drawn box no longer states
 # those two currents. The right edge costs a second thing: at 1e4 the footprint ended exactly where
 # the simulations end, so whole cell was entirely covered by measured cells; at 2e4 it crosses into
@@ -1249,7 +1253,7 @@ gq <- ggplot() +
         plot.margin = margin(4, 5, 2, 4))
 
 # the purple override is the figure; the hatch sibling is kept because the choice is still live
-f <- if (HATCH_BAD) "Figure_6_hatch" else "Figure_6"
+f <- if (HATCH_BAD) "Figure_7_hatch" else "Figure_7"
 ggsave(paste0(f, ".pdf"), gq, width = 7.0, height = 5.9, device = cairo_pdf)
 ggsave(paste0(f, ".png"), gq, width = 7.0, height = 5.9, dpi = 140)
 if (!HATCH_BAD) print(gq)

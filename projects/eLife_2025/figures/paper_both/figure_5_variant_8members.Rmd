@@ -6,8 +6,9 @@ output: html_document
 ---
 
 <!--
-VARIANT of figure_6B.Rmd, 2026-08-10, at Luciano's request: all eight members, each in its own panel,
-in cost-ladder order. Design unchanged from figure_6B.Rmd, and the note there owns the reasoning.
+VARIANT of figure_5_variant_2members.Rmd, 2026-08-10, at Luciano's request: all eight members, each
+in its own panel, in cost-ladder order. Design unchanged from that file, and the note there owns the
+reasoning. NOT the body figure: the body is figure_5.Rmd, four members on one shared y.
 
 THE X IS THE SAME FOR EVERY PANEL and it is tau_int of the LEAST-SQUARES residual, not of the member
 being drawn. That is deliberate and it is the whole point of the figure: the reader measures this
@@ -57,7 +58,7 @@ dat <- spec %>%
          d = factor(sprintf("%g", interval_in_tau),
                     levels = sprintf("%g", sort(unique(interval_in_tau)))))
 
-cat(sprintf("figure_6B_all: %d marks; per member: %s\n", nrow(dat),
+cat(sprintf("figure_5_variant_8members: %d marks; per member: %s\n", nrow(dat),
             paste(sprintf("%s=%d", levels(dat$member), as.integer(table(dat$member))),
                   collapse = " ")))
 ```
@@ -81,7 +82,7 @@ g <- ggplot(dat, aes(tau_int, mag, colour = d)) +
         strip.background = element_rect(fill = "grey92", colour = NA),
         strip.text = element_text(face = "bold", size = 8))
 
-ggsave("Figure_6B_all.pdf", g, width = 7.0, height = 4.8, device = cairo_pdf)
+ggsave("Figure_5_variant_8members.pdf", g, width = 7.0, height = 4.8, device = cairo_pdf)
 g
 ```
 
