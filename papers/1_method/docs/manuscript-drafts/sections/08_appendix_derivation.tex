@@ -35,6 +35,105 @@ moments it needs, what separates the start-conditioned members from the boundary
 and the correspondence with the linear-filtering literature. It is written to be checked rather
 than read in sequence, and every equation the body or Methods refers to is numbered here.
 
+\begin{tcolorbox}[title={Three marks, and each one says one thing}, colback=gray!5, colframe=gray!55]
+\textbf{An arrow means the object spans the acquisition window}, of duration $\Delta$:
+$P_{i\to j}(\Delta)$ is a transition across it, $\bar\gamma_{i\to j}$ an average over it,
+$\bar y_{0\to\Delta}$ a recorded value formed from it. \textbf{No arrow means one instant}:
+$\bm{\mu}_0,\bm{\Sigma}_0$ are the occupancy mean and covariance where the window opens,
+$\bm{\mu}_\Delta,\bm{\Sigma}_\Delta$ where it closes. \textbf{A dot marks a collapsed end}:
+$a_{i\to\cdot}:=\sum_j P_{i\to j}(\Delta)\,a_{i\to j}=\mathbb{E}[a\mid X_0=i]$, as in
+$\bar\gamma_{i\to\cdot}$; for a probability the weight is already inside and the collapse is the
+plain margin. Across a recording a subscript $t$ indexes the window, as in $\bar y_t$; inside a window the two
+ends are $0$ and $\Delta$, and a collapsed object is defined the moment its pair-resolved version is.
+\end{tcolorbox}
+% MOVED HERE 2026-08-10 from 02_theory_full.tex, where it opened the section. It is appendix
+% vocabulary: two of its three marks (the instant subscripts 0 and Delta, the dot collapse) are used
+% in this file and in no body sentence, and the third, the arrow, is now glossed in the body at "The
+% boundary state", where the first arrow-marked object of the body appears. The reason for the move
+% is in the note left at the old site.
+% NOTATION, aligned 2026-08-09 with the published form. The supplementary information of
+% moffatt2025bayesian, section S1.3, writes P_{i->j}(t), gamma_{i->j}(t), gamma_0 = (E[gamma_{i->.}])_i,
+% y^pred_{0->t}, y^obs_{0->t} and K^mu_{0->t}: lowercase, i and j, the dot for the collapse, and the
+% arrow on every spanning object INCLUDING the gain. Thirteen pages with no uppercase Gamma, no
+% i_0/i_t, no "bnd" and no "prop". This section had departed from that on all four counts; the pass
+% of 2026-08-09 returns it. VERIFIED first-hand against
+% docs/bibliography/Moffatt_PierdominiciSottile_2025_Functional_Asymmetry_P2X2_CommBiol_SI.pdf,
+% Eqs. S1-S6.
+% THREE DELIBERATE DEPARTURES, kept:
+%   (i) the bar on gamma-bar. The SI writes gamma_{i->j} bare because nothing competes with it
+%       there; this section uses bold gamma for the instantaneous conductance in the same
+%       equations, so the bar is a local disambiguation and not a departure of substance.
+%  (ii) the gain is g and not K^mu, and it is not called a Kalman gain. De-Kalmaned 2026-08-06
+%       with the reason recorded below Eq. sig-post.
+% (iii) the SI's E_i for the collapsed second moment is not used: E_2 and E_3 are the divided
+%       differences here, and a third E would collide.
+
+\subsection*{The interval average, and how the members are built}
+% MOVED HERE 2026-08-10 from 02_theory_full.tex, three blocks, no sentence rewritten except where
+% the connective tissue had to change: the telegraph mechanics from "Two Gaussian approximations",
+% and the per-channel algebra, the three steps and the tilted semigroup from "The interval update".
+% The body keeps the claims it argues from and a bridge; this is where they are cashed. Placed
+% BEFORE the boundary-conditioned moments so that the "met above" of Eq. tilted-derivatives and the
+% "as above" of Eq. gammabar-vbar resolve inside this appendix.
+
+A single channel switching among its conductance levels traces a piecewise-constant path, the
+random telegraph signal when $K=2$, and the window delivers its integral over one acquisition
+interval,
+\begin{equation}
+  A_{0\to\Delta}=\int_0^{\Delta}\gamma\bigl(X_s\bigr)\,\mathrm{d}s,
+  \label{eq:integrated-conductance}
+\end{equation}
+where $X_s$ is the state of the channel at time $s$. Its law is mixed: an atom at
+$\Delta\gamma_i$ carrying the probability of never leaving state $i$, and a continuous part from
+the paths that switched. Its density is a series over the number of transitions in the window,
+exact at every $K$, closed only at $K=2$, and proliferating with $K$. Two things that might
+rescue it do not. Channel models carry few distinct conductances, every shut state at
+$\gamma=0$ and the open states often sharing one $\gamma$, so $A_{0\to\Delta}$ is that
+conductance times the time spent in the open aggregate however large $K$ is; but the aggregate is
+Markov only if $\mathbf{Q}$ is lumpable, which for the schemes that motivate this work it is not
+\citep{colquhoun1981stochastic}. And the population multiplies the difficulty rather than adding
+to it, since the laws of independent channels convolve and a recorded sample constrains only the
+sum, so the posterior over channels does not factorize~\citep{moffatt2007estimation}.
+% TODO citation, travelled with the paragraph 2026-08-10: the two-state occupation-time density is
+% classical (candidates to check and add to biblio.bib: Takacs 1957, Acta Math Acad Sci Hungar;
+% Pedler 1971, J Appl Prob 8:381). Neither PDF is in docs/bibliography/ yet. The general-K series is
+% the accumulated-reward problem of performability analysis (Donatiello and Iyer 1987; de Souza e
+% Silva and Gail 1986; Sericola 1990s).
+% OPEN, travelled 2026-08-10: the other consequence of the same aggregation, that distinct
+% generators can produce identical current statistics, still has no Discussion passage to point at.
+% Logged at 00_abstract.tex:203; sources in docs/bibliography/identifiability/ and the framing in
+% _program/research_program.md (Bridge 2). The host sentence for the cross-reference is the
+% lumpability clause above.
+
+Every moment in the construction belongs to a single channel. Writing $\mathbf{X}$ for the
+indicator vector of the state one channel occupies, which is one on that state and zero
+elsewhere, $\bm{\mu}=\mathbb{E}[\mathbf{X}]$ is its probability vector and
+$\bm{\Sigma}=\mathrm{Cov}(\mathbf{X})$ its covariance, which is
+$\mathrm{diag}(\bm{\mu})-\bm{\mu}\bm{\mu}^\top$ for a channel nothing has been observed about
+and vanishes when its state is known. Channels are independent of each other, so the counts
+$\mathbf{N}=\sum_c \mathbf{X}^{(c)}$ over the ensemble have
+$\mathbb{E}[\mathbf{N}]=N_{\mathrm{ch}}\bm{\mu}$ and
+$\mathrm{Cov}(\mathbf{N})=N_{\mathrm{ch}}\bm{\Sigma}$, which is where every factor of
+$N_{\mathrm{ch}}$ in Eq.~\ref{eq:macror} comes from.
+
+The interval average is not a function of the occupancy at any one time, so no conductance vector
+on the $K$ states delivers its mean. On the $K^2$ pairs of states a channel occupies at the two
+ends of the window one does, and the construction of every interval member is that substitution
+carried out in three steps. Run the update on the pairs, with the pair-conditioned mean interval
+conductance $\bar\gamma_{i\to j}$ in place of $\bm{\gamma}$. Charge what the conductance still
+varies by once the pair is fixed, its variance $\bar v_{i\to j}$, to the noise term of the update,
+where it enters as a variance carried per state. That is legitimate rather than convenient: given
+the counts the extra fluctuation has mean zero, so
+$\mathrm{Cov}(\mathbf{N},\bar y)=\mathrm{Cov}(\mathbf{N},\mathbb{E}[\bar y\mid\mathbf{N}])$ and it
+touches $\sigma^2$ alone, entering neither the predicted mean nor the gain. Then marginalize the
+start index, which the next window has no use for. Of the three steps the first two are exact, and
+the Gaussian replacement is where the approximation enters.
+
+The two moments this asks for are cheap at any $K$. Both are derivatives at $\alpha=0$ of the
+tilted semigroup $e^{(\mathbf{Q}+\alpha\bm{\Gamma})\Delta}$, the generator biased by the
+conductance, with $\bm{\Gamma}=\mathrm{diag}(\bm{\gamma})$, so each costs one matrix exponential
+and no object larger than $K\times K$ is formed in building them.
+
 \subsection*{The boundary-conditioned moments, and how they are evaluated}
 
 The ladder needs two conductance objects, both built from the boundary-conditioned
