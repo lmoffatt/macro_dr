@@ -166,7 +166,7 @@ dw <- d %>% filter(pair %in% ok) %>%
 # row instead, since a fourth series in a panel would need a fourth colour and the comparison the
 # figure exists for is the one between the two members.
 #
-# SCALES follow figure_6B.Rmd: raw values in the data, the transform done by the scale. BIAS IS A
+# SCALES follow figure_5_variant_2members.Rmd (was figure_6B.Rmd): raw values in the data, the transform done by the scale. BIAS IS A
 # SEPARATE FIGURE because it is null at 0 and signed and cannot share a log axis with a ratio.
 suppressMessages(library(patchwork))
 X_BRK    <- c(0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1)

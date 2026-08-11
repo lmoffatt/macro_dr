@@ -96,7 +96,7 @@ scoped to the old single-paper frame.
 | `README.md` | routes into paper 1; points at the program layer | LIVE | — |
 | `00_master_plan.md`, `01_writing_plan.md`, `04_figures_storyboard.md`, `06_repro_pipeline.md` | retired/pointer stubs carried over from the pack | RETIRED/REWRITE | `04_*` and `06_*` are dead arcs; `01_writing_plan`'s six-figure gate was fixed 2026-07-22; `00_master_plan` is a tombstone |
 | `analysis_figure_S1_score_mean.md` | what the score-mean figure shows | LIVE | — |
-| `analysis_figure_5_breakdown_criterion.md` | whether a predicted breakdown boundary can go on Figure 5, which claims survive a circularity audit, and what the figure carries instead | LIVE | opened 2026-08-03 on a twelve-agent derivation + measurement + adversarial run (`wf_cd2f528f-2c3`). **Verdict: no line.** Five candidate criteria, zero survivors. Also holds the roads not taken (micro_IR, higher-cumulant emission) with their costs, and §11 lists corrections owed to `_program/axes.md` and to the long-interval premise |
+| `analysis_figure_5_breakdown_criterion.md` | whether a predicted breakdown boundary can go on the corner figure (Figure 6 since 2026-08-10, Figure 5 when the file was opened), which claims survive a circularity audit, and what the figure carries instead | LIVE | opened 2026-08-03 on a twelve-agent derivation + measurement + adversarial run (`wf_cd2f528f-2c3`). **Verdict: no line.** Five candidate criteria, zero survivors. Also holds the roads not taken (micro_IR, higher-cumulant emission) with their costs, and §11 lists corrections owed to `_program/axes.md` and to the long-interval premise |
 | `figures_build_plan.md` | the **order** of figure runs and edits, and the command for each | LIVE | opened 2026-07-21 for the VR re-runs; owns build order only — the arc is `1_method/docs/manuscript-drafts/sections/04_results.md`, the visual system `_program/figures_system.md`, the run manifest `_program/provenance.md` |
 | `CONTINUE_HERE.md` | cold-start pointer for the figure work: what is in flight, and the traps that are not visible in the code | LIVE | opened 2026-07-22; a pointer, not a copy. Delete it the day it starts duplicating the documents it points at |
 | `decisions/D-0, D-3, D-4` | freeze scope, the novelty claim, the ranking verdict | LIVE | D-4 rescopes to band A rather than being rewritten |
@@ -131,7 +131,7 @@ Look the topic up here before writing.
 | Cross-paper settled decisions | `_program/decisions.md` |
 | Paper 1's thesis, scope, roster | `1_method/00_plan.md` |
 | Why the paper exists, the argument, the narrative order, what is open | `1_method/approach.md` |
-| Where MacroIR's approximation breaks, and what Figure 5 may claim about it | `1_method/analysis_figure_5_breakdown_criterion.md` |
+| Where MacroIR's approximation breaks, and what Figure 6 (the corner figure, ex-5) may claim about it | `1_method/analysis_figure_5_breakdown_criterion.md` |
 | The claim spine, constraints and verify lists of every section | `1_method/docs/manuscript-drafts/sections/README.md` |
 | Paper 1's figure arc | `1_method/docs/manuscript-drafts/sections/README.md`, Results block |
 | Paper 1's cells | `1_method/grid.md` |

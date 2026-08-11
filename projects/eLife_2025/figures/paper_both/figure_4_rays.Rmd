@@ -198,7 +198,7 @@ cat("curve points:", nrow(d), " pairs:", paste(unique(as.character(d$pair)), col
 #
 # NO DASHED LINES. Both members are solid and separated by colour alone.
 #
-# SCALES follow figure_6B.Rmd, the format reference for the line figures here: raw values in the
+# SCALES follow figure_5_variant_2members.Rmd (was figure_6B.Rmd), the format reference for the line figures here: raw values in the
 # data, the transform done by scale_x_log10 and scale_y_log10 with explicit breaks.
 #
 # BIAS AND DISTORTION ARE SEPARATE FIGURES, and that is forced. A distortion is a ratio null at 1 and
