@@ -716,7 +716,10 @@ battery: a central difference of the analytic score, with per-coordinate step
 $h_i = h_{\mathrm{rel}}\max(|\theta_i|,1)$ at $h_{\mathrm{rel}} = 10^{-5}$,
 symmetrised as $(F_{\mathrm{num}} + F_{\mathrm{num}}^{\mathsf T})/2$. Because the score
 itself is obtained by automatic differentiation, this is a single numerical derivative
-rather than two. That battery (data directory \texttt{433ed13}) is retained in the
+rather than two. It is not interchangeable with the analytic anchor per recording: the
+numerical Fisher is widely indefinite replicate by replicate, and only pooling across
+replicates recovers a definite matrix, which is one reason the body is anchored on the
+analytic construction. That battery (data directory \texttt{433ed13}) is retained in the
 deposit as the demonstration that the two constructions target the same information,
 an agreement the time-resolved figures exhibit per interval. No number reported in this
 paper is taken from it.

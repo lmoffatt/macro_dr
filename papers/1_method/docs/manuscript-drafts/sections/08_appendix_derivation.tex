@@ -129,10 +129,10 @@ touches $\sigma^2$ alone, entering neither the predicted mean nor the gain. Then
 start index, which the next window has no use for. Of the three steps the first two are exact, and
 the Gaussian replacement is where the approximation enters.
 
-The two moments this asks for are cheap at any $K$. Both are derivatives at $\alpha=0$ of the
-tilted semigroup $e^{(\mathbf{Q}+\alpha\bm{\Gamma})\Delta}$, the generator biased by the
-conductance, with $\bm{\Gamma}=\mathrm{diag}(\bm{\gamma})$, so each costs one matrix exponential
-and no object larger than $K\times K$ is formed in building them.
+% The tilted-semigroup paragraph that travelled with this block is NOT reproduced here: the
+% subsection immediately below opens by defining exactly that object, and printing both would say it
+% twice across a subsection boundary. Its two dependencies ("met above", "as above") are repaired in
+% place instead, so this appendix no longer leans on a definition in the body.
 
 \subsection*{The boundary-conditioned moments, and how they are evaluated}
 
@@ -142,8 +142,9 @@ conductance of a channel that starts in $i$ and ends in $j$) and
 $\bar{v}_{i\to j}$ (its variance). Both are moments of the integrated conductance
 $A_{0\to\Delta}$ of Eq.~\ref{eq:integrated-conductance}, taken conditional on the chain starting
 in $i$ and ending in $j$, and both are available in closed form, with no object larger
-than $K\times K$ formed anywhere. They are derivatives at $\alpha=0$ of the tilted semigroup
-met above. Writing
+than $K\times K$ formed anywhere. They are derivatives at $\alpha=0$ of the conductance-tilted
+semigroup $e^{(\mathbf{Q}+\alpha\bm{\Gamma})\Delta}$, the generator biased by the conductance.
+Writing
 \begin{equation}
   \mathbf{F}_1(\Delta)=\left.\frac{\partial}{\partial\alpha}
       e^{(\mathbf{Q}+\alpha\bm{\Gamma})\Delta}\right|_{\alpha=0},
@@ -152,7 +153,7 @@ met above. Writing
       e^{(\mathbf{Q}+\alpha\bm{\Gamma})\Delta}\right|_{\alpha=0},
   \label{eq:tilted-derivatives}
 \end{equation}
-with $\bm{\Gamma}=\mathrm{diag}(\bm{\gamma})$ as above, the $(i\to j)$ entry of the first is
+with $\bm{\Gamma}=\mathrm{diag}(\bm{\gamma})$, the $(i\to j)$ entry of the first is
 $\mathbb{E}[A_{0\to\Delta}\,\mathbf{1}\{X_\Delta=j\}\mid X_0=i]$ and of the second the same
 expectation with $A^2_{0\to\Delta}$ in place of $A_{0\to\Delta}$; the factor of two is the two
 triangular halves of the double integral the second derivative unfolds into. Dividing by the
