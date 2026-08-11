@@ -1,5 +1,5 @@
 \begin{abstract}
-Kinetic schemes are usually fitted to macroscopic ion-channel currents by least squares on the deterministic mean, leaving the gating fluctuations unmodelled. Likelihoods that use them, including Bayesian recursive filters, are two decades old and little used: a filter tracks the data even when the uncertainty it reports is wrong. In our own comparison of nine gating schemes for the P2X$_2$ receptor, dropping the recursion changed the ranking. The test is classical: at the true parameters the score, the log-likelihood's derivative, averages to zero, and its covariance across recordings equals the Fisher information it reports. We measure bias and distortion along a ladder from least squares to a filter conditioned on both ends of each acquisition interval, for a two-state scheme over channel number, noise and acquisition interval, against exact simulations of the process they approximate. The boundary-conditioned filter is calibrated over most of the sweep, departing toward few channels and low noise, where the Gaussian moment closure on the occupancy is misspecified. Least squares becomes calibrated once instrumental noise exceeds gating noise, which happens at an instrumental variance proportional to channel number. No region of the measured plane gives both information about the unitary current and a trustworthy least-squares error bar, the two boundaries one to three decades of noise apart.
+Kinetic schemes are usually fitted to macroscopic ion-channel currents by least squares on the deterministic mean, leaving the gating fluctuations unmodelled. Likelihoods that use them, including Bayesian recursive filters, are two decades old and little used: a filter tracks the data even when the uncertainty it reports is wrong. In our own comparison of nine gating schemes for the P2X$_2$ receptor, dropping the recursion put a different mechanism first. The test is classical: at the true parameters the score, the log-likelihood's derivative, averages to zero, and its covariance across recordings equals the Fisher information it reports. We measure bias and distortion along a ladder from least squares to a filter conditioned on both ends of each acquisition interval, for a two-state scheme over channel number, noise and acquisition interval, against exact simulations of the process they approximate. The boundary-conditioned filter is calibrated over most of the sweep, departing toward few channels and low noise, where the Gaussian moment closure on the occupancy is misspecified. Least squares becomes calibrated once instrumental noise exceeds gating noise, which happens at an instrumental variance proportional to channel number. No region of the measured plane gives both information about the unitary current and a trustworthy least-squares error bar, the two boundaries one to three decades of noise apart.
 \end{abstract}
 
 
@@ -334,20 +334,53 @@ Kinetic schemes are usually fitted to macroscopic ion-channel currents by least 
 %         until now nothing in the section said the consequence has ever been observed. This is the
 %         observation, it is peer-reviewed, it is on real recordings, and it is a mechanism ranking
 %         rather than an error bar, which is the register an eLife editor is screening for.
-%         THE AXIS DISCIPLINE, and it is not optional. Say "dropping the recursion", never
-%         "MacroIR against MacroINR" and never "the boundary-conditioned member". The two runs
-%         behind moffatt2025bayesian Fig 1d/1e shared the interval averaging and the gating
-%         variance and differed in the recursion alone, which is exactly the axis this paper
-%         measures; but the object that ran there is NOT the member Theory specifies, so any
-%         wording that identifies it with IR is false. Same rule in 01_introduction.tex and in the
-%         cover letter.
-%         WHY "THE RANKING" AND NOT "WHICH SCHEME RANKED FIRST", which is the stronger sentence and
-%         is one word away: the main text of that paper numbers nine schemes I-IX and its Table S1
-%         numbers eleven I-XI, and the mapping between the two is not published, so the identity of
-%         the top-ranked scheme under each likelihood cannot be checked from the published record.
-%         "Changed the ranking" is carried by the paper's own sentence (p.2, "Model ranking was
-%         sensitive to likelihood approximation") and by Figs 1d and 1e. UPGRADE ONLY on a
-%         first-hand check of the mapping.
+%         NAMING, settled 2026-08-10. The published names MacroIR and MacroINR may be used, and
+%         this sentence is where they are introduced; the bridges IR = MacroIR and INR = MacroINR
+%         are closed at _program/nomenclature.md:286-296. The two runs shared the interval averaging
+%         and the gating variance and differed in the recursion alone, which is the axis this paper
+%         measures.
+%         DO NOT CLAIM THE CONSTRUCTION (Luciano, 2026-08-10, checked against the SI the same day).
+%         That paper's SI section S1.3 publishes it: Eq. S1 is the interval-averaged current for
+%         paths starting in i and ending in j, evaluated spectrally with divided differences. So
+%         06_methods.tex:286-296 ("the specification is this manuscript's, in Theory") and
+%         05_discussion.tex:233 ("the continuous-time realization derived here") both overreach and
+%         need the same review.
+%         [OPEN] Whether that SI's update, Eqs. S4-S5, propagates the state pair or the start alone
+%         is unsettled here: its gain is built from the end-marginalized conductance. That is the
+%         MR-against-IR axis, and what is left of a construction claim depends on it.
+%         UPGRADED 2026-08-10 to "put a different mechanism first". The restriction that stood here
+%         until today was wrong, and the way it was wrong is worth recording so it is not rebuilt.
+%         IT SAID: the main text numbers nine schemes I-IX while Table S1 numbers eleven I-XI with
+%         no published mapping, "so the identity of the top-ranked scheme under each likelihood
+%         cannot be checked from the published record", and it authorised an upgrade only on a
+%         first-hand check. The premise is true and was verified: Table S1's caption does read
+%         "Scheme identifier (I to XI)". THE INFERENCE DOES NOT FOLLOW. Figure 1 of that paper is
+%         in the main text, uses main-text numbering, and DRAWS the schemes in panels a-c; panels d
+%         and e give the two rankings directly. Nothing about the SI table is needed.
+%         WHAT THE PUBLISHED RECORD SUPPORTS, checked 2026-08-10 against the PDF in
+%         docs/bibliography/:
+%           - main text p.2: Scheme IX decisively favoured under the recursive likelihood, above
+%             its symmetric counterpart Scheme VIII by a Bayes factor >5000; Scheme VI, "the
+%             top-ranked non-conformational alternative", disfavoured by a factor 6.4 (5.5-6.7);
+%           - main text p.2: "the control method (MacroINR) systematically underestimated evidence
+%             for schemes with conformational intermediates", so the bias has a direction and it is
+%             the direction that erases a margin of 6.4;
+%           - Fig. 1d, recursive, best to worst: IX, VI, VII, VIII, IV. Fig. 1e, non-recursive:
+%             VI, IX, IV, VII, VIII. The two do not agree on first place, and the scheme the
+%             non-recursive likelihood promotes is the non-conformational one.
+%         So the sentence is a mechanism-level fact, not a sensitivity report. Scheme IX and Scheme
+%         VI are different mechanistic classes in that paper's own terms, conformational against
+%         subunit-specific allosteric, which is why "mechanism" and not "scheme".
+%         THE AXIS WORDING was said here to be unaffected. That was written before the axis
+%         discipline itself was withdrawn later the same day; see the block above. The published
+%         names may be used. What this sub-note fixed is the strength of the consequence, and that
+%         part stands.
+%         PROCESS NOTE, because this cost three days across four files. "UPGRADE ONLY on a
+%         first-hand check" reads as prudence and is a deferral with no owner. A hedge that blocks
+%         a claim must be written as a task with an action ("OPEN: read Fig 1d-e"), never as
+%         conditional permission. And "cannot be checked from the published record" is a statement
+%         about citability; it was written as a statement about knowledge, on a paper whose author
+%         is the person the note addresses.
 %
 %     (ii) -1, "a seven-rung ladder" -> "a ladder". Closes the count inconsistency note (c) left
 %         open on 2026-08-06: the implemented and measured set is EIGHT and Figure 3 draws eight

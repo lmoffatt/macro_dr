@@ -293,8 +293,23 @@ The asymmetric activation reported from the same recordings two decades later ha
 % that makes such a conclusion reachable is what makes its calibration worth measuring", which
 % restated the paragraph's first sentence.
 
-The full distortion matrix is reported, rather than a scalar summary, because it is the input to the next question. Near the maximum the same matrix propagates into the Bayesian evidence through a volume term $\tfrac12\log\det\mathbf{C}$ and an effective-sample rescaling $\alpha^\star=p/\operatorname{tr}\mathbf{C}$, so whether model comparison under an approximate likelihood ranks mechanisms correctly is decided by the object measured here. That correction is derived elsewhere and is stated only as motivation.
-The two orderings of the P2X$_2$ comparison cited above came from likelihoods that differ in the property measured here, and what this paper supplies is how far the reported information of such a likelihood sits from the information it delivers. Which of those two orderings is right is a further question: it needs the volume and effective-sample terms above and the evidences recomputed, and neither is done here.
+The full distortion matrix is reported, rather than a scalar summary, because it is the input to the next question. Near the maximum the same matrix propagates into the Bayesian evidence through a volume term $\tfrac12\log\det\mathbf{C}$ and an effective-sample rescaling $\alpha^\star=p/\operatorname{tr}\mathbf{C}$, so a likelihood that misreports it carries that error into every comparison built on it. That correction is derived elsewhere and is stated only as motivation.
+% CORRECTED 2026-08-10. The sentence read "so whether model comparison under an approximate
+% likelihood ranks mechanisms correctly is decided by the object measured here". "Decided by"
+% overclaims: an evidence depends on the whole likelihood surface, the prior, the parameter volume
+% and, depending on the approximation, higher-order terms, and the local information matrix is one
+% input among those. The repaired sentence says what is defensible, that misreporting it propagates
+% into the comparison, and it keeps the motivating force. The same overclaim had been copied into
+% the Introduction draft and is fixed there too. Keep the three levels apart in every section:
+% parameter bias, information calibration, and evidence validity are different claims, and
+% calibration is necessary for the third without being sufficient.
+The two orderings of the P2X$_2$ comparison cited above came from likelihoods that differ in the property measured here, and what this paper supplies is how far the reported information of such a likelihood sits from the information it delivers. Which of those two orderings is right is a further question: it needs the volume and effective-sample terms above and the evidences recomputed, and neither is done here. What that would settle is which scheme the recordings prefer under an honest accounting of the information they carry, and not which mechanism is true. No quantity of recorded data identifies the generating model, which is why a diagnostic of this kind has to be built against a simulator whose model is known.
+% ADDED 2026-08-10 (Luciano). The preceding sentence implied that recomputing the evidences would
+% answer which mechanism is right, and it would not: with real recordings the generating model is
+% never known, so a departure cannot be attributed to the approximation rather than to the model,
+% and no sample size buys that attribution. This is the same argument that makes the two-state
+% simulated design a requirement rather than a limitation, and 06_methods.tex should not be allowed
+% to keep apologising for it as though it were a compromise.
 % ADDED 2026-08-07, and it is the sentence that keeps the P2X2 citation honest. The abstract and the
 % Introduction both now say the ranking moved with the approximation. Without this, a reader can
 % take the manuscript to be claiming that the recursive ordering is the right one, which nothing

@@ -374,6 +374,77 @@ target is *model* discrepancy, not finite-channel gating noise — say so when c
 
 ---
 
+### A.11 Moffatt & Pierdominici-Sottile 2025 (Comm Biol) — the published runs are INR (ADDED 2026-08-10) (`self-prior-art`)
+
+Established 2026-08-10 by reading the deposited source and the run metadata, not the paper text. The
+map already called Part I "the Comm Biol method"; this pins down **which member** that method is.
+
+**Provenance.** `Code/macro_dr_submission` is a pruned copy of `macro_dr` that split from it at
+`c04c49f` (2024-12-08 18:39). The deposited run files carry two build tags, `dc1d295` and `c04c49f`.
+The five files that decide the algorithm (`qmodel.h`, `CLI_macro_dr_base.h`,
+`CLI_thermo_evidence_dts.h`, `CLI_function_table.h`, `main.cpp`) are **byte-identical** between the two
+tags (same blob hashes), so both tags are the same algorithm.
+
+**What the runs recorded.** Every run writes `<runid>_likelihood_model.csv` with the five instantiated
+template flags (`report_model`, `qmodel.h:4508`). All **414** of them inside the deposited bundle were
+extracted and tallied (schemes 1-11, both build tags):
+
+| flag | value |
+|---|---|
+| `adaptive` | 0 in 414/414 |
+| `recursive` | **0 in 201, 1 in 213** |
+| `averaging` | **2 in 414/414** |
+| `variance` | **1 in 414/414** |
+| `variance_correction` | **0 in 414/414** |
+| `Simulation_n_sub_dt` | 1000 in 414/414 |
+
+The 201/213 split on `recursive` matches the SNR/DR filename split exactly (201 SNR and 213 DR
+`_likelihood_model.csv` in the same index), so `recursive 0` ↔ SNR and `recursive 1` ↔ DR, one to one.
+**The two arms differ only in `recursive`; every other flag is constant across the whole paper.**
+
+**Those flags are not what the scripts asked for.** `Likelihood_Model_v::bool_op`
+(`qmodel.h:4676-4710`) ignores the two runtime variance flags and hard-codes
+`uses_variance_aproximation(true)` (4703) and `uses_variance_correction_aproximation(false)` (4706);
+and a copy-paste at 4697 (`else if (averaging.value == 0)`, should be `== 1`) sends `averaging=1` into
+the `2` branch. So `likelihood_SNR.txt` asked for averaging 1, correction on, variance off, and got
+averaging 2, correction off, variance on. `Likelihood_Model_v_all` (4522-4620) honours the flags but is
+never instantiated — all ten `bool_op` call sites use `Likelihood_Model_v`. Same defects survive in the
+`rr_scheme` branch (Sep 2025); in the current tree the whole struct is commented out.
+
+**So the SNR arm is** non-recursive, interval-averaged mean, plus the within-interval per-channel
+conductance variance `N·ms` with `ms = P_mean · gvar_i` and `gvar_i = gsqr_i − gmean_i²` truncated at
+zero — the TOTAL form, built in `calc_Qdtm_eig` (`qmodel.h:2064-2070`), reached because
+`variance_correction=false` routes to `calc_Qdtm` (`qmodel.h:4139-4140`). In the current family's
+vocabulary that is **INR**; the DR arm is its recursive sibling.
+
+The current tree already says this from the other side: `legacy/qmodel.h:4414-4432` — *"the submitted
+Comm Biol source add[s] it gated on `variance` alone: recursion governs the state update, not the
+predicted variance… Always the TOTAL form gvar_i = gsqr_i - gmean_i^2"* — and `legacy/qmodel.h:7525`,
+*"The av=1 arm already matches INR digit for digit."*
+
+**The one open link `[VERIFY]`.** SNR ran at `averaging=2`; INR is `averaging=1`.
+`legacy/qmodel.h:4425-4427` asserts the two coincide when there is no update (*"gmean_ij can only enter
+through its row marginal gmean_i"*), but the deposited code writes different expressions: the av=2 arm
+adds `P_mean·(gtotal_ij ⊙ gmean_ij)·u` to `gSg` (`qmodel.h:3214-3216`) that the av=1 arm does not have
+(`qmodel.h:3247`). One interval on the reference binary settles it.
+
+**Consequence for the paper.** The integrated-measurement treatment at macroscopic scale was already
+published, by us, in Comm Biol 2025, under a name that does not announce it. The Part I claim is a
+claim against the *field*, not against our own record, and the eLife paper should say so rather than
+let a referee find it. Which arm produced the published Bayes factors is **not** settled here: both
+were run, and the deposited `scheme_all_figure_1.tar.zst` holds 88 DR and 82 SNR files across schemes
+1-11.
+
+**Where the flag provenance lives.** The figure tarballs were packed with only the
+`__i_beta__i_walker.csv` files: `scheme_all_figure_1.tar.zst` (170 entries) and
+`scheme_10_all_files.tar` (82 entries, all DR) carry **no** `_likelihood_model.csv` and no funcmap. The
+full bundle `data/submission_files.tar.gz` (61 GB) **does**: 5404 entries, 2779 DR and 2623 SNR, with a
+complete metadata set per run (414 `_likelihood_model.csv` — 213 DR, 201 SNR — plus prior, recording,
+funcmap, iter_time, event_timing), covering schemes 1 through 11 at both build tags. Local unpacked
+copies of a subset are in `Code/macro_dr/data/w9/dirac/`.
+
+---
+
 ## B. The augmented / integrated-measurement Kalman filter — full bibliography (`concede`)
 
 Cite this column openly so the honesty is bulletproof. The filter MacroIR re-derives is the
@@ -598,6 +669,7 @@ true, and interesting thing to say in an Introduction.
 | Integrated-measurement (time-averaged) treatment **at macroscopic scale, at O(k³) independent of N** | **CLAIM** (scaling, not absence: see E11) | gap vs Münch 2022, Moffatt 2007, Milescu 2005, Celentano-Hawkes 2004, Stepanyuk 2011/2014, Del Core-Mirams 2025; **vs Qin 2000 / Venkataramanan-Sigworth on cost** |
 | Exact, efficient, all-k realization for the **many-channel ensemble** CTMC | **CLAIM**, narrowed | distinguish from Bäuerle (single chain, needs a density with an atom), Blackwell (single chain, ecology), **Kilic 2021 (single molecule, Poisson, MCMC)** |
 | Empirical demonstration that instantaneous methods are **misspecified** | **CLAIM** (this is the eLife paper; see Part II for its prior art) | figures 2/3/4 |
+| The integrated member itself, at macroscopic scale, on real data — **already published by us** | **SELF-PRIOR-ART, disclose** (added 2026-08-10) | Moffatt & Pierdominici-Sottile 2025 Comm Biol: the deposited runs are INR, verified from the run metadata; see A.11 |
 | The recording filter modeled inside the likelihood | **CONCEDE — since 1992** | Fredkin & Rice 1992; Michalek 1999; Venkataramanan & Sigworth; **Qin, Auerbach & Sachs 2000** |
 | Integrated-/averaged-measurement Kalman filter as a **device** | CONCEDE | Kalman 1960; Van Loan 1978; Zadrozny 1988; Harvey 1989; **Fatehi & Huang 2017**; Yaghoobi & Särkkä 2024; **Folia & Rattray 2018**; Calderazzo 2019; Rubenzahl 2026 |
 | van-Loan-on-augmented-integral pattern | CONCEDE | Rubenzahl 2026 |

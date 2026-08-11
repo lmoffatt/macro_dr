@@ -2,17 +2,37 @@
 
 Drafted 2026-08-07 for the eLife submission. Not part of the compiled PDF.
 
-Everything here obeys the same axis discipline as the manuscript: the two runs behind Figures 1d
-and 1e of Moffatt & Pierdominici-Sottile (2025) shared the interval averaging and the gating
-variance and differed in the recursion alone. Never name them as MacroIR and MacroINR, and never
-call either the boundary-conditioned member: the object that ran there is not the member this
-manuscript specifies in Theory. See `sections/00_abstract.tex` note 1f(i).
+The axis wording here matches the manuscript and is accurate: the two runs behind Figures 1d and 1e
+of Moffatt & Pierdominici-Sottile (2025) shared the interval averaging and the gating variance and
+differed in the recursion alone. That stays.
 
-Two claims below are deliberately weaker than they could be, for the same reason they are weaker in
-the manuscript. "The two rankings were not the same" rather than "put different mechanisms first",
-because that paper numbers nine schemes I–IX in its main text and eleven I–XI in Table S1 with no
-published mapping. And nothing here says which of the two orderings is right, which this paper does
-not measure.
+The naming restriction that stood here is **withdrawn, 2026-08-10**. It read: "Never name them as
+MacroIR and MacroINR, and never call either the boundary-conditioned member: the object that ran
+there is not the member this manuscript specifies in Theory." The published names may be used; see
+`sections/00_abstract.tex` note 1f(i) ("NAMING, settled 2026-08-10"), and the bridges
+`IR = MacroIR` and `INR = MacroINR` are closed at `papers/_program/nomenclature.md:286-296`.
+
+Why it was wrong, so it is not rebuilt: two objects carried one name. The `macro_NMR` in this
+repository's freeze omits the N·ms interval-variance term (refactor regression at a3e0a89) and is
+genuinely not the member Theory specifies; the **published** MacroINR is a different object and does
+carry the term, confirmed 2026-07-31 in that same nomenclature section and again 2026-08-10 against
+the run's own `_likelihood_model.csv`. The restriction generalised a fact about a local build to a
+peer-reviewed algorithm, on a premise that had already been refuted in writing eight days earlier.
+Whether this letter should use the names is now a free choice; the prohibition is what is dead.
+
+One claim below is deliberately weaker than it could be, for the same reason it is weaker in the
+manuscript: nothing here says which of the two orderings is right, which this paper does not
+measure.
+
+The ranking restriction that stood here is **withdrawn, 2026-08-10**. It required "the two rankings
+were not the same" rather than "put different mechanisms first", on the ground that the paper
+numbers nine schemes I–IX in its main text and eleven I–XI in Table S1 with no published mapping.
+That premise is true and irrelevant: Figure 1 is in the main text, uses main-text numbering, and
+draws the schemes in panels a–c, so d and e give both rankings without touching the SI. IX first
+under the recursive likelihood, VI first under the non-recursive one, and the main text supplies the
+direction ("the control method systematically underestimated evidence for schemes with
+conformational intermediates") and the margin it erases (a Bayes factor of 6.4 for IX over VI). See
+`sections/00_abstract.tex` note 1f(i).
 
 ---
 
@@ -38,8 +58,9 @@ and supply a direction the electrophysiology cannot resolve, and that support co
 record. What it does not settle is which of nine kinetic schemes the recordings prefer, and that
 came from ratios of evidence alone. When we ranked the nine twice, under two likelihoods that shared
 the interval averaging and the gating variance and differed in whether each interval is conditioned
-on the data already observed, the two rankings were not the same. We reported the sensitivity and
-had no way to adjudicate it.
+on the data already observed, the two orderings put a different mechanism first: the conformational
+asymmetric scheme under one, the subunit-specific allosteric alternative under the other. We
+reported the sensitivity and had no way to adjudicate it.
 
 Nothing in ordinary practice adjudicates it. A recursive likelihood follows the record whether its
 assumptions hold or not, so its residual cannot be read the way a least-squares residual can, and
