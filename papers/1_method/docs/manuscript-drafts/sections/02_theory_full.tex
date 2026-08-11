@@ -92,16 +92,32 @@ Eq.~\ref{eq:obs-avg} takes to be white. The simulator and every member share the
 measurement here; the closures below are the approximation the diagnostic sees.
 
 How much of the kernel the uniform window misses is set by one dimensionless group, the
-acquisition window measured against the filter's response time. Because the filter has unit
+acquisition window measured against the filter's response time, which for the Bessel and Gaussian
+shapes used in practice is about a third of the inverse cutoff frequency at the usual
+ten-to-ninety definition \citep{colquhoun1995fitting}. Because the filter has unit
 gain at zero frequency it moves variance between a recorded value and its neighbours rather
 than removing any, and the fraction it moves falls as the reciprocal of that group, about a
 seventh where the window equals the filter's inverse cutoff and three per cent at five times
-it, with nothing beyond adjacent values. A record digitised far above the cutoff is therefore
+it, with nothing beyond adjacent values. The residue is first order in that reciprocal for a
+white contribution and second order for one carrying a correlation time of its own, because unit
+gain at zero frequency also preserves the integral of an autocovariance: at five times the inverse
+cutoff a white term loses three per cent and a gating term correlated over the window loses a tenth
+of one, so what the uniform window misses sits in the instrumental part of the predictive variance
+and not in the gating part the closures approximate. A record digitised far above the cutoff is therefore
 block-averaged to that scale before analysis, which yields exactly the observable of
 Eq.~\ref{eq:obs-avg}. What averaging does not repair is the interval holding the
 concentration jump, which the filter's group delay displaces by a fixed time. Carrying a
 general kernel through the same construction, with the coloured noise it brings, is left to
-later work.
+later work, and it is not a small step: convolving an amplifier's kernel explicitly, at a
+\SI{10}{\kilo\hertz} Bessel setting with \SI{50}{\kilo\hertz} digitisation, was estimated to
+raise the demand of a nine-scheme Bayesian comparison by more than tenfold
+\citep{moffatt2025bayesian}.
+% TRANSPLANT T1, 2026-08-11, from the Discussion's Bessel paragraph, which was cut from 403 words to
+% 85 (sections/discussion_guion.md). This paragraph already printed everything else that paragraph
+% carried, so the cost estimate was the only piece with nowhere else to live.
+% THE GUARDRAIL IS IN THE SENTENCE AND MUST STAY: what was estimated at more than tenfold is a
+% NINE-SCHEME BAYESIAN COMPARISON, not a likelihood evaluation. Do not compress it to "the filtered
+% kernel costs ten times more", which is a different and unmeasured claim.
 % CORRECTED 2026-08-04. The clause read "the closures below are the ONLY approximation under test",
 % which is a rule-4 universal and is contradicted by 05_discussion.tex, where the uniform window
 % against a Bessel kernel is conceded as a second approximation adopted knowingly. What keeps that
@@ -121,8 +137,27 @@ later work.
 % and the one beginning "The Discussion prices".
 %
 % =========================================================================================
-% [BESSEL-BOUND] OPEN 2026-08-06. THIS IS THE CANONICAL NOTE; eight other sites carry pointers
-% to it and nothing else (grep -rn BESSEL-BOUND sections/). Read it here.
+% [BESSEL-BOUND] CLOSED 2026-08-11. THIS IS THE CANONICAL NOTE; twelve other sites carry pointers
+% to it and nothing else (grep -rn BESSEL-BOUND sections/), all of them stamped closed on the same
+% day. Read it here. WHAT WAS DECIDED, in four parts, so none of them is re-litigated:
+%   (1) THE BOUND IS PRINTED, 2026-08-10, as the paragraph above beginning "How much of the kernel".
+%   (2) ITEM (iv) IS PRINTED TOO, 2026-08-11: the residue is first order for a white contribution
+%       and second order for one with its own correlation time, so it lands in the instrumental
+%       part of the predictive variance and not in the gating part. That is the sentence that makes
+%       this concession and the noise-model one at 05_discussion.tex the same concession, and it
+%       was the strongest thing in this note that the first pass left unprinted.
+%   (3) THE OTHER TWO SITES NOW POINT rather than restate an unbounded concession: 06_methods.tex
+%       says the kernel is bounded in Theory, and the Discussion's Bessel paragraph carries the
+%       condition and the operational recipe (block-average to the filter's bandwidth, discard the
+%       interval holding the jump) instead of "the numbers above describe uniformly averaged
+%       recordings", which conceded more than the algebra requires.
+%   (4) THE JOINT CONSTRAINT IS STATED, in the perimeter list of 05_discussion.tex: the condition
+%       binds the filter and the window together, so it is hardest to meet exactly where the
+%       boundary-conditioned member's advantage is largest. That is what makes the filtered kernel
+%       a motivated companion rather than a list entry.
+% STILL OPEN, and it is the only thing: whether to cite the Gaussian-filter rise-time convention
+% (Colquhoun and Sigworth, Single-Channel Recording) for sigma_f, which would make item (iii) the
+% reader's own arithmetic instead of ours. Blocked on the source, see the note at the end.
 % =========================================================================================
 %
 % THE PROBLEM WITH THE PARAGRAPH ABOVE is not that it is wrong. It is that the manuscript
@@ -728,10 +763,13 @@ from the neighbouring interval is faded. The two partial interval corrections, \
 \texttt{VR}, sit off this pairing and are not drawn (Appendix~\ref{app:members}). No number is quoted from this 12 ms
 recording.} % src: projects/eLife_2025/figures/paper_both/figure_1.Rmd (roster of six, 2026-08-05: LSE/ILSE/NR/INR/R/IR). NO NUMBER IS QUOTED FROM THIS FIGURE AND NONE SHOULD BE: the run is seeded with seed = 0, the sentinel for a random draw (ops/local/figure_1_plus_lse.macroir:75 and its own note at line 12), so the trace differs on every re-run and with it every quantity read off the realisation. The least-squares variance is SSE/n and moved from 0.67 to 12.5 between two runs of the same script for exactly that reason. The occupancy trajectory of row (A) is the deterministic Markov mean and does NOT move: verified on the rebuilt dumps, LSE and NR agree to seven decimals at every interval and so do ILSE and INR. That coincidence runs ACROSS the gating levels at one arm, not between the two members of a pair, which sit at different instants and cannot coincide; the caption no longer claims it, the version that did had it backwards. IR's boundary-pair marks (dashed tie, two-tone shared instant, where each operation arrow is anchored and why) are specified in figure_1_panels.R, the ir_* block. LENGTH: this caption is measured, not guessed. At 280 words the float spans 84 to 711 pt against a text block of 57 to 721, so it fits with ~19 pt of slack, under two lines. Adding 40 words overflows the page and the figure-supplement line lands on the footer, which is the failure the earlier 7.5 in note describes. Re-measure with a probe document on elife.cls before growing it. papers/_program/provenance.md#4 (20 channels, 250 substeps)
 \label{fig:ladder}
-% NOTE: the graphics file is still named Figure_S1.pdf on disk, from the retired independent
-% supplementary numbering. It is written by figure_1.Rmd on the merged roster and is current;
-% rename it to Figure_1_supplement_1.pdf in the deposit pass.
-\figsupp[The same filter cycle over the first ten milliseconds of the recording.]{The same filter cycle over the first ten milliseconds of the recording, so that the concentration jump and the onset of gating are inside the window.}{\includegraphics[width=\linewidth]{Figure_S1}}
+% SUPPLEMENT REMOVED 2026-08-11 (Luciano). This figure now carries none, which is the eLife norm
+% (46.6% of parents) and not a hole. What was declared here drew the same filter cycle over samples
+% 0-4 of the record instead of the body figure's 3-4, so it CONTAINED the body figure and was a
+% second crop of it rather than a supplement: no prose ever cited it, and this parent states no
+% measured claim for a supplement to extend ("No number is quoted from this 12 ms recording").
+% Both crops come from one producer, figure_1.Rmd:55-56; the wide crop stays on disk as
+% Figure_S1.pdf and belongs in the repository deposit, not in the display items.
 \end{figure}
 
 % SUBSECTION "The top of the ladder" REMOVED 2026-08-10; its two sentences now close the paragraph

@@ -1,6 +1,6 @@
 # Cross-paper decision log
 
-> Updated: 2026-07-28. Split from `macroir-elife-2025/02_decision_log.md`, which logged a single
+> Updated: 2026-08-11. Split from `macroir-elife-2025/02_decision_log.md`, which logged a single
 > paper. **Only decisions that bind more than one paper live here.** A decision that binds one paper
 > lives in that paper's folder; §5 lists what was left behind and where it went.
 >
@@ -38,6 +38,16 @@
   simultaneously raises the novelty bar: **the abstract must position against it.** What is offered is
   the test of whether such filters tell the truth about their own uncertainty, plus the map of where
   they fail, not another filter.
+- **The route is bioRxiv first, then submit from the preprint** (2026-08-11, author, audio at
+  14.05.44: *"lo tengo que publicar en los bioarchives y subir desde ahí"*). This is not a hedge
+  against rejection, it is the journal's own requirement: eLife peer reviews only submissions that
+  are available as preprints, and it accepts a transfer from bioRxiv
+  (`elife-author-instructions.md:40,68`). It also settles what a desk rejection costs, which is the
+  question that reopened the venue: the work is public either way and the fallback submission starts
+  from a posted preprint rather than from nothing. **Confirmed the same day that eLife stays the
+  target**, after a round of asking language models to simulate an editor produced a rejection at
+  01:00 and an acceptance the next morning from the same prompts; the author's reading is that the
+  exercise carries no information and the decision stands on the argument already logged above.
 
 ## 2. Model, methods, naming
 

@@ -37,6 +37,15 @@ time scale that normalises the acquisition-interval axis. The relaxation at the
 agonist condition is faster, with rate $k_{\mathrm{on}}[A] + k_{\mathrm{off}} =
 200\;\mathrm{s}^{-1}$; the axis uses $\tau = 1/k_{\mathrm{off}}$ by convention.
 % src: papers/1_method/decisions/D-2_parameter_units.md (tau = 1/k_off = 10 ms; lambda = k_on[A]+k_off)
+During the agonist step the two rates are equal, $k_{\mathrm{on}}[A] =
+k_{\mathrm{off}} = 100\;\mathrm{s}^{-1}$, so the open probability the sweep works at is
+$p = 0.5$. That is where the gating variance of the open population, $Np(1-p)$, is
+largest and where its skewness, which goes as $1-2p$, vanishes.
+% TRANSPLANT T3, 2026-08-11, second half: p = 0.5 was stated nowhere in the manuscript outside the
+% Discussion's perimeter paragraph, where it was declared without being derived. It follows from the
+% parameters given just above, so it belongs here, and the Discussion's transfer rule (enter the map
+% at 4Np(1-p)) now has something to point at. The two properties in the second sentence are what that
+% rule and its honest residual rest on: do not drop them.
 
 The emission model is white instrumental noise only. Both the pink (one-over-$f$)
 and the proportional noise channels are set to zero, so the term the reader may
@@ -73,9 +82,12 @@ number of raw samples entering each recorded value.
 The averaging is uniform over the window and no analogue filter stage is simulated,
 so a recorded value is a boxcar average of the trajectory, which is the observable
 every likelihood in the family is written for (Theory). Recordings from a real
-amplifier are Bessel filtered instead, and that kernel is outside the scope of this
-paper (Discussion).
-% [BESSEL-BOUND] OPEN 2026-08-06. Canonical note at 02_theory.tex, under the Bessel paragraph;
+amplifier are Bessel filtered instead. That kernel is not simulated here, and how much of it the
+uniform window misses is bounded in Theory, as a condition on the acquisition window against the
+filter's response time rather than as an open size.
+% [BESSEL-BOUND] CLOSED 2026-08-11. The bound is PRINTED, at 02_theory_full.tex in the
+% paragraph beginning "How much of the kernel the uniform window misses". Everything below was
+% written while it was open (2026-08-06) and is kept for its site-specific content only.. Canonical note at 02_theory_full.tex, under the Bessel paragraph;
 % the decision on how much to print is at 05_discussion.tex, beside the Bessel paragraph there.
 % THIS IS WHERE A READER WITH A RECORDING LOOKS, and the sentence above sends them away without
 % an instruction. "Outside the scope of this paper" is true and unhelpful: it does not say
@@ -113,7 +125,35 @@ substep count they carry is zero.
 % src: legacy/qmodel.h:8079-8095 (uniformization branch calls uniformization_sample(mt,...,fs); no substep count)
 This is what licenses treating the simulation as the reference against which the
 Gaussian likelihood approximations are judged: the approximations are the object
-under test, and the simulator supplies the exact answer they are compared to. Every
+under test, and the simulator supplies the exact answer they are compared to. The
+data analysed here are therefore simulated by design and not by convenience, since a
+diagnostic that compares what a likelihood delivers against what it reports needs a
+known truth, and the inference throughout is likelihood only, with no prior and no
+evidence computation.
+% TRANSPLANT T3, 2026-08-11, half of it: two of the four scope items the Discussion used to enumerate
+% in its closing subsection (sections/discussion_guion.md). The other two, the two-state scheme and
+% the single concentration jump, were already declared in this section. The Discussion now says "the
+% perimeter is a model, and Methods declares it as one" and points here, so this sentence is what it
+% points at and must not be removed without putting the enumeration back there.
+That license has a boundary, and it bounds what the comparison verifies. The
+likelihood and the simulator are two independent implementations, so everything
+downstream of the point where they separate is tested: the propagation, the update,
+the emission arithmetic, the accumulation. Upstream they share one specification, the
+rate matrix built from the parameters, the conductance vector, the protocol and the
+sampling times, and a diagnostic built on their agreement cannot see an error there.
+For a two-state scheme that specification is small enough to be read and checked by
+eye, which is why this section writes it out symbol by symbol below. The general
+remedy is different in kind, verifying each object against the theorems it must
+satisfy, the semigroup and Chapman-Kolmogorov identities for the propagator, the
+stationarity condition, the normalisation of the occupancy and the moment identities
+of the emission, and that is a piece of work with its own design, not undertaken
+here.
+% TRANSPLANT T2, 2026-08-11, the whole "what the diagnostic cannot see" paragraph, moved out of the
+% Discussion (157 words) because it is a statement about this section's own specification and belongs
+% beside the sentence that licenses the comparison. The Discussion keeps a one-clause pointer in its
+% closing sentence; if this paragraph is ever removed, that clause has to be expanded back into a
+% paragraph there.
+Every
 maximum-likelihood grid cell reported here, the least-squares arm included, used
 $10^4$ recordings, with one exception: the cell that carries the coverage result
 ($N_{\mathrm{ch}}=10$, $\widetilde{S} = 0.005$, boundary-conditioned member) was run at
@@ -720,9 +760,15 @@ rather than two. It is not interchangeable with the analytic anchor per recordin
 numerical Fisher is widely indefinite replicate by replicate, and only pooling across
 replicates recovers a definite matrix, which is one reason the body is anchored on the
 analytic construction. That battery (data directory \texttt{433ed13}) is retained in the
-deposit as the demonstration that the two constructions target the same information,
-an agreement the time-resolved figures exhibit per interval. No number reported in this
-paper is taken from it.
+deposit, and no number reported in this paper is taken from it. Where the two constructions can be
+compared on the runs the body does use, they agree for the members that condition on the past and
+they do not agree for the one that does not: the analytic form reproduces the differenced one to
+within about two per cent in size for \texttt{R}, \texttt{MR} and \texttt{IR} over the measured
+range, while for \texttt{NR} it over-states the information as channels are added at low
+instrumental noise, by factors of $1.26$ and $1.60$ at $N_{\mathrm{ch}}=10^{3}$ and $10^{4}$, and
+misses by an amount that varies across directions by $1.9$ and $3.1$ there. Neither least-squares
+arm carries the comparison, since the sweep that formed the differenced Fisher was not run for
+them. % src: projects/eLife_2025/figures/figure_4_source_data/figure_4_source_data_gaussian_fisher.csv, pool anchor (medians over the seven intervals; the algorithms present are macro_NR, macro_R, macro_MR, macro_IR and the superseded macro_NMR, at noise 0.1, 1 and 10 only; nonlinearsqr, nonlinearsqr_g and macro_INR are absent from the file entirely, the _G sweep being Gaussian-only so the differenced Fisher is never formed there). Medians in size: R 1.011, MR 1.020, IR 1.000, NR 1.010 overall but 1.007/1.010/1.264/1.602 by channel count at noise 0.1. The single worst cell of the file, NR at N_ch 1e4 and interval 1, reads 11.5 and is the ill-conditioned corner Figure 4 greys, excluded from the sentence above for the same reason.
 % src: projects/eLife_2025/ops/local/figure_3_mle.macroir:151-157 (numerical Fisher; h_rel injected)
 % src: projects/eLife_2025/ops/slurm/dispatch_figure_3.sh:98 (H_RELS default 1e-5)
 % src: papers/_program/provenance.md#5 (433ed13 = numerical anchor, superseded for the body)
@@ -786,7 +832,9 @@ one recorded point rises as $1/\Delta_t$ and the noise per unit bandwidth is unc
 % clause is gone, so the bench-realisability guard the canonical note wanted to hang on it has
 % only two candidate sites left, here and the Discussion's Bessel paragraph.
 % src: legacy/qmodel.h:3740-3741 (Current_Noise enters only as e = S*fs/n_samp)
-% [BESSEL-BOUND] OPEN 2026-08-06. Canonical note at 02_theory.tex, under the Bessel paragraph.
+% [BESSEL-BOUND] CLOSED 2026-08-11. The bound is PRINTED, at 02_theory_full.tex in the
+% paragraph beginning "How much of the kernel the uniform window misses". Everything below was
+% written while it was open (2026-08-06) and is kept for its site-specific content only.. Canonical note at 02_theory_full.tex, under the Bessel paragraph.
 % "WITH NO CORRELATION TIME OF ITS OWN" IS THE PREMISE THE FILTER BREAKS, and this is the one
 % place in the manuscript where it is written as a property of the engine parameter rather than
 % as a modelling choice, so it reads as a fact about the noise instead of a fact about the
@@ -898,6 +946,40 @@ different code versions can never overwrite one another and multi-commit provena
 documented per file.
 % src: papers/_program/provenance.md#2 (run ledger; hash-stamped row 1; hash-named data dirs)
 % src: papers/1_method/decisions/D-0_freeze_and_rerun_scope.md (each CSV self-stamps its hash; multi-commit provenance accepted)
+
+The engine that produced these results is not the build behind the P2X$_2$ analysis of
+\citet{moffatt2025bayesian}. Every score, Fisher information and distortion quantity
+reported here comes from automatic differentiation of the likelihood with respect to
+$\bm{\theta}$, propagated through the recursion itself rather than from finite differences
+of the log-likelihood. That layer reached the macroscopic likelihood after the earlier
+analysis had been run: the differentiation types were already in the codebase at that
+revision, the file holding the recursion carried none of them, and the fits reported there
+were obtained by Markov chain Monte Carlo, which needs no gradient. The dependence is not
+incidental, since it is what forces the trust coefficient above to be infinitely
+differentiable, and it is why the score-based diagnostics of this paper are new here rather
+than carried over from that work.
+% ADDED 2026-08-11, on the author's instruction in the audio of that day at 14.13.27:
+% "no habia usado las derivadas automaticas ... eso en algun lado tiene que estar, esto es muy
+% importante ... es un [aporte] importante".
+% VERIFIED against git, not asserted. At dc1d295 (2024-12-08), the submission commit of the
+% P2X2 analysis and the commit whose qmodel.h line 3576 is the Macror its published Data
+% Availability points at, that file contains ZERO occurrences of `Derivative<`, while
+% derivative_operator.h, matrix_derivative.h, parameters_derivative.h and
+% variables_derivative.h all contain it. So the framework was present and the likelihood sat
+% outside it. The first commit that puts a differentiated type into the file holding the
+% recursion is be42bc6, 2025-10-09, "it calculates derivative", ten months later. The engine
+% commits that produced this paper's data carry 34 to 38 of them (1c2ae6f 34, 82b956f 38,
+% 0ffbda7 38). The Markov chain Monte Carlo claim is the earlier paper's own Data
+% Availability sentence, which deposits "the output from the Monte Carlo Markov Chain
+% sampling of the kinetic models used to generate all figures".
+% SEAM, do not let these drift: 06_methods.tex:284-290 and 05_discussion.tex:129 keep the
+% P2X2 citation as application and lineage and never as specification. This paragraph is the
+% implementation half of the same separation, and it is the only place in the manuscript that
+% states the implementation is a different one.
+% OPEN, for the author: \citep{moffatt2025macroir} is the Zenodo software record v1.0.0 dated
+% September 2025, which predates be42bc6. If v1.0.0 does not contain the differentiated
+% recursion, a reader who downloads the cited software gets a build that cannot reproduce the
+% score-based results, and the pinned version named in the backmatter has to be a later one.
 
 The production batteries ran under SLURM with the linear-algebra back end pinned to a single
 thread so that OpenMP parallelises the per-simulation and bootstrap loops; the resource

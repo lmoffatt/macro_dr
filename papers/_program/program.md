@@ -165,3 +165,18 @@ whole test, and it is mechanical.
   Methods must say in one sentence that this `V` is not that `V`.
 - ~~**[Q]** Venue per paper.~~ **CLOSED: eLife for the macro paper**, Biophysical Journal as the
   fallback (`decisions.md` §1). The micro paper's venue is open and is not on any critical path.
+- ~~**[Q]** Narrow the macro paper to MacroIR and its validation, with the rest as an addendum.~~
+  **NEVER OPEN. Withdrawn by the author on 2026-08-11, in those terms: a temporary weakness, and he
+  went back to the merged version.** Raised in the audio of 2026-08-10 at 14.32.13 (*"creo que tengo
+  que reorientar el paper totalmente ... hasta podría ser solo de macro IR ... y lo otro lo pongo
+  como una adenda"*, with *"no sé"* on either side of it) and abandoned the same night. **The merge
+  of `decisions.md` §1 stands, unamended.**
+  This tombstone exists because the audio does not carry its own retraction and someone extracting
+  that batch cold will read a reorientation that was never adopted. It also records what the audio
+  was actually reaching for, which is sound and is not the narrowing: the 2007 flip state was
+  readable from a delay that did not depend on fitting a model, and the mechanisms at stake now do
+  depend on model validity, so there is no intrinsic signature in the current to fall back on. That
+  point is written, in the Introduction's opening paragraph on the P2X$_2$ case
+  (`../1_method/docs/manuscript-drafts/sections/01_introduction.tex:254-263`, committed at 23:25 the
+  same night) and again at `05_discussion.tex:229`. It landed inside the broad paper, which is why
+  the broad paper never had to give anything up for it.

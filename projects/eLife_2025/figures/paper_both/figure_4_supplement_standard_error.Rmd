@@ -125,10 +125,18 @@ knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 ```
 
 ```{r common, include=FALSE}
-FIG4_ALGOS     <- c("nonlinearsqr", "macro_NR", "macro_INR", "macro_R", "macro_IR")
-FIG4_ALGO_LAB  <- c(nonlinearsqr = "LSE", macro_NR = "NR", macro_INR = "INR",
-                    macro_R = "R", macro_IR = "IR")
-FIG4_DATA_DIRS <- c("../data/1c2ae6f", "../data/87889e6", "../data/0ffbda7", "../data/1f7138b")
+# ROSTER CORRECTED 2026-08-11 (Luciano), the same repair as figure_4_supplement_sample_corr.Rmd
+# and for the same reason: this file was rendered 2026-08-02 and the un-averaged least-squares arm
+# `nonlinearsqr_g` was added on 2026-08-05 (commit a202e03, the only directory carrying it), so
+# the roster was five and `nonlinearsqr` was labelled LSE when that token is ILSE. Now identical
+# to figure_4.Rmd:327-332. Both least-squares arms are excluded by EXCLUDE_ROWS from every block
+# but the two rates, so this adds columns to the k_on and k_off blocks only.
+FIG4_ALGOS     <- c("nonlinearsqr_g", "nonlinearsqr", "macro_NR", "macro_INR",
+                    "macro_R", "macro_IR")
+FIG4_ALGO_LAB  <- c(nonlinearsqr_g = "LSE", nonlinearsqr = "ILSE", macro_NR = "NR",
+                    macro_INR = "INR", macro_R = "R", macro_IR = "IR")
+FIG4_DATA_DIRS <- c("../data/1c2ae6f", "../data/87889e6", "../data/0ffbda7", "../data/1f7138b",
+                    "../data/a202e03")
 # all five, kinetic first, then the two amplitude directions, then the noise scale
 # with outer = "param" these name the BLOCKS, and the members become the columns inside each
 FIG4_PARS   <- c("on", "off", "unitary_current", "Current_Noise", "Num_ch_mean")
@@ -153,10 +161,15 @@ SIDES <- list(
        scale = SCALE_SE, grey_offscale = TRUE))
 ```
 
-```{r render, fig.width = 7.4, fig.height = 5.24}
-# 22 columns, one side, no key row, PARAMETER outermost. per_row 0.1609, measured at x 0.1400,
-# y 0.1400 (tmp/calib_fig4.R case 22T). The cell comes out 1.02 mm, the narrowest in the set and
-# 10 per cent under the body figure's 1.14: five parameters across is what that costs.
-fig4_render(SIDES, per_row = 0.1609, out = "Figure_4_supplement_standard_error.pdf",
+```{r render, fig.width = 7.4, fig.height = 4.90}
+# RECALIBRATED 2026-08-11 with the corrected roster. 24 columns now, not 22: the un-averaged
+# least-squares arm adds one column to each of the two rate blocks and none elsewhere. The old
+# knob 0.1609 was measured against 22 columns (x 0.1400, y 0.1400) and left this render 9.1 per
+# cent tall once the columns narrowed to x 0.1283, so it is rescaled by that ratio,
+# 0.1609 x 0.1283 / 0.1400 = 0.1475. Verify with `python3 tmp/measure_fig4.py <pdf>` against a
+# target of 100 per cent, and do not trust the nominal: the layout heights are null units.
+# THE COST, and it is the real objection to this page: five parameter blocks across 7.4 in put the
+# cell under a millimetre, against 1.14 mm on the body figure. Narrowest in the set.
+fig4_render(SIDES, per_row = 0.1475, out = "Figure_4_supplement_standard_error.pdf",
             se_lines = FALSE, key = FALSE, outer = "param", drawn_axis = TRUE)
 ```

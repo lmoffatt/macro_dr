@@ -53,7 +53,7 @@ knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 
 ```{r common, include=FALSE}
 FIG4_ALGOS     <- c("nonlinearsqr", "macro_NR", "macro_INR", "macro_R", "macro_IR")
-FIG4_ALGO_LAB  <- c(nonlinearsqr = "LSE", macro_NR = "NR", macro_INR = "INR",
+FIG4_ALGO_LAB  <- c(nonlinearsqr = "ILSE", macro_NR = "NR", macro_INR = "INR",
                     macro_R = "R", macro_IR = "IR")
 FIG4_DATA_DIRS <- c("../data/1c2ae6f", "../data/87889e6", "../data/0ffbda7", "../data/1f7138b")
 # the inner column level: the three the body figure leaves out, kinetic first, the shared-null

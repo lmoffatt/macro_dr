@@ -96,7 +96,7 @@ suppressMessages({ library(data.table); library(ggplot2); library(patchwork) })
 
 ```{r data}
 SRC   <- "../figure_4_source_data/figure_4_source_data_qq_grid.csv"
-ALGOS <- c(nonlinearsqr = "LSE", macro_NR = "NR", macro_R = "R", macro_IR = "IR")
+ALGOS <- c(nonlinearsqr = "ILSE", macro_NR = "NR", macro_R = "R", macro_IR = "IR")
 NCHS  <- c(10, 100, 1000, 10000)
 ZS    <- "0.1"                   # one noise level: see the header on what that costs
 DLTS  <- c(0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1)   # all seven: the pooled curve uses them

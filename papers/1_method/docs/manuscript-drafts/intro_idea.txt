@@ -1,0 +1,2 @@
+La intro debe: 
+1) indicar el origen de las fluctuaciones que estamos modelando y indicar ambos

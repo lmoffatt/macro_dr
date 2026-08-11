@@ -69,7 +69,7 @@ suppressMessages({ library(data.table); library(ggplot2) })
 ```{r data}
 # ---- source data, built once and written as CSV, like the plane figures ------------------------
 SRC <- "../figure_4_source_data/figure_4_source_data_coverage.csv"
-ALGOS <- c(nonlinearsqr = "LSE", macro_NR = "NR", macro_R = "R", macro_IR = "IR")
+ALGOS <- c(nonlinearsqr = "ILSE", macro_NR = "NR", macro_R = "R", macro_IR = "IR")
 NCHS  <- c(10, 100, 1000, 10000)
 Z     <- "0.1"
 .pre  <- function(a) if (a == "nonlinearsqr") "figure_3_LSE_" else "figure_3_G_"

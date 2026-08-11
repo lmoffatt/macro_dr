@@ -1,6 +1,7 @@
 # The approach: how do you trust the tool?
 
-> Updated: 2026-08-03 (second pass, same day). Owns **the framing**: the reader's problem, the
+> Updated: 2026-08-11 (§9 and §10 only; §1 to §8 and §11 are still the 2026-08-03 second pass and
+> have not been re-read against the newer audios). Owns **the framing**: the reader's problem, the
 > argument that answers it, the order it is told in, what is claimed, what is deliberately handed off,
 > and what is still in doubt. It does not own the roster or the cells (`00_plan.md`), the diagnostic
 > definitions (`../_program/machinery.md`), the section-by-section claim spine
@@ -363,6 +364,33 @@ from the same record. Note also that Figure 6's own measurement puts the EFFICIE
 | Limits are conjecture; a conservation may be waiting | 10.15.18 | **§3 open door**, §11 |
 | Control numbers, not figures | 19.04.19 | partly measured |
 
+Added 2026-08-11, from the audios of 08-09, 08-10 and 08-11. Same table, later batch. **Read the
+08-10 rows against the clock:** those audios are from 14:18 to 14:32, and the Introduction was
+rewritten and committed at 23:25 that night, so several of them were acted on within hours and the
+audio is the request, not the state.
+
+| Idea | Source | State |
+|---|---|---|
+| No intrinsic signature any more: the 2007 flip state showed in a model-independent delay, the mechanisms at stake now depend on model validity | 08-10 14.32.13 | **already written**, and twice: `docs/manuscript-drafts/sections/01_introduction.tex:254-263`, the opening P2X2 paragraph, and `05_discussion.tex:229` |
+| Reorient the paper: MacroIR and its validation only, the rest an addendum | 08-10 14.32.13 | **withdrawn by the author 2026-08-11**, in his terms a temporary weakness, back to the merged version. Tombstone at `../_program/program.md` §9, because the audio carries no retraction |
+| A valid likelihood is a sine qua non for computing evidence | 08-10 14.25.33, 14.27.02 | **carried as necessity**, `01_introduction.tex:365-368`; the sufficiency version of it was removed as an overclaim on 08-10, see below |
+| The rationale of the three ranges belongs in the Introduction | 08-10 14.25.33 | **written into its owner**, `../_program/axes.md` §2ab; still to be condensed into the paper, and one of the three needs a citation |
+| Validation means simulator plus likelihood, checking the score and the Fisher; an implementation error shows as a departure | 08-10 14.18.17 | **already written**, `01_introduction.tex:358-380`, closing sentence |
+| Apply the validation to the 2025 evidence results | 08-10 14.28.24 | not started, and it is the next paper rather than this one |
+| Usage recommendations by regime: MacroR at low noise, MacroIR almost everywhere except few channels and low noise, non-recursive interval members unbiased but with no error bar | 08-10 14.25.33 | **in tension with §6**, which demarcates rather than recommends. The measured content is Figure 7's; the recommending voice is not the paper's |
+
+| Idea | Source | State |
+|---|---|---|
+| Derive it twice, from MacroR and from the Kalman side, and show the two agree | 08-09 08.32.54 | **§10 item 9**, undecided |
+| Say why MR fails: it marginalises too early | 08-09 08.36.28 | **§10 item 10**, and the wording trap is in it |
+| A figure for the numerical Fisher being indefinite | 08-09 08.36.28 | **§10 item 11**, undecided |
+| Automatic differentiation is an advance over the P2X2 build and must be said | 08-11 14.13.27 | **written**, `docs/manuscript-drafts/sections/06_methods.tex`, Reproducibility |
+| The deliverable must carry the validation, not only the algorithm | 08-11 14.15.10 | **logged**, `../_program/carve_plan.md`, last section |
+| bioRxiv first, then submit from the preprint | 08-11 14.05.44 | **logged**, `../_program/decisions.md` §1 |
+| The pass over the figure roster and its supplements | 08-11 14.08.31, 14.13.27 | **closed 2026-08-11 by Luciano, nothing moves.** The audio is on the numbering from before the revision of 08-10, which is why its Figure 5 and Figure 6 read as one figure off against `decisions.md` "The figure set". Read it as a list of what should exist, not as a renumbering |
+| The magnitude and anisotropy decomposition as a supplement | 08-11 14.08.31 | **already built, and it is a Figure 4 supplement** (Luciano, 2026-08-11). `figures/paper_both/figure_4_magnitude_anisotropy.Rmd`, built 2026-08-02, drawing `Figure_4_supplement_magnitude_anisotropy.pdf`; `04_results.tex:598,610` already quotes its medians. The audio's "me falta" is stale by nine days |
+| The sample and correlation decomposition for the other members | 08-11 14.08.31 | open, but not a move: it exists for R against IR as `Figure_4_supplement_sample_corr.pdf` and the ask is to extend the roster, not to renumber |
+
 ## 10. What remains to implement
 
 1. **[DESCOPED 2026-08-04, by Luciano.]** ~~The closed-form simulator checks.~~ Two judgements, both
@@ -406,6 +434,52 @@ from the same record. Note also that Figure 6's own measurement puts the EFFICIE
 8. **Governance:** `../_program/00_index.md` is still stamped 2026-07-20 and routes a three-paper world
    with paper 2 as a stub, when the merge of 2026-07-23 made this folder the fused paper; and the
    folder is still called `1_method` for something that is no longer the method paper.
+9. **Derive it twice and show the two routes meet** (audio 2026-08-09 08.32.54). Present the member as
+   a continuation of MacroR: a short synthesis of how MacroR is reached from the Bayesian side, then
+   MR and IR derived from it taking MacroR as given; then the same destination reached by following
+   the Kalman-filter logic; then the statement that the two formulations are equivalent, so a reader
+   fluent in either one can enter through it. The precedent is his own: the 2007 paper presented one
+   algorithm from the traditional route and from the Bayesian one. **Where it collides with what
+   exists:** Appendix 1 already derives from MacroR, and the Kalman correspondence is currently a
+   Discussion statement, quantified but not derived, which is the concession recorded in
+   `../_program/decisions.md`. So this is not a new derivation, it is a second route through the
+   existing one plus an explicit equivalence. **Undecided:** a second appendix, or an expansion of the
+   Discussion correspondence. It is also the item most likely to cost length in a manuscript already
+   under a length plan.
+10. **Say why MR fails, as a mechanism and not as a measurement** (audio 2026-08-09 08.36.28). His
+    words: it throws information away, because it marginalises before the interval's own measurement
+    has been used. The paper currently characterises MR structurally (Table 1: conditioned on the
+    state at the start of the window) and reports how badly it is calibrated, and it says what
+    separates MR from IR (the gain). It does not say **why** in one sentence a reader can carry.
+    **Checked against the canonical derivation before writing this**,
+    `../../theory/macroir/notes/mr_vs_ir_from_macror.md`: MR marginalises `i_t`, the index of the
+    state at the END of the window, and does it BEFORE running MacroR (:97, :112-113); IR conditions
+    on the pair and marginalises `i_0` afterwards (:90); and the loss is named there, MR "conserva D²,
+    pierde D", it marginalises precisely over the index whose profile carried the signal (:161, :166).
+    **The wording trap, and the audio walks into it:** the audio says MR marginalises "al inicio",
+    which reads as marginalising the initial state, and the index it marginalises is the final one.
+    What is early is the timing, not the endpoint. Any sentence written for the paper has to say the
+    timing. His follow-on question in the same audio, whether an MR that marginalised at the end would
+    just be IR, is answered yes by the same note (:90), which is worth one clause because a reader
+    will ask it.
+11. **A display item for the numerical Fisher being indefinite** (audio 2026-08-09 08.36.28), as the
+    thing that justifies the safeguards. The prose exists and is precise:
+    `docs/manuscript-drafts/sections/06_methods.tex`, the second Fisher construction, says the
+    differenced Fisher is widely indefinite replicate by replicate and that only pooling recovers a
+    definite matrix. No figure shows it. **Undecided:** body or supplement, and on which data, since
+    the battery that formed the differenced Fisher (`433ed13`) is the superseded lane and no number in
+    the paper is taken from it, so a figure drawn on it needs a sentence saying why a superseded lane
+    is the right place to show a defect of that lane.
+
+    **The nearest thing that exists is not it, and checking that is what this entry is for.**
+    `figures/paper_both/figure_4_gaussian_vs_numeric_fisher.Rmd` draws the analytic Gaussian Fisher
+    against the differenced one in size and in shape, which is the agreement question, not the
+    definiteness one; its own header calls it provisional and frames it as "how far apart are two
+    positive definite matrices". Its three limits are the same ones any definiteness figure will hit:
+    the differenced Fisher exists only in the non-`_G` runs, so least squares and `INR` are absent
+    entirely, and the `NMR` column predates the restored `N*ms` term and is superseded. So item 11 is
+    a new figure on a lane the paper otherwise does not use, and that, rather than the drawing, is
+    what has to be decided first.
 
 ## 11. The doubts
 

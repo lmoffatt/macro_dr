@@ -1,6 +1,6 @@
 # Sources & Audio Notes Index
 
-> Updated: 2026-07-20. Shared across the three papers. Which audio/chat is the source of record, and
+> Updated: 2026-08-11. Shared across the three papers. Which audio/chat is the source of record, and
 > which wins when two disagree.
 
 Index of the sources the program derives from. Treat transcripts as idea-capture, not citable text (automated transcription, occasional word errors).
@@ -23,8 +23,37 @@ Index of the sources the program derives from. Treat transcripts as idea-capture
 ## Audio transcripts
 All under `program/source-notes/audios/`.
 
-### MacroIR 13 (2026-05 → 2026-07) — current source of record
-Folder `Chat de WhatsApp con MacroIR 13/`. Carries the current consensus. High-signal:
+### MacroIR 13 (2026-05 → 2026-08) — current source of record
+Folder `Chat de WhatsApp con MacroIR 13/`. Carries the current consensus. Each `.mp3` has a `.md`
+beside it with timestamps; the originals are under `raw/` as `.ogg`. High-signal:
+- **2026-08-11** (14.05 → 14.15, four audios) — the venue holds and the route is bioRxiv first
+  (`decisions.md` §1); automatic differentiation is an advance over the P2X2 build and must be
+  stated, now in `1_method/docs/manuscript-drafts/sections/06_methods.tex` under Reproducibility;
+  the deliverable must carry the validation and not only the algorithm (`carve_plan.md`, last
+  section); and a pass over the figure roster. **Read that last one on the numbering from before
+  2026-08-10**, confirmed by the author on 08-11: its Figure 5 and Figure 6 sit one off against
+  `1_method/decisions.md` "The figure set", nothing is being moved, and the list is a list of what
+  should exist. One item in it was already stale when spoken, the magnitude and anisotropy
+  decomposition having been built on 08-02 as a Figure 4 supplement.
+- **2026-08-10** (14.18 → 14.32, six audios) — the Introduction dictated aloud, and the strongest of
+  the batch. The purpose stated as model comparison: a valid likelihood is a necessary condition for
+  computing evidence, so the question is the conditions under which an undistorted likelihood is
+  available. The rationale of the three ranges, which was written nowhere and is now `axes.md` §2ab.
+  Usage recommendations by regime, which sit against the demarcation of `1_method/approach.md` §6.
+  And a reorientation of the whole paper to MacroIR plus its validation, **which was withdrawn by the
+  author on 2026-08-11 as a temporary weakness and never adopted**; the merge stands, and the
+  tombstone is at `program.md` §9. Read the batch against the clock: the Introduction was rewritten
+  and committed at 23:25 the same night, so several of these were answered within hours. This is the
+  clearest case in the whole corpus of why a transcript is idea-capture and not a decision: the audio
+  states the reorientation and carries no retraction, and the retraction is what happened.
+- **2026-08-09** (08.32, 08.36) — derive it twice, from MacroR and from the Kalman side, and show the
+  two routes meet, on the precedent of the 2007 paper; why MR fails, stated as a mechanism; and a
+  display item for the numerical Fisher being indefinite. All three in `1_method/approach.md` §10,
+  items 9 to 11.
+- **2026-08-10 at 22.29.03 carries nothing.** Fifty-one seconds, aborted mid-sentence, the tail of the
+  transcript is noise. Recorded here so that nobody spends time on it twice.
+- The nine audios of 08-09 and 08-10 were pulled on 08-11, after the 08-11 batch had already been
+  transcribed, so on disk they look newer than audios that are in fact older.
 - **2026-05-19** — inaugurates the paper; the abstract problem (must say more than Comm Biol).
 - **2026-05-31 / 06-02 / 06-03** — Information Distortion Matrix blow-ups; Fisher singular/indefinite; measure the Hessian at the optimum; posterior-vs-likelihood split (later cut to likelihood-only).
 - **2026-06-09 / 06-10** — the trust-coefficient discontinuity bug found and fixed; decouple α_μ (mean) from the covariance down-date; IR canonical, IRT/Taylor cut.

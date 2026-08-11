@@ -1,0 +1,347 @@
+\section*{Introduction}
+
+% Owner: papers/1_method/approach.md (the framing) and papers/_program/program.md §1 (merged macro
+% paper, least squares as the comparison anchor).
+%
+% LENGTH PASS 2026-08-09. 2025 countable words -> 1771. Target for this section was ~1250 and it is
+% NOT met, by 521 words; the shortfall is declared rather than taken out of protected material.
+% What binds: six paragraphs were flagged untouchable by the prior triage (the two opening
+% paragraphs, the pair on what a least-squares residual can be read for and what modelling the
+% correlation takes away, the P2X2 paragraph, the falsifiable ordering, the narrow-novelty claim)
+% and they are 704 words on their own. Adding the protected scope clause and the protected
+% non-stationary-fluctuation-analysis concession puts the floor near 1000 before any of the
+% argument is written. Cutting to 1250 would have required deleting the lineage or the score
+% apparatus outright.
+% WHAT CAME OUT, all of it verified to survive somewhere else except where marked:
+%  - the error-bar conversion table (1.15 -> 7%, 2 -> 41%, 4 -> 95% becomes ~68%), which is stated
+%    verbatim at 03_diagnostics.tex:90-92 and belongs there.
+%  - "held at fixed spectral density so that shortening the interval raises the noise in each
+%    sample and leaves the noise per unit bandwidth unchanged" from the design paragraph. Methods
+%    owns it: 06_methods.tex:760-765 defines Current_Noise as a white-noise power spectral density
+%    reaching the likelihood only through e_t = Current_Noise/Delta_t. CONSEQUENCE FOR THE BESSEL
+%    NOTE below: the clause it calls "the clause at risk" no longer exists here, so the [OPEN]
+%    choice it poses is settled by default as "nothing here", and the guard has to land in Methods
+%    or in the Discussion's Bessel paragraph. The note is left in place unedited so the decision
+%    stays visible.
+%  - the ARMA/GLS half of the two-alternatives paragraph, 168 words -> 67. The family, the
+%    citation, the empirical finding and the two structural reasons all survive; what went is the
+%    free-timescales sentence and the gloss naming N_ch and i as the parameters the fluctuations
+%    are richest in, which the sentence before it now carries.
+%  - "behaves as though the recording had supplied more observations than it did", which the
+%    closing paragraph says in its own words and 05_discussion.tex:137 says with a number.
+%  - the Anderson gloss in the lineage paragraph, because the closing paragraph states the same
+%    priority claim and states it as the novelty baseline.
+%  - "it keeps the exact simulation cheap enough to run thousands of replicates at every design
+%    cell": the fact is in the Figure 4 caption (ten thousand recordings per cell) and in
+%    06_methods.tex:142.
+%  - the delcore gloss ("do not distinguish stochastic channel gating from measurement noise and
+%    return biased estimates") and the sweep counts "256 to 504 repeated sweeps". NEITHER IS SAID
+%    ELSEWHERE. Both are supporting detail on other people's work, not caveats of ours.
+% NOTHING was taken out of a scope caveat, a limitation or a concession. The full list is in the
+% pass report.
+%
+% REWRITTEN 2026-08-04. Predecessor kept verbatim at
+% ../archives/01_introduction_SUPERSEDED_20260804.tex (2095 words). This version is ~1700.
+% What changed and why, so the trade is not re-litigated:
+%
+% (a) THE THREAD. The previous version had no single line: it was context, gap, lineage, then four
+%     separate defensive digressions before the criterion. This one runs on one, that the memory of
+%     the gating process is both what carries the information and what lets a model track the data
+%     without earning it. Chosen over four alternatives in a controlled comparison (five drafts on
+%     five threads, same fact packet, same length, three critique lenses; 2026-08-04).
+% (b) THE OPENING no longer attributes least squares to Hodgkin and Huxley, who fitted by hand, and
+%     no longer uses the events-per-sample ratio to separate the single-channel from the macroscopic
+%     regime. That separation is the CHANNEL COUNT. The ratio is the interval axis and appears where
+%     it belongs.
+% (c) THE LINEAGE is compressed from a nine-name walk to the two axes it establishes, with the
+%     citations hanging off them. The two members that act in the paper (the non-recursive member,
+%     the interval-conditioned one) stay visible.
+% (d) THE SCORE PARAGRAPH now says, in the sentence that introduces the identity, that measuring it
+%     needs an ensemble from known parameters and is therefore not something a reader runs on one
+%     record. That removes an expectation the old closer had to withdraw. It also avoids implying an
+%     approximation has a true parameter of its own (the score vanishes at the pseudo-true value,
+%     which is not the simulator's).
+% (e) GODAMBE 1960 IS OUT. Optimum estimating functions, not the score identity.
+% (f) THE ARMA AND FLUCTUATION-ANALYSIS CONCESSIONS MOVED after the criterion. In the predecessor
+%     they sat before it and cut the line twice at the point of maximum tension.
+% (g) THE CLOSER names the measurement rather than promising it, and raises nothing it then declines.
+%     "Locating the reader on the map" was wrong and is gone: the map coordinates come from peak
+%     current and baseline variance, while the residual autocorrelation answers a different and
+%     narrower question, whether the interval a least-squares fit reports is credible. Whether to use
+%     least squares is the experimenter's decision and the paper does not raise it. The demarcation
+%     of what is not settled belongs in the Discussion, not here.
+%
+% STILL OWED, see sections/01_introduction.md:
+%  - the "each sample equals the last plus noise" claim needs its derivation (the first difference of
+%    a mean-square continuous process vanishes with the interval) or a naive-forecast citation. It is
+%    currently an assertion.
+%  - covariance fitting cost: "square of the number of samples" (moffatt2007estimation) vs "cube of
+%    the record length" (predecessor). Open. The wording below avoids the exponent.
+%
+% PENDING-BIB CLOSED 2026-08-10. All six keys (katz1970membrane, katz1972statistical,
+% anderson1973voltage, conti1980conductance, sigworth1981covariance, lei2020considering) plus
+% hodgkin1952quantitative, colquhoun1981stochastic and neher1977conductance are in biblio.bib,
+% which now holds 26 entries, and every cite key in the eleven section files resolves against
+% it. The build emits no citation warning.
+
+A channel opens and shuts at random, and how long it stays in each conformation is the elementary
+random quantity of gating. What an experiment sees of it depends on how many channels contribute.
+With one channel in the patch the durations are read off the record and the rate constants come from
+their distributions \citep{neher1977conductance,colquhoun1981stochastic}. In the currents that carry
+an action potential so many channels contribute that the durations average away, the current follows
+the deterministic relaxation of the Hodgkin and Huxley description \citep{hodgkin1952quantitative},
+and rate constants are obtained by fitting that relaxation, in current practice by least squares.
+
+Most macroscopic patch-clamp recordings are in neither place. A few hundred to a few thousand
+channels contribute, individual openings cannot be resolved, and the averaging is incomplete. The
+durations are still there, and what they leave behind is a fluctuation around the mean current that
+carries the memory of the gating process. Samples taken closer together than the channel's
+relaxation time are correlated, so a sample taken faster than that time partly repeats what the one
+before it already said.
+
+That fluctuation carries what the mean cannot. Channel number and unitary current enter the mean
+current as a product, so no fit to the mean separates them. The standard analysis discards the
+fluctuation anyway: the four approaches surveyed by \citet{clerx2019four} are deterministic fits with
+a root-mean-square objective, and the IonBench benchmark states that it does not cover optimisation
+approaches for stochastic models \citep{owen2025ionbench}. Discarding it usually leaves the point
+estimate standing. What it damages is the count of independent residuals, the number that turns a
+residual sum of squares into a confidence interval. \citet{delcore2025parameter} state the same cost in the field's own terms, that standard
+methods built for deterministic models do not distinguish stochastic channel gating from
+measurement noise and return biased estimates.
+% What the classical arm of this paper is, said plainly and once: least squares on the deterministic
+% mean current with the unitary current held fixed. Repeated in Methods; do not let it drift.
+
+A Markov description models the dependence rather than assuming it away. A channel with a small
+number of conformational states, connected by rate constants that hold over the whole record,
+generates the mean current and the covariance of the fluctuations from the same constants, so the
+temporal structure of the noise becomes a second measurement of the same parameters. Those constants
+also mean something outside the record: they are properties of the protein, comparable across
+preparations and laboratories, and they connect what is measured to a mechanism. A correlation
+function fitted freely to the residuals delivers neither of those.
+
+Kinetic information has been read from that correlation since the 1970s, first through stationary
+power spectra \citep{katz1970membrane,katz1972statistical,anderson1973voltage} and then through the
+exact non-stationary two-time covariance of a population of identical independent channels,
+estimated from ensembles of $256$ to $504$ repeated sweeps
+\citep{conti1980conductance,sigworth1981covariance}. The whole-record likelihoods that followed
+differ along two axes. The first is how much of the gating stochasticity the likelihood models:
+nothing, then the variance at each sample \citep{milescu2005maximum}, then its correlation in time,
+whether by carrying the full two-time covariance at a cost that keeps it to a hundred or two selected
+points \citep{celentano2004use}, or by propagating the occupancy recursively and conditioning it on
+each new datum at a cost linear in the record
+\citep{moffatt2007estimation,stepanyuk2011efficient,munch2022bayesian}. The second axis is the
+observable: an acquisition system reports an average over each interval rather than an instantaneous
+sample, and the most recent member conditions that interval average on the channel states at both of
+its ends \citep{moffatt2025bayesian}.
+
+None of these has displaced least squares. Cost is part of it, and \citet{delcore2025parameter} make
+that case. There is also something these methods ask an analyst to give up. A least-squares fit
+predicts the current at every point from the parameters alone, so the residual can be read directly,
+and read twice. Its amplitude reports the quality of the fit against what the gating variance and the
+baseline noise should deliver, and its correlation in time reports what the fit leaves out. Both
+readings appeal to knowledge from outside the fit, which is what makes them checks.
+
+Modelling the correlation is what takes those readings away. A recursive likelihood predicts each
+interval from the parameters and from the data already observed, so the previous sample enters the
+prediction of the next one and the predicted trace follows the record by construction. It follows the
+record when the scheme is right, when the scheme is wrong, and when the code has a mistake in it. The
+limiting case of the argument carries no kinetics at all and states that each sample equals the last
+one plus noise: where the interval is short against the relaxation time and the instrumental noise is
+small, it predicts almost perfectly and says nothing about the channel. % NEEDS SUPPORT, see header.
+Such a likelihood also standardises its residual against its own predicted variance, so the amplitude
+reading becomes a statement of internal consistency, and the correlation reading is spent because the
+recursion subtracts at each step what it has just seen. The same blindness covers two questions that
+an experimenter cannot separate and has no reason to: whether the approximation is adequate, and
+whether the code that computes it is correct.
+
+That is not a hypothetical. Nine kinetic schemes for the P2X$_2$ receptor were ranked by Bayesian
+evidence twice over the same outside-out patch recordings, in work of our own, and the two orderings
+put a different mechanism first \citep{moffatt2025bayesian}. What separated them was the recursion. Both
+likelihoods averaged the current over the acquisition interval and both carried the same gating
+variance; one conditioned each interval on the data already observed and the other did not. That the
+ranking moved with the approximation was reported. Which of the two orderings to believe was not,
+because it turns on how far each likelihood's reported information sits from the information it
+delivers, and that had never been measured for either.
+% ADDED 2026-08-07, 116 words. Owner: the desk-rejection pass recorded at 00_abstract.tex note 1f.
+% WHY HERE. The paragraph above ends on the two questions an experimenter cannot separate and then
+% went straight to the classical apparatus, so "this" in "The apparatus that answers this" had an
+% abstract antecedent. This paragraph is that same sentence with a date and a receptor, and it hands
+% the reader to the apparatus with a concrete thing for it to answer. It rides the section's thread
+% rather than cutting it: the thread is that the memory of the gating process is both what carries
+% the information and what lets a model track the data without earning it, and this is the case where
+% the unearned tracking reached a mechanism.
+% NO NEW CONCEPTS. Recursion, the acquisition interval, conditioning on data already observed and the
+% gating variance are all defined in the lineage paragraph above, which already cites this same
+% paper for the interval-conditioned member.
+% THE AXIS WORDING IS ACCURATE AND IS KEPT. "What separated them was the recursion" is exact: the two
+% runs behind Figs 1d and 1e of that paper shared averaging over the acquisition interval and the
+% same gating variance term and differed in the recursion alone, which is the axis this paper
+% measures. Nothing below asks for it to change.
+%
+% THE NAMING PROHIBITION THAT STOOD HERE IS WITHDRAWN, 2026-08-10. It read: 'Never write "MacroIR
+% against MacroINR" or "the boundary-conditioned member" here. The object that ran there is not the
+% member specified in Theory, so naming it as IR would be false.' The published names MAY be used;
+% see 00_abstract.tex note 1f(i) ("NAMING, settled 2026-08-10"), which also records at its foot that
+% the axis discipline itself was withdrawn the same day. The bridges IR = MacroIR and INR = MacroINR
+% are closed at _program/nomenclature.md:286-296.
+%
+% HOW IT WAS WRONG, recorded so it is not rebuilt, because the error is a repeat of one this project
+% has already made twice. TWO OBJECTS CARRY ONE NAME. What the freeze in THIS REPOSITORY labels
+% macro_NMR omits the N*ms interval-variance term (refactor regression at a3e0a89), so NMR is indeed
+% not the member Theory specifies. The PUBLISHED MacroINR is not that object and carries the term:
+% confirmed 2026-07-31 (nomenclature.md, same section, "the bridge holds for INR, the fixed one") and
+% again 2026-08-10 against the run's own _likelihood_model.csv. The prohibition took a true statement
+% about a local build and applied it to the algorithm in a peer-reviewed paper. The premise was
+% already refuted in writing eight days before the prohibition was written.
+%
+% WHAT THIS DOES NOT DECIDE. Whether the paragraph below SHOULD name them is a separate call and is
+% still open; naming them is now permitted, not required. The prohibition is what is dead.
+% UPGRADED 2026-08-10: "PUT DIFFERENT MECHANISMS FIRST" IS NOW THE SENTENCE, and the restriction
+% that stood here is withdrawn. It said the identity of the top-ranked scheme under each likelihood
+% could not be checked from the record, because the main text numbers nine schemes I-IX while
+% Table S1 numbers eleven I-XI with no published mapping. The premise is true; the inference is not.
+% Figure 1 of that paper is in the main text, uses main-text numbering, and draws the schemes in
+% panels a-c, so panels d and e give both rankings without touching the SI. Read 2026-08-10:
+% Fig. 1d (recursive) IX, VI, VII, VIII, IV; Fig. 1e (non-recursive) VI, IX, IV, VII, VIII. The
+% main text supplies the direction as well, "the control method (MacroINR) systematically
+% underestimated evidence for schemes with conformational intermediates", and the margin the bias
+% erases, a Bayes factor of 6.4 (5.5-6.7) for IX over VI. Full record at 00_abstract.tex note 1f(i).
+% WHAT THIS PARAGRAPH MUST NOT DO is adjudicate. It says the ordering moved and that nothing in that
+% analysis could say which to believe. The matching declining sentence is at 05_discussion.tex, in
+% the paragraph that carries the evidence bridge; the two must stay consistent.
+
+The apparatus that answers this is classical. For a correctly specified likelihood the score, the
+gradient of the log-likelihood with respect to the parameters, has mean zero at the parameters that
+generated the data, and its covariance across independent recordings equals the Fisher information
+the likelihood reports \citep{huber1967behavior,white1982maximum}. An approximation satisfies neither
+statement at those parameters, and the two departures are measurable quantities rather than tests to
+be passed. Goodness of fit does not answer the question: an approximation can reproduce the mean
+current closely and still report an information matrix wrong by more than an order of magnitude.
+Comparing two approximations against each other does not answer it either, because both may be
+wrong. Measuring the departures takes an ensemble of recordings drawn from known parameters, which is
+why this is a simulation study and not something a reader can run on a single record. For this class
+of model it is possible at all because the forward process can be simulated exactly while its
+likelihood cannot, so the simulator supplies ground truth for what the likelihood approximates.
+
+Two alternatives to a mechanistic likelihood are worth placing here, since both are in use. The
+standard repair for correlated residuals is generalized least squares with autoregressive or
+moving-average errors, which whitens the residual sequence with a correlation function estimated
+from the residuals themselves, and \citet{lei2020considering} ran that on ion-channel data and
+report that it widens the posterior without predicting better. Gating puts that family out of
+reach: such an error model is stationary by construction while the gating covariance tracks the
+mean current and restarts at every concentration or voltage jump, and it carries no channel number
+and no unitary current. Its timescales are free where the Markov model ties them to the eigenvalues
+of the rate matrix that already fixed the mean, so they absorb the information the mechanism would
+have contributed. The other alternative is
+non-stationary fluctuation analysis, the one fluctuation-based method in routine use, which regresses
+the variance of the current against its mean and returns the unitary current, the channel number and
+the peak open probability \citep{stepanyuk2014maximum}. This paper does not compete with it over how
+much amplitude information a macroscopic recording holds, never benchmarks against it, and no
+comparison with the variance-mean regression should be read into any result below.
+
+Because every member is an approximation, the measurement returns a domain rather than a verdict: a
+map of where a likelihood reports honestly, bounded by level sets of a continuous diagnostic rather
+than by thresholds. Position on it is set by the number of channels, the acquisition interval in
+units of the channel's relaxation time, and the instrumental noise in units of the gating noise. The
+measurements are made on a two-state scheme at an open probability of one half, driven by a single
+concentration jump, compared at the level of the likelihood rather than of a fitted experiment. The
+small model isolates the error the approximation itself commits, free of confounding from a
+misspecified kinetic scheme, and it is the most favourable case for a Gaussian treatment of the
+occupancy, therefore a lower bound on the error for anything richer. Open probability, stationary
+protocols and larger schemes are left out for reasons that follow from the same design, and are
+stated with the results.
+% [BESSEL-BOUND] OPEN 2026-08-06. Canonical note at 02_theory.tex, under the Bessel paragraph.
+% READ WITH THE LENGTH-PASS NOTE IN THE HEADER: the clause this note guards was removed on
+% 2026-08-09 as specification detail Methods owns, so the [OPEN] question below is settled here by
+% default and the guard has to land at 06_methods.tex or in the Discussion's Bessel paragraph.
+% Note kept verbatim so the decision is not lost.
+% THE CLAUSE AT RISK is "held at fixed spectral density so that shortening the interval raises the
+% noise in each sample and leaves the noise per unit bandwidth unchanged". That is exactly right
+% for the simulator and it has a physical ceiling on a real rig, which the sentence does not say.
+% A real amplifier's noise is flat only up to its own anti-alias filter: once the window falls
+% below the filter's response time the per-sample variance stops rising as 1/Delta and the excess
+% appears as correlation between neighbouring samples instead. So the interval axis of this study
+% is realisable on a bench down to about Delta = a few / f_c and no further, unless the filter is
+% opened with it, which costs noise.
+% WHY IT IS WORTH A CLAUSE RATHER THAN A PARAGRAPH. The same dimensionless group, f_c*Delta,
+% governs both this and the observable's kernel (canonical note, items i and ii), so the two
+% departures are one departure seen from two sides, and both vanish at the same rate. Nothing in
+% the paper's measurements changes: the simulator's noise IS white by construction and the sweep
+% is over a model, which this paragraph already says. What is missing is that the shortest
+% intervals of the sweep are the ones a bench cannot deliver at fixed spectral density, and that
+% is the same corner where the boundary-conditioned member's advantage is largest.
+% [OPEN] Either a subordinate clause here ("... unchanged, which a real amplifier delivers down
+% to its anti-alias filter's response time and no further") or nothing here and one sentence in
+% the Discussion's Bessel paragraph. Do NOT put it in both; this paragraph is already the densest
+% in the section.
+
+Two things come out of the map, and they answer different readers. The first is where each
+approximation misreports what the data determine, including the most complete one, since a method
+whose limits are unmapped has been endorsed rather than characterised. The second is the region in
+which a classical fit reports an interval that matches the spread it delivers, and it carries an
+ordering that is falsifiable and does not depend on where the level sets are placed: there is no
+region of the measured plane in which the fluctuations still carry information about the unitary
+current or the channel number and the classical interval is simultaneously trustworthy, the two
+boundaries being separated by one to three decades of instrumental noise everywhere they were
+measured. % src: projects/eLife_2025/figures/paper_both/figure_6.html (crossing table, fitted slopes)
+
+Against that history, what is new here is narrow and is worth stating narrowly. A joint estimate of
+rates and amplitudes from fluctuation data, carrying standard errors, is \citet{anderson1973voltage}.
+What this paper adds, to a non-stationary protocol read from a single record, is the third element of
+the combination: an interval whose calibration has been verified rather than assumed. The thousands of
+replicate recordings used below certify the method; they are not what applying it requires. Separately
+from the map, there is a reading an experimenter can take from a recording they already have. The
+integrated autocorrelation of the standardized least-squares residual counts how many intervals the
+fit effectively has for every interval it believes it has, and it costs nothing, since the fit was
+going to be made anyway. Two design variables that look as though they should matter, the channel
+count and the instrumental noise, enter the answer through that one statistic and through nothing
+else. The acquisition interval does not, and the reader knows it, because they chose it when they set
+the sampling rate, as they did the analogue filter, which contributes to the same statistic on a
+record sampled faster than its own bandwidth. Those two numbers together say what a classical fit is
+doing to the width of the interval it reports.
+% src: projects/eLife_2025/figures/paper_both/figure_6B.Rmd (header, measured points 1 to 5): tau_int
+% in normalized Sokal/Kish form, null 1 for a white residual; at matched tau_int the least-squares
+% size agrees to three digits over four decades of N_ch (1.127 / 1.135 / 1.123 / 1.145 at ~1.04), while
+% at matched tau_int two sampling intervals differ by a factor 5.7 (8.9 at interval 0.01 against
+% 1.56-1.63 at 0.5). The error-bar scale is the square root of the distortion, which is why 4 and not 3
+% is the factor-two mark.
+% LENGTH PASS 2026-08-09: the conversion table this src note documents ("in units a reader can act
+% on: a distortion of 1.15 is a 7% error on a confidence interval, 2 is 41%, and 4 turns a nominal
+% 95% interval into about 68%") was cut from the sentence above because 03_diagnostics.tex:90-92
+% states it verbatim, in the paragraph that defines the distortion it converts. The src note stays
+% here because the sentence it also supports, on what the two numbers say about the width of the
+% reported interval, stays.
+% CORRECTED 2026-08-04: an earlier draft of this paragraph said the residual autocorrelation alone
+% locates a recording, and quoted a factor of two at three. Both were wrong, and figure_6B.Rmd had
+% already measured the right version.
+% [BESSEL-BOUND] CLOSED HERE 2026-08-07 by the fifteen-word clause the note below asked for
+% ("as they did the analogue filter, which contributes to the same statistic on a record sampled
+% faster than its own bandwidth"). The other two sites, 03_diagnostics.tex beside the
+% residual-whiteness check and the scope clause in the design paragraph above, are still open, and
+% the canonical note with the bound and the script stays at 02_theory.tex under the Bessel
+% paragraph. What was bought: the paragraph no longer asserts that two design variables enter the
+% answer and nothing else does, on a record where a third one demonstrably enters, and the repair
+% rides the sentence's own logic rather than contradicting it, because the filter is a number the
+% reader chose exactly as they chose the sampling rate. What was NOT bought and must not be read
+% in: no size for the contribution is stated here, deliberately, because stating it commits to the
+% expansion, which belongs in Theory. Original note follows.
+% [BESSEL-BOUND] OPEN 2026-08-06. Canonical note at 02_theory.tex; the argument for why this
+% particular sentence needs guarding is at 03_diagnostics.tex, beside the residual-whiteness
+% check.
+% THIS PARAGRAPH MAKES THE PAPER'S ONE OFFER TO A READER WITH DATA IN HAND: "the integrated
+% autocorrelation of the standardized least-squares residual ... costs nothing, since the fit was
+% going to be made anyway". On a real recording that statistic also picks up the analogue filter,
+% which contributes a lag-one residual correlation of 0.075/(f_c*Delta) on its own, 8.6% where
+% the acquisition window equals the filter's inverse cutoff. The offer is sound where the record
+% is sampled at or below the filter's bandwidth and misleading where it is not, and the reader
+% cannot tell the two apart from the number alone: a filter and a badly correlated fit both push
+% tau_int up.
+% ALSO EXPOSED, and it is the same fix: "Two design variables that look as though they should
+% matter, the channel count and the instrumental noise, enter the answer through that one
+% statistic and through nothing else." On an oversampled record a THIRD variable enters it, the
+% filter setting, and that one the reader also chose, like the sampling rate. The sentence's own
+% logic therefore extends to it rather than being broken by it, which is the cheapest repair:
+% name the filter alongside the sampling rate in the clause that already says the reader knows
+% the acquisition interval because they set it.
+% COST: about fifteen words. This is the highest-value fifteen words the Bessel scoping buys
+% anywhere in the manuscript, because it is the only place a reader is told to act.

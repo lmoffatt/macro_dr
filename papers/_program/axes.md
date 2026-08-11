@@ -1,6 +1,8 @@
 # Paper 2 (MacroIR / eLife 2025) — Experiment Grid Spec
 
-> Updated: 2026-07-20. Shared across the three papers. **Owns** the control variables, the two noise
+> Updated: 2026-08-11 (§2ab added; the rest is still the 2026-07-20 text, and the header below still
+> calls this paper 2, which the merge of 2026-07-23 retired).
+> Shared across the three papers. **Owns** the control variables, the two noise
 > crossovers and the three bands, and the label→value maps. Each paper's results section consumes this;
 > none restates it.
 
@@ -25,6 +27,34 @@ The instrumental noise has two reference scales, separated by exactly a factor N
 | B/C | `10 · N_ch · interval` | instrumental noise reaches the total gating noise |
 
 Band A is gating-dominated and finely resolved (expect IR); band B is gating-dominated and coarsely resolved (expect R may suffice); band C is instrumental-dominated (expect LSE and the non-recursive members to be adequate, and the interval filter to buy nothing). The two-level structure this maps onto (root question + ladder) is `program.md` §1.
+
+## 2ab) Why each range ends where it ends
+
+Added 2026-08-11 from the author's audio of 2026-08-10 at 14.25.33, which dictated it for the
+Introduction and found it written nowhere. It was written nowhere: §1 and §7 give the values, Methods
+gives the grid, and neither says why those endpoints. Each rationale is marked for what backs it.
+
+- **N_ch, 10 to 10⁴.** The floor is deliberately *below* what a Gaussian treatment is normally
+  granted, so the map contains the regime where the closure itself is the suspect rather than only
+  regimes where it is safe. The ceiling is an already-large patch. **Internal check that supports the
+  floor:** at the fixed open probability of one half, N_ch = 10 gives an expected open count of 5,
+  which is exactly the binomial-count floor the safeguard uses to demote a recursive member to its
+  non-recursive form (`../1_method/docs/manuscript-drafts/sections/06_methods.tex`, the third
+  safeguard). So the low end of the axis sits on the safeguard's own threshold, which is a stronger
+  statement than "fewer than usual" and is checkable. **NEEDS A SOURCE before it reaches the paper:**
+  the audio's comparator, that about thirty channels is what is normally asked for a Gaussian
+  assumption, is a claim about the literature and no citation for it exists in `biblio.bib`. Either
+  source it or write the internal check instead.
+- **Noise.** The span is set by two physical reference points rather than by round numbers: the bottom
+  is low enough that individual openings are resolvable, even at the shorter intervals, and the top is
+  where instrumental noise exceeds the gating noise. Those are the same two scales §2a already names
+  as the A/B and B/C crossovers, so this rationale and the crossover table are one statement seen
+  twice, and the paper should say it once.
+- **Interval, two decades.** Bounded above by the physics of the protocol: the stimulation is
+  episodic, a concentration jump, so an acquisition interval longer than the relaxation time being
+  analysed measures nothing. Bounded below by cost: a third decade was judged too expensive and two
+  already show the effect of interval length. **Verified against the grid:** the seven levels run
+  Δ̃ = 1 down to 0.01, which is two decades exactly.
 
 ## 2b) Coverage
 

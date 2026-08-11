@@ -1,0 +1,47 @@
+% NEW FILE 2026-08-11, executing decision (ii) of the Discussion rewrite (see the header of
+% 05_discussion.tex and sections/discussion_guion.md). The menu of repairs that do not change the
+% likelihood was 161 words in the Discussion, where it sat among concessions without being one: it is
+% a menu, and the 2026-08-10 triage nominated it as the least damaging thing to move out of the
+% section. This file is where it moved, whole and unshortened, so that "moved" does not become "lost".
+% WHY A THIRD APPENDIX AND NOT ONE OF THE TWO EXISTING ONES. 08 is the derivation of the interval
+% likelihood and 09 is the member-by-member specification; a menu of resampling alternatives is
+% neither, and appending it to either would sit under a section title that does not cover it. It is
+% input LAST, and every appendix carries a \label, so no cross-reference anywhere in the manuscript
+% renumbers: 08 stays Appendix 1 and 09 stays Appendix 2. The 2026-08-10 note said "Appendix 1"
+% because at that time there was no third; the destination is the appendix, not the number.
+% NOTHING HERE IS NEW TEXT. Every sentence is the Discussion's, verbatim from
+% archives/05_discussion_SUPERSEDED_20260811.tex line 224.
+% THE THREE FIGURES THAT WERE NEVER INSERTED, carried over from that file's note so they are not lost
+% with it. All three come from a prior agent run, none was re-derived from a primary artifact in this
+% repo (approach_audit.md section 4), and none may be printed until it is:
+%   - MacroIR costs 1.4x to 5x a least-squares likelihood evaluation on this two-state model
+%     (1.012 s against 0.200 at Delta.k_off = 0.01; 0.0103 against 0.0072 at 1), the ratio being
+%     independent of the channel count. Do NOT commit to where it crosses as states are added: that
+%     needs a benchmark not run here and invites a fight about implementations.
+%   - Why the simulation count must be of order 1e4 and not a few hundred: measured on one cell at
+%     nsim 200 / 256 / 1000 / 1024 / 10000, the magnitude converges by ~1000 (+-3.7%) but the
+%     ANISOTROPY is biased up and decays as 1/sqrt(M), reading 1.270 / 1.265 / 1.149 / 1.127 / 1.064
+%     against an estimation floor of 1.043, so at nsim 1000 the bias alone equals the criterion being
+%     tested.
+%   - The efficiency gap from the usage map's own measurement: a factor 1.9 on k_on at N_ch 10, small
+%     elsewhere, which is why the recommendation cannot be "always use the filter".
+
+% \appendix and the A-numbering are declared once, in 08_appendix_derivation.tex, which is input
+% before this file.
+\begin{appendixbox}
+\label{app:repairs}
+\section*{Repairing an interval without changing the likelihood}
+
+A reader who accepts the miscalibration can still ask what it would cost to repair it without
+changing likelihood, and the alternatives answer different questions. The standard error across
+independent fits to separate patches is free, but it describes the uncertainty of a population mean,
+mixes statistical with biological variability, and leaves any bias in place. Resampling whole sweeps
+is valid and keeps the within-sweep correlation, but it brackets whatever the estimator converges to
+without saying whether that estimator is right. Resampling residuals is not valid here, because
+independent resampling destroys the correlation that is the problem; a parametric bootstrap assumes
+the model one was checking; a block bootstrap needs a block length well above a correlation time that
+has to be measured first. Simulating from the fitted model and forming the sandwich answers the same
+question the diagnostic does, at a cost set by the precision needed on a covariance, and still
+simulates from the model one wanted to verify.
+
+\end{appendixbox}

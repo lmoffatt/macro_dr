@@ -90,10 +90,14 @@
 \input{sections/07_backmatter}
 % Appendices, in the order a reader needs them: the derivation first, because the member-by-member
 % spec cites twelve of its equations and eight of those are cited from nowhere else, so with the
-% spec first every one of them would be a forward reference. Both carry a \label so that no
+% spec first every one of them would be a forward reference. All three carry a \label so that no
 % cross-reference in the body hard-codes an appendix number (08_length_plan.md, Phase 1).
+% The third was added 2026-08-11 and is input LAST for that reason: 08 stays Appendix 1 and 09 stays
+% Appendix 2, so nothing renumbers. It holds the menu of repairs that do not change the likelihood,
+% moved out of the Discussion by decision (ii) of that section's rewrite.
 \input{sections/08_appendix_derivation}
 \input{sections/09_appendix_members}
+\input{sections/10_appendix_repairs}
 
 % Reads biblio.bib, the CITED-ONLY file. It was repointed to biblio_full on 2026-07-28 because
 % biblio.bib then had 15 entries and broke on the first prior-art citation; on 2026-07-29 the six

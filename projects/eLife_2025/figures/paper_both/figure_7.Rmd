@@ -19,30 +19,30 @@ THE ENCODING (Luciano, 2026-07-26) — one visual channel per meaning, no except
     COLOUR    = the PARAMETER the line is about:  k_on, k_off, i (unitary conductance), N_ch
     LINE TYPE = WHAT is being asked about it:
         solid   "can it be measured at all"  -> distortion-corrected SE crosses a factor 2
-        dotted  "is LSE's error bar honest"  -> LSE's information distortion crosses 1.15
+        dotted  "is ILSE's error bar honest"  -> ILSE's information distortion crosses 1.15
         dashed  "is IR's own error bar honest" -> IR's information distortion crosses 1.15
                  (this one is the macro/micro floor: below it the Gaussian closure is misspecified)
     RIBBON    = the same boundary swept over the sampling interval, Delta.k_off = 0.01 to 1.
                 The heavy line is the reference Delta.k_off = 0.1. So the ribbon is not an error
                 bar, it is "where your own sampling rate puts the boundary".
 
-WHERE THE SE FAMILY COMES FROM, and why it is mixed: the RATES from LSE, the AMPLITUDE from IR.
+WHERE THE SE FAMILY COMES FROM, and why it is mixed: the RATES from ILSE, the AMPLITUDE from IR.
 "Where does this parameter die" is a property of the experiment, so in principle it should be judged
-by the best available method — but measured, IR and LSE rate SEs agree to a few percent at N_ch >= 100
-(the only gap is N_ch 10, where LSE loses a factor 1.9 on k_on, and there both are already past the
-threshold), while LSE is the one with the high-noise coverage: at N_ch 1e4 IR stops at noise 1e5 and
-LSE runs to 1e7, so an IR-sourced rate boundary simply vanishes off the right of the plot. The
-amplitude pair must come from IR, because LSE holds unitary_current Fixed and never estimates i at
+by the best available method — but measured, IR and ILSE rate SEs agree to a few percent at N_ch >= 100
+(the only gap is N_ch 10, where ILSE loses a factor 1.9 on k_on, and there both are already past the
+threshold), while ILSE is the one with the high-noise coverage: at N_ch 1e4 IR stops at noise 1e5 and
+ILSE runs to 1e7, so an IR-sourced rate boundary simply vanishes off the right of the plot. The
+amplitude pair must come from IR, because ILSE holds unitary_current Fixed and never estimates i at
 all — which is the structural point of the figure, not a coverage accident.
 
 THE REGIONS, bottom to top at fixed N_ch:
     0  below the dashed line: the Gaussian closure itself fails. Labelled "closure fails", NOT
        "use micro": micro is not measured in this paper.
-    1  i and N_ch both resolved AND LSE's error bar wrong  -> IR buys two things
-    2  amplitude gone, rates alive, LSE still wrong        -> IR buys one thing (an honest CI)
-    3  LSE's error bar honest and rates alive              -> IR buys nothing, LSE is par
+    1  i and N_ch both resolved AND ILSE's error bar wrong  -> IR buys two things
+    2  amplitude gone, rates alive, ILSE still wrong        -> IR buys one thing (an honest CI)
+    3  ILSE's error bar honest and rates alive              -> IR buys nothing, ILSE is par
     4  above the solid k_on line: nothing useful left
-  The 2x2 cell "amplitude alive AND LSE honest" is EMPTY at every measured cell, which is what makes
+  The 2x2 cell "amplitude alive AND ILSE honest" is EMPTY at every measured cell, which is what makes
   these an ordered ladder rather than a table.
 
 WHY k_on IS THE BINDING RATE: SE(k_on) ~ 3.1 x SE(k_off) everywhere measured, for both methods. One
@@ -53,8 +53,8 @@ and both lines are drawn so the reader can pick the criterion that matches what 
 TRAPS, none of them re-derivable from the plot:
  - param_index is a POSITION IN THE FREE PARAMETER VECTOR, so the map differs by algorithm:
      macro: 0 on, 1 off, 2 unitary_current, 3 Current_Noise, 4 Current_Baseline, 5 Num_ch_mean
-     LSE  : 0 on, 1 off, 2 Current_Baseline, 3 Num_ch_mean   (the two Fixed ones are absent)
-   A single global PIDX silently drops LSE from anything keyed on index 5 and mislabels index 3.
+     ILSE  : 0 on, 1 off, 2 Current_Baseline, 3 Num_ch_mean   (the two Fixed ones are absent)
+   A single global PIDX silently drops ILSE from anything keyed on index 5 and mislabels index 3.
  - the y axis is the RAW noise label, and current_noise = label/1000. Never divide it by N_ch: the
    diagonal boundaries are the finding, and dividing flattens them by construction.
  - N_ch is NOT capped to four columns. IR has runs at 5/20/50/200/500/2000/5000 and the closure floor
@@ -64,11 +64,11 @@ TRAPS, none of them re-derivable from the plot:
    on one anchor. Bias (battery_sim_G) is not on this figure.
 
 MEASURED, at Delta.k_off = 0.1 (the render log prints all of it):
-  slopes, d log10 noise / d log10 N_ch:  LSE-honest 1.01 (k_off) and 1.03 (N_ch), i.e. N_ch-independent
+  slopes, d log10 noise / d log10 N_ch:  ILSE-honest 1.01 (k_off) and 1.03 (N_ch), i.e. N_ch-independent
   in r = noise/N_ch;  SE(i) 1.11;  SE(N_ch) 1.61;  SE(k_off) 2.24 and SE(k_on) 2.21;  closure floor
   -0.56, NEGATIVE — instrumental noise gaussianises the emission, so it HELPS the closure while
   hurting everything else. That sign contrast is the second non-obvious thing in the figure.
-  region 3 (LSE is par) OPENS at N_ch 120 to 1368, the range being the strict-vs-loose criterion.
+  region 3 (ILSE is par) OPENS at N_ch 120 to 1368, the range being the strict-vs-loose criterion.
   the map CLOSES from below at N_ch 3 to 9, EXTRAPOLATED — exactly where the planned N_ch 2 and 5
   runs would land, which is the cheapest run this figure asks for.
   the loose criterion moves the SE boundaries up by a factor 9 (i, N_ch) to 19-21 (the rates) in
@@ -106,32 +106,36 @@ read_algo <- function(pat, algo, idx) {
 }
 IR  <- read_algo("^figure_3_G_nch_[0-9]+_nsim_10000_macro_IR_noise_[0-9.eE+]+_battery_pool_G\\.csv$",
                  "IR",  c(kon = 0, koff = 1, i = 2, Nch = 5))
-LSE <- read_algo("^figure_3_LSE_nch_[0-9]+_nsim_10000_nonlinearsqr_noise_[0-9.eE+]+_battery_pool_G\\.csv$",
-                 "LSE", c(kon = 0, koff = 1, Nch = 3))
+# RELABELLED 2026-08-11 (Luciano): this pattern matches `nonlinearsqr`, which is the
+# INTERVAL-AVERAGED least-squares arm, ILSE (figure_4.Rmd:329-330; the data-file tokens are crossed
+# on purpose, see figure_1.Rmd). The un-averaged arm is `nonlinearsqr_g` and is NOT read here. The
+# label said ILSE and the classical arm of this map is therefore ILSE throughout.
+ILSE <- read_algo("^figure_3_LSE_nch_[0-9]+_nsim_10000_nonlinearsqr_noise_[0-9.eE+]+_battery_pool_G\\.csv$",
+                 "ILSE", c(kon = 0, koff = 1, Nch = 3))
 
 cat("figure_7: noise levels on disk, per algorithm and N_ch\n")
-print(as.data.frame(bind_rows(IR, LSE) %>% distinct(algo, nch, noise) %>% count(algo, nch) %>%
+print(as.data.frame(bind_rows(IR, ILSE) %>% distinct(algo, nch, noise) %>% count(algo, nch) %>%
       pivot_wider(names_from = algo, values_from = n, values_fill = 0)), row.names = FALSE)
 
 # one row per (question, parameter, nch, D, noise). SEs are already in log10 units; the distortion is
 # two-sided (IR under-disperses N_ch where it over-disperses k_off), hence abs(log()).
 MET <- bind_rows(
-  LSE %>% filter(what == "var", par %in% c("kon", "koff")) %>%
+  ILSE %>% filter(what == "var", par %in% c("kon", "koff")) %>%
           transmute(q = "se",    par, nch, D, noise, m = sqrt(pmax(v, 0))),
   IR  %>% filter(what == "var", par %in% c("i", "Nch")) %>%
           transmute(q = "se",    par, nch, D, noise, m = sqrt(pmax(v, 0))),
-  LSE %>% filter(what == "dist") %>% transmute(q = "lse",   par, nch, D, noise, m = abs(log(v))),
+  ILSE %>% filter(what == "dist") %>% transmute(q = "lse",   par, nch, D, noise, m = abs(log(v))),
   IR  %>% filter(what == "dist") %>% transmute(q = "floor", par, nch, D, noise, m = abs(log(v))))
 
 # thresholds and drawing rules, per question
 QQ <- tribble(
   ~q,      ~t1,       ~t2,      ~rising, ~lty,   ~qlab,
   "se",    0.3,       1.0,      TRUE,    "solid","solid: parameter no longer measurable (SE > factor 2)",
-  "lse",   log(1.15), log(1.3), FALSE,   "12",   "dotted: LSE's reported error bar becomes honest (distortion < 1.15)",
+  "lse",   log(1.15), log(1.3), FALSE,   "12",   "dotted: ILSE's reported error bar becomes honest (distortion < 1.15)",
   "floor", log(1.15), log(1.3), FALSE,   "42",   "dashed: IR's OWN error bar is wrong -> Gaussian closure fails (distortion > 1.15)")
 PARS <- c(kon = "k_on", koff = "k_off", i = "i  (unitary conductance)", Nch = "N_ch")
 # which (question, parameter) pairs are drawn. k_on/k_off carry region 4; i and N_ch carry the
-# amplitude boundary; the honesty questions are asked of k_off and N_ch (i is Fixed for LSE).
+# amplitude boundary; the honesty questions are asked of k_off and N_ch (i is Fixed for ILSE).
 DRAW <- tribble(~q, ~par,
   "se","kon", "se","koff", "se","i", "se","Nch",
   "lse","koff", "lse","Nch",
@@ -192,7 +196,7 @@ v_open  <- list(vx("lse", "koff", "se", "kon", "c2"), vx("lse", "koff", "se", "k
 v_close <- list(vx("floor", "koff", "se", "kon", "c2"), vx("floor", "koff", "se", "kon", "c1"))
 rng <- function(v) if (any(vapply(v, is.null, TRUE))) "NA" else
   sprintf("%.0f-%.0f", 10^min(v[[1]]$lx, v[[2]]$lx), 10^max(v[[1]]$lx, v[[2]]$lx))
-cat("\nregion 3 (LSE is par) OPENS at N_ch =", rng(v_open), "(range = the two criteria)\n")
+cat("\nregion 3 (ILSE is par) OPENS at N_ch =", rng(v_open), "(range = the two criteria)\n")
 cat("the map CLOSES from below at N_ch =", rng(v_close),
     "-- EXTRAPOLATED, this is what the N_ch 2 and 5 runs would pin\n")
 
@@ -253,7 +257,7 @@ g <- ggplot() +
            hjust = 0.5, colour = "grey25", lineheight = .95) +
   annotate("text", x = log10(3000), y = log10(6e3),   label = "2   rates + honest CI\n(amplitude needs a prior)",
            size = 2.5, hjust = 0.5, lineheight = .95) +
-  annotate("text", x = log10(6000), y = log10(2.4e5), label = "3   LSE\nis par", size = 2.4,
+  annotate("text", x = log10(6000), y = log10(2.4e5), label = "3   ILSE\nis par", size = 2.4,
            hjust = 0.5, lineheight = .95) +
   { if (is.finite(NEVER$nch_min[NEVER$par == "kon"]))
       annotate("text", x = log10(12), y = log10(3e3),
@@ -693,9 +697,9 @@ Bf$lo[off] <- log10(NOISE_MIN); Bf$hi[off] <- log10(NOISE_MIN)
 # NOTE, and it cost a wrong claim (caught by Luciano, 2026-07-26): NEVER$nch_min is computed at the
 # REFERENCE interval only, so "k_on is unreachable below N_ch 52" was an artefact of fixing Delta.
 # Minimising over Delta as well, IR reaches SE(k_on) = 0.267 at N_ch 10 with Delta.k_off = 0.01
-# (0.375 at 0.1, 0.511 at 1). LSE does NOT: its best is 0.708 at every Delta and every noise. So at
+# (0.375 at 0.1, 0.511 at 1). ILSE does NOT: its best is 0.708 at every Delta and every noise. So at
 # few channels the rate boundary is genuinely method-dependent, a factor 2.7, and must not be sourced
-# from LSE there. No "unreachable" marker is drawn.
+# from ILSE there. No "unreachable" marker is drawn.
 
 FR <- tibble(x = gx,
   r0_lo = YLIM[1],  r0_hi = Bf$lo,
@@ -716,7 +720,7 @@ gf <- ggplot() +
   # k_on is NOT drawn here, and that is a scope decision, not an omission. Its boundary CROSSES the
   # others: at N_ch 1e3 the amplitude pair is lost first (noise ~3e2) and k_on much later (~1.4e4),
   # but at N_ch 10 the order flips. So k_on is not a rung of this ladder. It is not a method choice
-  # either -- IR and LSE lose it within a few percent of each other except at few channels -- it is a
+  # either -- IR and ILSE lose it within a few percent of each other except at few channels -- it is a
   # property of the PROTOCOL: one concentration jump determines k_on only through the difference
   # between the pulse rate and the washout rate. If you need k_on, the fix is a second concentration,
   # not a better likelihood. That belongs in the text, not on a usage map.
@@ -800,13 +804,13 @@ the width is fitted power law carried past its own support, the whole oocyte box
 marks say so, none of them a colour: the fills are veiled with sparse white stripes past the last
 simulated column, each boundary is solid only over the N_ch span where its own crossings were found
 and dashed outside it, and the crossings are drawn as open dots. Per-boundary support: i 10-1e4,
-k_off 10-1e3, k_on 5-1e4, N_ch 5-1e4, IR calibration 5-100, LSE calibration 10-1e4. The last is
+k_off 10-1e3, k_on 5-1e4, N_ch 5-1e4, IR calibration 5-100, ILSE calibration 10-1e4. The last is
 fitted over a decade and drawn over seven, which is why it thins where it is extended.
 
 THREE CLASSES OF MARK, three ways of setting them, so that no two kinds of statement look alike:
 
     dark on plain white       a PARAMETER      i, k_off, k_on, N_ch     names a thin black line
-    white barred in dark      an ALGORITHM     LSE, IR                  names a white cased line
+    white barred in dark      an ALGORITHM     ILSE, IR                  names a white cased line
     white on solid            a PREPARATION    the three footprints     names a real experiment
     italic grey on white      an editorial note                         the key's own asides
 
@@ -832,7 +836,7 @@ TH <- log10(2)
 ir   <- IR %>% distinct(what, par, nch, noise, D, .keep_all = TRUE)
 irse <- ir %>% filter(what == "var")  %>% transmute(par, nch, noise, D, se = sqrt(pmax(v, 0)))
 irdi <- ir %>% filter(what == "dist") %>% transmute(par, nch, noise, D, d  = abs(log(v)))
-lsed <- LSE %>% filter(what == "dist", par == "koff") %>% distinct(nch, noise, D, .keep_all = TRUE) %>%
+lsed <- ILSE %>% filter(what == "dist", par == "koff") %>% distinct(nch, noise, D, .keep_all = TRUE) %>%
         transmute(nch, noise, D, l = abs(log(v)))
 
 CELL <- irse %>% filter(D == DREF) %>% group_by(nch, noise) %>%
@@ -1128,10 +1132,10 @@ KEY <- list(
   # that varies is the first word. Three of the five reading "use MacroIR" is the argument and not a
   # collapse of it -- at a glance the likelihood is needed almost everywhere. Two of the rows were
   # arrived at against my own first objection and are worth recording:
-  #   AMBER. "use LSE" is right, not merely permitted. Both methods recover the rates there and both
+  #   AMBER. "use ILSE" is right, not merely permitted. Both methods recover the rates there and both
   #   are calibrated, and the widths are the same: over the 32 cells where both were run the ratio
-  #   of the corrected standard error, LSE over IR, has median 1.04 on k_off and 1.01 on k_on, and
-  #   in two of the six rate entries of the three amber cells LSE is the TIGHTER of the two. Same
+  #   of the corrected standard error, ILSE over IR, has median 1.04 on k_off and 1.01 on k_on, and
+  #   in two of the six rate entries of the three amber cells ILSE is the TIGHTER of the two. Same
   #   answer, same interval, cheaper method. This is Figure 4's corrected covariance and the
   #   information budget: the rates live in the shape of the deterministic transient.
   #   VIOLET. "use MacroIR but do not trust the calibration" tells the reader to use a method and
@@ -1149,7 +1153,7 @@ KEY <- list(
            # directly under the rates row, so "i as well" has something to be as well AS, which is
            # how the rows were first drafted.
            label = c("'nothing measurable'",
-                     "'use LSE:  calibrated here, and cheaper'",
+                     "'use ILSE:  calibrated here, and cheaper'",
                      "'use MacroIR:  the rates, calibrated'",
                      "'use MacroIR:'~italic(i)~'as well, often all four'",
                      "'use MacroIR, but not its reported interval'")),
@@ -1160,7 +1164,7 @@ KEY <- list(
   # needs the inference has the row above; the caption spells it out.
   annotate("text", x = kx0, y = kr(y_note), hjust = 0, size = PT(7), colour = "grey30",
            fontface = "italic",
-           label = "LSE holds i fixed and cannot separate N_ch from it"),
+           label = "ILSE holds i fixed and cannot separate N_ch from it"),
   # the two line classes, explained once here instead of twice on the map
   annotate("rect", xmin = kx0 - .02, xmax = kx1 + .02, ymin = kr(y_line1) - kh*.9,
            ymax = kr(y_line1) + kh*.9, fill = PAL[["rate"]], colour = NA),
@@ -1179,7 +1183,7 @@ KEY <- list(
            label = c("that interval becomes calibrated\n(information distortion = 1.15)",
                      "that parameter stops being measurable\n(standard error = a factor of 2)")),
   annotate("text", x = kx0, y = kr(y_gloss), hjust = 0, size = PT(7), colour = "grey30",
-           label = "IR = MacroIR;  LSE = classical least squares."))
+           label = "IR = MacroIR;  ILSE = classical least squares."))
 
 gq <- ggplot() +
   geom_polygon(data = regions(HATCH_BAD), aes(x, y, group = grp, fill = fill, colour = fill),
@@ -1235,7 +1239,7 @@ gq <- ggplot() +
   online(PB$Nch,  1.5e3, "N[ch]",    -.30) +
   online(PB$koff, 3.0e1, "k[off]",     .20) +
   online(PB$kon,  1.2e2, "k[on]",      .20) +
-  onalgo(BL, 6.0e3, "LSE", .30, 8) +
+  onalgo(BL, 6.0e3, "ILSE", .30, 8) +
   onalgo(BH, 45,    "IR",  .34, 8) +
   KEY +
   scale_x_continuous(breaks = log10(10^(1:8)),

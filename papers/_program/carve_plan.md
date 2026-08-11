@@ -1,6 +1,7 @@
 # Carve plan: macro_dr → a paper/program repo
 
-> Updated: 2026-07-20. Frontier map for splitting the paper work out of `macro_dr` at **code freeze**.
+> Updated: 2026-08-11 (last section only; the buckets and the freeze table are still at 2026-07-20).
+> Frontier map for splitting the paper work out of `macro_dr` at **code freeze**.
 > **Reopened by the three-paper split** (`decisions.md` §5): "one paper = one repo" was decided when
 > there was one paper; with three papers sharing one engine, one machinery layer and one data tree, the
 > open question is now one program repo or three. Decide the boundary now (no files move); execute at
@@ -77,6 +78,42 @@ These are not a parallel hygiene lane to be done later. The binary stamps its ow
 | E-5 | **The valgrind invalid read** logged under `projects/eLife_2025/`. Investigate, fix or explain, add a minimal reproducer. | An unexplained memory error in the code that produced the figures is a referee gift. |
 
 **Consequence for any rerun.** Landing E-1 or E-3 changes the commit hash, so new cells write into a *new* hash-named directory, not into `1c2ae6f`. New cells cannot be mixed into the old directory without passing `RUN_DIR` explicitly, and mixing ensembles from different engine builds in one heatmap is not defensible anyway. Decide the freeze commit **before** launching the missing cells, not after.
+
+## The deliverable must carry the validation, not only the algorithm (2026-08-11)
+
+**Author's decision, audio of 2026-08-11 at 14.15.10:** *"el paper entrega un código que calcula
+macro IR, pero calcula también la validación de macro IR, que eso es algo que yo no lo estoy
+entregando ahora. Y yo creo que lo tengo que entregar porque es importante."* It is the same spine
+already recorded in `../1_method/STATE_20260804.md` §1 (the tool is the algorithm **and** the
+executable code), pushed one step: a reader who is offered a diagnostic must be handed the code that
+computes it on their own model, not only the code that computes the likelihood.
+
+**What the state actually is, and it is not what the sentence above assumes.** Two deliverables
+exist and only one of them is narrow.
+
+- `macro_dr`, the engine, computes the validation machinery in full: the score, the two Fisher
+  constructions, the distortion matrices, the coverage. Nothing is missing there.
+- The small `macroir` library, the one with the R and Python packages over a self-contained C++ core,
+  carries the likelihood, its score and its Gaussian Fisher information, and stops there.
+  `../1_method/docs/manuscript-drafts/sections/07_backmatter.tex:5` says so in the manuscript:
+  it implements the boundary-conditioned member, the exact simulator and a Gauss-Newton fit, and
+  "the comparisons reported here are reproducible only from `macro_dr`".
+
+So the gap is the reachable one: the validation is delivered inside a 92 GB monorepo engine and not
+inside the small library a reader would actually install. Closing it means carrying the diagnostics
+(the distortion matrices and their decomposition, the coverage, the τ_int measurement Figure 7's
+offer rests on) into the `macroir` core and its two bindings.
+
+**Consequences if it lands, and each of them is a real cost, not a note.** `07_backmatter.tex:5` is
+written precisely to the narrow scope and would have to be rewritten. The transcription rule of the
+`macroir` rewrite (faithful first, a discrepancy is not a finding until measured in logL or the
+score) applies to every diagnostic moved across, so each one needs its checkpoint cells. And this is
+engine work that does **not** gate the freeze the way E-1 to E-5 do, because it changes no
+provenance key of any deposited data: it can land after the runs.
+
+**Open, and the author has not decided it:** whether this blocks submission or ships as a follow-up
+release of the library. The manuscript is submittable as written, since the backmatter states the
+narrow scope honestly.
 
 ## The 3 steps (at freeze)
 

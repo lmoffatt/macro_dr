@@ -6,16 +6,17 @@ output: html_document
 ---
 
 <!--
-NUMBER PENDING. The Figure 4 supplements are being rebuilt on the five-member plane and the
-numbering is settled once the set is known; the ones written against the superseded figure are
-parked in `../in_progress/figure_4_supplements_20260731/`. File name carries the content until
-then.
+THIS IS FIGURE 4---FIGURE SUPPLEMENT 1, settled 2026-08-11, declared at 04_results.tex in the
+Figure~\ref{fig:plane} float. It took the declaration the line version had held. The file name
+still carries the content rather than the number, and the deposit pass renames it. Ones written
+against the superseded figure are parked in `../in_progress/figure_4_supplements_20260731/`.
 
 WHAT IT IS. Figure 4's second moment, factored. Same plane, same rows, same members, same scale,
 same two line families, same everything: the only thing that changes is what the top bar says.
 Where Figure 4 nests moment > member > parameter, this nests COMPONENT > member > parameter, so a
-reader who has paid for Figure 4 reads this one with no new instructions. 18 columns, the same as
-the body figure, so the geometry and `per_row` are the same too.
+reader who has paid for Figure 4 reads this one with no new instructions. 20 columns, the same as
+the body figure, so the cell WIDTH is the body figure's; `per_row` is not shared, because it sets
+the cell height against a different summed noise span. See the render chunk.
 
 THE TWO COMPONENTS. The Gaussian information distortion factors into two congruences that the
 battery computes separately:
@@ -39,29 +40,17 @@ as the product of the two cells here is right to within that rotation and no fur
 in practice (R at N_ch 1e3: 1.024 x 1.433 = 1.468 against a total of 1.481) and it is not an
 identity.
 
-WHAT IT SHOWS, measured at noise 0.1, medians over the seven intervals:
+WHAT IT SHOWS. The numbers are NOT copied here any more. The `measured-table` chunk at the foot of
+this file prints them from the same objects the panels draw, medians over the swept intervals at
+noise label 0.1, and a note that repeats a measurement is a note that will one day disagree with
+it. The hand-written copy that stood here went stale in two ways at once: it predated the
+un-averaged least-squares arm, and it labelled `nonlinearsqr` LSE when that token is ILSE, so its
+"LSE" rows were ILSE throughout. Checked 2026-08-11 against the generated table: every other row
+of it was correct to the digit, and it was read from `m` rather than from `Dconf`, so nothing that
+used it was wrong. Only the label was.
 
-                        N_ch:     10      100     1000    10000
-    per-sample, k_off   LSE      1.016   0.967   0.943   0.947
-                        NR       1.239   1.019   5.676  47.165
-                        INR      1.724   1.154   1.015   1.003
-                        R        1.086   1.071   1.024   0.998
-                        IR       1.099   1.068   1.038   1.007
-    per-sample, N_ch    NR       1.191   1.207  11.569 569.391
-                        INR      1.079   1.048   1.010   1.001
-                        R        0.906   0.926   0.933   0.960
-                        IR       0.913   0.962   0.972   0.986
-    correlation, k_off  LSE     10.818  13.698  14.155  14.073
-                        NR      16.513  19.467  21.162  21.194
-                        INR     16.487  20.713  21.778  22.103
-                        R        1.354   1.356   1.433   1.471
-                        IR       1.239   1.019   1.017   1.000
-    correlation, N_ch   NR       8.776   8.970   6.278   5.475
-                        INR      9.095  10.300   9.887  10.169
-                        R        0.994   1.255   1.342   1.338
-                        IR       0.914   0.967   0.995   0.997
-
-Three readings, and the first is the one this supplement exists for.
+Three readings, and the first is the one this supplement exists for. Numbers below are from the
+2026-08-11 render; the chunk is the authority.
 
   1. NR AND INR HAVE THE SAME CORRELATION PART. 16.5 / 19.5 / 21.2 / 21.2 against 16.5 / 20.7 /
      21.8 / 22.1 on k_off: the same open-loop temporal structure, as it must be, since the two
@@ -74,9 +63,16 @@ Three readings, and the first is the one this supplement exists for.
   2. THE RECURSION BUYS THE OTHER FACTOR AND ONLY THE OTHER FACTOR. INR to IR takes the
      correlation part from 22.1 to 1.000 and leaves the sample part where it already was (1.003
      against 1.007). R to IR is the same statement one rung lower, 1.47 to 1.00.
-  3. LEAST SQUARES IS PER-SAMPLE HONEST AND TEMPORALLY BLIND: sample 0.95 to 1.02 across four
-     decades, correlation 10.8 to 14.1. Its failure is entirely the factorisation, which is worth
-     stating plainly because it is the concession the paper makes to the classical fit.
+  3. BOTH LEAST-SQUARES ARMS ARE PER-SAMPLE HONEST AND TEMPORALLY BLIND: sample 0.92 to 1.02
+     across four decades, correlation 10.7 to 14.2. The failure is entirely the factorisation,
+     which is worth stating plainly because it is the concession the paper makes to the classical
+     fit. AND THE INTERVAL AVERAGE BUYS THEM NOTHING IN THE TEMPORAL PART, which is new with the
+     corrected roster: on k_off the correlation runs 10.68 / 13.68 / 14.18 / 14.08 for LSE against
+     10.82 / 13.70 / 14.15 / 14.07 for ILSE, agreeing to better than one and a half per cent at
+     every channel count, while the same step from NR to INR is the one that moves the per-sample
+     factor from divergence to one. So the interval term is worth a great deal to a likelihood
+     that models the gating variance and nothing at all to one that does not, which is the same
+     statement 04_results.tex already makes from the ellipse areas of Figure 2.
 
 Read together with Figure 4 the ladder becomes a 2x2 with a mechanism attached: the interval
 term fixes the per-sample factor, the recursion fixes the correlation factor, and calibration
@@ -89,8 +85,11 @@ lands. Everything else on this plane has its full staircase.
 SUPERSEDES, when the numbering is settled, `figure_4_supplement_3.Rmd` (the map version of the
 same split, written for R against IR and never built) and `figure_4_supplement_4.Rmd` (the line
 version, which carries the same decomposition against N_ch resolved by noise). Both are parked in
-`../in_progress/`. The line version says something this one does not, namely how the split moves
-with noise as a continuous cut, so it is a candidate to keep rather than a certainty to drop.
+`../in_progress/`. RESOLVED 2026-08-11 (Luciano): the line version is OUT of the manuscript and
+this file took its declaration. It broke the parent's grammar, which is the plane, it drew two
+members where this draws six, and it folded the acquisition interval into a band. What it said
+that this does not, how the split moves with noise as a continuous cut, was not worth a page: no
+sentence in the manuscript ever claimed it.
 -->
 
 ```{r setup, include=FALSE}
@@ -100,10 +99,20 @@ knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 ```{r common, include=FALSE}
 # The same roster as the body figure, and for the same reason: this is Figure 4's own second
 # moment taken apart, so any member missing here would be a member whose mechanism is not shown.
-FIG4_ALGOS     <- c("nonlinearsqr", "macro_NR", "macro_INR", "macro_R", "macro_IR")
-FIG4_ALGO_LAB  <- c(nonlinearsqr = "LSE", macro_NR = "NR", macro_INR = "INR",
-                    macro_R = "R", macro_IR = "IR")
-FIG4_DATA_DIRS <- c("../data/1c2ae6f", "../data/87889e6", "../data/0ffbda7", "../data/1f7138b")
+# ROSTER CORRECTED 2026-08-11 (Luciano): the un-averaged least-squares arm was missing and the
+# remaining one was mislabelled. This file was rendered on 2026-08-02, three days before
+# nonlinearsqr_g existed (added 2026-08-05, commit a202e03, which is the only directory that
+# carries it), so the five-member roster was the whole roster at the time and `nonlinearsqr` was
+# being labelled LSE when it is ILSE. Now identical to figure_4.Rmd:327-332, which is what the
+# paragraph above requires: any member missing here is a member whose mechanism is not shown.
+# LSE's cells are a staircase, 6 noise levels at N_ch 10 rising to 9 at 10^4; autodetect_cells
+# handles that per algorithm and does not intersect the noise axis across members.
+FIG4_ALGOS     <- c("nonlinearsqr_g", "nonlinearsqr", "macro_NR", "macro_INR",
+                    "macro_R", "macro_IR")
+FIG4_ALGO_LAB  <- c(nonlinearsqr_g = "LSE", nonlinearsqr = "ILSE", macro_NR = "NR",
+                    macro_INR = "INR", macro_R = "R", macro_IR = "IR")
+FIG4_DATA_DIRS <- c("../data/1c2ae6f", "../data/87889e6", "../data/0ffbda7", "../data/1f7138b",
+                    "../data/a202e03")
 source("figure_4_common.R")
 source("figure_4_layout.R")
 ```
@@ -120,9 +129,50 @@ SIDES <- list(
        data = dplyr::filter(stat, comp == "corr"),   zf = function(x) log10(x$Dconf)))
 ```
 
-```{r render, fig.width = 7.4, fig.height = 5.95}
-# 18 columns, the same as Figure 4, so the same nominal knob: 0.179, measured at x 0.1567,
-# y 0.1562, 99.7 per cent isotropic (tmp/calib_fig4.R, tmp/measure_fig4.py).
-fig4_render(SIDES, per_row = 0.179, out = "Figure_4_supplement_sample_corr.pdf",
+```{r render, fig.width = 7.4, fig.height = 5.38}
+# RECALIBRATED 2026-08-11 with the corrected roster. 20 columns now, 10 + 10, exactly the body
+# figure's count, so the cell width is the body figure's too, x = 0.1375 per decade. The old knob
+# 0.179 was measured against 18 columns and left the render 13.6 per cent tall (y = 0.1562 against
+# x = 0.1375). Rescaled by the ratio: 0.179 x 0.1375 / 0.1562 = 0.1576, then one measured pass to 0.1602 for 100 per cent. Verify with
+# `python3 tmp/measure_fig4.py <pdf>`, which reports iso per cent against a target of 100, and do
+# not trust the nominal: the layout heights are null units, not inches.
+fig4_render(SIDES, per_row = 0.1602, out = "Figure_4_supplement_sample_corr.pdf",
             cb_title = "factor by which\nthe report is wrong")
+```
+
+```{r measured-table}
+# THE TABLE THIS FILE'S HEADER USED TO CARRY BY HAND, generated instead. It went stale twice over:
+# written 2026-08-02 against the five-member roster, and labelling `nonlinearsqr` LSE when that
+# token is ILSE. A note that REPEATS a measurement is a note that will one day disagree with it.
+#
+# READ FROM `m`, NEVER FROM `Dconf`. Dconf is the CI edge toward the null
+# (figure_4_data.R:199, ifelse(m > 1, pmax(1, lo), pmin(1, hi))) and collapses to exactly 1
+# wherever the bootstrap interval brackets 1. That is what the MAPS want and it is the wrong
+# quantity for a table of values: it reports 1.000 for every cell that merely fails to exclude 1,
+# which manufactures agreement. Same trap as Dconf on a line.
+#
+# Rows follow the panels: EXCLUDE_ROWS drops both least-squares arms from every parameter except
+# the rates, so LSE and ILSE appear on k_off alone, exactly as the figure draws them.
+NOISE_LAB <- 0.1                  # the LABEL. S_tilde = label/10 = 0.01 (noise_units.R)
+mt <- stat %>%
+  dplyr::filter(comp %in% c("sample", "corr"), param %in% PARAM_LONG,
+                as.numeric(noise) == NOISE_LAB, is.finite(m)) %>%
+  dplyr::anti_join(EXCLUDE_ROWS, by = c("algo", "param")) %>%
+  dplyr::group_by(comp, param, algo, Num_ch) %>%
+  dplyr::summarise(med = median(m), nint = dplyr::n(), .groups = "drop") %>%
+  dplyr::mutate(algo = factor(unname(ALGO_LAB[algo]), levels = unname(ALGO_LAB)),
+                comp = factor(comp, levels = c("sample", "corr"),
+                              labels = c("per-sample", "correlation"))) %>%
+  dplyr::arrange(comp, param, algo)
+
+cat("\n=== medians over the swept intervals, noise label ", NOISE_LAB,
+    " (S_tilde = ", NOISE_LAB / 10, "), from m and not from Dconf ===\n", sep = "")
+mt %>% dplyr::select(comp, param, algo, Num_ch, med) %>%
+  tidyr::pivot_wider(names_from = Num_ch, values_from = med, names_prefix = "N_ch_") %>%
+  as.data.frame() %>% print(digits = 4, row.names = FALSE)
+
+cat("\nintervals contributing to each median (a ragged row is coverage, not an error):\n")
+mt %>% dplyr::select(comp, param, algo, Num_ch, nint) %>%
+  tidyr::pivot_wider(names_from = Num_ch, values_from = nint, names_prefix = "N_ch_") %>%
+  as.data.frame() %>% print(row.names = FALSE)
 ```

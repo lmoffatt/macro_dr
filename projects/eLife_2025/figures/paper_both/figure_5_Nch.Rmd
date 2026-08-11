@@ -1,0 +1,228 @@
+---
+title: "Figure 5 by channel count — distortion versus the memory left in the least-squares residual"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+WRITTEN 2026-08-11 (Luciano). Third encoding of the same 840 marks as figure_5.Rmd, and the point of
+having three is that the body figure can only put ONE of the three design axes on the rows. This one
+puts the CHANNEL COUNT there. Column = member, row = N_ch, colour = the acquisition interval, and the
+instrumental noise is not drawn at all.
+
+WHAT NOISE THEN IS, since it is not gone from the data. It is what moves a mark along the horizontal
+axis: within one panel and one colour, the points are the noise sweep at a fixed channel count and a
+fixed sampling rate, from the highest noise at tau_int near 1 to the lowest noise at the right end.
+So the figure has all 210 cells per member, exactly as figure_5.Rmd, and reads the noise axis as
+position rather than as a key. THE THIN PATH JOINS THAT SWEEP, in order of noise and NOT in order of
+tau_int, which is the honest order. Measured over the 28 (N_ch, interval) pairs of the grid,
+tau_int falls monotonically with noise at 19 of them; at the other 9 there is a single step in the
+wrong direction and it is at most 0.033 in tau_int, median 0.0095, against sweeps that span up to
+16.4. So the exceptions are the estimation error of the statistic and not a reversal of the sweep,
+and ordering the path by tau_int instead would hide that by construction.
+
+WHAT THIS ENCODING IS FOR, and it is a different question from the body figure's. Reading down a
+column asks whether the distortion depends on how many channels are in the patch once the memory in
+the residual is held fixed. MEASURED 2026-08-11, second chunk below: it does not, and that is the
+result this variant exists to carry. Interpolating log magnitude against log tau_int separately for
+each channel count and comparing the four curves at a common tau_int and a fixed sampling rate, the
+largest gap anywhere is a factor of 1.06 for ILSE, 1.15 for INR and 1.08 for IR, with medians over
+the seven intervals of 1.02, 1.06 and 1.02. The four rows really are one picture drawn four times.
+That is what licenses the body figure to pool the channel counts into one panel and to ask the reader
+for two numbers rather than three: tau_int and the sampling rate, not the patch size.
+
+R IS THE EXCEPTION AND IT IS THE CORNER AGAIN. Its gap reaches 1.81, at the coarsest sampling, where
+it is carrying the ill-conditioned cell (N_ch = 10^4, Delta_tilde = 1) that figure_5.Rmd's header
+records as the one edit that file still owes. Read the bottom-left of the R column as that cell and
+not as a channel-count effect.
+
+WHAT IS NOT THE SAME DOWN THE COLUMN, and it is a shape statement rather than a size one: IR's
+anisotropy reaches 1.15 in 9 of the 210 cells drawn here, 6 of them at N_ch = 10 and the other 3 at
+N_ch = 100, every one at the lowest noise on the grid, worst 1.31; at N_ch of 10^3 and 10^4 there are
+none and the maximum falls to 1.10 and 1.07. That is the Gaussian moment closure on the occupancy
+going at few channels, which 00_abstract.tex already states. It does not show in this figure's
+points, only in the length of their bars, which is the same trap figure_5.Rmd's header names.
+(The body's count of 28 such cells is over 294 source cells at both anchors; these 9 are the pool
+anchor and the 210 cells this figure draws. Different sets, not a disagreement.)
+
+Shares every number with figure_5.Rmd: same source files, same anchor (pool), same four members, same
+shared axes. Do not re-derive anything here; if the data block has to change, change it there first.
+Labels follow figure_4.Rmd:329.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+suppressMessages({ library(tidyverse) })
+```
+
+```{r data}
+SRC <- "../figure_4_source_data"
+rd  <- function(f) read.csv(file.path(SRC, f), skip = 1, stringsAsFactors = FALSE)
+
+LAB  <- c(nonlinearsqr = "ILSE", macro_INR = "INR", macro_R = "R", macro_IR = "IR")
+KEEP <- names(LAB)
+
+# strip and key labels: plain from 0.01 to 100, powers outside; parsed as plotmath below.
+pw10 <- function(x) {
+  e <- round(log10(x))
+  ifelse(abs(e) <= 2, format(x, trim = TRUE, scientific = FALSE), sprintf("10^%d", e))
+}
+
+tau <- rd("figure_4_source_data_cell_scalars.csv") %>%
+  filter(param == "lag", anchor == "pool", algo == "nonlinearsqr") %>%
+  transmute(noise, Num_ch, interval_in_tau, tau_int = v)
+
+spec <- rd("figure_4_source_data_spectrum.csv") %>%
+  filter(anchor == "pool", algo %in% KEEP) %>%
+  select(algo, param, noise, Num_ch, interval_in_tau, m) %>%
+  pivot_wider(names_from = param, values_from = m)
+
+dat <- spec %>%
+  inner_join(tau, by = c("noise", "Num_ch", "interval_in_tau")) %>%
+  filter(is.finite(mag), is.finite(aniso), mag > 0, aniso > 0) %>%
+  mutate(lo = mag / aniso, hi = mag * aniso,
+         member = factor(unname(LAB[algo]), levels = unname(LAB)),
+         d = factor(sprintf("%g", interval_in_tau),
+                    levels = sprintf("%g", sort(unique(interval_in_tau)))),
+         n_strip = factor(sprintf("N[ch] == %s", pw10(Num_ch)),
+                          levels = sprintf("N[ch] == %s", pw10(sort(unique(Num_ch))))))
+
+cat(sprintf("figure_5_Nch: %d marks over %d cells in %d panels; per member: %s\n",
+            nrow(dat), n_distinct(dat[c("noise","Num_ch","interval_in_tau")]),
+            nlevels(dat$member) * nlevels(dat$n_strip),
+            paste(sprintf("%s=%d", levels(dat$member), as.integer(table(dat$member))),
+                  collapse = " ")))
+cat(sprintf("rows: %s ; marks per row and member: %s\n",
+            paste(levels(dat$n_strip), collapse = " | "),
+            paste(as.integer(table(dat$Num_ch)) / nlevels(dat$member), collapse = " ")))
+```
+
+```{r render, fig.width = 7.0, fig.height = 5.2}
+g <- ggplot(dat, aes(tau_int, mag, colour = d)) +
+  geom_hline(yintercept = 1, linewidth = 0.3, colour = "grey45") +
+  # the path is the noise sweep at fixed channel count and interval, ordered by noise.
+  geom_path(aes(group = d), linewidth = 0.25, alpha = 0.55,
+            data = ~ arrange(.x, member, Num_ch, d, as.numeric(noise))) +
+  geom_linerange(aes(ymin = lo, ymax = hi), linewidth = 0.4, alpha = 0.75) +
+  geom_point(size = 0.9) +
+  facet_grid(n_strip ~ member, labeller = labeller(n_strip = label_parsed)) +
+  scale_x_log10(breaks = c(1, 2, 5, 10), labels = c("1", "2", "5", "10")) +
+  scale_y_log10(breaks = c(0.3, 1, 3, 10, 30, 100),
+                labels = c("0.3", "1", "3", "10", "30", "100")) +
+  scale_colour_viridis_d(name = expression(widetilde(Delta)), option = "D", end = 0.92) +
+  labs(x = expression("memory left in the least-squares residual,  "*tau[int]),
+       y = "distortion of the reported information\n(point = size, bar = across directions)") +
+  # sizes written out rather than left to base_size: eLife's 7 pt floor is on the drawn text.
+  theme_bw(base_size = 8, base_family = "Helvetica") +
+  theme(panel.grid.minor = element_blank(),
+        axis.text = element_text(size = 7),
+        axis.title = element_text(size = 8),
+        legend.position = "right",
+        legend.title = element_text(size = 8),
+        legend.text = element_text(size = 7),
+        legend.key.height = unit(9, "pt"),
+        strip.background = element_rect(fill = "grey92", colour = NA),
+        strip.text = element_text(face = "bold", size = 7))
+
+ggsave("Figure_5_Nch.pdf", g, width = 7.0, height = 5.2, device = cairo_pdf)
+g
+```
+
+```{r numbers}
+dat %>% group_by(member, Num_ch) %>%
+  summarise(n = n(),
+            size_med = median(mag), size_min = min(mag), size_max = max(mag),
+            shape_med = median(aniso), frac_ge_115 = mean(mag >= 1.15), .groups = "drop") %>%
+  as.data.frame() %>% print(digits = 3)
+
+cat("\ncells whose anisotropy reaches 1.15, by member and channel count (the bar, not the point):\n")
+dat %>% group_by(member, Num_ch) %>%
+  summarise(n = n(), n_shape_ge_115 = sum(aniso >= 1.15), shape_max = max(aniso), .groups = "drop") %>%
+  as.data.frame() %>% print(digits = 3)
+
+# Does the channel count move the distortion AT A COMMON tau_int? That is the figure's question, and
+# it cannot be answered by comparing cells at a common NOISE, because the same noise leaves different
+# memory at different channel counts. So interpolate each row's curve and compare them where they
+# overlap in tau_int, one sampling rate at a time.
+gap_over_Nch <- function(g) {
+  ks <- split(g, g$Num_ch)
+  ks <- ks[sapply(ks, function(k) nrow(k) >= 3)]
+  if (length(ks) < 2) return(tibble(gap = NA_real_, at_tau = NA_real_))
+  lo <- max(sapply(ks, function(k) min(k$tau_int)))
+  hi <- min(sapply(ks, function(k) max(k$tau_int)))
+  if (!(hi > lo * 1.05)) return(tibble(gap = NA_real_, at_tau = NA_real_))
+  xs <- 10^seq(log10(lo), log10(hi), length.out = 25)
+  ys <- sapply(ks, function(k) approx(log10(k$tau_int), log10(k$mag),
+                                      xout = log10(xs), ties = mean)$y)
+  r <- 10^(apply(ys, 1, max) - apply(ys, 1, min))
+  tibble(gap = max(r), at_tau = xs[which.max(r)])
+}
+
+cat("\nlargest disagreement between the four channel counts at a COMMON tau_int, per sampling rate:\n")
+gaps <- dat %>% group_by(member, d) %>% group_modify(~ gap_over_Nch(.x)) %>% ungroup()
+gaps %>% as.data.frame() %>% print(digits = 3)
+cat("\nsummary of that gap per member (1 would be an exact collapse of the four rows):\n")
+gaps %>% group_by(member) %>%
+  summarise(med_gap = median(gap, na.rm = TRUE), max_gap = max(gap, na.rm = TRUE),
+            .groups = "drop") %>%
+  as.data.frame() %>% print(digits = 3)
+```
+
+```{r collapse}
+# THE COLLAPSE, EXTENDED TO THE FULL LADDER. The owner of this measurement is figure_5.Rmd's collapse
+# chunk, which is what 04_results cites and what Figure 5 supplement 2 draws. This copy exists for one
+# reason: the body sentence says "every member" and figure_5.Rmd only reads the four it draws, so the
+# other four are checked here. If the two ever disagree, figure_5.Rmd is right and this is stale.
+# (On 2026-08-11 the citation pointed at a chunk that did not exist in any file; it does now.)
+#
+# The test is not the same as the interpolation above and is stronger: the battery contains cells
+# that share r = S_tilde/N_ch at different (noise, N_ch), for instance noise 10 at N_ch 10 and noise
+# 100 at N_ch 100. Those are SEPARATE simulations of different preparations. If the ratio is the
+# only thing that matters they must land on the same tau_int and the same distortion, and there is
+# no fitting or interpolation in between, so agreement is the whole content.
+#
+# Run over the FULL ladder, not just the four members drawn, because the body's sentence says
+# "every member". Anchor and files as everywhere else in this family.
+LAB_ALL <- c(nonlinearsqr_g = "LSE", nonlinearsqr = "ILSE", macro_NR = "NR", macro_INR = "INR",
+             macro_R = "R", macro_MR = "MR", macro_VR = "VR", macro_IR = "IR")
+
+all8 <- rd("figure_4_source_data_spectrum.csv") %>%
+  filter(anchor == "pool", param == "mag") %>%
+  transmute(member = factor(unname(LAB_ALL[algo]), levels = unname(LAB_ALL)),
+            noise = as.numeric(noise), Num_ch, interval_in_tau, mag = m) %>%
+  inner_join(mutate(tau, noise = as.numeric(noise)),
+             by = c("noise", "Num_ch", "interval_in_tau")) %>%
+  filter(is.finite(mag), mag > 0) %>%
+  mutate(r = noise / Num_ch)   # the label cancels in the ratio, so r is the same in either unit
+
+shared <- all8 %>% group_by(member, interval_in_tau, r) %>% filter(n() > 1) %>% ungroup()
+cat(sprintf("cells sharing an r with a different (noise, N_ch): %g of %g per member, over %d r values\n",
+            nrow(shared) / nlevels(all8$member), nrow(all8) / nlevels(all8$member),
+            n_distinct(shared$r)))
+
+cat("\ntau_int at matched r (this is the axis of the figure, and it is member-independent):\n")
+shared %>% filter(member == "ILSE") %>% group_by(interval_in_tau, r) %>%
+  summarise(spread = max(tau_int) / min(tau_int), .groups = "drop") %>%
+  summarise(n = n(), min = min(spread), median = median(spread), max = max(spread)) %>%
+  as.data.frame() %>% print(digits = 4)
+
+cat("\ndistortion at matched r, per member, with and without the coarsest sampling:\n")
+bind_rows(
+  shared %>% mutate(set = "all intervals"),
+  shared %>% filter(interval_in_tau < 1) %>% mutate(set = "excluding Delta_tilde = 1")
+) %>%
+  group_by(set, member, interval_in_tau, r) %>%
+  summarise(spread = max(mag) / min(mag), .groups = "drop") %>%
+  group_by(set, member) %>%
+  summarise(median = median(spread), max = max(spread), .groups = "drop") %>%
+  pivot_wider(names_from = set, values_from = c(median, max)) %>%
+  as.data.frame() %>% print(digits = 3)
+
+cat("\nwhere the worst one is, since it decides whether the sentence needs a qualifier:\n")
+shared %>% group_by(member, interval_in_tau, r) %>%
+  summarise(spread = max(mag) / min(mag),
+            worst_pair = paste(sprintf("N_ch=%g", range(Num_ch)), collapse = " vs "),
+            .groups = "drop") %>%
+  slice_max(spread, n = 5) %>% as.data.frame() %>% print(digits = 3)
+```

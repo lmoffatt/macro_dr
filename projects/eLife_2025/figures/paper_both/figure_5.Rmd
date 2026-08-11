@@ -79,17 +79,53 @@ MEASURED 2026-08-10, and not written up anywhere else yet. The chunk below rebui
   a different anchor; mag at the sim anchor differs from mag at pool by less than the pooling
   effect. Do not reopen it as an anchor question.
 
-  TWO EDITS THIS FILE STILL OWES, neither of which changes what the figure says.
-  (i) THE ILL-CONDITIONED CORNER IS NOT EXCLUDED and it sets the floor of the shared axis. R has
+  ONE EDIT THIS FILE STILL OWES, which does not change what the figure says.
+  THE ILL-CONDITIONED CORNER IS NOT EXCLUDED and it sets the floor of the shared axis. R has
       six cells below magnitude 0.9 (minimum 0.590) and LSE twelve (minimum 0.074), and every one
       of them is at N_ch = 10^4 with interval_in_tau = 1, which is the corner Figure 4 already
       greys by a rule it owns: off-scale AND kappa > 3e4, figure_4_common.R:216-224, with the
       kappa in the same cell_scalars file this notebook already reads. ILSE, INR, NR and IR have
       no such cell. Applying that rule here costs a join and buys back about half a decade at the
       bottom of the axis, which is height for every panel; leaving it, the body figure draws as a
-      measurement what Figure 4 greys as unidentified.
-  (ii) THE X TICK LABELS COLLIDE at four panels across 7 in: the breaks 1, 1.2, 1.5, 2, 3 render as
-      one smear at the left of each panel. c(1, 2, 5, 10, 20) fits, and the axis stays round.
+      measurement what Figure 4 greys as unidentified. In the drawing it is the low end of the
+      lightest sweep of R and of LSE, the one at Delta_tilde = 1, which the lines now make traceable
+      to its cell. The collapse chunk below already excludes it and says so.
+
+ONE ROW OF FOUR PANELS, AND NOW FOR A MEASURED REASON. 2026-08-11 (Luciano). The encoding was taken
+apart and put back the same day: a 7x4 grid with the sampling interval on the rows, the noise in
+colour and the channel count in the symbol was drawn, looked at, and rejected. What settled it was
+not the layout but a measurement made while arguing about it, and it is now Figure 5 supplement 2
+(figure_5_S2.Rmd) with the numbers in the collapse chunk of figure_5_Nch.Rmd.
+
+  THE NOISE AND THE CHANNEL COUNT ARE ONE AXIS, NOT TWO. They enter only through r = S_tilde/N_ch.
+  Cells that share r at different (noise, N_ch) are separate simulations of different preparations,
+  and at the same sampling interval they agree in tau_int to within 3.5% (median 1%) and in the
+  distortion to a median of 1 to 2% for all eight members. Since tau_int is monotone in the noise at
+  a fixed interval, that relation inverts: THE DISTORTION IS A FUNCTION OF tau_int AND OF THE
+  SAMPLING INTERVAL, AND OF NOTHING ELSE. Those are exactly the two things this panel draws, x and
+  colour. So the one row is not hiding two design axes, it is drawing the whole parameterization,
+  and the check that it loses nothing is that at matched tau_int and matched interval the four
+  channel counts agree to within 1.06 for ILSE, 1.15 for INR and 1.08 for IR (figure_5_Nch.Rmd).
+  R reaches 1.81 and that is the ill-conditioned corner, the same one this file still owes an edit
+  for. This argument is better than the one that used to stand here, and it is measured.
+
+  WHAT THE 7x4 GRID BOUGHT, and why it was not enough. It drew the threshold where the threshold
+  exists, within one sampling rate, which the crowd of marks in one row cannot show. But that fact
+  is not written anywhere in the manuscript, so the body figure is not yet asked for it. If it ever
+  is, the grid is in the git history of this file and figure_5_noise.Rmd is its sibling.
+
+  THE LINES ARE THE ONE THING KEPT FROM THAT DETOUR. Each joins the noise sweep at one channel count
+  and one interval, in order of noise and NOT of tau_int, which is the design order; tau_int is
+  monotone in noise at 19 of the 28 (N_ch, interval) pairs and at the other 9 the single step in the
+  wrong direction is at most 0.033 against sweeps spanning up to 16.4, so ordering by tau_int would
+  hide the estimation error of the statistic by construction. Four lines are drawn per colour, one
+  per channel count, and they land on each other: the collapse above is visible in the body figure
+  without a panel spent on it, and the colour stops being a cloud and becomes seven trajectories.
+
+Unchanged and still not to be re-opened: the four members, and the ONE SHARED Y.
+The old x breaks (1, 1.2, 1.5, 2, 3) collided at 7 in; c(1, 2, 5, 10) fits and stays round.
+Text sizes are written out rather than left to base_size: theme_bw scales axis text to 0.8 of the
+base, so base_size = 8 was drawing the ticks at 6.4 pt, under eLife's floor of 7.
 -->
 
 ```{r setup, include=FALSE}
@@ -98,11 +134,20 @@ suppressMessages({ library(tidyverse) })
 ```
 
 ```{r data}
+source("noise_units.R")  # the one definition of S_tilde and of when to convert
+
 SRC <- "../figure_4_source_data"
 rd  <- function(f) read.csv(file.path(SRC, f), skip = 1, stringsAsFactors = FALSE)
 
 LAB  <- c(nonlinearsqr = "ILSE", macro_INR = "INR", macro_R = "R", macro_IR = "IR")
 KEEP <- names(LAB)
+
+# tick labels for the two decade-valued keys: plain from 0.01 to 100, powers outside. Parsed as
+# plotmath by the scales below, so the exponents are set rather than spelled.
+pw10 <- function(x) {
+  e <- round(log10(x))
+  ifelse(abs(e) <= 2, format(x, trim = TRUE, scientific = FALSE), sprintf("10^%d", e))
+}
 
 tau <- rd("figure_4_source_data_cell_scalars.csv") %>%
   filter(param == "lag", anchor == "pool", algo == "nonlinearsqr") %>%
@@ -118,36 +163,55 @@ dat <- spec %>%
   filter(is.finite(mag), is.finite(aniso), mag > 0, aniso > 0) %>%
   mutate(lo = mag / aniso, hi = mag * aniso,
          member = factor(unname(LAB[algo]), levels = unname(LAB)),
+         # the label is TEN TIMES S_tilde; convert here because this is where it is shown.
+         S = dimensionless_noise(as.numeric(noise)),
+         s = factor(pw10(S), levels = pw10(sort(unique(S)))),
+         nch = factor(pw10(Num_ch), levels = pw10(sort(unique(Num_ch)))),
          d = factor(sprintf("%g", interval_in_tau),
-                    levels = sprintf("%g", sort(unique(interval_in_tau)))))
+                    levels = sprintf("%g", sort(unique(interval_in_tau)))),
+         # one line per channel count and interval, joining that noise sweep in DESIGN order.
+         sweep = interaction(interval_in_tau, Num_ch, drop = TRUE)) %>%
+  arrange(member, sweep, S)
 
-cat(sprintf("figure_5: %d marks over %d cells; per member: %s\n",
+cat(sprintf("figure_5: %d marks over %d cells in %d panels; per member: %s\n",
             nrow(dat), n_distinct(dat[c("noise","Num_ch","interval_in_tau")]),
+            nlevels(dat$member),
             paste(sprintf("%s=%d", levels(dat$member), as.integer(table(dat$member))),
                   collapse = " ")))
+cat(sprintf("each panel: %d lines (%d intervals x %d channel counts) over %d noise levels, S_tilde %g to %g\n",
+            n_distinct(dat$sweep), nlevels(dat$d), nlevels(dat$nch), nlevels(dat$s),
+            min(dat$S), max(dat$S)))
 ```
 
-```{r render, fig.width = 7.0, fig.height = 3.6}
+```{r render, fig.width = 7.0, fig.height = 3.8}
 g <- ggplot(dat, aes(tau_int, mag, colour = d)) +
-  geom_hline(yintercept = 1, linewidth = 0.35, colour = "grey45") +
-  geom_linerange(aes(ymin = lo, ymax = hi), linewidth = 0.45, alpha = 0.75) +
-  geom_point(size = 0.85) +
+  geom_hline(yintercept = 1, linewidth = 0.3, colour = "grey45") +
+  geom_line(aes(group = sweep), linewidth = 0.3, alpha = 0.6) +
+  geom_linerange(aes(ymin = lo, ymax = hi), linewidth = 0.4, alpha = 0.75) +
+  geom_point(size = 0.75) +
   facet_wrap(~ member, nrow = 1) +
-  scale_x_log10(breaks = c(1, 1.2, 1.5, 2, 3, 5, 10, 20),
-                labels = c("1", "1.2", "1.5", "2", "3", "5", "10", "20")) +
-  scale_y_log10(breaks = c(0.3, 0.5, 1, 2, 5, 10, 30, 100, 200),
-                labels = c("0.3", "0.5", "1", "2", "5", "10", "30", "100", "200")) +
-  scale_colour_viridis_d(name = expression(Delta*t %.% k[off]), option = "D", end = 0.92) +
+  scale_x_log10(breaks = c(1, 2, 5, 10), labels = c("1", "2", "5", "10")) +
+  scale_y_log10(breaks = c(0.3, 1, 3, 10, 30, 100),
+                labels = c("0.3", "1", "3", "10", "30", "100")) +
+  scale_colour_viridis_d(name = expression(widetilde(Delta)), option = "D", end = 0.92) +
   labs(x = expression("memory left in the least-squares residual,  "*tau[int]),
        y = "distortion of the reported information\n(point = size, bar = across directions)") +
+  # sizes are written out rather than left to base_size, because theme_bw scales axis text to 0.8 of
+  # it and eLife's floor of 7 pt is on the drawn text, not on the nominal base. Same set of sizes as
+  # the other body figure of this paper, figure_4_layout.R:450-460.
   theme_bw(base_size = 8, base_family = "Helvetica") +
   theme(panel.grid.minor = element_blank(),
+        axis.text = element_text(size = 7),
+        axis.title = element_text(size = 8),
         legend.position = "right",
+        legend.title = element_text(size = 8),
+        legend.text = element_text(size = 7),
         legend.key.height = unit(9, "pt"),
+        legend.spacing.y = unit(3, "pt"),
         strip.background = element_rect(fill = "grey92", colour = NA),
-        strip.text = element_text(face = "bold", size = 8))
+        strip.text = element_text(face = "bold", size = 7))
 
-ggsave("Figure_5.pdf", g, width = 7.0, height = 3.6, device = cairo_pdf)
+ggsave("Figure_5.pdf", g, width = 7.0, height = 3.8, device = cairo_pdf)
 g
 ```
 
@@ -165,5 +229,42 @@ dat %>% group_by(member, d) %>%
             .groups = "drop") %>%
   mutate(separated = ifelse(is.finite(tau_max_clean) & is.finite(tau_min_dist),
                             tau_max_clean < tau_min_dist, NA)) %>%
+  as.data.frame() %>% print(digits = 3)
+```
+
+```{r collapse}
+# THE ONE-DIMENSIONAL COLLAPSE, added 2026-08-11. This is what makes the two design axes drop out
+# of the panel and it is what the Results paragraph and the Discussion both quote, so it is emitted
+# here rather than asserted: at a FIXED sampling interval, is every quantity a function of
+# S_tilde / N_ch alone? That ratio is the instrumental variance against the gating variance, since
+# S_tilde is normalised by the single-channel signal and the gating variance goes as N_ch at fixed
+# open probability. Reported as the worst within-group spread, max/min, over the groups holding it
+# fixed; a spread of 1.00 would be an exact collapse.
+# THE ILL-CONDITIONED CORNER IS EXCLUDED HERE and only here (N_ch 1e4 at Delta_tilde 1), by the same
+# rule Figure 4 owns; leaving it in, R's group at that corner alone reports a spread of 1.6 that is
+# a conditioning artefact and not a failure of the collapse. The figure above still draws it.
+# GROUP ON THE DECADE, NOT ON THE RATIO ITSELF (fixed 2026-08-11). Every noise and every channel
+# count in the battery is a power of ten, but the double S_tilde/N_ch is not bit-identical between
+# (0.01, 10) and (0.1, 100): 0.1*0.1/10 and 1*0.1/100 differ in the last bit. Grouping on it splits
+# matched cells apart, drops groups under the n() >= 3 filter, and understates the collapse. The
+# integer exponent is exact. Same slip was made independently in figure_5_S2.Rmd on its first run.
+coll <- dat %>%
+  filter(!(Num_ch == 10000 & interval_in_tau == 1)) %>%
+  mutate(ratio_key = round(log10(S)) - round(log10(Num_ch))) %>%
+  group_by(member, d, ratio_key) %>%
+  filter(n() >= 3) %>%
+  summarise(n = n(), ratio = 10^first(ratio_key),
+            tau_spread = max(tau_int) / min(tau_int),
+            mag_spread = max(mag) / min(mag), .groups = "drop")
+
+cat("\nCOLLAPSE ON S_tilde / N_ch at fixed sampling interval (worst spread over groups, max/min):\n")
+coll %>% group_by(member) %>%
+  summarise(groups = n(), cells = sum(n),
+            tau_worst = max(tau_spread), mag_worst = max(mag_spread), .groups = "drop") %>%
+  as.data.frame() %>% print(digits = 3)
+
+cat("\nsame, resolved by sampling interval, for the least-squares arm that sets the x:\n")
+coll %>% filter(member == "ILSE") %>%
+  select(d, ratio, n, tau_spread, mag_spread) %>%
   as.data.frame() %>% print(digits = 3)
 ```

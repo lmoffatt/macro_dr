@@ -1,0 +1,266 @@
+---
+title: "Figure 5 supplement 2 — the noise and the channel count enter only through their ratio"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+WRITTEN 2026-08-11 (Luciano). This figure exists to draw one sentence of 04_results, the one that
+says the channel count and the noise level enter only through their ratio. Until today that sentence
+cited a chunk of figure_5.Rmd that does not exist in that file; the measurement was rebuilt in the
+collapse chunk of figure_5_Nch.Rmd and this is its display. It is also the licence for the body
+figure to be four panels in one row: if the two axes are one axis, then tau_int and the acquisition
+interval are the whole parameterization and there is no third number to draw.
+
+THE RATIO. r = S_tilde / N_ch, the instrumental noise over one channel time constant divided by the
+number of channels, which is the instrumental variance against the gating variance those channels
+carry. S_tilde is the label over ten (noise_units.R); the ten cancels out of any statement about the
+collapse and only moves r by a decade, so it is converted here for the same reason as everywhere,
+because the number is shown.
+
+WHAT IS DRAWN, and why it is the persuasive form. Each line is one channel count at one acquisition
+interval, swept over the instrumental noise: 4 x 7 = 28 lines per panel, the same 28 in both columns.
+On the left they are drawn against S_tilde and they fan out, four visibly separate curves per colour,
+one per channel count, each displaced from the next by a decade. On the right they are drawn against
+r and the four merge, so 28 lines are drawn and 7 are visible. Nothing is fitted, rescaled or
+normalized between the columns; the only difference is the horizontal coordinate.
+
+The lines are NOT a model. They join cells of the battery in order of noise, which is a design sweep,
+and the four channel counts are separate simulations of different preparations, so their landing on
+one curve is a measurement and not a construction.
+
+THE NUMBER IN EACH RIGHT PANEL is the residual disagreement, computed only on the cells that share an
+r EXACTLY at the same interval (8 values of r, 56 groups), so it involves no interpolation at all.
+Median 1 to 2 per cent everywhere. The one large maximum is R, and it is the ill-conditioned corner
+that figure_5.Rmd's header records as its pending edit: N_ch = 10^4 at Delta_tilde = 1, where R
+disagrees by 88 per cent and least squares, not drawn here, by a factor of 13.6. Drop that one cell
+and R falls to 23 per cent, LSE to 99. Maxima over the whole ladder, all cells / dropping the corner
+cell / dropping the whole coarsest interval: LSE 1256-99-99, ILSE 5-5-5, NR 29-29-29, INR 12-12-9,
+R 88-23-23, MR 11-11-11, VR 16-16-9, IR 8-7-4, all in per cent. Which of the three columns is quoted
+has to be said, because they differ; 04_results quotes the third.
+
+THE BOOTSTRAP IS DRAWN, added 2026-08-11 (Luciano), and it is what makes the agreement checkable:
+a claim that two curves coincide means nothing without the width of the points being compared. The
+bars are the bootstrap quantiles of each cell, hi and lo of the same statistic, median width 3 per
+cent (hi/lo) and much the same for every member.
+  READ IT AGAINST THE AGREEMENT. The median disagreement at matched r is 1 per cent, so the four
+  channel counts land closer together than any one of them is known, which is the strongest form the
+  claim can take. Of the maxima, ILSE at 5 and IR at 8 per cent are the excursions 56 groups of
+  3-per-cent points produce on their own and should not be read as structure; INR at 12 and R at 88
+  are not, and R's is the single ill-conditioned cell.
+  THE IR ROW IS NOW HONEST ON A FREE SCALE. Its whole cloud is 0.98 to 1.08 and its bars span very
+  nearly that, so what the panel shows is the estimation floor and not a departure of the member.
+  This is the same fact figure_5.Rmd's header gives as the decisive reason the BODY figure keeps one
+  shared y ("a free axis draws the bootstrap at full panel height"); here the free scale is wanted
+  and the bars are what keep it from lying.
+  THE TOP ROW HAS NO BARS AND THAT IS THE SOURCE, NOT A CHOICE. figure_4_data.R:129-133 passes the
+  scalars through with probit == "mean" while the spectrum pass keeps probit in (mean, quantile), so
+  tau_int reaches the CSV without its quantiles. Getting them is not a one-line change: the scalar
+  branch has to keep the quantile rows, fig4_shape_scal has to stop collapsing them into a single
+  mean, and the cell_scalars CSV needs lo/hi columns, after which figure_4's source data has to be
+  re-emitted from the 3.3 GB of inputs. Worth doing if a referee asks; not worth doing for this.
+
+PATCHWORK, NOT A FACET GRID, and that is not cosmetic. The five rows are five different quantities
+and the two columns are two different abscissas, so a facet grid can offer one y title and one x
+title for all of them, which is how the first version came to carry "top row: tau_int / rows below:
+distortion" down its side. Each panel now names its own quantity and its own abscissa. What stays
+shared is deliberate: the y scale WITHIN a row, because the two columns are the same cells and a
+free scale would fake a difference where the only difference is the horizontal coordinate, and the x
+scale down a column. The right panel of each row keeps its ticks and carries the row's y title in
+transparent ink, because patchwork gives the two columns equal total width and without the reserved
+title the right panel comes out wider than the left by exactly that much.
+
+GROUP ON THE DECADE, NOT ON r. Every noise and every channel count in the battery is a power of ten,
+but the double S_tilde/N_ch is not bit-identical between (0.01, 10) and (0.1, 100), so grouping on it
+splits matched cells apart and understates the collapse. It cost 76 per cent instead of 88 for R on
+the first run of this file.
+
+THE TOP ROW IS THE FIGURE 5 AXIS ITSELF, tau_int of the least-squares residual, and it collapses
+too, to within 3.5 per cent. That is the part that matters most: it says the horizontal axis of the
+body figure already absorbs both design axes, so a reader who measures tau_int on their own record
+has, without knowing it, measured r.
+
+Anchor, source files and member labels as in figure_5.Rmd. Do not re-derive anything here.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+suppressMessages({ library(tidyverse) })
+```
+
+```{r data}
+source("noise_units.R")  # the one definition of S_tilde and of when to convert
+
+SRC <- "../figure_4_source_data"
+rd  <- function(f) read.csv(file.path(SRC, f), skip = 1, stringsAsFactors = FALSE)
+
+LAB  <- c(nonlinearsqr = "ILSE", macro_INR = "INR", macro_R = "R", macro_IR = "IR")
+KEEP <- names(LAB)
+
+tau <- rd("figure_4_source_data_cell_scalars.csv") %>%
+  filter(param == "lag", anchor == "pool", algo == "nonlinearsqr") %>%
+  transmute(noise = as.numeric(noise), Num_ch, interval_in_tau, tau_int = v)
+
+# hi and lo are the bootstrap quantiles of the same statistic, which the spectrum pass keeps and the
+# scalar pass does not (figure_4_data.R:129-133 filters the scalars to probit == "mean"). So the four
+# member rows below can carry an estimation error and the tau_int row cannot. Said in the caption.
+spec <- rd("figure_4_source_data_spectrum.csv") %>%
+  filter(anchor == "pool", param == "mag", algo %in% KEEP) %>%
+  transmute(member = unname(LAB[algo]), noise = as.numeric(noise), Num_ch,
+            interval_in_tau, mag = m, mag_lo = lo, mag_hi = hi) %>%
+  filter(is.finite(mag), mag > 0)
+
+# One long table of the five quantities the figure stacks: the axis of Figure 5 itself, which is a
+# property of the least-squares fit alone and so has no member, then the four members' distortion.
+ROWS <- c("tau[int]", unname(LAB))
+qty <- bind_rows(
+  tau %>% transmute(noise, Num_ch, interval_in_tau, quantity = "tau[int]", y = tau_int,
+                    y_lo = NA_real_, y_hi = NA_real_),
+  spec %>% inner_join(tau, by = c("noise", "Num_ch", "interval_in_tau")) %>%
+    transmute(noise, Num_ch, interval_in_tau, quantity = member, y = mag,
+              y_lo = mag_lo, y_hi = mag_hi)
+) %>%
+  mutate(S = dimensionless_noise(noise),          # label / 10
+         r = S / Num_ch,                          # the ratio the collapse is in
+         # Group on the DECADE, not on r itself. Every noise and every channel count in the battery
+         # is a power of ten, but S/N_ch is not bit-identical between (0.01, 10) and (0.1, 100), so
+         # grouping on the double silently splits matched cells apart and understates the collapse.
+         r_key = round(log10(S)) - round(log10(Num_ch)),
+         quantity = factor(quantity, levels = ROWS),
+         d = factor(sprintf("%g", interval_in_tau),
+                    levels = sprintf("%g", sort(unique(interval_in_tau)))),
+         curve = interaction(interval_in_tau, Num_ch, drop = TRUE))
+
+# The residual disagreement, on cells that share an r EXACTLY at the same interval. No interpolation.
+# The agreement is only meaningful against the estimation error of the points being compared, so the
+# bootstrap width travels with it: boot is the median hi/lo of one point, in the same units as the
+# spread, and a spread below it is agreement to better than either point is known.
+resid <- qty %>%
+  group_by(quantity, interval_in_tau, r_key) %>% filter(n() > 1) %>%
+  summarise(spread = max(y) / min(y), .groups = "drop") %>%
+  group_by(quantity) %>%
+  summarise(n_groups = n(), med = median(spread), max = max(spread), .groups = "drop") %>%
+  left_join(qty %>% group_by(quantity) %>%
+              summarise(boot = median(y_hi / y_lo), .groups = "drop"), by = "quantity")
+
+cat(sprintf("figure_5_S2: %d lines per panel (%d intervals x %d channel counts), %d cells\n",
+            n_distinct(qty$curve), n_distinct(qty$interval_in_tau), n_distinct(qty$Num_ch),
+            n_distinct(qty[c("noise", "Num_ch", "interval_in_tau")])))
+resid %>% as.data.frame() %>% print(digits = 3)
+
+AX <- c(raw = "against the instrumental noise",
+        scaled = "against the noise per channel")
+long <- bind_rows(mutate(qty, axis = "raw", x = S),
+                  mutate(qty, axis = "scaled", x = r)) %>%
+  mutate(axis = factor(unname(AX[axis]), levels = unname(AX)))
+
+# one label per right-hand panel, placed by the panel's own corner
+notes <- resid %>%
+  transmute(quantity, axis = factor(AX[["scaled"]], levels = unname(AX)),
+            lab = sprintf("at matched r:  %.0f%% median,  %.0f%% max",
+                          100 * (med - 1), 100 * (max - 1)))
+```
+
+```{r render, fig.width = 7.0, fig.height = 7.8}
+suppressMessages({ library(patchwork) })
+
+# ONE PLOT PER PANEL, assembled with patchwork, because the axes of this figure are genuinely
+# different from one another and a facet grid can only carry one title per direction. The previous
+# version wrote "top row: tau_int / rows below: distortion" down the y and "left column: S_tilde /
+# right column: r" along the x, which is two composite labels standing in for five y axes and two x
+# axes. Each panel now names its own quantity and its own abscissa.
+# What is still shared, and deliberately: the y scale within a row (the two columns are the SAME
+# cells, so a different scale would fake a difference where the only difference is the abscissa),
+# and the x scale down a column. So the right panel of each row keeps its tick marks, for reading
+# values without crossing the figure, and drops the title the left one already carries.
+
+PANEL_Y <- c("tau[int]" = "memory in the LS residual",
+             ILSE = "distortion, ILSE", INR = "distortion, INR",
+             R = "distortion, R", IR = "distortion, IR")
+X_LAB <- list(raw    = expression("instrumental noise  "*widetilde(S)),
+              scaled = expression("noise per channel  r = "*widetilde(S)/N[ch]))
+
+base_theme <- theme_bw(base_size = 8, base_family = "Helvetica") +
+  theme(panel.grid.minor = element_blank(),
+        axis.text = element_text(size = 7),
+        axis.title = element_text(size = 7.5),
+        plot.title = element_text(size = 7.5, face = "bold", hjust = 0.5,
+                                  margin = margin(b = 2)),
+        plot.margin = margin(1, 2, 1, 1))
+
+# y limits are set from the row, not from the panel, so that the two columns are comparable
+ylims <- qty %>% group_by(quantity) %>%
+  summarise(lo = min(c(y, y_lo), na.rm = TRUE),
+            hi = max(c(y, y_hi), na.rm = TRUE), .groups = "drop")
+
+panel <- function(q, side, top = FALSE, bottom = FALSE) {
+  dd <- filter(qty, quantity == q) %>% mutate(x = if (side == "raw") S else r)
+  yl <- filter(ylims, quantity == q)
+  p <- ggplot(dd, aes(x, y, colour = d, group = curve)) +
+    { if (q != "tau[int]") geom_hline(yintercept = 1, linewidth = 0.3, colour = "grey45") } +
+    geom_line(linewidth = 0.35, alpha = 0.85) +
+    geom_linerange(aes(ymin = y_lo, ymax = y_hi), linewidth = 0.3, alpha = 0.55,
+                   na.rm = TRUE) +
+    geom_point(size = 0.45) +
+    scale_x_log10(breaks = 10^seq(-6, 6, 2), labels = scales::label_log(digits = 2)) +
+    scale_y_log10(limits = c(yl$lo, yl$hi)) +
+    scale_colour_viridis_d(name = expression(widetilde(Delta)), option = "D", end = 0.92) +
+    labs(x = if (bottom) X_LAB[[side]] else NULL,
+         # the right panel carries the SAME title in transparent ink: patchwork gives the two
+         # columns equal total width, so without it the right panel is wider than the left by the
+         # width of the title and the two columns stop being comparable at a glance.
+         y = PANEL_Y[[q]],
+         title = if (top) c(raw = "four curves per colour", scaled = "one curve per colour")[[side]]
+                 else NULL) +
+    base_theme
+  if (side == "scaled") {
+    note <- filter(resid, quantity == q)
+    p <- p + annotate("text", x = Inf, y = Inf, hjust = 1.04, vjust = 1.25, size = 2.0,
+                      colour = "grey25",
+                      lineheight = 0.95,
+                      label = sprintf("at matched r: %.0f%% median, %.0f%% max\n%s",
+                                      100 * (note$med - 1), 100 * (note$max - 1),
+                                      if (is.na(note$boot)) "no bootstrap in the source"
+                                      else sprintf("bootstrap width %.0f%%",
+                                                   100 * (note$boot - 1))))
+  }
+  if (side == "scaled") p <- p + theme(axis.title.y = element_text(colour = NA))
+  if (!bottom) p <- p + theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
+  p
+}
+
+QS <- levels(qty$quantity)
+plots <- unlist(lapply(seq_along(QS), function(i)
+  lapply(c("raw", "scaled"), function(sd)
+    panel(QS[i], sd, top = i == 1, bottom = i == length(QS)))), recursive = FALSE)
+
+g <- wrap_plots(plots, ncol = 2, byrow = TRUE) +
+  plot_layout(guides = "collect") &
+  theme(legend.position = "right", legend.title = element_text(size = 8),
+        legend.text = element_text(size = 7), legend.key.height = unit(9, "pt"))
+
+ggsave("Figure_5_S2.pdf", g, width = 7.0, height = 7.8, device = cairo_pdf)
+g
+```
+
+```{r numbers}
+cat("how far apart the four channel counts are on the RAW axis, so that the left column has a\n",
+    "number too: ratio of the largest to the smallest y at one S_tilde and one interval\n", sep = "")
+qty %>% group_by(quantity, interval_in_tau, S) %>% filter(n() > 1) %>%
+  summarise(spread = max(y) / min(y), .groups = "drop") %>%
+  group_by(quantity) %>%
+  summarise(n = n(), med = median(spread), max = max(spread), .groups = "drop") %>%
+  as.data.frame() %>% print(digits = 3)
+
+cat("\nthe same cells regrouped by r, which is the right column (this is the collapse):\n")
+resid %>% as.data.frame() %>% print(digits = 3)
+
+cat("\nand with the ill-conditioned corner (N_ch = 10^4 at Delta_tilde = 1) left out:\n")
+qty %>% filter(!(Num_ch == 10000 & interval_in_tau == 1)) %>%
+  group_by(quantity, interval_in_tau, r_key) %>% filter(n() > 1) %>%
+  summarise(spread = max(y) / min(y), .groups = "drop") %>%
+  group_by(quantity) %>%
+  summarise(n_groups = n(), med = median(spread), max = max(spread), .groups = "drop") %>%
+  as.data.frame() %>% print(digits = 3)
+```
