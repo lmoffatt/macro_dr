@@ -1,1257 +1,181 @@
 ---
-title: "Figure 6 — the usage map: what a macroscopic recording can be asked for, over the design space"
+title: "Figure 5 — where MacroIR stops being calibrated, and why"
 author: "Luciano Moffatt"
 date: "`r Sys.Date()`"
 output: html_document
 ---
 
 <!--
-WHAT THIS IS. One plane, N_ch x instrumental noise, partitioned by boundaries into the regimes that
-decide what a macroscopic recording can support. Unlike every other figure in this set it is NOT a
-heatmap: the content is the boundaries, so the cells are the input and the lines are the output.
+WHAT THIS FIGURE IS FOR. Figure 4 shows IR's panels nearly blank, which raises the question the
+abstract already answers in words: the boundary-conditioned filter is calibrated over most of the
+sweep, "departing toward few channels and low noise, where the Gaussian closure is misspecified".
+Figure 6 then uses that departure as the region-0 boundary of the usage map. Nothing between them
+shows the data. This figure is that evidence, and it is the only place in the paper where the
+threshold in `05_discussion.tex` ([THRESHOLD-DJ]) can be read off.
 
-THE ENCODING (Luciano, 2026-07-26) — one visual channel per meaning, no exceptions:
+WHY IT CANNOT BE PART OF FIGURE 4. On Figure 4's shared scale, clipped at 10^+-3, a factor 1.46 is
+a faint tint. The departure lives between 0.6 and 1.6 and needs an axis, not a colour.
 
-    COLOUR    = the PARAMETER the line is about:  k_on, k_off, i (unitary conductance), N_ch
-    LINE TYPE = WHAT is being asked about it:
-        solid   "can it be measured at all"  -> distortion-corrected SE crosses a factor 2
-        dotted  "is LSE's error bar honest"  -> LSE's information distortion crosses 1.15
-        dashed  "is IR's own error bar honest" -> IR's information distortion crosses 1.15
-                 (this one is the macro/micro floor: below it the Gaussian closure is misspecified)
-    RIBBON    = the same boundary swept over the sampling interval, Delta.k_off = 0.01 to 1.
-                The heavy line is the reference Delta.k_off = 0.1. So the ribbon is not an error
-                bar, it is "where your own sampling rate puts the boundary".
+THE LAYOUT. Each block is a design-plane grid in the same orientation as Figures 4 and 6: N_ch
+increases to the right, instrumental noise increases upward, and inside every cell the horizontal
+axis is the sampling interval. The three blocks are the distortion and its two causes, so the
+figure says where, how much, with what confidence, and why, on one page.
 
-WHERE THE SE FAMILY COMES FROM, and why it is mixed: the RATES from LSE, the AMPLITUDE from IR.
-"Where does this parameter die" is a property of the experiment, so in principle it should be judged
-by the best available method — but measured, IR and LSE rate SEs agree to a few percent at N_ch >= 100
-(the only gap is N_ch 10, where LSE loses a factor 1.9 on k_on, and there both are already past the
-threshold), while LSE is the one with the high-noise coverage: at N_ch 1e4 IR stops at noise 1e5 and
-LSE runs to 1e7, so an IR-sourced rate boundary simply vanishes off the right of the plot. The
-amplitude pair must come from IR, because LSE holds unitary_current Fixed and never estimates i at
-all — which is the structural point of the figure, not a coverage accident.
+SAMPLING. N_ch runs in ~0.65-decade steps against noise in ~0.3-decade steps. That is not
+arbitrary: the region-0 boundary of Figure 6 has a fitted slope of -0.56 in
+dlog10(noise)/dlog10(N_ch), so a decade of channels trades against ~0.56 decades of noise and the
+noise axis needs about twice the resolution to sample the field evenly.
 
-THE REGIONS, bottom to top at fixed N_ch:
-    0  below the dashed line: the Gaussian closure itself fails. Labelled "closure fails", NOT
-       "use micro": micro is not measured in this paper.
-    1  i and N_ch both resolved AND LSE's error bar wrong  -> IR buys two things
-    2  amplitude gone, rates alive, LSE still wrong        -> IR buys one thing (an honest CI)
-    3  LSE's error bar honest and rates alive              -> IR buys nothing, LSE is par
-    4  above the solid k_on line: nothing useful left
-  The 2x2 cell "amplitude alive AND LSE honest" is EMPTY at every measured cell, which is what makes
-  these an ordered ladder rather than a table.
-
-WHY k_on IS THE BINDING RATE: SE(k_on) ~ 3.1 x SE(k_off) everywhere measured, for both methods. One
-concentration jump, so k_off is read twice (pulse rate and washout) while k_on comes only from their
-difference. Region 4 therefore opens on k_on, ~1 decade of noise below where k_off alone would die,
-and both lines are drawn so the reader can pick the criterion that matches what they need.
-
-TRAPS, none of them re-derivable from the plot:
- - param_index is a POSITION IN THE FREE PARAMETER VECTOR, so the map differs by algorithm:
-     macro: 0 on, 1 off, 2 unitary_current, 3 Current_Noise, 4 Current_Baseline, 5 Num_ch_mean
-     LSE  : 0 on, 1 off, 2 Current_Baseline, 3 Num_ch_mean   (the two Fixed ones are absent)
-   A single global PIDX silently drops LSE from anything keyed on index 5 and mislabels index 3.
- - the y axis is the RAW noise label, and current_noise = label/1000. Never divide it by N_ch: the
-   diagonal boundaries are the finding, and dividing flattens them by construction.
- - N_ch is NOT capped to four columns. IR has runs at 5/20/50/200/500/2000/5000 and the closure floor
-   is the best-sampled boundary in N_ch; with four columns its crossing (N_ch ~ 70-150) is invisible.
-   Those extra columns are LOW-NOISE runs, so they help the floor and not the high-noise boundaries.
- - everything comes from battery_pool_G (theta_pool anchor), so the figure is internally consistent
-   on one anchor. Bias (battery_sim_G) is not on this figure.
-
-MEASURED, at Delta.k_off = 0.1 (the render log prints all of it):
-  slopes, d log10 noise / d log10 N_ch:  LSE-honest 1.01 (k_off) and 1.03 (N_ch), i.e. N_ch-independent
-  in r = noise/N_ch;  SE(i) 1.11;  SE(N_ch) 1.61;  SE(k_off) 2.24 and SE(k_on) 2.21;  closure floor
-  -0.56, NEGATIVE — instrumental noise gaussianises the emission, so it HELPS the closure while
-  hurting everything else. That sign contrast is the second non-obvious thing in the figure.
-  region 3 (LSE is par) OPENS at N_ch 120 to 1368, the range being the strict-vs-loose criterion.
-  the map CLOSES from below at N_ch 3 to 9, EXTRAPOLATED — exactly where the planned N_ch 2 and 5
-  runs would land, which is the cheapest run this figure asks for.
-  the loose criterion moves the SE boundaries up by a factor 9 (i, N_ch) to 19-21 (the rates) in
-  noise, and the distortion boundaries down by a factor 2-3. That is why the vertices are ranges.
+ANCHOR AND FAMILY, and why this differs from figures/in_progress/figure_5_distortion_lines_bynch.Rmd,
+which is where this figure started. That draft reads data/433ed13, which holds no `_G` files, so it
+necessarily used `Probit_statistics_Likelihood_Information_Distortion` (the numerical Fisher) at
+theta_sim. This one uses the SAME quantity and anchor as Figure 4: the Gaussian information
+distortion at the pooled optimum, via figure_4_common.R's `stat`. The two agree in shape and
+magnitude (k_off ~1.4 vs 1.46 at N_ch 10, lowest noise), so this is a consistency fix and not a
+change of result. See 03_diagnostics.tex: the Gaussian Fisher is the anchor by design.
 -->
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
-suppressMessages({ library(tidyverse) })
-# The three superseded drawings of this same measurement are still built, because two of them are
-# the versions for CHECKING and the third carries the region vocabulary the text still uses, but
-# they are written to the archive rather than into the figure directory: paper_both holds the
-# figure set, and as of 2026-07-31 the figure is the `map` chunk at the foot of this notebook.
-ARCH <- "../archive/figure_6_superseded_20260731"
-dir.create(ARCH, showWarnings = FALSE, recursive = TRUE)
-arch <- function(f) file.path(ARCH, f)
 ```
 
-```{r data}
-DATA_DIRS <- c("../data/1c2ae6f", "../data/87889e6", "../data/0ffbda7")
-DIST <- "Probit_statistics_Likelihood_Gaussian_Information_Distortion"
-SEC  <- "Probit_statistics_Gaussian_Distortion_Corrected_Covariance"
-DREF <- 0.1                       # reference interval, in units of tau = 1/k_off
-DRNG <- c(0.01, 1)                # interval range spanned by the ribbons
-
-read_algo <- function(pat, algo, idx) {
-  fs <- list.files(DATA_DIRS, pattern = pat, full.names = TRUE)
-  if (!length(fs)) stop("figure_6: no files for ", algo)
-  map_dfr(fs, function(p) read.csv(p, skip = 1, stringsAsFactors = FALSE) %>%
-    filter(component_path %in% c(DIST, SEC), statistic == "value", probit == "mean",
-           param_index == param_col, param_index %in% idx) %>%
-    transmute(algo = algo, nch = Num_ch, noise = noise_in_conductance_tau, D = interval_in_tau,
-              what = ifelse(component_path == DIST, "dist", "var"),
-              par = names(idx)[match(param_index, idx)], v = value)) %>% distinct()
-}
-IR  <- read_algo("^figure_3_G_nch_[0-9]+_nsim_10000_macro_IR_noise_[0-9.eE+]+_battery_pool_G\\.csv$",
-                 "IR",  c(kon = 0, koff = 1, i = 2, Nch = 5))
-LSE <- read_algo("^figure_3_LSE_nch_[0-9]+_nsim_10000_nonlinearsqr_noise_[0-9.eE+]+_battery_pool_G\\.csv$",
-                 "LSE", c(kon = 0, koff = 1, Nch = 3))
-
-cat("figure_6: noise levels on disk, per algorithm and N_ch\n")
-print(as.data.frame(bind_rows(IR, LSE) %>% distinct(algo, nch, noise) %>% count(algo, nch) %>%
-      pivot_wider(names_from = algo, values_from = n, values_fill = 0)), row.names = FALSE)
-
-# one row per (question, parameter, nch, D, noise). SEs are already in log10 units; the distortion is
-# two-sided (IR under-disperses N_ch where it over-disperses k_off), hence abs(log()).
-MET <- bind_rows(
-  LSE %>% filter(what == "var", par %in% c("kon", "koff")) %>%
-          transmute(q = "se",    par, nch, D, noise, m = sqrt(pmax(v, 0))),
-  IR  %>% filter(what == "var", par %in% c("i", "Nch")) %>%
-          transmute(q = "se",    par, nch, D, noise, m = sqrt(pmax(v, 0))),
-  LSE %>% filter(what == "dist") %>% transmute(q = "lse",   par, nch, D, noise, m = abs(log(v))),
-  IR  %>% filter(what == "dist") %>% transmute(q = "floor", par, nch, D, noise, m = abs(log(v))))
-
-# thresholds and drawing rules, per question
-QQ <- tribble(
-  ~q,      ~t1,       ~t2,      ~rising, ~lty,   ~qlab,
-  "se",    0.3,       1.0,      TRUE,    "solid","solid: parameter no longer measurable (SE > factor 2)",
-  "lse",   log(1.15), log(1.3), FALSE,   "12",   "dotted: LSE's reported error bar becomes honest (distortion < 1.15)",
-  "floor", log(1.15), log(1.3), FALSE,   "42",   "dashed: IR's OWN error bar is wrong -> Gaussian closure fails (distortion > 1.15)")
-PARS <- c(kon = "k_on", koff = "k_off", i = "i  (unitary conductance)", Nch = "N_ch")
-# which (question, parameter) pairs are drawn. k_on/k_off carry region 4; i and N_ch carry the
-# amplitude boundary; the honesty questions are asked of k_off and N_ch (i is Fixed for LSE).
-DRAW <- tribble(~q, ~par,
-  "se","kon", "se","koff", "se","i", "se","Nch",
-  "lse","koff", "lse","Nch",
-  "floor","koff", "floor","Nch")
-
-cross1 <- function(x, y, t, rising) {          # interpolate in log10(noise); NA when off-grid
-  o <- order(x); x <- x[o]; y <- y[o]; ok <- is.finite(x) & is.finite(y); x <- x[ok]; y <- y[ok]
-  if (length(x) < 2) return(NA_real_)
-  s <- y - t
-  if (all(s > 0) || all(s < 0)) return(NA_real_)
-  k <- which(s[-length(s)] * s[-1] <= 0)
-  if (!length(k)) return(NA_real_)
-  i <- if (rising) k[1] else k[length(k)]
-  x[i] + (t - y[i]) * (x[i + 1] - x[i]) / (y[i + 1] - y[i])
-}
-CR <- MET %>% inner_join(DRAW, by = c("q", "par")) %>% inner_join(QQ, by = "q") %>%
-  group_by(q, par, qlab, lty, nch, D) %>%
-  summarise(c1 = cross1(log10(noise), m, first(t1), first(rising)),
-            c2 = cross1(log10(noise), m, first(t2), first(rising)), .groups = "drop") %>%
-  mutate(lx = log10(nch), pf = factor(unname(PARS[par]), levels = unname(PARS)))
-
-cat("\nfigure_6: boundary position (noise) at Delta.k_off =", DREF, ", strict criterion\n")
-print(as.data.frame(CR %>% filter(D == DREF) %>% transmute(q, par, nch, noise = signif(10^c1, 3)) %>%
-      pivot_wider(names_from = nch, values_from = noise, names_prefix = "N=")), row.names = FALSE)
-cat("\nfigure_6: fitted log-log slopes (d log10 noise / d log10 N_ch) at Delta.k_off =", DREF, "\n")
-print(as.data.frame(CR %>% filter(D == DREF, is.finite(c1)) %>% group_by(q, par) %>% filter(n() >= 3) %>%
-      summarise(slope = round(coef(lm(c1 ~ lx))[2], 2), n = n(), .groups = "drop")), row.names = FALSE)
-# BEST ACHIEVABLE SE, minimised over the whole noise sweep. A parameter whose best is already past
-# the threshold is NEVER measurable at that N_ch, at ANY noise -- which is why some boundary lines
-# terminate. That is a physical statement, not missing data, so it is printed and annotated.
-BEST <- MET %>% filter(q == "se", D == DREF) %>% group_by(par, nch) %>%
-  summarise(best = min(m), .groups = "drop")
-cat("\nfigure_6: best achievable SE over the whole noise sweep (> 0.3 = never measurable there)\n")
-print(as.data.frame(BEST %>% pivot_wider(names_from = par, values_from = best) %>%
-      mutate(across(where(is.numeric), ~signif(.x, 3)))), row.names = FALSE)
-NEVER <- BEST %>% group_by(par) %>% arrange(nch) %>%
-  summarise(nch_min = if (min(best) > 0.3 || max(best) < 0.3) NA_real_ else
-              10^approx(log10(best), log10(nch), xout = log10(0.3))$y, .groups = "drop")
-cat("\nfigure_6: N_ch below which the parameter is UNREACHABLE at any noise\n")
-print(as.data.frame(NEVER %>% mutate(nch_min = round(nch_min))), row.names = FALSE)
-
-cat("\nfigure_6: how far the loose criterion moves each boundary (median factor in noise)\n")
-print(as.data.frame(CR %>% filter(D == DREF, is.finite(c1), is.finite(c2)) %>% group_by(q, par) %>%
-      summarise(factor = round(median(10^(c2 - c1)), 2), n = n(), .groups = "drop")), row.names = FALSE)
+```{r common, include=FALSE}
+# figure_4_common.R filters N_ch to the four decades Figure 4 maps. This figure needs the fine
+# ladder that exists on disk (10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000), so NCHS is
+# widened in memory. The file on disk is NOT modified: Figure 4's own byNch height is computed as
+# a sum over NCHS, so widening it there would silently change that figure.
+src <- readLines("figure_4_common.R")
+i <- grep("^NCHS *<-", src)
+stopifnot(length(i) == 1)
+src[i] <- "NCHS <- c(5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000)"
+eval(parse(text = src), envir = globalenv())
 ```
 
-```{r geometry}
-# the two vertices, each a RANGE bracketed by the strict and loose criteria on the SE(k_on) line
-vx <- function(qa, pa, qb, pb, cb) {
-  a <- CR %>% filter(q == qa, par == pa, D == DREF, is.finite(c1))
-  b <- CR %>% filter(q == qb, par == pb, D == DREF, is.finite(.data[[cb]]))
-  if (nrow(a) < 2 || nrow(b) < 2) return(NULL)
-  fa <- coef(lm(c1 ~ lx, a)); fb <- coef(lm(as.formula(paste(cb, "~ lx")), b))
-  x <- unname((fb[1] - fa[1]) / (fa[2] - fb[2]))
-  tibble(lx = x, ly = unname(fa[1] + fa[2] * x))
-}
-v_open  <- list(vx("lse", "koff", "se", "kon", "c2"), vx("lse", "koff", "se", "kon", "c1"))
-v_close <- list(vx("floor", "koff", "se", "kon", "c2"), vx("floor", "koff", "se", "kon", "c1"))
-rng <- function(v) if (any(vapply(v, is.null, TRUE))) "NA" else
-  sprintf("%.0f-%.0f", 10^min(v[[1]]$lx, v[[2]]$lx), 10^max(v[[1]]$lx, v[[2]]$lx))
-cat("\nregion 3 (LSE is par) OPENS at N_ch =", rng(v_open), "(range = the two criteria)\n")
-cat("the map CLOSES from below at N_ch =", rng(v_close),
-    "-- EXTRAPOLATED, this is what the N_ch 2 and 5 runs would pin\n")
+```{r constants}
+ERR_MAX <- 0.2          # drop points whose bootstrap half-width exceeds this: unreliable, not news
+# ...but it must never drop anything silently. On the freeze it fires on zero points (median
+# half-width 0.03 across the grid); it is kept as a guard for re-runs on noisier data, and the
+# count is printed so a future reader can see whether it started biting.
+PL   <- c(off = "k[off]", Num_ch_mean = "N[ch]")
+# Okabe-Ito. The two parameters and the reference line are mutually distinguishable for every kind
+# of colour blindness, and NUL is the green figure_3.Rmd already uses for the expected value.
+PCOL <- c("k[off]" = "#0072B2", "N[ch]" = "#E69F00")
+NUL  <- "#009E73"
+NCH  <- c(10, 50, 200, 1000)                      # ~0.65-decade steps; see the header
+NZ   <- c(0.005, 0.01, 0.02, 0.05, 0.1, 1)        # dimensionless noise = swept label / 10
+CMP  <- c(total = "A   total", sample = "B   per-sample", corr = "C   correlation")
+YW   <- 0.32            # width the y axis and its title take, in column units (measured)
 
-PCOL <- c("k_on" = "#E69F00", "k_off" = "#009E73",
-          "i  (unitary conductance)" = "#0072B2", "N_ch" = "#CC79A7")
-# x reaches 3e7 so oocyte-scale preparations fit; the simulated span is marked on the plot
-XLIM <- log10(c(2.5, 4e9)); YLIM <- log10(c(0.008, 5e7))
-NOISE_MIN <- 0.05            # the lowest noise level anywhere in the sweep; below it we know nothing
-xbrk <- log10(10^(1:9))
-xlab <- c("10", expression(10^2), expression(10^3), expression(10^4), expression(10^5),
-          expression(10^6), expression(10^7), expression(10^8), expression(10^9))
-ybrk <- log10(10^(-2:7))
-ylab <- c("0.01", "0.1", "1", "10", expression(10^2), expression(10^3), expression(10^4),
-          expression(10^5), expression(10^6), expression(10^7))
+# ONE y range for every block. Each component is split into two sub-blocks and each block is its
+# own ggplot, so without explicit limits every one computes its own range from its own data: the
+# N_ch = 10 column, which has the widest data, got a stretched axis and its reference line at 1
+# sat at a different height from its neighbours'. The columns are meant to be compared, so the
+# range is computed once over everything that will be drawn and imposed on all of them.
+.pl <- stat %>%
+  dplyr::filter(algo == "macro_IR", param %in% names(PL), Num_ch %in% NCH,
+                comp %in% names(CMP)) %>%
+  dplyr::mutate(zz = as.numeric(noise) / 10) %>%
+  dplyr::filter(zz %in% NZ, is.finite(lo), is.finite(hi), (hi - lo) / 2 <= ERR_MAX)
+YLIM <- c(min(.pl$lo, na.rm = TRUE) / 1.03, max(.pl$hi, na.rm = TRUE) * 1.03)
+.all <- stat %>%
+  dplyr::filter(algo == "macro_IR", param %in% names(PL), Num_ch %in% NCH,
+                comp %in% names(CMP)) %>%
+  dplyr::mutate(zz = as.numeric(noise) / 10) %>% dplyr::filter(zz %in% NZ)
+cat(sprintf("shared y range: %.3f to %.3f | ERR_MAX dropped %d of %d points\n",
+            YLIM[1], YLIM[2], nrow(.all) - nrow(.pl), nrow(.all)))
 ```
 
-```{r render, fig.width = 7, fig.height = 6.6}
-# ribbon = the boundary swept over the interval range; line = the reference interval
-RIB <- CR %>% filter(D >= DRNG[1], D <= DRNG[2], is.finite(c1)) %>%
-  group_by(q, par, pf, lty, nch, lx) %>%
-  summarise(lo = min(c1), hi = max(c1), n = n(), .groups = "drop") %>% filter(n >= 2)
-LIN <- CR %>% filter(D == DREF, is.finite(c1)) %>% arrange(lx)
-# A vertex is an N_ch RANGE, so it is drawn as a vertical strip. Deliberately NOT a line: line type
-# already encodes the question, and a black line here read as a fifth boundary.
-strip <- function(v, col, alpha) if (any(vapply(v, is.null, TRUE))) NULL else
-  annotate("rect", xmin = min(v[[1]]$lx, v[[2]]$lx), xmax = max(v[[1]]$lx, v[[2]]$lx),
-           ymin = YLIM[1], ymax = YLIM[2], fill = col, alpha = alpha)
-vpts <- function(v, fill) if (any(vapply(v, is.null, TRUE))) NULL else
-  geom_point(data = bind_rows(v), aes(lx, ly), shape = 21, fill = fill, colour = "grey20",
-             size = 1.9, inherit.aes = FALSE)
+```{r block-fn}
+# One block of the grid. `nch` is the subset of channel counts it draws: each component is split
+# into its first column and the rest, purely so the x tick labels appear once per component
+# instead of four times. `first` carries the y axis, `last` the noise strip.
+blk <- function(cmp, nch, first, last, xlab) {
+  d <- stat %>%
+    dplyr::filter(algo == "macro_IR", param %in% names(PL), Num_ch %in% nch, comp == cmp) %>%
+    dplyr::mutate(zz = as.numeric(noise) / 10) %>%
+    dplyr::filter(zz %in% NZ, is.finite(lo), is.finite(hi), (hi - lo) / 2 <= ERR_MAX)
+  nl <- sort(unique(d$Num_ch)); zl <- sort(unique(d$zz), decreasing = TRUE)
+  # every first-row strip carries two lines so the three blocks' header rows align; only the
+  # leftmost block spells the variable name out
+  nlab <- sprintf('atop("%s", "%s")', ifelse(first & seq_along(nl) == 1, "N_ch", ""), nl)
+  zlab <- format(zl, trim = TRUE, scientific = FALSE, drop0trailing = TRUE)
+  zlab <- sprintf('atop("%s", "%s")', ifelse(last & seq_along(zl) == 1, "noise", ""), zlab)
+  d <- d %>% dplyr::mutate(pf   = factor(PL[param], levels = PL),
+                           nchf = factor(Num_ch, levels = nl, labels = nlab),
+                           nzf  = factor(zz, levels = zl, labels = zlab))
+  # `m` (the bootstrap mean), NOT `Dconf`: the latter is the conservative CI edge collapsed
+  # to 1 wherever the interval brackets it (figure_4_common.R:200), which is right for colouring a
+  # map and wrong for a line, where it would ride the edge of the band drawn beside it.
+  ggplot(d, aes(interval_in_tau, m, colour = pf, group = pf)) +
+    geom_hline(yintercept = 1, colour = NUL, linewidth = .35) +
+    geom_ribbon(aes(ymin = lo, ymax = hi, fill = pf), colour = NA, alpha = .28) +
+    geom_line(linewidth = .45) +
+    facet_grid(nzf ~ nchf, labeller = label_parsed) +
+    scale_x_log10(breaks = c(.01, 1), labels = if (xlab) c("0.01", "1") else c("", "")) +
+    scale_y_log10(breaks = c(.6, 1, 1.5), limits = YLIM) +
+    scale_colour_manual(values = PCOL, labels = parse(text = PL), name = NULL) +
+    scale_fill_manual(values = PCOL, guide = "none") +
+    labs(x = NULL, y = if (first) "distortion factor" else NULL) +
+    theme_bw(base_size = 8, base_family = "Helvetica") +
+    theme(panel.grid.minor = element_blank(), panel.spacing = unit(.04, "cm"),
+          legend.position = "none",
+          axis.text = element_text(size = 7),
+          axis.text.y  = if (first) element_text(size = 7) else element_blank(),
+          axis.ticks.y = if (first) element_line() else element_blank(),
+          axis.title.y = if (first) element_text(size = 8) else element_blank(),
+          strip.text.x = element_text(size = 7),
+          strip.text.y = if (last) element_text(size = 7, angle = 0) else element_blank(),
+          # the two sub-blocks of a component are one grid, so the seam between them is closed
+          plot.margin  = if (xlab) margin(2, 0, 2, 1) else margin(2, 1, 2, 0))
+}
 
-g <- ggplot() +
-  geom_ribbon(data = RIB, aes(x = lx, ymin = lo, ymax = hi, fill = pf, group = paste(q, par)),
-              alpha = 0.16, show.legend = FALSE) +
-  geom_line(data = LIN, aes(x = lx, y = c1, colour = pf, linetype = qlab, group = paste(q, par)),
-            linewidth = 0.75) +
-  geom_point(data = LIN, aes(x = lx, y = c1, colour = pf), size = 0.8, show.legend = FALSE) +
-  scale_colour_manual(values = PCOL, name = NULL, drop = FALSE) +
-  scale_fill_manual(values = PCOL, drop = FALSE) +
-  scale_linetype_manual(values = setNames(QQ$lty, QQ$qlab), name = NULL) +
-  guides(colour = guide_legend(order = 1, ncol = 2, keywidth = unit(15, "pt")),
-         linetype = guide_legend(order = 2, ncol = 1, keywidth = unit(24, "pt"))) +
-  strip(v_open, "grey35", 0.13) + vpts(v_open, "black") +
-  strip(v_close, "grey55", 0.10) + vpts(v_close, "white") +
-  { if (!any(vapply(v_open, is.null, TRUE)))
-      annotate("text", x = mean(c(v_open[[1]]$lx, v_open[[2]]$lx)), y = YLIM[2] - 0.28,
-               hjust = 0.5, size = 2.2, lineheight = .95,
-               label = paste0("region 3 opens somewhere\nin this strip: N_ch ", rng(v_open))) } +
-  { if (!any(vapply(v_close, is.null, TRUE)))
-      annotate("text", x = log10(4.3), y = log10(0.042), hjust = 0, size = 2.2, colour = "grey35",
-               lineheight = .95, label = paste0("map closes here, EXTRAPOLATED (N_ch ", rng(v_close),
-                                                "):\nthis is what the N_ch 2 and 5 runs would pin")) } +
-  annotate("text", x = log10(230),  y = log10(0.031), label = "0   Gaussian closure fails",
-           size = 2.4, hjust = 0.5, colour = "grey25") +
-  annotate("text", x = log10(2200), y = log10(2.5),   label = "1   i + N_ch + honest CI",
-           size = 2.8, hjust = 0.5, fontface = "bold") +
-  annotate("text", x = log10(38),   y = log10(3.2),   label = "i but\nnot N_ch", size = 2.1,
-           hjust = 0.5, colour = "grey25", lineheight = .95) +
-  annotate("text", x = log10(3000), y = log10(6e3),   label = "2   rates + honest CI\n(amplitude needs a prior)",
-           size = 2.5, hjust = 0.5, lineheight = .95) +
-  annotate("text", x = log10(6000), y = log10(2.4e5), label = "3   LSE\nis par", size = 2.4,
-           hjust = 0.5, lineheight = .95) +
-  { if (is.finite(NEVER$nch_min[NEVER$par == "kon"]))
-      annotate("text", x = log10(12), y = log10(3e3),
-               hjust = 0, size = 2.1, colour = PCOL[["k_on"]], lineheight = .95,
-               label = sprintf("k_on unreachable at ANY noise below N_ch %.0f:\nthe line ENDS here, it does not leave the grid",
-                               NEVER$nch_min[NEVER$par == "kon"])) } +
-  annotate("text", x = log10(90),   y = log10(4e6),   label = "4   nothing estimable",
-           size = 2.6, hjust = 0.5, colour = "grey25") +
-  scale_x_continuous(breaks = xbrk, labels = xlab, limits = XLIM, expand = c(0, 0)) +
-  scale_y_continuous(breaks = ybrk, labels = ylab, limits = YLIM, expand = c(0, 0)) +
-  labs(x = expression(N[ch]), y = "dimensionless instrumental noise") +
-  theme_bw(base_size = 8, base_family = "Helvetica") +
-  theme(panel.grid.minor = element_blank(), axis.title = element_text(size = 8.5),
-        legend.position = "bottom", legend.justification = "left", legend.box = "vertical",
-        legend.box.just = "left", legend.text = element_text(size = 6.9),
-        legend.margin = margin(0, 0, 0, 0), legend.spacing.y = unit(1, "pt"),
-        legend.box.margin = margin(-4, 0, 0, -6), legend.key.height = unit(9, "pt"),
-        plot.margin = margin(4, 6, 2, 4))
+txt <- function(s, sz = 8, bold = FALSE, left = FALSE) ggplot() +
+  theme_void(base_family = "Helvetica") +
+  annotate("text", x = if (left) 0.02 else .5, y = .5, label = s, size = sz * 0.3527,
+           hjust = if (left) 0 else .5, fontface = if (bold) "bold" else "plain") +
+  coord_cartesian(xlim = c(0, 1), ylim = c(0, 1), clip = "off")
+```
+
+```{r assemble}
+ks <- names(CMP)
+cs <- lapply(seq_along(ks), function(j) {
+  first <- j == 1; last <- j == length(ks)
+  list(blk(ks[j], NCH[1],  first = first, last = FALSE, xlab = TRUE),
+       blk(ks[j], NCH[-1], first = FALSE, last = last,  xlab = FALSE))
+})
+plots <- list(); ws <- numeric(0); cw <- numeric(0)
+for (j in seq_along(cs)) {
+  w1 <- 1 + if (j == 1) YW else 0
+  if (j > 1) { plots <- c(plots, list(plot_spacer())); ws <- c(ws, .18) }
+  plots <- c(plots, list(cs[[j]][[1]], cs[[j]][[2]]))
+  ws <- c(ws, w1, length(NCH) - 1)
+  cw <- c(cw, w1 + length(NCH) - 1)
+}
+row <- wrap_plots(plots, nrow = 1, widths = ws)
+
+tt <- list(); tw <- numeric(0)
+for (j in seq_along(cs)) {
+  if (j > 1) { tt <- c(tt, list(plot_spacer())); tw <- c(tw, .18) }
+  tt <- c(tt, list(txt(unname(CMP[j]), bold = TRUE, left = TRUE))); tw <- c(tw, cw[j])
+}
+ttl <- wrap_plots(tt, nrow = 1, widths = tw)
+
+# colour key at the foot, where Figure 4 puts its colour bars
+key <- ggplot(data.frame(x = 1:2, y = 1, p = factor(names(PCOL), levels = names(PCOL))),
+              aes(x, y, colour = p)) +
+  geom_line(aes(group = p), linewidth = .6) +
+  scale_colour_manual(values = PCOL, labels = parse(text = PL), name = NULL) +
+  theme_void(base_family = "Helvetica") +
+  theme(legend.position = "bottom", legend.text = element_text(size = 7),
+        legend.key.width = unit(16, "pt"), legend.box.spacing = unit(0, "pt"))
+
+g <- ttl / row / txt("dimensionless sampling interval") / key +
+  plot_layout(heights = c(0.14, 4.4, 0.13, 0.16))
+```
+
+```{r render, fig.width = 7.4, fig.height = 4.83}
 g
-# Was Figure_6.pdf until 2026-07-31. The figure is now the `map` chunk at the foot of this notebook;
-# this one stays as the version for CHECKING, since the boundaries are here as lines with their
-# ribbons and their vertices rather than as the edges of filled regions.
-ggsave(arch("Figure_6_lines.pdf"), g, width = 7.0, height = 6.6, device = cairo_pdf)  # cairo: keeps the Delta glyph
-ggsave(arch("Figure_6_lines.png"), g, width = 7.0, height = 6.6, dpi = 140)
-```
-
-```{r regions, fig.width = 7.6, fig.height = 5.2}
-# ---- experimental preparations, from sourced numbers ----------------------------------------------
-# Provenance and every figure below: docs/bibliography/recording_configurations/SOURCES.md, with the
-# Axon Guide chapter saved beside it. THE CONVERSION IS VERIFIED, from qmodel.h:3740,
-#     e = Current_Noise * fs / n_samples   ->  variance per recorded point = Current_Noise / Delta,
-# so Current_Noise is a noise POWER SPECTRAL DENSITY and, with label = 1000 * Current_Noise,
-#     label = 10 * k_off * sigma_raw^2 / (fs * i^2),
-# which at Delta = 0.1 tau = 1 ms and k_off = 100 /s becomes label = (sigma per 1 ms point / i)^2.
-# White noise of RMS sigma_B in a bandwidth B gives sigma_Delta^2 = sigma_B^2 / (2 B Delta).
-# THE SCALING LEDGER (Luciano, 2026-07-27: which quantities scale linearly and which quadratically).
-# Every exponent below is load-bearing, so they are written out rather than left implicit:
-#   LINEAR     the macroscopic current in N_ch and in i, separately:  I = N_ch * i * P_open
-#   LINEAR     the gating variance in the macroscopic current, and in i as well, because
-#              Var_gate = N_ch i^2 p(1-p) = I * i * (1-p)
-#   LINEAR     label in the noise power spectral density S, and in k_off at fixed bandwidth
-#   QUADRATIC  label in 1/i: the signal is measured in units of i and the rig is not
-#   QUADRATIC  S in the rms noise:                        S = sigma^2 / B
-#   QUADRATIC  the noise PSD in membrane capacitance for the series-resistance mechanism, because the
-#              current noise density is e_n * 2 pi f * C_m, so S grows as C_m^2 (Axon Guide ch. 12)
-# The last two together are the reason a bigger preparation loses. N_ch grows LINEARLY with membrane
-# area while the instrumental variance grows QUADRATICALLY with it, so r = label/N_ch worsens about
-# linearly in area. The excised patch escapes that scaling because its noise is set by the pipette
-# dielectric and the headstage rather than by C_m, which is why going from a patch to a whole cell buys
-# channels almost for free, and why going from a whole cell to an oocyte does not.
-#
-# IN OBSERVABLES the same statement is shorter. Substituting N_ch = I/(i P_open),
-#     r = label / N_ch = 10 * S * P_open / (tau * i * I)
-# so r falls LINEARLY in the macroscopic current and LINEARLY in the unitary current. Once the clamp
-# ceiling pins I at I_max, raising expression can only lower i, and r ~ N_ch: every preparation has an
-# OPTIMAL channel number N* = I_max / (i_max * P_open), and expressing past it makes things worse.
-# Printed below per preparation. The oocyte at 5e7 is an order of magnitude past its own N*.
-# THREE PREPARATIONS, AND THE CHANNEL NOW LIVES INSIDE EACH BOX rather than outside all three (scheme
-# by Luciano, 2026-07-27). The channel contributes two ranges, shared by every preparation:
-#     i   = 1-10 pA, i.e. about 10-170 pS at 60-100 mV of driving force. Covers AMPA at the bottom and
-#           glycine or NMDA at the top; it clips CFTR below and BK (25-30 pA at +100 mV) above.
-#     tau = 1-30 ms. Covers nAChR, AMPA, P2X2 and glycine; it clips Na_V inactivation (0.3-0.5 ms)
-#           below and NMDA or GABA-A deactivation (50-500 ms) above.
-# Both extreme corners are real receptors, glycine at high driving force for (10 pA, 30 ms) and AMPA
-# for (1 pA, 1 ms), so the rectangle is not empty where it matters.
-# tau IS CLIPPED PER PREPARATION, because it is not a free choice: it is the fastest relaxation the
-# configuration can resolve. Fast perfusion of an excised patch reaches 0.1 ms, so the whole channel
-# range is open to it; whole cell and oocyte are held to about 10 ms by solution exchange and by clamp
-# settling, so their window is 10-30 ms. OPEN QUESTION, and it is not cosmetic: for a BATH concentration
-# jump the oocyte's exchange is 1-10 s, which would put it outside the 1-30 ms window altogether. The
-# 10 ms floor used here is the voltage-step or fast-perfusion case.
-#
-# TWO CONSTRAINTS CUT CORNERS OFF THE RECTANGLES, both straight out of the ledger above.
-#  1. THE CLAMP WINDOW, both ends of it. N_ch and i are independent as biology and coupled as an
-#     experiment, because I = N_ch i P_open has to land inside what the configuration can record.
-#     THE CEILING is what the clamp can hold: about 2 nA in a patch, 10 nA in whole cell (at
-#     Rs = 10 MOhm that is already 100 mV of error), a few tens of uA in TEVC. Because label goes as
-#     1/i^2, substituting i = I_max/(N_ch P_open) gives
-#         label >= 10 * S * (N_ch P_open)^2 / (tau * I_max^2),
-#     so the FLOOR of each box rises as N_ch^2 once the ceiling binds. N* below is where that starts,
-#     and it is where each preparation is at its best.
-#     THE MINIMUM is the other half of the same statement (Luciano, 2026-07-27): a record has to be
-#     big enough to be a record at all, about 0.1 uA in an oocyte, where the endogenous conductances
-#     of an uninjected cell are already tens of nA. So FEW CHANNELS HAVE TO BE BIG ONES,
-#         i >= I_min / (N_ch P_open),
-#     and by the same substitution the CEILING of each box FALLS as N_ch^2 below
-#     N_min* = I_min/(i_lo P_open). Two slope-2 diagonals, mirror images, one cutting the bottom right
-#     corner and one the top left. Below n_feas = I_min/(i_hi P_open) the configuration is infeasible
-#     at any i: even the largest channel available cannot reach I_min. That is a DERIVED left edge for
-#     the box, and for the oocyte it lands at 2e4 channels, well below the expression floor used here,
-#     so the two statements do not conflict. Both are printed.
-#     WHAT THIS COSTS THE ARGUMENT: it removes exactly the corners where the map was least favourable.
-#     The patch's worst r falls from 2.5 to 0.63 and the oocyte's from 90 to 22, so the minimum-current
-#     cut is not a decoration, it is the difference between crossing two boundaries and one.
-#  2. THE SPECTRAL EXPONENT. The y axis is a WHITE noise level, so placing a real rig on it means asking
-#     which white level reproduces the variance of a Delta-averaged point. For a rig whose PSD goes as
-#     f^p, S_eq = S(B0) * (B/B0)^p with B = 1/Delta = 10/tau, hence
-#         label = 10 * S(B0) * (10/(tau B0))^p / (tau i^2),
-#     which is 1/tau for white noise, 1/tau^2 at p = 1, 1/tau^3 at p = 2. Taken as p = 1 for the patch
-#     (pipette dielectric noise, PSD linear in f) and p = 2 for whole cell and oocyte (series-resistance
-#     noise, PSD quadratic in f), both from Axon Guide ch. 12. All three forms AGREE at tau = 10 ms,
-#     which is exactly where the sigma values were quoted (B0 = 1 kHz), so the correction pivots on the
-#     anchor instead of moving it. It bites at the edges: the patch's fast edge rises 10x and every slow
-#     edge drops by 3^p. The white-noise floor is printed alongside so the swing stays visible.
-#     LIMITATION: a variance match is not an autocorrelation match. A rising spectrum is high-pass, so a
-#     real rig's consecutive Delta-points are slightly anticorrelated where the simulation's are
-#     independent. Nothing here claims more than the variance.
-#
-# NOISE, sigma at B0 = 1 kHz, all from SOURCES.md:
-#   patch       0.1-0.5 pA. Brackets the one hard measurement in that file (S = 1.04e-4 pA^2/Hz gives
-#               sqrt(1.04e-4 * 1000) = 0.32 pA at 1 kHz), and the true floor may be 2-3x lower.
-#   whole cell  1 pA, the author's value; the measured spread in SOURCES.md is 0.4-3 pA at 1 kHz.
-#   oocyte      0.5-3 nA. The two ends are the two oocyte methods: 0.5 nA at 1 kHz is S = 250 pA^2/Hz,
-#               which is the cut-open figure (1 nA at 3-5 kHz), and 3 nA is conventional TEVC measured
-#               off a published trace (Nagel 2025 Nat Commun 16:10367 Fig 8b, S = 1.09e4 pA^2/Hz).
-# EXPRESSION LEVELS as set in the table below: patch 10-300, whole cell 20-1e4, oocyte 1e5-5e7 channels
-# (Luciano, 2026-07-27). The literature sweep behind them is now written up in
-# docs/bibliography/recording_configurations/EXPRESSION_LEVELS.md (23 agents, 159 claims, 134 confirmed).
-# THREE OF THESE EDGES HAVE A SOURCED ALTERNATIVE and none is applied here, because they are decisions:
-#   patch Imin 10 -> 5 pA        Khanra 2026 Nat Commun 17:3789, a stated Methods acceptance criterion.
-#                                Costs the argument: the upper-left diagonal disappears, i returns to
-#                                1 pA at the left edge and the patch's worst r rises from 0.63 to 2.5.
-#   whole cell Imin 100 -> 500 pA  Li 2017 PLoS ONE, measured over 42,272 wells. Helps: forces i = 3.3 pA
-#                                at n_lo and drops that corner about 11x.
-#   oocyte n_lo 1e5 -> 8e5       Fujiwara & Kubo 2004 J Physiol 558:31. The 1e5 has no source and is
-#                                unreachable at i = 1 pA anyway (50 nA, under the oocyte's own Imin).
-# THE PROJECT'S OWN P2X2 STUDY, precisely: it supplies no number on the COUNT axis. On the NOISE axis the
-# patch row's 0.1-0.5 pA was originally chosen to bracket that record's S = 1.04e-4 pA^2/Hz, so the
-# exclusion was incomplete. That is now closed independently: six laboratories with the seal attached and
-# the bandwidth stated give 0.05-0.35 pA at 1 kHz (Smith/Wang/Howe 2000, Prieto & Wollmuth 2010, Rycroft
-# & Gibb 2002, Ding & Sachs 1999, Premkumar & Auerbach 1997, McGee 2025; EXPRESSION_LEVELS.md section 2g),
-# a band that contains the 0.1-0.5 used here. The patch row no longer rests on the excluded record.
-# THE NOISE AXIS IS REFERRED TO k_off, NOT TO THE SAMPLING INTERVAL (Luciano, 2026-07-27, correcting a
-# derivation of mine that went round in circles). The definition, and the only thing here that is not
-# open, is
-#     label = 10 * Current_Noise * k_off / i^2
-# with Current_Noise the noise power spectral density S. There is NO Delta in it. Writing instead
-# sigma_Delta^2 = S/Delta and substituting Delta = 0.1 tau gives label = (sigma_Delta/i)^2, which is
-# algebraically the same thing but only because 10*k_off = 1/Delta at that convention, AND it needs the
-# noise to be white to write sigma_Delta^2 = S/Delta at all. The k_off form needs no such assumption, so
-# it is the one used here. With S = sigma_B^2/B evaluated at B = k_off = 1/tau,
-#     label = 10 * (sigma_{1/tau} / i)^2
-# so tau = 1 ms means a 1 kHz band, not 10 kHz.
-# CONSEQUENCE WORTH MORE THAN THE CORRECTION: the y axis does not depend on Delta at all. The sampling
-# interval moves the BOUNDARIES, which is what DRNG already sweeps, and it does not move a preparation's
-# vertical position. The two axes are independent rather than coupled through a convention.
-#
-# WHAT IS NOT KNOWN, stated plainly so it is not re-derived a fourth time. label needs S at that row's
-# own k_off. That is the rig's noise SPECTRUM, and it is not measured for any of the three preparations:
-# each has ONE rms figure at ONE band. How many decades of label a decade of tau buys is therefore NOT
-# DERIVABLE from anything in this file. Three attempts at it by assuming a spectrum shape gave 9.9, 4.05
-# and 1.39 decades, all arithmetic on an invented spectrum and none of them evidence. Until two measured
-# sigma values per preparation exist, tau contributes NOTHING to the height of a box here, and the boxes
-# below are drawn from the i range and the rig-to-rig spread alone. The gap is left visible on purpose.
-# HOW TO MEASURE IT, when it is done: TRACE_WIDTH_METHOD.md, on a segment with NO channel activity. At
-# long tau the gating noise takes over, and this file's own excised-patch record has 99 % of the variance
-# of a 13.7 ms point coming from unliganded gating, a factor 93 over the instrument. Measured carelessly,
-# "the noise at the tau of the kinetics" returns the quantity being estimated.
-# ONE MORE MISSPECIFICATION, unrelated to the closure: the simulation adds Gaussian WHITE noise. A real
-# series-resistance-limited rig is Gaussian and coloured, hence high-pass, so its consecutive samples are
-# anticorrelated where the simulation's are independent. Matching S at one band does not match that, and
-# nothing here models it.
-B0    <- 1000     # Hz, retained only to convert the sigma values that were quoted at 1 kHz
-I_LO  <- 1        # pA, smallest unitary current considered
-I_HI  <- 10       # pA, largest
-POPEN <- 0.5      # the model's open probability at saturation
-lbl <- function(S, tau, i) 10 * S / (tau * i^2)   # = 10 * S_tilde, the sweep's own label. See note above
-psd <- function(sig, B) sig^2 / B                 # rms in a bandwidth B -> power spectral density
-# Imin for the patch (10 pA) and whole cell (100 pA) are placeholders of the same kind as the oocyte's
-# 0.1 uA and have NOT been signed off; the oocyte value is the author's. Whole cell's N_min* = 200 falls
-# below its own n_lo, so that row is unaffected either way.
-# sig_lo and sig_hi are the RIG-TO-RIG spread at the band named in sig_band, which is a different thing
-# from the band-to-band change of sigma across each row's own tau range. Only the first is known, so tau
-# contributes NOTHING to the height of a box here. That is the honest current state and it is deliberate:
-# the missing measurement shows up as a box that is too short rather than as an invented number.
-# WHOLE CELL, tau = 0.5-1000 ms and N_ch = 20-1e4, settled with Luciano 2026-07-27. The N_ch edges are
-# DERIVED, not assumed: 20 = 100 pA/(10 pA x 0.5) and 1e4 = 5 nA/(1 pA x 0.5), so they encode Imin and
-# Imax rather than an expression guess. Imax = 5 nA is his (at Rs compensated to 2 MOhm that is already
-# 20 mV of error); Imin = 100 pA is still a placeholder. STILL OPEN on this row: the i floor, since Cav
-# with physiological Ca carries 0.3-0.5 pA and label goes as 1/i^2, so dropping I_LO to 0.3 would raise
-# every box top 11x; and whether the row is HEK or native, since a 70-150 pF neuron or myocyte is 3-10x
-# noisier than the 20-30 pF HEK cell the 1 pA came from, and the fast half of that literature is native.
-PREP <- tribble(~name,           ~n_lo, ~n_hi, ~sig_lo, ~sig_hi, ~sig_band, ~tau_lo, ~tau_hi, ~Imin, ~Imax,
-  "excised outside-out patch",      10,   300,     0.1,     0.5,      1000,    1e-3,    3e-2,   1e1,   2e3,
-  "whole cell",                     20,   1e4,     1.0,     1.0,      1000,    5e-4,       1,   1e2,   5e3,
-  "oocyte, two-electrode",         1e5,   5e7,     5e2,     3e3,      1000,    1e-2,    3e-2,   1e5,   3e7) %>%
-  mutate(xlo = log10(n_lo), xhi = log10(n_hi),
-         S_lo = psd(sig_lo, sig_band), S_hi = psd(sig_hi, sig_band),
-         nstar = pmin(pmax(Imax / (I_HI * POPEN), n_lo), n_hi),   # ceiling starts to bind: floor turns up
-         nmin_star = pmin(pmax(Imin / (I_LO * POPEN), n_lo), n_hi), # minimum binds: ceiling turns down
-         nfeas = Imin / (I_HI * POPEN),                           # derived left edge: below it, no i works
-         yhi = log10(lbl(S_hi, tau_lo, pmax(I_LO, Imin / (n_hi * POPEN)))),   # top at the right edge
-         yhi_l = log10(lbl(S_hi, tau_lo, pmax(I_LO, Imin / (n_lo * POPEN)))), # top at the left edge
-         ylo = log10(lbl(S_lo, tau_hi, I_HI)),                                # flat part of the floor
-         ylo_r = log10(lbl(S_lo, tau_hi, pmin(I_HI, Imax / (n_hi * POPEN)))))
-# The footprint, both diagonals: the top follows i >= Imin/(N P_open) and the floor i <= Imax/(N P_open).
-# Where the two meet the box PINCHES to zero height: there is no freedom left in i, so nothing to draw.
-POLY <- bind_rows(lapply(seq_len(nrow(PREP)), function(k) {
-  p  <- PREP[k, ]
-  xs <- sort(unique(c(seq(p$xlo, p$xhi, length.out = 120), log10(p$nstar), log10(p$nmin_star))))
-  xs <- xs[xs >= p$xlo & xs <= p$xhi]
-  N  <- 10^xs
-  itop <- pmax(I_LO, p$Imin / (N * POPEN))   # few channels have to be big ones
-  ibot <- pmin(I_HI, p$Imax / (N * POPEN))   # many channels have to be small ones
-  tibble(name = p$name, x = c(xs, rev(xs)),
-         y = c(log10(lbl(p$S_hi, p$tau_lo, itop)), rev(log10(lbl(p$S_lo, p$tau_hi, ibot)))))
-}))
-# r over the whole footprint, not just its corners: the extrema sit where the diagonals start to bind.
-RR <- POLY %>% mutate(r = y - x) %>% group_by(name) %>% summarise(r_lo = min(r), r_hi = max(r))
-cat("\nfigure_6: three preparations, in the sweep's own label = 10 * S * k_off / i^2 = 10 * S_tilde\n")
-print(as.data.frame(PREP %>% left_join(RR, by = "name") %>% transmute(name,
-      N_ch    = sprintf("%.3g - %.3g", n_lo, n_hi),
-      tau_ms  = sprintf("%.3g - %.3g", tau_lo * 1e3, tau_hi * 1e3),
-      sigma_pA_at = sprintf("%.3g - %.3g @ %.0f Hz", sig_lo, sig_hi, sig_band),
-      label   = sprintf("%.3g - %.3g", 10^pmin(ylo, ylo_r), 10^pmax(yhi, yhi_l)),
-      S_tilde = sprintf("%.3g - %.3g", 10^pmin(ylo, ylo_r)/10, 10^pmax(yhi, yhi_l)/10),
-      r       = sprintf("%.2g - %.2g", 10^r_lo, 10^r_hi),
-      N_opt   = sprintf("%.3g", nstar),
-      N_feasible_above = sprintf("%.3g", nfeas))), row.names = FALSE)
-
-# ---- the one real experiment: WITHDRAWN 2026-07-27 --------------------------------------------------
-# The box drawn here used to be Moffatt & Hume 2007's own P2X2 outside-out record, measured from
-# projects/p2x2/data/experiments/, at N_ch = 1777-2961 with an arrow for a x93 unliganded-gating floor.
-# It is withdrawn on the author's instruction, for two reasons that both bear on the numbers: the
-# records SUM three traces per response, so the 1777 pA peak is not one patch's current (it would be
-# about 590 pA, and N_ch about 590-990, with sigma smaller by sqrt(3) so that S falls 3x too, which
-# moves the box diagonally without changing r), and the preparation shows unliganded gating, so its
-# x93 noise floor is a property of that preparation and not a generic feature of an excised patch.
-# The excised-patch box above is therefore carried entirely by other laboratories.
-# TO RESTORE: set SHOW_EXP to TRUE and rebuild EXP here. Left as a switch rather than deleted, because
-# whether the figure keeps one worked example is still open.
-SHOW_EXP <- FALSE
-
-# THE SIMPLIFIED SIBLING — the version for reading; the boundary figure above is the version for
-# checking. Same measurements, read as areas. Four rules it follows, each fixing something the first
-# draft got wrong:
-#  1. ORDERED fill, not categorical. The regions are a ladder (the likelihood buys two things, then
-#     one, then none, then the experiment is empty), so the ramp goes dark -> pale in that order and
-#     the reader sees the ordering without reading a word. Region 0 is a DIFFERENT kind of failure
-#     (the model, not the experiment), so it gets its own hue rather than a rung of the ramp.
-#  2. Labels say WHAT TO DO, not what the diagnostic did. This is a usage map. The four boundary
-#     labels are deliberately PARALLEL, because they are the 2x2 written out: two of them say
-#     "<method> becomes honest" (the likelihood at the bottom, least squares higher up) and two say
-#     "<parameter> no longer measurable" (the amplitude pair, then k_off). Phrasing one of them
-#     differently -- "the closure fails", "i and N_ch stop separating" -- hid that structure.
-#  3. MEASURED vs EXTRAPOLATED is visible: heavy line inside the simulated N_ch span, faint dotted
-#     outside, dots on the actual crossings. The first draft drew fitted power laws to the plot edges
-#     and so claimed confidence it does not have — the floor, in particular, is measured only over
-#     N_ch 10-100.
-#  4. Everything clamped to the panel, so no ribbon can vanish against the axis limit.
-fitb <- function(qq, pp) {
-  d <- CR %>% filter(q == qq, par == pp, D == DREF, is.finite(c1))
-  if (nrow(d) < 2) return(NULL)
-  list(co = coef(lm(c1 ~ lx, d)), lo = min(d$lx), hi = max(d$lx), pts = d)
-}
-FB <- list(floor = fitb("floor", "koff"), ilost = fitb("se", "i"),
-           hon = fitb("lse", "koff"),     dead = fitb("se", "koff"))
-ev  <- function(f, x) f$co[1] + f$co[2] * x
-cl  <- function(y) pmin(pmax(y, YLIM[1]), YLIM[2])
-gx  <- seq(XLIM[1], XLIM[2], length.out = 500)
-
-# the preparation footprints, clipped to the panel. N* is marked only where it is VISIBLE: for whole
-# cell the whole floor sits below the panel, so its upturn cannot be shown and marking it would put a
-# dot on the axis that means nothing.
-POLYC <- POLY %>% mutate(y = cl(y))
-NSTAR <- PREP %>% filter(n_hi > nstar * 1.001, ylo > YLIM[1]) %>%
-  transmute(name, x = log10(nstar), y = ylo)
-OFFB  <- PREP %>% filter(ylo < YLIM[1])
-cat("\nfigure_6: preparation footprints, clipped to the panel\n")
-print(as.data.frame(PREP %>% transmute(name,
-      floor_true = sprintf("%.3g", 10^ylo), floor_at_right_edge = sprintf("%.3g", 10^ylo_r),
-      top = sprintf("%.3g", 10^yhi),
-      off_panel_bottom = ifelse(ylo < YLIM[1], "yes", "no"))), row.names = FALSE)
-
-# the floor is measured to be ABSENT above N_ch 200 (IR is calibrated at every noise there), which is
-# a measurement and not an extrapolation: pin it to the panel floor rather than extending the fit.
-y_floor <- ifelse(gx > log10(150), log10(NOISE_MIN), cl(ev(FB$floor, gx)))
-y_i     <- cl(ev(FB$ilost, gx)); y_hon <- cl(ev(FB$hon, gx)); y_dead <- cl(ev(FB$dead, gx))
-R <- tibble(x = gx,
-  r0_lo = YLIM[1],                r0_hi = pmax(YLIM[1], pmin(y_floor, y_i)),
-  r1_lo = pmin(y_floor, y_i),     r1_hi = pmax(pmin(y_floor, y_i), y_i),
-  r2_lo = y_i,                    r2_hi = pmax(y_i, pmin(y_hon, y_dead)),
-  r3_lo = pmin(y_hon, y_dead),    r3_hi = pmax(pmin(y_hon, y_dead), y_dead),
-  r4_lo = y_dead,                 r4_hi = YLIM[2]) %>%
-  mutate(across(starts_with("r"), cl))
-
-# 0 = its own hue; 1..4 = one ramp. Regions 1 and 2 lightened 2026-07-31: #3E9B62 was dark enough
-# that the grey15 measured points and boundary lines drawn on top of it stopped reading.
-RC   <- c("#B9A7D0", "#8FCBA6", "#C8E6D2", "#FBE08A", "#EFEFEF")
-RLAB <- c("0  the likelihood itself fails",
-          "1  amplitude and rates, with an honest interval",
-          "2  rates only, with an honest interval",
-          "3  least squares is at par",
-          "4  nothing measurable")
-# One mapped layer instead of five hardcoded fills, so the regions get a key. The in-panel prose
-# says what to do; the key says which numbered region the text and the caption are talking about.
-RLONG <- dplyr::bind_rows(lapply(0:4, function(k) tibble::tibble(
-  x   = R$x,
-  lo  = R[[paste0("r", k, "_lo")]],
-  hi  = R[[paste0("r", k, "_hi")]],
-  reg = factor(RLAB[k + 1], levels = RLAB))))
-MEAS <- range(c(FB$ilost$pts$lx, FB$hon$pts$lx, FB$dead$pts$lx, FB$floor$pts$lx))
-
-lineseg <- function(f, cap = NULL) {                      # heavy where measured, faint outside
-  hi <- if (is.null(cap)) f$hi else min(f$hi, cap)
-  xin <- seq(f$lo, hi, length.out = 120)
-  xout <- gx[(gx < f$lo & gx > f$lo - 0.5) | (gx > hi & gx < hi + 0.5)]
-  list(geom_line(data = tibble(x = xout, y = cl(ev(f, xout))), aes(x, y),
-                 linewidth = 0.3, linetype = "12", colour = "grey30"),
-       geom_line(data = tibble(x = xin, y = cl(ev(f, xin))), aes(x, y),
-                 linewidth = 0.7, colour = "grey15"),
-       geom_point(data = f$pts %>% mutate(y = cl(c1)), aes(lx, y), size = 1.1, colour = "grey15"))
-}
-lab <- function(x, y, t, sz = 3.0, fc = "plain", col = "grey10", hj = 0.5)
-  annotate("text", x = log10(x), y = log10(y), label = t, size = sz, fontface = fc,
-           colour = col, hjust = hj, lineheight = 1.0)
-# boundary labels set ALONG each line. The angle is the fitted slope carried into device space:
-# x spans diff(XLIM) decades over ~6.3 in and y spans diff(YLIM) over ~4.3 in. Approximate on
-# purpose -- this is a concept map, and these labels are what make it readable without the caption.
-ASPECT <- (diff(XLIM) / diff(YLIM)) * (4.1 / 6.4)   # panel is ~6.3 x 4.1 in once the caption left
-blab <- function(x, f, t, dy = 0.3, sz = 2.35) {
-  lx <- log10(x)
-  annotate("text", x = lx, y = ev(f, lx) + dy, label = t, size = sz, colour = "grey15",
-           angle = atan(f$co[2] * ASPECT) * 180 / pi, hjust = 0.5)
-}
-
-gr <- ggplot() +
-  geom_ribbon(data = RLONG, aes(x = x, ymin = lo, ymax = hi, fill = reg), alpha = 0.9) +
-  scale_fill_manual(values = stats::setNames(RC, RLAB), name = NULL,
-                    # the region-4 fill is near-white, so the key needs an outline to exist against the page
-                    guide = guide_legend(nrow = 2, byrow = TRUE, order = 1,
-                                         override.aes = list(colour = "grey55", linewidth = .2))) +
-  lineseg(FB$floor, cap = log10(150)) + lineseg(FB$ilost) +
-  lineseg(FB$hon) + lineseg(FB$dead) +
-  annotate("rect", xmin = XLIM[1], xmax = XLIM[2], ymin = YLIM[1], ymax = log10(NOISE_MIN),
-           fill = "white", alpha = 0.72) +
-  annotate("segment", x = XLIM[1], xend = XLIM[2], y = log10(NOISE_MIN), yend = log10(NOISE_MIN),
-           colour = "grey45", linewidth = 0.3, linetype = "22") +
-  annotate("text", x = XLIM[2] - 0.05, y = log10(0.0155), hjust = 1, size = 2.2, colour = "grey40",
-           label = "no data below here: 0.05 is the lowest noise simulated") +
-  annotate("segment", x = MEAS, xend = MEAS, y = YLIM[1], yend = YLIM[2],
-           colour = "grey35", linewidth = 0.3, linetype = "22") +
-  annotate("text", x = mean(MEAS), y = YLIM[2] - 0.22, label = "simulated range of N_ch",
-           size = 2.2, colour = "grey35") +
-  blab(30,   FB$floor, "the likelihood becomes honest",  0.45) +
-  blab(600,  FB$ilost, "i and N_ch no longer measurable", 0.32) +
-  blab(1600, FB$hon,   "least squares becomes honest",  0.34) +
-  blab(55,   FB$dead,  "k_off no longer measurable",    0.36) +
-  geom_polygon(data = POLYC, aes(x, y, group = name),
-               fill = "white", alpha = 0.35, inherit.aes = FALSE) +
-  geom_polygon(data = POLYC, aes(x, y, group = name),
-               fill = NA, colour = "grey10", linewidth = 0.45, inherit.aes = FALSE) +
-  geom_text(data = PREP %>% mutate(ly = pmin(yhi, YLIM[2] - 0.15) + 0.30,
-                                   lx = c((xlo[1]+xhi[1])/2, xlo[2] - 0.10, (xlo[3]+xhi[3])/2),
-                                   hj = c(0.5, 1, 0.5)),
-            aes(x = lx, y = ly, label = name, hjust = hj),
-            size = 2.3, fontface = "bold", colour = "grey5", inherit.aes = FALSE) +
-  # N*: past it the clamp ceiling forces i down and the floor turns upward as N_ch^2
-  { if (nrow(NSTAR)) geom_point(data = NSTAR, aes(x, y), shape = 21, fill = "white",
-                                colour = "grey10", size = 1.5, inherit.aes = FALSE) } +
-  { if (nrow(NSTAR)) geom_text(data = NSTAR %>% slice(1), aes(x, y),
-      label = "N*: past here the clamp ceiling\nforces i down and the floor\nturns upward as N_ch^2",
-      hjust = 1, nudge_x = -0.12, nudge_y = -0.40, size = 2.05, colour = "grey20",
-      lineheight = .95, inherit.aes = FALSE) } +
-  # boxes whose floor leaves the panel: quieter than anything the sweep simulated
-  { if (nrow(OFFB)) geom_segment(data = OFFB, aes(x = (xlo + xhi) / 2, xend = (xlo + xhi) / 2,
-                                                 y = YLIM[1] + 0.42, yend = YLIM[1] + 0.06),
-                                 colour = "grey20", linewidth = .4, inherit.aes = FALSE,
-                                 arrow = arrow(length = unit(3, "pt"), type = "closed")) } +
-  { if (nrow(OFFB)) annotate("text", x = log10(3.2), y = YLIM[1] + 0.62, hjust = 0, size = 2.05,
-      colour = "grey20", lineheight = .95, label = sprintf(
-        "at i = 10 pA and tau = 30 ms these floors leave the panel (label %s):\nquieter than the 0.05 the sweep reaches, so the map cannot answer there",
-        paste(sprintf("%.1g", 10^OFFB$ylo), collapse = " and "))) } +
-  annotate("text", x = log10(1.7e9), y = log10(30), hjust = 1, size = 2.1, colour = "grey15",
-           lineheight = .95,
-           label = "the channel is INSIDE each box now:\ni = 1-10 pA and tau = 1-30 ms, clipped\nto what the configuration resolves.\nHeight is 1/(tau^p+1 i^2), p = 1 patch, 2 the rest") +
-  lab(1.2e7, 0.9, "USE THE LIKELIHOOD\nyou get the conductance and the channel count,\nand the error bar is right", 2.8, "bold") +
-  lab(4e6, 3e6, "USE THE LIKELIHOOD, WITH A PRIOR\non the amplitude pair. Least squares\nis still overconfident here", 2.5) +
-  lab(1500, 3e6, "LEAST SQUARES\nIS ENOUGH", 2.5, "bold") +
-  lab(40, 1e6, "REDESIGN THE EXPERIMENT\nnothing useful is left", 2.7) +
-  lab(17, 0.105, "THE LIKELIHOOD FAILS", 2.2, "bold", "grey10") +
-  scale_x_continuous(breaks = xbrk, labels = xlab, limits = XLIM, expand = c(0, 0)) +
-  scale_y_continuous(breaks = ybrk, labels = ylab, limits = YLIM, expand = c(0, 0),
-    sec.axis = sec_axis(~ . / 2, name = "baseline noise, RMS per 1 ms point (pA, for i = 1 pA)",
-                        breaks = log10(c(0.1, 1, 10, 100, 1000)),
-                        labels = c("0.1", "1", "10", "100", "1000"))) +
-  labs(x = expression(N[ch]), y = "dimensionless instrumental noise") +
-  theme_bw(base_size = 8, base_family = "Helvetica") +
-  theme(panel.grid.major = element_line(colour = "white", linewidth = .18),
-        panel.grid.minor = element_blank(), axis.title = element_text(size = 8.5),
-        legend.position = "bottom", legend.text = element_text(size = 7),
-        legend.key.size = unit(9, "pt"), legend.margin = margin(0, 0, 0, 0),
-        legend.box.spacing = unit(3, "pt"),
-        plot.margin = margin(4, 6, 2, 4))
-gr
-ggsave(arch("Figure_6_regions.pdf"), gr, width = 7.6, height = 5.6, device = cairo_pdf)
-ggsave(arch("Figure_6_regions.png"), gr, width = 7.6, height = 5.6, dpi = 140)
-```
-
-```{r frontiers, fig.width = 7, fig.height = 5.6}
-# THE FRONTIER VERSION (Luciano, 2026-07-26). The criterion is the author's convention and the reader
-# cannot resolve it, so instead of picking one and drawing a line, BOTH criteria are drawn and the
-# strip between them is left blank: a transition zone where the answer depends on how strict you are.
-# What survives as solid colour is what holds under BOTH criteria. The weakness of the sharp-line
-# version (the region-3 vertex moves from N_ch 120 to 1368 with the criterion) becomes the content:
-# region 3 simply has no core until the two bands separate.
-#
-# ONE thing is deliberately NOT banded: the sampling interval. Delta is a design choice the READER
-# makes and knows, so it stays fixed at the reference and is stated. Banding it too would widen every
-# frontier by another 0.6-1 decade and swallow regions 2 and 3 entirely -- which is itself a measured
-# fact, and is why the interval gets its own treatment in the companion figure instead.
-#
-# REGION 4 IS DEFINED BY k_off, THE LAST PARAMETER STANDING, and that is not a convenience. Defining
-# it as "not every rate is measurable" (i.e. by k_on) makes the whole plane below N_ch ~52 read
-# "nothing useful left", which is plainly false: at 10 channels you still get k_off, the conductance
-# and the channel count. Losing k_on is its own rung, not the end of the ladder, so it is drawn as an
-# internal boundary with its own label, and the fact that k_on is out of reach at ANY noise below
-# N_ch ~52 is marked on the axis rather than swallowing four regions.
-fit2 <- function(qq, pp) {
-  d <- CR %>% filter(q == qq, par == pp, D == DREF)
-  f1 <- d %>% filter(is.finite(c1)); f2 <- d %>% filter(is.finite(c2))
-  if (nrow(f1) < 2) return(NULL)
-  list(a = coef(lm(c1 ~ lx, f1)),
-       b = if (nrow(f2) >= 2) coef(lm(c2 ~ lx, f2)) else coef(lm(c1 ~ lx, f1)),
-       pts = f1)
-}
-FF <- list(floor = fit2("floor", "koff"), ilost = fit2("se", "i"),
-           hon = fit2("lse", "koff"),     dead = fit2("se", "koff"),
-           kon = fit2("se", "kon"))
-gx <- seq(XLIM[1], XLIM[2], length.out = 500)
-bnd <- function(f) { y1 <- f$a[1] + f$a[2] * gx; y2 <- f$b[1] + f$b[2] * gx
-                     list(lo = cl(pmin(y1, y2)), hi = cl(pmax(y1, y2))) }
-Bf <- bnd(FF$floor); Bi <- bnd(FF$ilost); Bh <- bnd(FF$hon); Bd <- bnd(FF$dead)
-Bk <- bnd(FF$kon)
-off <- gx > log10(150)                       # closure measured ABSENT above N_ch ~150
-Bf$lo[off] <- log10(NOISE_MIN); Bf$hi[off] <- log10(NOISE_MIN)
-# NOTE, and it cost a wrong claim (caught by Luciano, 2026-07-26): NEVER$nch_min is computed at the
-# REFERENCE interval only, so "k_on is unreachable below N_ch 52" was an artefact of fixing Delta.
-# Minimising over Delta as well, IR reaches SE(k_on) = 0.267 at N_ch 10 with Delta.k_off = 0.01
-# (0.375 at 0.1, 0.511 at 1). LSE does NOT: its best is 0.708 at every Delta and every noise. So at
-# few channels the rate boundary is genuinely method-dependent, a factor 2.7, and must not be sourced
-# from LSE there. No "unreachable" marker is drawn.
-
-FR <- tibble(x = gx,
-  r0_lo = YLIM[1],  r0_hi = Bf$lo,
-  r1_lo = Bf$hi,    r1_hi = pmax(Bf$hi, Bi$lo),
-  r2_lo = Bi$hi,    r2_hi = pmax(Bi$hi, pmin(Bh$lo, Bd$lo)),
-  r3_lo = Bh$hi,    r3_hi = pmax(Bh$hi, Bd$lo),
-  r4_lo = Bd$hi,    r4_hi = YLIM[2]) %>% mutate(across(starts_with("r"), cl))
-CORE <- c("#B9A7D0", "#3E9B62", "#9ED4A8", "#F9D77A", "#D6D6D6")
-fillc <- function(k) geom_ribbon(data = FR, aes(x = x, ymin = .data[[paste0("r", k, "_lo")]],
-                                                ymax = .data[[paste0("r", k, "_hi")]]),
-                                 fill = CORE[k + 1], alpha = 0.95)
-edgeb <- function(B) list(
-  geom_line(data = tibble(x = gx, y = B$lo), aes(x, y), linewidth = .26, linetype = "22", colour = "grey35"),
-  geom_line(data = tibble(x = gx, y = B$hi), aes(x, y), linewidth = .26, linetype = "22", colour = "grey35"))
-
-gf <- ggplot() +
-  lapply(0:4, fillc) + edgeb(Bf) + edgeb(Bi) + edgeb(Bh) + edgeb(Bd) +
-  # k_on is NOT drawn here, and that is a scope decision, not an omission. Its boundary CROSSES the
-  # others: at N_ch 1e3 the amplitude pair is lost first (noise ~3e2) and k_on much later (~1.4e4),
-  # but at N_ch 10 the order flips. So k_on is not a rung of this ladder. It is not a method choice
-  # either -- IR and LSE lose it within a few percent of each other except at few channels -- it is a
-  # property of the PROTOCOL: one concentration jump determines k_on only through the difference
-  # between the pulse rate and the washout rate. If you need k_on, the fix is a second concentration,
-  # not a better likelihood. That belongs in the text, not on a usage map.
-  lapply(list(FF$floor, FF$ilost, FF$hon, FF$dead), function(f)
-    geom_point(data = f$pts %>% mutate(y = cl(c1)), aes(lx, y), size = 1.0, colour = "grey20")) +
-  annotate("rect", xmin = XLIM[1], xmax = XLIM[2], ymin = YLIM[1], ymax = log10(NOISE_MIN),
-           fill = "white", alpha = 0.75) +
-  annotate("segment", x = XLIM[1], xend = XLIM[2], y = log10(NOISE_MIN), yend = log10(NOISE_MIN),
-           colour = "grey45", linewidth = .3, linetype = "22") +
-  annotate("text", x = XLIM[2] - 0.05, y = log10(0.0125), hjust = 1, size = 2.1, colour = "grey40",
-           label = "no data below here: 0.05 is the lowest noise simulated") +
-  annotate("segment", x = MEAS, xend = MEAS, y = YLIM[1], yend = YLIM[2],
-           colour = "grey40", linewidth = .3, linetype = "22") +
-  annotate("text", x = mean(MEAS), y = YLIM[2] - 0.20, label = "simulated range of N_ch",
-           size = 2.1, colour = "grey40") +
-  geom_polygon(data = POLYC, aes(x, y, group = name),
-               fill = "white", alpha = 0.35, inherit.aes = FALSE) +
-  geom_polygon(data = POLYC, aes(x, y, group = name),
-               fill = NA, colour = "grey10", linewidth = 0.45, inherit.aes = FALSE) +
-  geom_text(data = PREP %>% mutate(ly = pmin(yhi, YLIM[2] - 0.15) + 0.30,
-                                   lx = c((xlo[1]+xhi[1])/2, xlo[2] - 0.10, (xlo[3]+xhi[3])/2),
-                                   hj = c(0.5, 1, 0.5)),
-            aes(x = lx, y = ly, label = name, hjust = hj),
-            size = 2.3, fontface = "bold", colour = "grey5", inherit.aes = FALSE) +
-  lab(3000, 1.6, "USE THE LIKELIHOOD\nconductance, channel count, and\nan error bar you can trust", 2.9, "bold") +
-  lab(5000, 1.6e4, "USE THE LIKELIHOOD,\nWITH A PRIOR on the amplitude", 2.5) +
-  lab(13000, 2e6, "LEAST SQUARES\nIS ENOUGH", 2.5, "bold", hj = 1) +
-  lab(55, 3e6, "REDESIGN THE EXPERIMENT", 2.6) +
-  lab(17, 0.105, "THE LIKELIHOOD FAILS", 2.2, "bold") +
-  lab(24, 2.2e4, "blank strips are the transitions:\nthere the answer depends on\nhow strict a criterion you use",
-      2.15, "italic", "grey25", 0) +
-  scale_x_continuous(breaks = xbrk, labels = xlab, limits = XLIM, expand = c(0, 0)) +
-  scale_y_continuous(breaks = ybrk, labels = ylab, limits = YLIM, expand = c(0, 0)) +
-  labs(x = expression(N[ch]), y = "dimensionless instrumental noise") +
-  theme_bw(base_size = 8, base_family = "Helvetica") +
-  theme(panel.grid.major = element_line(colour = "white", linewidth = .18),
-        panel.grid.minor = element_blank(), axis.title = element_text(size = 8.5),
-        plot.margin = margin(4, 6, 2, 4))
-gf
-ggsave(arch("Figure_6_frontiers.pdf"), gf, width = 7.0, height = 5.6, device = cairo_pdf)
-ggsave(arch("Figure_6_frontiers.png"), gf, width = 7.0, height = 5.6, dpi = 140)
-```
-
-## The figure
-
-THE MAP. Same plane, same cells, read as areas. Every cell is filled with WHICH parameters survive,
-not with how many: the count conflates the two cases the figure exists to separate. Over the 80
-cells at the reference interval the surviving subsets are
-
-    all four   {k_on, k_off, i, N_ch}   51        two   {k_off, i}      11   <- amplitude present
-    three      {k_off, i, N_ch}          1        two   {k_on, k_off}    5   <- amplitude gone
-    one        {k_off}                   6        none  {}               6
-
-and the two rows labelled "two" are opposite answers to the only question that decides which tool is
-needed. LEAST SQUARES HOLDS THE UNITARY CURRENT FIXED AND CANNOT SEPARATE THE CHANNEL COUNT FROM IT,
-so where the amplitude is recoverable it is not a candidate at all, and not because its interval is
-wrong: it does not estimate those parameters. Where it IS a candidate, the rates, the only question
-left is whose interval is calibrated. Five regions:
-
-    violet      the likelihood's own interval is not calibrated, whatever the yield; it overrides
-    green       i and k_off at least, usually all four: only the likelihood can deliver this
-    pale green  the rates only, and least squares still reports an interval that is too narrow
-    amber       the rates only, and least squares is calibrated too
-    near-white  nothing measurable
-
-COUNTING WAS ADOPTED (revisions AF to AL) BECAUSE THE BOUNDARIES ARE NOT NESTED: slopes run +1.1 to
-+2.2, so they cross and a ladder of count levels inverts. At THIS resolution they are nested, with no
-counterexample in the 80 cells: amplitude implies rates, N_ch never survives without i, no subset
-carries k_on without k_off. So the partition needs exactly two measurability boundaries, i and
-k_off, and k_on and N_ch stay as thin interior lines that subdivide the green region without
-partitioning it.
-
-DOES THE DRAWING AGREE WITH THE CELLS? Every earlier revision drew fitted lines over measured cells
-and never asked. Classified twice, once from each cell's own measurements and once from the four
-fitted lines, 78 of the 80 agree. Both failures are outside a fit's own support: N_ch 5 for the i
-boundary, which is fitted from 10, and N_ch 200 for the calibration boundary, which is fitted to 100.
-The chunk prints the confusion table on every render.
-
-WHAT IS MEASURED AND WHAT IS NOT. The cells stop at N_ch 1e4 and the panel runs to 1.2e8, so 56% of
-the width is fitted power law carried past its own support, the whole oocyte box included. Three
-marks say so, none of them a colour: the fills are veiled with sparse white stripes past the last
-simulated column, each boundary is solid only over the N_ch span where its own crossings were found
-and dashed outside it, and the crossings are drawn as open dots. Per-boundary support: i 10-1e4,
-k_off 10-1e3, k_on 5-1e4, N_ch 5-1e4, IR calibration 5-100, LSE calibration 10-1e4. The last is
-fitted over a decade and drawn over seven, which is why it thins where it is extended.
-
-THREE CLASSES OF MARK, three ways of setting them, so that no two kinds of statement look alike:
-
-    dark on plain white       a PARAMETER      i, k_off, k_on, N_ch     names a thin black line
-    white barred in dark      an ALGORITHM     LSE, IR                  names a white cased line
-    white on solid            a PREPARATION    the three footprints     names a real experiment
-    italic grey on white      an editorial note                         the key's own asides
-
-CALIBRATED, NOT "HONEST", as of 2026-07-31. The property is that the reported Fisher covariance
-equals the actual sampling covariance, which is what calibration names and what the rest of the
-manuscript already calls it. "Honest" is also taken: an honest confidence interval is one whose
-coverage holds uniformly over a class of parameters, a stronger and different property.
-
-<!-- DEPENDS ON THE `regions` CHUNK, which is where PREP, POLY and POLYC are built. If that chunk is
-     ever retired, the preparation table has to move up into `geometry` first.
-     NUDGE moves two footprint EDGES off the simulated columns for legibility and is OFF: whole
-     cell's 20 and 1e4 are DERIVED from Imin and Imax, so the drawn box would stop stating them. The
-     collision it was for is solved instead by the white ring on the cells, which costs no number.
-     HATCH_BAD writes the sibling in which the region where the likelihood's interval is not
-     calibrated is hatched OVER the yield colour instead of replaced, so that corner keeps saying
-     that the amplitude is recoverable there and only the interval is wrong. The purple override is
-     the figure, decided 2026-07-31; the sibling is kept because the choice is still live. -->
-
-```{r map, fig.width = 7, fig.height = 5.9}
-PT <- function(pt) pt * 0.3527
-TH <- log10(2)
-
-ir   <- IR %>% distinct(what, par, nch, noise, D, .keep_all = TRUE)
-irse <- ir %>% filter(what == "var")  %>% transmute(par, nch, noise, D, se = sqrt(pmax(v, 0)))
-irdi <- ir %>% filter(what == "dist") %>% transmute(par, nch, noise, D, d  = abs(log(v)))
-lsed <- LSE %>% filter(what == "dist", par == "koff") %>% distinct(nch, noise, D, .keep_all = TRUE) %>%
-        transmute(nch, noise, D, l = abs(log(v)))
-
-CELL <- irse %>% filter(D == DREF) %>% group_by(nch, noise) %>%
-  summarise(A = sum(se < TH), .groups = "drop") %>%
-  left_join(irdi %>% filter(D == DREF) %>% inner_join(irse %>% filter(D == DREF),
-              by = c("par","nch","noise")) %>% group_by(nch, noise) %>%
-              summarise(irbad = if (!any(se < TH)) 0 else as.numeric(!all(d[se < TH] < log(1.15))),
-                        .groups = "drop"), by = c("nch","noise")) %>%
-  left_join(lsed %>% filter(D == DREF) %>% select(nch, noise, l), by = c("nch","noise"))
-
-# a boundary = the noise at which a quantity crosses a level, per N_ch, then a log-log fit.
-# lo/hi are the N_ch span over which crossings were actually FOUND; from here on that is carried
-# through to the drawing instead of being discarded.
-fitline <- function(d, col, lev, rising) {
-  cr <- d %>% group_by(nch) %>%
-    summarise(c = cross1(log10(noise), .data[[col]], lev, rising), .groups = "drop") %>%
-    filter(is.finite(c)) %>% mutate(lx = log10(nch))
-  if (nrow(cr) < 2) return(NULL)
-  list(co = coef(lm(c ~ lx, cr)), lo = min(cr$lx), hi = max(cr$lx), pts = cr)
-}
-# ONE BOUNDARY PER PARAMETER, not one per count level: the boundaries are not nested (slopes +1.1 to
-# +2.2), so they cross, and counting how many lie above a point is correct whatever they do.
-PB <- lapply(c("i","koff","kon","Nch"), function(p)
-  fitline(irse %>% filter(D == DREF, par == p) %>% rename(v = se), "v", TH, TRUE))
-names(PB) <- c("i","koff","kon","Nch")
-BH  <- fitline(CELL %>% filter(!is.na(irbad)), "irbad", 0.5, FALSE)   # below it IR is dishonest
-BL  <- fitline(CELL %>% filter(!is.na(l)), "l", log(1.15), FALSE)     # above it least squares is honest
-for (n in c("i","koff","kon","Nch")) cat(sprintf("SE(%-4s): slope %+.2f, %d crossings, N_ch %g-%g\n",
-  n, PB[[n]]$co[2], nrow(PB[[n]]$pts), 10^PB[[n]]$lo, 10^PB[[n]]$hi))
-for (n in c("BH","BL")) cat(sprintf("%-4s     slope %+.2f, %d crossings, N_ch %g-%g\n",
-  n, get(n)$co[2], nrow(get(n)$pts), 10^get(n)$lo, 10^get(n)$hi))
-
-XQ   <- c(log10(6), log10(1.2e8))
-ev2  <- function(f, x) if (is.null(f)) rep(-Inf, length(x)) else f$co[1] + f$co[2]*x
-# The veil does not start ON the last simulated column -- there ARE simulations there, and a rule
-# drawn through that column reads as if it were excluded. It starts half a grid step past it, and
-# the grid step that matters is NOT the 1-2-5 spacing of the columns: the 1-2-5 columns (20, 50,
-# 200, 500, 2000, 5000) all stop at noise 10, so none of them can produce a crossing at the noise
-# where these boundaries live. The columns that carry the sweep upward are 10, 100, 1000, 1e4 --
-# one per decade, each reaching a decade higher in noise than the last (1e4, 1e5, 1e6, 1e7) -- so
-# for every boundary drawn here the step is a DECADE, the column after 1e4 would have been 1e5, and
-# the veil begins at 1e4.5 = 3.16e4. Taken from the data rather than written in, so it follows the
-# sweep if the sweep is extended.
-DEEP  <- (CELL %>% group_by(nch) %>% summarise(hi = max(noise), .groups = "drop") %>%
-          filter(hi > 10))$nch
-XLAST <- log10(max(CELL$nch))                       # last simulated column
-XSTEP <- median(diff(log10(sort(DEEP))))            # spacing of the columns that reach high noise
-XSIM  <- XLAST + XSTEP / 2                          # where the veil begins
-cat(sprintf("\ncells: N_ch %g-%g, noise label %g-%g; panel N_ch %g-%g -> %.0f%% of the width is extrapolated\n",
-  min(CELL$nch), max(CELL$nch), min(CELL$noise), max(CELL$noise), 10^XQ[1], 10^XQ[2],
-  100 * (XQ[2] - XLAST) / diff(XQ)))
-cat(sprintf("columns reaching past noise 10: %s -> step %.2f decades; veil edge at N_ch %.3g\n",
-  paste(sort(DEEP), collapse = ", "), XSTEP, 10^XSIM))
-
-PAL <- c(amp = "#238B45", rate = "#A1D99B", lse = "#FD8D3C",
-         none = "#F7F7F7", bad = "#9E9AC8")
-
-# ---- exact regions -----------------------------------------------------------------------------
-# Sutherland-Hodgman against a half-plane f <= 0. Every boundary is y = a + b x, so the regions are
-# the cells of a line arrangement and can be written down instead of sampled.
-clip1 <- function(P, f) {
-  if (!nrow(P)) return(P)
-  s <- f(P$x, P$y); n <- nrow(P); out <- list()
-  for (i in seq_len(n)) {
-    j <- if (i == n) 1L else i + 1L
-    if (s[i] <= 0) out[[length(out) + 1]] <- P[i, ]
-    if (s[i] * s[j] < 0) {
-      t <- s[i] / (s[i] - s[j])
-      out[[length(out) + 1]] <- data.frame(x = P$x[i] + t * (P$x[j] - P$x[i]),
-                                           y = P$y[i] + t * (P$y[j] - P$y[i]))
-    }
-  }
-  if (!length(out)) P[0, ] else do.call(rbind, out)
-}
-area <- function(P) { n <- nrow(P); if (n < 3) return(0)
-  j <- c(2:n, 1); abs(sum(P$x * P$y[j] - P$x[j] * P$y)) / 2 }
-RECT  <- data.frame(x = c(XQ[1], XQ[2], XQ[2], XQ[1]), y = c(YLIM[1], YLIM[1], YLIM[2], YLIM[2]))
-below <- function(f) function(x, y) y - ev2(f, x)          # <= 0 means below the boundary
-LN    <- list(i = PB$i, Nch = PB$Nch, koff = PB$koff, kon = PB$kon, h = BH, l = BL)
-
-# s[k] = 1 -> the region lies BELOW line k, and below a measurability boundary is the side on which
-# that parameter IS measurable. The rates survive exactly when k_off does (no cell carries k_on
-# without it) and the amplitude survives exactly when i does (none carries N_ch without it), so the
-# whole partition is s[1] and s[3]. k_on and s[2] play no part in it.
-regions <- function(hatch_bad) do.call(rbind, lapply(0:(2^length(LN) - 1), function(m) {
-  s <- as.integer(intToBits(m))[seq_along(LN)]
-  lseok <- s[6] == 0
-  yld <- if (s[3] == 0) "none" else if (s[1] == 1) "amp" else if (lseok) "lse" else "rate"
-  col <- if (s[5] == 1 && !hatch_bad) "bad" else yld
-  P <- RECT
-  for (k in seq_along(LN)) P <- clip1(P, local({ g <- below(LN[[k]]); sk <- s[k]
-    if (sk == 1) g else function(x, y) -g(x, y) }))
-  if (area(P) < 1e-8) return(NULL)
-  transform(P, grp = m, fill = PAL[[col]])
-}))
-
-# the two textures. Both are line screens, so neither costs a colour; they differ in ink, angle and
-# pitch, and the only place they could meet is the bottom of the last simulated column.
-lines_in <- function(px, py, angle_deg, spacing) {
-  th <- angle_deg * pi / 180
-  rx <-  cos(th) * px + sin(th) * py; ry <- -sin(th) * px + cos(th) * py
-  n <- length(px); out <- list()
-  for (L in seq(min(ry), max(ry), by = spacing)) {
-    xs <- numeric(0)
-    for (i in seq_len(n)) { j <- if (i == n) 1L else i + 1L
-      if ((ry[i] - L) * (ry[j] - L) < 0) {
-        t <- (L - ry[i]) / (ry[j] - ry[i]); xs <- c(xs, rx[i] + t * (rx[j] - rx[i])) } }
-    xs <- sort(xs)
-    if (length(xs) >= 2) for (k in seq(1, length(xs) - 1, by = 2))
-      out[[length(out) + 1]] <- data.frame(
-        x = cos(th)*xs[k] - sin(th)*L, y = sin(th)*xs[k] + cos(th)*L,
-        xend = cos(th)*xs[k+1] - sin(th)*L, yend = sin(th)*xs[k+1] + cos(th)*L)
-  }
-  if (!length(out)) NULL else do.call(rbind, out)
-}
-BADP  <- clip1(RECT, below(BH))                                    # the dishonest corner
-BADH  <- lines_in(BADP$x, BADP$y, 45, 0.155)
-EXTRA <- lines_in(c(XSIM, XQ[2], XQ[2], XSIM), c(YLIM[1], YLIM[1], YLIM[2], YLIM[2]), -45, 0.78)
-
-YD <- function(v) log10(v * 10)          # dimensionless noise -> the data's own units
-# panel is about 6.30 x 5.25 in inside a 7.0 x 5.9 in device
-ASPECT <- (diff(XQ) / diff(YLIM)) * (5.25 / 6.30)
-# TWO CLASSES OF INLINE LABEL, drawn differently because they name two different kinds of statement.
-# A PARAMETER label names a thin black line and is set the same way: dark text on plain white, no
-# edge. An ALGORITHM label names a honesty boundary, which is drawn white cased in dark -- a double
-# line -- so the label repeats that: a white bar with a dark edge around it, bold. The label then
-# looks like a piece of the line it belongs to, and no reader has to be told which is which.
-# (label.size is silently IGNORED by annotate("label") in ggplot2 >= 3.5 -- it warns and applies the
-# 0.25 default -- so the edge has to be set through linewidth, which is why AK's labels all carried
-# a faint box nobody asked for.)
-online <- function(f, x, txt, dy = 0.22, pt = 8) {
-  lx <- log10(x)
-  annotate("label", x = lx, y = ev2(f, lx) + dy, label = txt, size = PT(pt), colour = "grey5",
-           angle = atan(f$co[2] * ASPECT) * 180 / pi, hjust = .5, parse = TRUE,
-           fill = "white", alpha = .85, linewidth = 0, label.padding = unit(.9, "pt"))
-}
-onalgo <- function(f, x, txt, dy = 0.22, pt = 8) {
-  lx <- log10(x)
-  annotate("label", x = lx, y = ev2(f, lx) + dy, label = txt, size = PT(pt), colour = "grey20",
-           angle = atan(f$co[2] * ASPECT) * 180 / pi, hjust = .5, fontface = "bold",
-           fill = "white", linewidth = .45, label.r = unit(0, "pt"),
-           label.padding = unit(1.5, "pt"))
-}
-
-# ---- footprint edges moved off the simulated columns --------------------------------------------
-# The two small footprints ended exactly on N_ch 10 and 20, which are also two of the columns the
-# sweep was run at, so their vertical edges ran through a line of cells and the cells read as beads
-# threaded on the box. Moved to 8 and 18. READ BEFORE KEEPING THIS: whole cell's edges are DERIVED
-# in figure_6.Rmd, not chosen -- 20 = 100 pA / (10 pA x 0.5) and 1e4 = 5 nA / (1 pA x 0.5), so they
-# encode Imin and Imax rather than a guess -- and nudging them means the drawn box no longer states
-# those two currents. The right edge costs a second thing: at 1e4 the footprint ended exactly where
-# the simulations end, so whole cell was entirely covered by measured cells; at 2e4 it crosses into
-# the veiled half. Set NUDGE <- FALSE to get the derived footprints back. The legibility problem it
-# solves can also be solved by giving the cells a white halo, which costs no number at all.
-NUDGE <- FALSE
-if (NUDGE) {
-  NEW <- list("excised outside-out patch" = c(8, 300),
-              "whole cell"                = c(18, 2e4),
-              "oocyte, two-electrode"     = c(1e5, 5e7))
-  POLYC <- do.call(rbind, lapply(seq_len(nrow(PREP)), function(k) {
-    p <- PREP[k, ]; e <- NEW[[p$name]]
-    xs <- seq(log10(e[1]), log10(e[2]), length.out = 160); N <- 10^xs
-    itop <- pmax(I_LO, p$Imin / (N * POPEN))   # few channels have to be big ones
-    ibot <- pmin(I_HI, p$Imax / (N * POPEN))   # many channels have to be small ones
-    data.frame(name = p$name, x = c(xs, rev(xs)),
-               y = pmin(pmax(c(log10(lbl(p$S_hi, p$tau_lo, itop)),
-                               rev(log10(lbl(p$S_lo, p$tau_hi, ibot)))), YLIM[1]), YLIM[2]))
-  }))
-  cat("\nfootprint edges drawn at:", paste(sapply(names(NEW), function(n)
-      sprintf("%s %g-%g", n, NEW[[n]][1], NEW[[n]][2])), collapse = "; "), "\n")
-}
-
-# LINE CODING. White over a dark casing = a statement about an ALGORITHM's error bar; plain black =
-# a statement about whether a PARAMETER can be measured. Solid over the N_ch span where that
-# boundary's own crossings were measured, dashed where the fit is carried beyond them.
-seg3 <- function(f, cap = NULL) {
-  lo <- max(f$lo, XQ[1]); hi <- min(f$hi, XQ[2])
-  y <- function(d) { d$y <- ev2(f, d$x); if (!is.null(cap)) d$y <- pmin(d$y, ev2(cap, d$x)); d }
-  out <- rbind(if (lo > XQ[1] + 1e-9) data.frame(x = seq(XQ[1], lo, length.out = 60), s = "L") else NULL,
-               if (hi < XQ[2] - 1e-9) data.frame(x = seq(hi, XQ[2], length.out = 200), s = "R") else NULL)
-  list(ins = y(data.frame(x = seq(lo, hi, length.out = 200))),
-       out = if (is.null(out)) NULL else y(out))
-}
-measur <- function(f, cap = NULL) { p <- seg3(f, cap)
-  list(geom_line(data = p$ins, aes(x, y), colour = "grey5", linewidth = .45),
-       if (!is.null(p$out)) geom_line(data = p$out, aes(x, y, group = s), colour = "grey5",
-                                      linewidth = .45, linetype = "22") else NULL) }
-honesty <- function(f) { p <- seg3(f)
-  list(geom_line(data = p$ins, aes(x, y), colour = "grey25", linewidth = 1.6),
-       geom_line(data = p$ins, aes(x, y), colour = "white",  linewidth = 1.05),
-       # thinner outside the fit: the IR-honesty line is fitted over one decade and drawn over
-       # seven, so at full weight it is the loudest mark in the panel and the least supported
-       if (!is.null(p$out)) list(
-         geom_line(data = p$out, aes(x, y, group = s), colour = "grey25", linewidth = 1.0,
-                   linetype = "42"),
-         geom_line(data = p$out, aes(x, y, group = s), colour = "white", linewidth = .6,
-                   linetype = "42")) else NULL) }
-CROSS <- do.call(rbind, lapply(names(PB), function(p)
-  setNames(transform(PB[[p]]$pts[, c("lx","c")], par = p), c("x","y","par"))))
-
-# where each preparation's tab hangs: an N_ch chosen so the three do not collide, and the y taken
-# from that footprint's OWN top edge (POLY is built top-run first, then the floor reversed), so the
-# tab is attached to the box rather than floating inside it.
-# TEVC = two-electrode voltage clamp, which is what PREP's "oocyte, two-electrode" row is; it is
-# standard in the field's literature, so the acronym earns its place on a tab this size, but it has
-# to be spelled out in the caption. The patch row is named for its ORIENTATION rather than for being
-# excised, because the whole map assumes an agonist concentration jump and only an outside-out patch
-# puts the extracellular face in the bath: "excised patch" would take in inside-out, which cannot run
-# the experiment being mapped. The tabs hang where the name still fits inside its own footprint --
-# N_ch 25 for the patch, whose top edge is flat from N_ch 20 on, so the height does not move. That
-# one is set over two lines: on one it is 1.12 decades wide against a 1.48-decade footprint, so it
-# arrives within a hair of the box's own right edge whatever N_ch it hangs from.
-# hj = 0 hangs the tab from the top edge running rightwards, hj = 1 hangs it from the top RIGHT
-# corner running leftwards. The patch tab takes the corner: at 1.12 decades against a 1.48-decade
-# footprint it fits on one line only if it is anchored to an edge, and the corner is the one part of
-# that box with no boundary line crossing it -- hung on the left it landed among k_on, N_ch and the
-# IR label. It still covers the three cells on the noise = 0.2 row inside its own span; that is the
-# cheapest thing available to cover there, and cheaper than covering a line.
-PTAB <- do.call(rbind, lapply(list(c("excised outside-out patch", "outside-out patch", "3.0e2", "1"),
-                                   c("whole cell",                "whole cell",        "3.5e2", "0"),
-                                   c("oocyte, two-electrode",     "oocyte, TEVC",      "1.15e5","0")),
-  function(z) { d <- POLYC[POLYC$name == z[1], ]; top <- d[seq_len(nrow(d) / 2), ]
-    data.frame(lab = z[2], hj = as.numeric(z[4]), lx = log10(as.numeric(z[3])),
-               ly = approx(top$x, top$y, xout = log10(as.numeric(z[3])))$y - .04) }))
-
-# Does the DRAWN partition agree with the cells it was fitted from? Every earlier revision drew
-# fitted lines over measured cells and never asked. Classify each cell twice, once from its own
-# measurements and once from the four fitted lines, and count the disagreements.
-CHK <- CELL %>% mutate(lx = log10(nch), ly = log10(noise)) %>%
-  left_join(irse %>% filter(D == DREF, par %in% c("i","koff")) %>%
-              mutate(ok = se < TH) %>% select(par, nch, noise, ok) %>%
-              tidyr::pivot_wider(names_from = par, values_from = ok), by = c("nch","noise")) %>%
-  mutate(cell = case_when(irbad == 1 ~ "bad", !koff ~ "none", i ~ "amp",
-                          !is.na(l) & l < log(1.15) ~ "lse", TRUE ~ "rate"),
-         drawn = case_when(ly < ev2(BH, lx) ~ "bad", ly > ev2(PB$koff, lx) ~ "none",
-                           ly < ev2(PB$i, lx) ~ "amp",
-                           ly > ev2(BL, lx) ~ "lse", TRUE ~ "rate"))
-cat(sprintf("\npartition check: %d of %d cells disagree with the fitted lines\n",
-            sum(CHK$cell != CHK$drawn), nrow(CHK)))
-print(table(cell = CHK$cell, drawn = CHK$drawn))
-print(as.data.frame(CHK %>% filter(cell != drawn) %>% arrange(nch, noise) %>%
-                    select(nch, noise, cell, drawn)))
-
-for (HATCH_BAD in c(TRUE, FALSE)) {
-
-# ---- the key. One swatch column, because the tool axis is no longer a second dimension of the
-# fill: it is the ORDER of the rows. Laid out on an explicit cursor in text lines rather than on a
-# row count, since the blocks are 1, 2 and 5 lines tall and a uniform row pitch either overlaps them
-# or wastes half the box. LH is one 7 pt line measured in y units: the panel is 5.25 in over
-# diff(YLIM) decades, so a decade is 0.536 in and 9 pt of leading is 0.233 of one.
-LH  <- 0.235
-KX  <- c(log10(1.05e5), XQ[2] - .05)
-kcx <- KX[1] + diff(KX) * .075; ktx <- KX[1] + diff(KX) * .165
-kw  <- diff(KX) * .048; kh <- LH * .62
-kx0 <- kcx - kw; kx1 <- kcx + kw + diff(KX) * .06
-Y <- local({ y <- 0; f <- function(n, gap = 0) { y <<- y - gap - LH * n / 2
-                                                 v <- y; y <<- y - LH * n / 2; v }
-             list(next_ = f, used = function() -y) })
-y_title <- Y$next_(1, .30)
-y_rows  <- c(Y$next_(1, .18), Y$next_(1, .10), Y$next_(1, .10), Y$next_(1, .10), Y$next_(1, .10))
-y_note  <- Y$next_(1, .16)
-y_line1 <- Y$next_(2, .18)
-y_line2 <- Y$next_(2, .10)
-y_gloss <- Y$next_(1, .16)
-# anchored from the FLOOR, not from a chosen top: a box sized from the top runs off the bottom of
-# the panel and ggplot then drops the whole rect, silently, leaving the key with no background.
-KY  <- c(YLIM[1] + .02, 0); KY[2] <- KY[1] + Y$used() + .12
-kr  <- function(v) KY[2] + v
-# ROW ORDER IS THE PANEL'S OWN VERTICAL ORDER, top to bottom: the key is a section through the map,
-# its first row the region at the top of the panel and its last the one at the bottom. Listing them
-# in the order a column is crossed going UP matches the sequence but reverses the direction, so the
-# reader has to flip between key and map; this way the two are read the same way round.
-FILLS <- c(PAL[["none"]], PAL[["lse"]], PAL[["rate"]], PAL[["amp"]],
-           if (HATCH_BAD) PAL[["amp"]] else PAL[["bad"]])
-KEY <- list(
-  # opaque, not alpha .95: at 95% the white veil stripes behind still print as faint bands
-  annotate("rect", xmin = KX[1], xmax = KX[2], ymin = KY[1], ymax = KY[2],
-           fill = "white", colour = "grey70", linewidth = .25),
-  annotate("text", x = kx0, y = kr(y_title), hjust = 0, size = PT(7.5), colour = "grey30",
-                      # No second person. Published prose in the manuscript uses "you" zero times (the two hits
-           # in 00_abstract.tex are both inside % comments), and no other caption in the set has it,
-           # so a key written at the reader would be the one place in the paper that does.
-           fontface = "italic", label = "what to use, and what it recovers"),
-  annotate("rect", xmin = kcx - kw, xmax = kcx + kw, ymin = kr(y_rows) - kh,
-           ymax = kr(y_rows) + kh, fill = FILLS, colour = "grey70", linewidth = .2),
-  # the dishonest corner keeps its hatch in the key when it has one on the map
-  if (HATCH_BAD) geom_segment(data = lines_in(
-      c(kcx-kw, kcx+kw, kcx+kw, kcx-kw),
-      c(kr(y_rows[5])-kh, kr(y_rows[5])-kh, kr(y_rows[5])+kh, kr(y_rows[5])+kh), 45, .075),
-      aes(x = x, y = y, xend = xend, yend = yend), colour = "grey15", linewidth = .22,
-      inherit.aes = FALSE) else NULL,
-  # PRESCRIPTIVE, not descriptive: this is a usage map, so the rows say what to do and the thing
-  # that varies is the first word. Three of the five reading "use MacroIR" is the argument and not a
-  # collapse of it -- at a glance the likelihood is needed almost everywhere. Two of the rows were
-  # arrived at against my own first objection and are worth recording:
-  #   AMBER. "use LSE" is right, not merely permitted. Both methods recover the rates there and both
-  #   are calibrated, and the widths are the same: over the 32 cells where both were run the ratio
-  #   of the corrected standard error, LSE over IR, has median 1.04 on k_off and 1.01 on k_on, and
-  #   in two of the six rate entries of the three amber cells LSE is the TIGHTER of the two. Same
-  #   answer, same interval, cheaper method. This is Figure 4's corrected covariance and the
-  #   information budget: the rates live in the shape of the deterministic transient.
-  #   VIOLET. "use MacroIR but do not trust the calibration" tells the reader to use a method and
-  #   distrust it without saying what to do instead. What is wrong there is the REPORTED interval,
-  #   so that is what the row names. The estimate itself is not what the diagnostic condemns.
-  # "often all four": 11 of the 63 cells in the first region carry only k_off and the conductance,
-  # so naming the full four would be false over a sixth of it. The two thin lines inside the region
-  # are where the other two go, and the caption carries the subset table.
-  annotate("text", x = ktx, y = kr(y_rows), hjust = 0, size = PT(7.5), colour = "grey25",
-           parse = TRUE,
-           # Two of these were written for the old row order and stopped parsing when it changed.
-           # "calibrated here TOO" pointed at a MacroIR row that used to sit above it and now sits
-           # below, so the antecedent is gone and the row is made self-contained. In exchange the
-           # new order earns an anaphora the old one could not have: the conductance row now sits
-           # directly under the rates row, so "i as well" has something to be as well AS, which is
-           # how the rows were first drafted.
-           label = c("'nothing measurable'",
-                     "'use LSE:  calibrated here, and cheaper'",
-                     "'use MacroIR:  the rates, calibrated'",
-                     "'use MacroIR:'~italic(i)~'as well, often all four'",
-                     "'use MacroIR, but not its reported interval'")),
-  # WHY the first row belongs to one method only, stated as a fact about the method and nothing
-  # more. It used to carry a second clause, "so in the top row it is not a candidate at all", which
-  # was cut: "top row" is the key's first row but the MAP's lowest region, and read as the map it
-  # says the opposite of the amber region, where least squares is an honest option. The reader who
-  # needs the inference has the row above; the caption spells it out.
-  annotate("text", x = kx0, y = kr(y_note), hjust = 0, size = PT(7), colour = "grey30",
-           fontface = "italic",
-           label = "LSE holds i fixed and cannot separate N_ch from it"),
-  # the two line classes, explained once here instead of twice on the map
-  annotate("rect", xmin = kx0 - .02, xmax = kx1 + .02, ymin = kr(y_line1) - kh*.9,
-           ymax = kr(y_line1) + kh*.9, fill = PAL[["rate"]], colour = NA),
-  annotate("segment", x = kx0, xend = kx1, y = kr(y_line1), yend = kr(y_line1),
-           colour = "grey25", linewidth = 1.6),
-  annotate("segment", x = kx0, xend = kx1, y = kr(y_line1), yend = kr(y_line1),
-           colour = "white", linewidth = 1.05),
-  annotate("segment", x = kx0, xend = (kx0 + kx1)/2, y = kr(y_line2), yend = kr(y_line2),
-           colour = "grey5", linewidth = .45),
-  annotate("segment", x = (kx0 + kx1)/2, xend = kx1, y = kr(y_line2), yend = kr(y_line2),
-           colour = "grey5", linewidth = .45, linetype = "22"),
-  annotate("point", x = (kx0 + kx1)/2, y = kr(y_line2), size = 1.1, shape = 21,
-           fill = "white", colour = "grey5", stroke = .35),
-  annotate("text", x = kx1 + .10, y = c(kr(y_line1), kr(y_line2)), hjust = 0, size = PT(7),
-           colour = "grey25", lineheight = .95,
-           label = c("that interval becomes calibrated\n(information distortion = 1.15)",
-                     "that parameter stops being measurable\n(standard error = a factor of 2)")),
-  annotate("text", x = kx0, y = kr(y_gloss), hjust = 0, size = PT(7), colour = "grey30",
-           label = "IR = MacroIR;  LSE = classical least squares."))
-
-gq <- ggplot() +
-  geom_polygon(data = regions(HATCH_BAD), aes(x, y, group = grp, fill = fill, colour = fill),
-               linewidth = .12) +
-  scale_fill_identity() + scale_colour_identity() +
-  (if (HATCH_BAD) geom_segment(data = BADH, aes(x = x, y = y, xend = xend, yend = yend),
-                               colour = "grey15", linewidth = .28, inherit.aes = FALSE) else NULL) +
-  # past the last simulated column there is nothing but the fits, so the fills are veiled
-  geom_segment(data = EXTRA, aes(x = x, y = y, xend = xend, yend = yend),
-               colour = "white", linewidth = .55, alpha = .5, inherit.aes = FALSE) +
-  measur(PB$i) + measur(PB$koff) + measur(PB$kon) + measur(PB$Nch, cap = PB$i) +
-  honesty(BL) + honesty(BH) +
-  geom_point(data = CROSS, aes(x, y), size = 1.1, shape = 21, fill = "white",
-             colour = "grey5", stroke = .35) +
-  # THE THREE PREPARATIONS ARE A DIFFERENT KIND OF OBJECT from everything else in the panel: they
-  # are where real experiments sit, not something the sweep measured. In AK they were drawn in the
-  # same language as the diagnostics -- thin dark outline, white label box, same size -- so "patch"
-  # and "k_off" read as the same class of thing. Here they get their own: a heavier outline, and a
-  # solid tab hung from the box's own top edge with the name reversed out of it. Reversed on solid
-  # is the exact inverse of the boundary labels (dark on white), which is the cheapest way to say
-  # "different layer" without spending a colour or a line style that already means something.
-  geom_polygon(data = POLYC, aes(x, y, group = name), fill = NA, colour = "grey5",
-               linewidth = .8, inherit.aes = FALSE) +
-  lapply(c(0, 1), function(h) geom_label(data = PTAB[PTAB$hj == h, ],
-             aes(x = lx, y = ly, label = lab), size = PT(7.5), colour = "white",
-             fontface = "bold", inherit.aes = FALSE, fill = "grey5", linewidth = 0,
-             label.padding = unit(1.8, "pt"), hjust = h, vjust = 1)) +
-  # a thin white ring, so a cell still reads as a cell where a footprint edge runs through its
-  # column. That collision is what the footprint edges were nudged off, and the ring solves it
-  # without moving a number: two of those edges are DERIVED (whole cell 20 = 100 pA / (10 pA x 0.5)
-  # and 1e4 = 5 nA / (1 pA x 0.5)), so a caption cannot state them and the drawing show something
-  # else. NUDGE is kept for comparison but is off.
-  geom_point(data = CELL %>% mutate(x = log10(nch), y = log10(noise)), aes(x, y),
-             size = .95, shape = 21, fill = "grey5", colour = "white", stroke = .28) +
-  # THE EDGE OF THE VEIL, drawn last of the map marks so the preparation boxes cannot bury it: the
-  # whole-cell footprint happens to end at exactly N_ch 1e4, so its heavy edge was sitting on top of
-  # this line for the bottom third of the panel. Pure white, no casing, matching the veil stripes it
-  # bounds -- the honesty lines are white CASED IN DARK, so the two never read as the same mark.
-  # The caption hangs off the line itself rather than floating in the middle of the veiled half.
-  annotate("segment", x = XSIM, xend = XSIM, y = YLIM[1], yend = YLIM[2],
-           colour = "white", linewidth = 1.0, linetype = "42") +
-  annotate("segment", x = XSIM, xend = XSIM + .60, y = YLIM[2] - .42, yend = YLIM[2] - .42,
-           colour = "white", linewidth = .9) +
-  # italic grey on white, which is this figure's voice for an editorial note (the key's own notes are
-  # set the same way): not bold-on-solid, which now means a preparation, and not a plain white box,
-  # which now means a parameter. Reversed white type failed anyway -- half the sentence lands on the
-  # mid green and stops being legible.
-  annotate("label", x = XSIM + .55, y = YLIM[2] - .42, hjust = 0, size = PT(7.5), colour = "grey20",
-           fontface = "italic", label = "no simulations beyond here", fill = "white",
-           linewidth = 0, label.padding = unit(1.4, "pt")) +
-  # the inline labels last of all, so nothing crosses them
-  online(PB$i,    2.2e2, "italic(i)",  .20) +
-  online(PB$Nch,  1.5e3, "N[ch]",    -.30) +
-  online(PB$koff, 3.0e1, "k[off]",     .20) +
-  online(PB$kon,  1.2e2, "k[on]",      .20) +
-  onalgo(BL, 6.0e3, "LSE", .30, 8) +
-  onalgo(BH, 45,    "IR",  .34, 8) +
-  KEY +
-  scale_x_continuous(breaks = log10(10^(1:8)),
-                     labels = lapply(1:8, function(e) if (e == 1) "10" else bquote(10^.(e))),
-                     limits = XQ, expand = c(0, 0)) +
-  scale_y_continuous(breaks = log10(10^(-2:7)),
-                     labels = lapply((-2:7) - 1, function(e)
-                       if (e >= -2 && e <= 1) format(10^e, scientific = FALSE, trim = TRUE)
-                       else bquote(10^.(e))),
-                     limits = YLIM, expand = c(0, 0)) +
-  labs(x = expression(N[ch]), y = "dimensionless instrumental noise") +
-  theme_bw(base_size = 9, base_family = "Helvetica") +
-  theme(panel.grid = element_blank(),
-        axis.title = element_text(size = 9.5), axis.text = element_text(size = 8),
-        plot.margin = margin(4, 5, 2, 4))
-
-# the purple override is the figure; the hatch sibling is kept because the choice is still live
-f <- if (HATCH_BAD) "Figure_6_hatch" else "Figure_6"
-ggsave(paste0(f, ".pdf"), gq, width = 7.0, height = 5.9, device = cairo_pdf)
-ggsave(paste0(f, ".png"), gq, width = 7.0, height = 5.9, dpi = 140)
-if (!HATCH_BAD) print(gq)
-}
+ggsave("Figure_5.pdf", g, width = 7.4, height = 4.83)
+cat("Figure_5.pdf: 7.40 x 4.83 in;",
+    "N_ch", paste(NCH, collapse = ","), "x noise", length(NZ), "x three components\n")
 ```

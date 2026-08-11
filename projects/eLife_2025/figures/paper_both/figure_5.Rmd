@@ -1,181 +1,129 @@
 ---
-title: "Figure 5 — where MacroIR stops being calibrated, and why"
+title: "Figure 6B (four members) — distortion versus the memory left in the least-squares residual"
 author: "Luciano Moffatt"
 date: "`r Sys.Date()`"
 output: html_document
 ---
 
 <!--
-WHAT THIS FIGURE IS FOR. Figure 4 shows IR's panels nearly blank, which raises the question the
-abstract already answers in words: the boundary-conditioned filter is calibrated over most of the
-sweep, "departing toward few channels and low noise, where the Gaussian closure is misspecified".
-Figure 6 then uses that departure as the region-0 boundary of the usage map. Nothing between them
-shows the data. This figure is that evidence, and it is the only place in the paper where the
-threshold in `05_discussion.tex` ([THRESHOLD-DJ]) can be read off.
+VARIANT of figure_6B.Rmd, 2026-08-10, at Luciano's request: the same panel with INR and R added to
+ILSE and IR. Nothing about the design changes. The x is still tau_int of the LEAST-SQUARES residual
+for every series, because that is what a reader has before choosing a method; see the note in
+figure_6B.Rmd for why that is the right independent variable and for why tau_int is not
+self-referential.
 
-WHY IT CANNOT BE PART OF FIGURE 4. On Figure 4's shared scale, clipped at 10^+-3, a factor 1.46 is
-a faint tint. The departure lives between 0.6 and 1.6 and needs an axis, not a colour.
+WHY THESE FOUR. They are the 2x2 of the two axes: interval averaging (ILSE, INR have it in their
+name; R does not) crossed with recursion (R and IR recurse, ILSE and INR do not). So the panel reads
+as a factorial and a reader can see which of the two axes moves the distortion and which does not.
 
-THE LAYOUT. Each block is a design-plane grid in the same orientation as Figures 4 and 6: N_ch
-increases to the right, instrumental noise increases upward, and inside every cell the horizontal
-axis is the sampling interval. The three blocks are the distortion and its two causes, so the
-figure says where, how much, with what confidence, and why, on one page.
+Labels follow figure_4.Rmd:329: nonlinearsqr_g = LSE, nonlinearsqr = ILSE, macro_NR = NR,
+macro_INR = INR, macro_R = R, macro_MR = MR, macro_VR = VR, macro_IR = IR.
 
-SAMPLING. N_ch runs in ~0.65-decade steps against noise in ~0.3-decade steps. That is not
-arbitrary: the region-0 boundary of Figure 6 has a fitted slope of -0.56 in
-dlog10(noise)/dlog10(N_ch), so a decade of channels trades against ~0.56 decades of noise and the
-noise axis needs about twice the resolution to sample the field evenly.
+MEASURED 2026-08-10, and not written up anywhere else yet. The chunk below rebuilds all of it.
 
-ANCHOR AND FAMILY, and why this differs from figures/in_progress/figure_5_distortion_lines_bynch.Rmd,
-which is where this figure started. That draft reads data/433ed13, which holds no `_G` files, so it
-necessarily used `Probit_statistics_Likelihood_Information_Distortion` (the numerical Fisher) at
-theta_sim. This one uses the SAME quantity and anchor as Figure 4: the Gaussian information
-distortion at the pooled optimum, via figure_4_common.R's `stat`. The two agree in shape and
-magnitude (k_off ~1.4 vs 1.46 at N_ch 10, lowest noise), so this is a consistency fix and not a
-change of result. See 03_diagnostics.tex: the Gaussian Fisher is the anchor by design.
+  THE DISTORTION HAS A THRESHOLD IN tau_int, BUT ONLY AT A FIXED SAMPLING RATE. Taking size >= 1.15
+  as the criterion, the clean and the distorted cells separate without overlap at every sampling
+  interval for both gating likelihoods that do not recurse (NR 7 of 7 intervals, INR 7 of 7). The
+  two least-squares arms are messier, ILSE 5 of 7 (0.05 and 1 overlap) and LSE 4 of 7 (0.02, 0.5
+  and 1). That difference is expected rather than awkward: 04_results.tex:283-289 already records
+  that the least-squares ratio also carries the break of its constant-residual-variance premise,
+  which is not an information-matrix-equality failure of the same kind.
+
+  POOLED OVER INTERVALS NO THRESHOLD EXISTS, which is the same fact as item (2) of figure_6B.Rmd.
+  At criterion 1.15 the first distorted cell is at tau_int 1.074 while clean cells run to 1.861; at
+  1.5 the pair is 1.205 and 1.861; at 2.0 it is 1.205 and 3.002. The reader needs two numbers.
+
+  IR NEVER CROSSES IT IN SIZE, AND DOES CROSS IT IN SHAPE. Its size stays inside 0.982 to 1.077
+  over all 294 source cells at both anchors, so zero cells reach 1.15 there. Its shape reaches
+  1.419, and 28 of 294 cells sit at or above 1.15, every one of them at N_ch = 10 and the worst at
+  noise 0.05, against an estimation floor of 1.043 +- 0.010. That is the Gaussian moment closure on
+  the occupancy going at few channels, which 00_abstract.tex already states and which item (4) of
+  figure_6B.Rmd records as "the only departures are at N_ch = 10". WRITING THIS AS ONE NUMBER IS
+  THE MISTAKE THIS FIGURE EXISTS TO PREVENT: a scalar summary cannot express a member that is right
+  in the typical direction and wrong across directions, which is the same point item (5) makes
+  about least squares at tau_int 1.80.
+  Fraction of cells at or above 1.15 in SIZE, whole ladder:
+  LSE 0.495, ILSE 0.524, NR 0.596, INR 0.600, R 0.148, MR 0.386, VR 0.333, IR 0.000.
+  Medians and maxima of the size: ILSE 1.37 / 57.2, INR 1.46 / 33.1, NR 1.65 / 2217,
+  R 1.01 / 1.26, IR 1.00 / 1.08.
+
+  [OPEN] R sits at a median of 1.01 here, next to IR's 1.00, while decisions.md attributes 1.46 to
+  it. Different anchor or different parameter is the likely explanation, but it has not been
+  checked, and until it is do not write that IR is the only member whose report can be believed.
 -->
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+suppressMessages({ library(tidyverse) })
 ```
 
-```{r common, include=FALSE}
-# figure_4_common.R filters N_ch to the four decades Figure 4 maps. This figure needs the fine
-# ladder that exists on disk (10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000), so NCHS is
-# widened in memory. The file on disk is NOT modified: Figure 4's own byNch height is computed as
-# a sum over NCHS, so widening it there would silently change that figure.
-src <- readLines("figure_4_common.R")
-i <- grep("^NCHS *<-", src)
-stopifnot(length(i) == 1)
-src[i] <- "NCHS <- c(5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000)"
-eval(parse(text = src), envir = globalenv())
+```{r data}
+SRC <- "../figure_4_source_data"
+rd  <- function(f) read.csv(file.path(SRC, f), skip = 1, stringsAsFactors = FALSE)
+
+LAB  <- c(nonlinearsqr = "ILSE", macro_INR = "INR", macro_R = "R", macro_IR = "IR")
+KEEP <- names(LAB)
+
+tau <- rd("figure_4_source_data_cell_scalars.csv") %>%
+  filter(param == "lag", anchor == "pool", algo == "nonlinearsqr") %>%
+  transmute(noise, Num_ch, interval_in_tau, tau_int = v)
+
+spec <- rd("figure_4_source_data_spectrum.csv") %>%
+  filter(anchor == "pool", algo %in% KEEP) %>%
+  select(algo, param, noise, Num_ch, interval_in_tau, m) %>%
+  pivot_wider(names_from = param, values_from = m)
+
+dat <- spec %>%
+  inner_join(tau, by = c("noise", "Num_ch", "interval_in_tau")) %>%
+  filter(is.finite(mag), is.finite(aniso), mag > 0, aniso > 0) %>%
+  mutate(lo = mag / aniso, hi = mag * aniso,
+         member = factor(unname(LAB[algo]), levels = unname(LAB)),
+         d = factor(sprintf("%g", interval_in_tau),
+                    levels = sprintf("%g", sort(unique(interval_in_tau)))))
+
+cat(sprintf("figure_6B_four: %d marks over %d cells; per member: %s\n",
+            nrow(dat), n_distinct(dat[c("noise","Num_ch","interval_in_tau")]),
+            paste(sprintf("%s=%d", levels(dat$member), as.integer(table(dat$member))),
+                  collapse = " ")))
 ```
 
-```{r constants}
-ERR_MAX <- 0.2          # drop points whose bootstrap half-width exceeds this: unreliable, not news
-# ...but it must never drop anything silently. On the freeze it fires on zero points (median
-# half-width 0.03 across the grid); it is kept as a guard for re-runs on noisier data, and the
-# count is printed so a future reader can see whether it started biting.
-PL   <- c(off = "k[off]", Num_ch_mean = "N[ch]")
-# Okabe-Ito. The two parameters and the reference line are mutually distinguishable for every kind
-# of colour blindness, and NUL is the green figure_3.Rmd already uses for the expected value.
-PCOL <- c("k[off]" = "#0072B2", "N[ch]" = "#E69F00")
-NUL  <- "#009E73"
-NCH  <- c(10, 50, 200, 1000)                      # ~0.65-decade steps; see the header
-NZ   <- c(0.005, 0.01, 0.02, 0.05, 0.1, 1)        # dimensionless noise = swept label / 10
-CMP  <- c(total = "A   total", sample = "B   per-sample", corr = "C   correlation")
-YW   <- 0.32            # width the y axis and its title take, in column units (measured)
+```{r render, fig.width = 7.0, fig.height = 3.6}
+g <- ggplot(dat, aes(tau_int, mag, colour = d)) +
+  geom_hline(yintercept = 1, linewidth = 0.35, colour = "grey45") +
+  geom_linerange(aes(ymin = lo, ymax = hi), linewidth = 0.45, alpha = 0.75) +
+  geom_point(size = 0.85) +
+  facet_wrap(~ member, nrow = 1) +
+  scale_x_log10(breaks = c(1, 1.2, 1.5, 2, 3, 5, 10, 20),
+                labels = c("1", "1.2", "1.5", "2", "3", "5", "10", "20")) +
+  scale_y_log10(breaks = c(0.3, 0.5, 1, 2, 5, 10, 30, 100, 200),
+                labels = c("0.3", "0.5", "1", "2", "5", "10", "30", "100", "200")) +
+  scale_colour_viridis_d(name = expression(Delta*t %.% k[off]), option = "D", end = 0.92) +
+  labs(x = expression("memory left in the least-squares residual,  "*tau[int]),
+       y = "distortion of the reported information\n(point = size, bar = across directions)") +
+  theme_bw(base_size = 8, base_family = "Helvetica") +
+  theme(panel.grid.minor = element_blank(),
+        legend.position = "right",
+        legend.key.height = unit(9, "pt"),
+        strip.background = element_rect(fill = "grey92", colour = NA),
+        strip.text = element_text(face = "bold", size = 8))
 
-# ONE y range for every block. Each component is split into two sub-blocks and each block is its
-# own ggplot, so without explicit limits every one computes its own range from its own data: the
-# N_ch = 10 column, which has the widest data, got a stretched axis and its reference line at 1
-# sat at a different height from its neighbours'. The columns are meant to be compared, so the
-# range is computed once over everything that will be drawn and imposed on all of them.
-.pl <- stat %>%
-  dplyr::filter(algo == "macro_IR", param %in% names(PL), Num_ch %in% NCH,
-                comp %in% names(CMP)) %>%
-  dplyr::mutate(zz = as.numeric(noise) / 10) %>%
-  dplyr::filter(zz %in% NZ, is.finite(lo), is.finite(hi), (hi - lo) / 2 <= ERR_MAX)
-YLIM <- c(min(.pl$lo, na.rm = TRUE) / 1.03, max(.pl$hi, na.rm = TRUE) * 1.03)
-.all <- stat %>%
-  dplyr::filter(algo == "macro_IR", param %in% names(PL), Num_ch %in% NCH,
-                comp %in% names(CMP)) %>%
-  dplyr::mutate(zz = as.numeric(noise) / 10) %>% dplyr::filter(zz %in% NZ)
-cat(sprintf("shared y range: %.3f to %.3f | ERR_MAX dropped %d of %d points\n",
-            YLIM[1], YLIM[2], nrow(.all) - nrow(.pl), nrow(.all)))
-```
-
-```{r block-fn}
-# One block of the grid. `nch` is the subset of channel counts it draws: each component is split
-# into its first column and the rest, purely so the x tick labels appear once per component
-# instead of four times. `first` carries the y axis, `last` the noise strip.
-blk <- function(cmp, nch, first, last, xlab) {
-  d <- stat %>%
-    dplyr::filter(algo == "macro_IR", param %in% names(PL), Num_ch %in% nch, comp == cmp) %>%
-    dplyr::mutate(zz = as.numeric(noise) / 10) %>%
-    dplyr::filter(zz %in% NZ, is.finite(lo), is.finite(hi), (hi - lo) / 2 <= ERR_MAX)
-  nl <- sort(unique(d$Num_ch)); zl <- sort(unique(d$zz), decreasing = TRUE)
-  # every first-row strip carries two lines so the three blocks' header rows align; only the
-  # leftmost block spells the variable name out
-  nlab <- sprintf('atop("%s", "%s")', ifelse(first & seq_along(nl) == 1, "N_ch", ""), nl)
-  zlab <- format(zl, trim = TRUE, scientific = FALSE, drop0trailing = TRUE)
-  zlab <- sprintf('atop("%s", "%s")', ifelse(last & seq_along(zl) == 1, "noise", ""), zlab)
-  d <- d %>% dplyr::mutate(pf   = factor(PL[param], levels = PL),
-                           nchf = factor(Num_ch, levels = nl, labels = nlab),
-                           nzf  = factor(zz, levels = zl, labels = zlab))
-  # `m` (the bootstrap mean), NOT `Dconf`: the latter is the conservative CI edge collapsed
-  # to 1 wherever the interval brackets it (figure_4_common.R:200), which is right for colouring a
-  # map and wrong for a line, where it would ride the edge of the band drawn beside it.
-  ggplot(d, aes(interval_in_tau, m, colour = pf, group = pf)) +
-    geom_hline(yintercept = 1, colour = NUL, linewidth = .35) +
-    geom_ribbon(aes(ymin = lo, ymax = hi, fill = pf), colour = NA, alpha = .28) +
-    geom_line(linewidth = .45) +
-    facet_grid(nzf ~ nchf, labeller = label_parsed) +
-    scale_x_log10(breaks = c(.01, 1), labels = if (xlab) c("0.01", "1") else c("", "")) +
-    scale_y_log10(breaks = c(.6, 1, 1.5), limits = YLIM) +
-    scale_colour_manual(values = PCOL, labels = parse(text = PL), name = NULL) +
-    scale_fill_manual(values = PCOL, guide = "none") +
-    labs(x = NULL, y = if (first) "distortion factor" else NULL) +
-    theme_bw(base_size = 8, base_family = "Helvetica") +
-    theme(panel.grid.minor = element_blank(), panel.spacing = unit(.04, "cm"),
-          legend.position = "none",
-          axis.text = element_text(size = 7),
-          axis.text.y  = if (first) element_text(size = 7) else element_blank(),
-          axis.ticks.y = if (first) element_line() else element_blank(),
-          axis.title.y = if (first) element_text(size = 8) else element_blank(),
-          strip.text.x = element_text(size = 7),
-          strip.text.y = if (last) element_text(size = 7, angle = 0) else element_blank(),
-          # the two sub-blocks of a component are one grid, so the seam between them is closed
-          plot.margin  = if (xlab) margin(2, 0, 2, 1) else margin(2, 1, 2, 0))
-}
-
-txt <- function(s, sz = 8, bold = FALSE, left = FALSE) ggplot() +
-  theme_void(base_family = "Helvetica") +
-  annotate("text", x = if (left) 0.02 else .5, y = .5, label = s, size = sz * 0.3527,
-           hjust = if (left) 0 else .5, fontface = if (bold) "bold" else "plain") +
-  coord_cartesian(xlim = c(0, 1), ylim = c(0, 1), clip = "off")
-```
-
-```{r assemble}
-ks <- names(CMP)
-cs <- lapply(seq_along(ks), function(j) {
-  first <- j == 1; last <- j == length(ks)
-  list(blk(ks[j], NCH[1],  first = first, last = FALSE, xlab = TRUE),
-       blk(ks[j], NCH[-1], first = FALSE, last = last,  xlab = FALSE))
-})
-plots <- list(); ws <- numeric(0); cw <- numeric(0)
-for (j in seq_along(cs)) {
-  w1 <- 1 + if (j == 1) YW else 0
-  if (j > 1) { plots <- c(plots, list(plot_spacer())); ws <- c(ws, .18) }
-  plots <- c(plots, list(cs[[j]][[1]], cs[[j]][[2]]))
-  ws <- c(ws, w1, length(NCH) - 1)
-  cw <- c(cw, w1 + length(NCH) - 1)
-}
-row <- wrap_plots(plots, nrow = 1, widths = ws)
-
-tt <- list(); tw <- numeric(0)
-for (j in seq_along(cs)) {
-  if (j > 1) { tt <- c(tt, list(plot_spacer())); tw <- c(tw, .18) }
-  tt <- c(tt, list(txt(unname(CMP[j]), bold = TRUE, left = TRUE))); tw <- c(tw, cw[j])
-}
-ttl <- wrap_plots(tt, nrow = 1, widths = tw)
-
-# colour key at the foot, where Figure 4 puts its colour bars
-key <- ggplot(data.frame(x = 1:2, y = 1, p = factor(names(PCOL), levels = names(PCOL))),
-              aes(x, y, colour = p)) +
-  geom_line(aes(group = p), linewidth = .6) +
-  scale_colour_manual(values = PCOL, labels = parse(text = PL), name = NULL) +
-  theme_void(base_family = "Helvetica") +
-  theme(legend.position = "bottom", legend.text = element_text(size = 7),
-        legend.key.width = unit(16, "pt"), legend.box.spacing = unit(0, "pt"))
-
-g <- ttl / row / txt("dimensionless sampling interval") / key +
-  plot_layout(heights = c(0.14, 4.4, 0.13, 0.16))
-```
-
-```{r render, fig.width = 7.4, fig.height = 4.83}
+ggsave("Figure_6B_four.pdf", g, width = 7.0, height = 3.6, device = cairo_pdf)
 g
-ggsave("Figure_5.pdf", g, width = 7.4, height = 4.83)
-cat("Figure_5.pdf: 7.40 x 4.83 in;",
-    "N_ch", paste(NCH, collapse = ","), "x noise", length(NZ), "x three components\n")
+```
+
+```{r numbers}
+dat %>% group_by(member) %>%
+  summarise(n = n(),
+            size_med = median(mag), size_min = min(mag), size_max = max(mag),
+            shape_med = median(aniso), .groups = "drop") %>%
+  as.data.frame() %>% print(digits = 3)
+
+cat("\nthreshold structure at criterion size >= 1.15, per member and sampling interval:\n")
+dat %>% group_by(member, d) %>%
+  summarise(tau_max_clean = suppressWarnings(max(tau_int[mag <  1.15])),
+            tau_min_dist  = suppressWarnings(min(tau_int[mag >= 1.15])),
+            .groups = "drop") %>%
+  mutate(separated = ifelse(is.finite(tau_max_clean) & is.finite(tau_min_dist),
+                            tau_max_clean < tau_min_dist, NA)) %>%
+  as.data.frame() %>% print(digits = 3)
 ```
