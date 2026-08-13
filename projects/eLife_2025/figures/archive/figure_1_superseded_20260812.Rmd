@@ -1,0 +1,57 @@
+---
+title: "Figure 1 (merged paper) — one filter step, the cost ladder LSE → NR → R → IR"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+Figure 1 for the merged paper. **Four columns**, the ladder from the incumbent least-squares fit to
+the fully interval-conditioned filter: **LSE → NR → R → IR**. Each rung adds one thing — LSE fits the
+mean with a single constant error variance (σ̂²); NR makes that variance per-interval, the gating
+variance (open loop); R adds the recursive update; IR adds the interval conditioning. LSE and NR are non-recursive, so their
+"Bayes & posterior" row reads "no update (open loop)". The recursive-mechanism ladder (R, MR, VR, IR)
+moves to a supplement; `figure_1_all.Rmd` still renders every algorithm for exploration.
+
+Panels live in `figure_1_panels.R` (shared). **LSE is drawn in NR's grammar (point mean + errorbar),
+with a single constant least-squares variance** σ̂² = SSE/n, so its errorbars are all the same width,
+against NR/R's width that varies with the per-interval gating variance. That constant, marginalised
+noise scale is what makes LSE's log-likelihood well-defined, and its flatness is the classical
+method's homoscedastic assumption made visible.
+
+**LSE data:** `../data/figure_1_likelihood_diagnostic_LSE.csv`, produced by the LSE block now in
+`ops/local/figure_1.macroir` (family = 2; its C++ diagnostic arm is routed, likelihood.cpp:913). Until
+that script is re-run, the roster below auto-drops LSE and renders NR → R → IR; the LSE column joins
+by itself once the dump exists. (Re-running figure_1.macroir redraws the whole recording — new random
+ensemble, seed = 0 — so every panel changes trace-by-trace; figure 1 is illustrative, not quantitative.)
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+```{r panels, include=FALSE}
+source("figure_1_panels.R")
+```
+
+```{r roster}
+# target ladder; a column auto-drops if its per-interval diagnostic dump is not on disk yet (LSE)
+# ROSTER OF SIX, 2026-08-05. The instantaneous/interval pairing at each level of the stochasticity
+# ladder: LSE with ILSE (no gating stochasticity), NR with INR (per-sample variance, open loop),
+# R with IR (recursion). MR and VR are the partial interval corrections, off this 3x2 grid, and stay
+# in Figures 2 and 3 where the claim that the ladder stops being an ordering needs them.
+COLS_TARGET <- c("LSE", "ILSE", "NR", "INR", "R", "IR")
+# Data-file token per column. The two least-squares tokens are deliberately crossed: the file
+# written as ..._LSE is averaging_approximation = 1 and is therefore ILSE, and the un-averaged arm
+# added on 2026-08-05 is ..._LSE_av0 and is LSE. The files keep their names so that nothing already
+# reading them is silently relabelled; the crossing is resolved here and only here.
+.tok <- c(LSE = "LSE_av0", ILSE = "LSE", NR = "NR", INR = "INR", R = "R", IR = "IR")
+COLS <- COLS_TARGET[file.exists(paste0("../data/figure_1_likelihood_diagnostic_", .tok[COLS_TARGET], ".csv"))]
+message("figure_1 roster present: ", paste(COLS, collapse = ", "))
+```
+
+```{r figures}
+# 5.6 in wide (2026-08-05): this one is a figure SUPPLEMENT, placed in the 5.65 in text column,
+# so 7.0 in art was arriving scaled by 0.81 and its column headers landed at a measured 5.62 pt.
+# Height scaled with the width so the panels keep their shape.
+build_figure(0:4,     "Figure_S1.pdf", COLS, hgt = 6.0, wdt = 5.6)   # samples 0-4 (0 to 10 ms of the 12 ms record)
+build_figure(c(3, 4), "Figure_1.pdf",  COLS, hgt = 6.05)   # the 6 to 10 ms zoom; 6.05 in so the legend fits on the page
+```

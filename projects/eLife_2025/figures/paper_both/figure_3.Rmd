@@ -317,6 +317,94 @@ print(as.data.frame(tab), digits = 3, row.names = FALSE)
 # Row B is parameter-free, so it gets its own line.
 cat("\nB residual variance, fraction of steps whose interval excludes 1:\n")
 print(as.data.frame(RESID[, .(f = mean(lo > 1 | hi < 1)), by = key]), digits = 3, row.names = FALSE)
+
+# THE SUM OF THE SCORE, AND THE FACTORISATION OF THE ACCUMULATED RATIO. Added 2026-08-12. Two
+# quantities the figure implies and did not print:
+#
+#  (1) the accumulated score bias. Row D is PER INTERVAL, and what determines the estimator is the
+#      sum, in which per-interval displacements of opposite sign can cancel. TWO THINGS HAVE TO BE
+#      DONE IN ORDER AND THE SECOND IS NOT A DIVISION BY sqrt(F_aa): the first-order bias is the
+#      VECTOR equation b = F^-1 g with g = E[sum_t s] and F the WHOLE information matrix, and the
+#      displacement of one parameter in units of its marginal standard error is
+#      b_a / sqrt((F^-1)_aa). Dividing the accumulated score of a parameter by the square root of
+#      its own diagonal instead treats every other parameter as known, and at this cell that is not
+#      a small difference: on N_ch it changes -0.34 into +0.82 for R, sign included, because the
+#      channel number and the unitary current are strongly correlated. The diagonal reading is kept
+#      in the printout as z_diag only to show how far off it is. F is rebuilt per recording from
+#      the digest's dm, dv and y_var, F = sum_t (dm dm'/v + 0.5 dv dv'/v^2), which is the same
+#      Gaussian-Fisher family used everywhere else in the paper; the bias in log10 units is printed
+#      too, since that is what Figure 4 measures on fitted estimates and this predicts.
+#
+#  (2) the accumulated ratio. This one IS a per-direction statement and needs no inverse: it is a
+#      ratio of two scalars in one direction, and exactly, at every T,
+#          Var(sum s_t)/sum F_t  =  [sum Var(s_t)/sum F_t] * [Var(sum s_t)/sum Var(s_t)],
+#      the first factor being row E weighted by the information and the second the correlation that
+#      row G is about. Printed together because the reading is WHICH of the two a member fails, and
+#      the answer is not the one the accumulated ratio alone suggests.
+#
+# Own seed, so this block neither moves nor is moved by the stats chunk's draws.
+set.seed(20260812)
+
+# (2) the factorisation, per drawn parameter, on the objects the rest of the chunk already uses.
+accum_one <- function(d) {
+  Sm <- wide(d, "s"); Im <- wide(d, "I")
+  Fb <- colMeans(Im); n <- nrow(Sm)
+  i  <- seq_len(max(which(is.finite(Fb) & Fb > FMIN)))    # up to the last informative step, as dFa
+  Ss <- rowSums(Sm[, i, drop = FALSE]); Fs <- sum(Fb[i])
+  Vs <- sum(colVar(Sm[, i, drop = FALSE]))
+  rep <- vapply(seq_len(B), function(b) {
+    j  <- sample.int(n, n, TRUE)
+    sb <- rowSums(Sm[j, i, drop = FALSE]); vb <- sum(colVar(Sm[j, i, drop = FALSE]))
+    c(vb / sum(colMeans(Im[j, i, drop = FALSE])), var(sb) / vb)
+  }, numeric(2))
+  ci <- function(r, p) quantile(rep[r, ], p, na.rm = TRUE)
+  data.table(Ebar = Vs / Fs,      Ebar_lo = ci(1, .025), Ebar_hi = ci(1, .975),
+             infl = var(Ss) / Vs, infl_lo = ci(2, .025), infl_hi = ci(2, .975),
+             accum = var(Ss) / Fs)
+}
+KEYS <- vapply(STEPS, `[[`, "", "key")
+ACC <- PAR[, accum_one(.SD), by = .(key, param)][order(match(key, KEYS), param)]
+ACC[, `:=`(E_fails = Ebar_lo > 1 | Ebar_hi < 1, i_fails = infl_lo > 1 | infl_hi < 1)]
+cat("\nJ_T/F_T = Ebar * inflation, per drawn parameter:\n")
+print(as.data.frame(ACC), digits = 3, row.names = FALSE)
+
+# (1) the accumulated bias, over ALL FOUR identified parameters at once, since it needs the whole
+# matrix. Read straight from the digests: PAR keeps only s and I, and this needs dm, dv and y_var.
+PIDS <- c(k_on = 0L, k_off = 1L, i = 2L, N_ch = 5L)
+bias_one <- function(a) {
+  d <- as.data.table(dg[[a]]$param)[param_index %in% PIDS]
+  if (a %in% c("LSE", "ILSE")) d <- d[param_index != 5L]   # degenerate with i, excluded
+  d <- merge(d, as.data.table(dg[[a]]$scalar)[, .(simulation_index, sample_index, y_var)],
+             by = c("simulation_index", "sample_index"))[is.finite(y_var) & y_var > 0]
+  ids <- sort(unique(d$param_index)); np <- length(ids)
+  W <- dcast(d, simulation_index + sample_index + y_var ~ param_index, value.var = c("s","dm","dv"))
+  sims <- sort(unique(W$simulation_index)); n <- length(sims); g0 <- match(W$simulation_index, sims)
+  DM <- as.matrix(W[, paste0("dm_", ids), with = FALSE])
+  DV <- as.matrix(W[, paste0("dv_", ids), with = FALSE])
+  gi <- rowsum(as.matrix(W[, paste0("s_", ids), with = FALSE]), g0)   # score summed per recording
+  Fi <- array(0, c(n, np, np))                                        # information per recording
+  for (p in seq_len(np)) for (q in seq_len(np))
+    Fi[, p, q] <- rowsum(DM[, p] * DM[, q] / W$y_var +
+                         0.5 * DV[, p] * DV[, q] / W$y_var^2, g0)
+  stat <- function(j) {
+    Fm <- apply(Fi[j, , , drop = FALSE], c(2, 3), mean); Fv <- solve(Fm)
+    bv <- as.vector(Fv %*% colMeans(gi[j, , drop = FALSE]))
+    list(z = bv / sqrt(diag(Fv)), b = bv,
+         zd = colMeans(gi[j, , drop = FALSE]) / sqrt(diag(Fm)))
+  }
+  o <- stat(seq_len(n))
+  rp <- vapply(seq_len(B), function(b) stat(sample.int(n, n, TRUE))$z, numeric(np))
+  # `key` cannot be passed to data.table(), which reads it as its own argument, so it is set after.
+  out <- data.table(param = names(PIDS)[match(ids, PIDS)], z = o$z,
+                    lo = apply(rp, 1, quantile, .025), hi = apply(rp, 1, quantile, .975),
+                    bias_log10 = o$b, z_diag = o$zd)
+  out[, key := a]; setcolorder(out, c("key", "param"))[]
+}
+BIAS <- rbindlist(lapply(KEYS, bias_one))
+BIAS[, covers0 := lo < 0 & hi > 0]
+cat("\nAccumulated score bias, b = F^-1 E[sum s], in marginal standard errors (z);",
+    "z_diag is the diagonal-only reading, kept to show the gap:\n")
+print(as.data.frame(BIAS), digits = 3, row.names = FALSE)
 if (HASREF) for (i in seq_along(STEPS)) cat(sprintf(
   "%-4s - %-3s: %+7.2f nats total logL | accumulated ratio %.3f vs %.3f\n",
   STEPS[[i]]$lab, STEPS[[i]]$rlab,
@@ -525,10 +613,18 @@ RSTRIP_YMAX <- c(A = .97, B = .97, C = .97, D = .97, E = .97, F = .97, G = .97)
 # "per-step" said twice more, so the middle block is named by its own titles and needs no fourth
 # line of strip text (a third rotated line would widen the fixed column in every row). E and F
 # already carry "per-interval" and "accumulated", which is the contrast the block boundary marks.
+# E AND F SHORTENED 2026-08-12, and the reason is arithmetic rather than taste. The strip text is
+# rotated, so its LENGTH is measured against the ROW HEIGHT. With HS giving E 0.60 of 4.85 units in
+# a 5.728 in grid, E's row is 0.709 in = 51 pt, and "information ratio" at 6.5 pt is 17 characters,
+# about 53 pt. It did not fit and spilled into the neighbouring rows, which is what showed as E and
+# F running into each other. Dropping the word takes the longest line to 12 characters, about 37 pt
+# in a 51 pt row. What the comment below requires is preserved: E and F still differ by ONE word,
+# which is the whole point of that boundary, and the quantity itself is named by the y axis
+# (Var(s_t)/F_t against Var(Sigma s_t)/Sigma F_t) and by the legend.
 RTTL <- c(A = "predicted &\nobserved current", B = "residual\nvariance",
           C = "per-step\ninformation", D = "per-step\nscore bias",
-          E = "per-interval\ninformation ratio",
-          F = "accumulated\ninformation ratio", G = "autocorrelation")
+          E = "per-interval\nratio",
+          F = "accumulated\nratio", G = "autocorrelation")
 
 # --- A: the example recording, the same one in every column. The member's predictive band and
 # mean, the reference's mean as a line but NOT its band: two overlapping +-1 sd ribbons in a 1.78 in
@@ -628,7 +724,10 @@ pF <- lapply(STEPS, function(s) {
     reflayer(r, aes(t, rC, colour = param)) +
     geom_ribbon(aes(ymin = rC_lo, ymax = rC_hi), alpha = .22, colour = NA, show.legend = FALSE) +
     geom_line(linewidth = .4, show.legend = FALSE) + base() + pscale
-  deco(g, s$lab, tr, pick(yF, s), expression(Var(sum(s[t])) / sum(F[t])),
+  # Sigma AS A SYMBOL, NOT AS sum(). Changed 2026-08-12: plotmath's sum() sets a DISPLAY-size
+  # operator, so the summation signs came out taller than the rest of the label and, rotated into
+  # the y axis, made this the widest label of the seven. `Sigma` is the same character at text size.
+  deco(g, s$lab, tr, pick(yF, s), expression(Var(Sigma * s[t]) / Sigma * F[t]),
        bottom = TRUE, xlab = "time (ms)", logr = TRUE, own = HASREF, split = TRUE)
 })
 # --- G: score autocorrelation over lag, bottom of the lag block
@@ -687,7 +786,18 @@ keyplot <- local({
 # points over lag. Head at 0.15, deliberately a little less than the two lines of text need, so the
 # empty panel under the titles collapses and they sit flush against row A.
 #        head   A     B     C     D     E     F     G
-HS <- c(0.15,  0.85, 0.55, 0.70, 0.60, 0.60, 0.70, 0.70)
+# REDISTRIBUTED 2026-08-12. The canvas is fixed at 5.90 in, so these are shares and not lengths:
+# raising the total from 4.85 to 4.90 shrinks every unit by 1% and the whole effect is in who gets
+# more of it. A 0.85 -> 0.75, D and E 0.60 -> 0.65, F 0.70 -> 0.75. Measured, at 5.728 in of grid:
+#   A 1.004 -> 0.877 in (72 -> 63 pt)      D 0.709 -> 0.760 in (51 -> 55 pt)
+#   E 0.709 -> 0.760 in (51 -> 55 pt)      F 0.827 -> 0.877 in (60 -> 63 pt)
+#   B, C and G each lose about 1 pt.
+# WHY THOSE ROWS. The y-axis labels are rotated, so their LENGTH is measured against the ROW HEIGHT,
+# and D, E and F carry the three longest of the seven, the longest being F's Var(Sigma s_t)/Sigma
+# F_t. A can afford to pay: it is the tallest row by far and its y range already carries 45% of
+# added headroom for the logL annotation (yTr below), which is set as a fraction of the data range
+# and so does not move when the row gets shorter. A stays the tallest row, tied with F at 0.877 in.
+HS <- c(0.15,  0.75, 0.55, 0.70, 0.65, 0.65, 0.75, 0.70)
 ROWS <- list(A = pA, B = pB, C = pC, D = pD, E = pE, F = pF, G = pG)
 nc   <- length(STEPS) + 2
 # The rotated row-title strip stays, at six columns too (Luciano, 2026-07-31): matching the parent
@@ -720,7 +830,11 @@ g <- grid / keyplot + plot_layout(heights = c(1, KEYH))
 # the last 109 words of the legend and both supplement lines off the bottom. The legend is also being
 # cut by about a hundred words in the same pass; the two together close the deficit. Point sizes do
 # not scale with the device, so this shortens the panels and leaves the text at its set size.
-ggsave(OUT, g, width = 7.0, height = 5.90)
-cat(sprintf("wrote %s: 7 rows, %d members, parameters %s, 7.0 x 7.5 in\n",
-            OUT, length(STEPS), paste(names(PSEL), collapse = " + ")))
+FIGH <- 5.90
+ggsave(OUT, g, width = 7.0, height = FIGH)
+# The message used to say 7.5 in, hardcoded, and stayed that way when the height went to 5.90 on
+# 2026-08-05. It cost an afternoon in 2026-08-12's caption-fitting pass, where the page budget was
+# computed from the message instead of from the artefact. It now prints the variable.
+cat(sprintf("wrote %s: 7 rows, %d members, parameters %s, 7.0 x %.2f in\n",
+            OUT, length(STEPS), paste(names(PSEL), collapse = " + "), FIGH))
 ```

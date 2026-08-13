@@ -18,8 +18,8 @@ The two survivals are not of the same kind, and the decomposition F_t = (∂μ/�
 
 **The channel-number band carries no least-squares panel**, by exclusion and not by absence of data. Least squares does not model the gating fluctuations, which are the only thing separating the channel count from the unitary current, so with them unmodelled the two enter only through their product: F_t over the pulse is 1076.55 for both, to every digit. The same exclusion is applied in Figure 3 and, through EXCLUDE_ROWS, in the Figure 4 family.
 
-<!-- Source: projects/eLife_2025/figures/paper_both/figure_3_supplement_2.Rmd, revived from
-     figures/archive/figure_3_supplements_superseded_20260731/figure_3_supplement_2.Rmd on its own
+<!-- Source: projects/eLife_2025/figures/paper_both/figure_3_S3.Rmd, revived from
+     figures/archive/figure_3_supplements_superseded_20260731/figure_3_S3.Rmd on its own
      layout (parameter = band, algorithm = column, at most two series per panel) and widened from
      four columns to seven on 2026-07-31, once macro_INR had run. 7.0 x 11 in.
      Data: figures/data/digest/figure_3_digest_{LSE,NR,INR,R,MR,VR,IR}.rds, engine 0ffbda7, seed

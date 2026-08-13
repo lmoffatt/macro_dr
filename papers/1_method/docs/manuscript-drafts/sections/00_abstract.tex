@@ -1,5 +1,5 @@
 \begin{abstract}
-An ion channel mechanism can leave a signature no model is needed to see: the flip state of P2X$_2$ showed up as a delay before the macroscopic current rose. The asymmetric activation reported from the same recordings two decades later has none: it rests on ratios of evidence, and dropping the recursion from the likelihood put a symmetric mechanism first. Where likelihood approximations break, and by how much, was never measured. The diagnostics are then classical: for a correctly specified likelihood the score, the log-likelihood's gradient, averages to zero at the true parameters and its covariance equals the Fisher information reported. We tested eight likelihoods, from standard least squares on the mean current, which leaves the correlated gating fluctuation unmodelled, to a filter conditioning each interval average on both ends. The sweep runs over channel number, noise and interval in a two-state scheme, ten thousand exact simulations of the process they approximate at every point measured. Those that leave the correlation unmodelled misreport their information by an order of magnitude wherever the residual retains enough memory, and no rescaling repairs it, because the distortion has directions in parameter space. The filter conditioning on both ends is calibrated over almost the whole plane, with departures growing toward few channels and low noise. No region of the measured plane gives both information about the unitary current and a trustworthy least-squares interval, the two boundaries one to three decades of noise apart.
+Some ion channel mechanisms leave a mark in the record; as inferences get finer, the claims leave none. The flip state of P2X$_2$ showed up as a delay before the macroscopic current rose, with no model needed to see it. The asymmetric activation reported from the same recordings two decades later rests on ratios of evidence, and dropping the recursion from the likelihood put the top-ranked non-conformational alternative first. Where likelihood approximations break, and by how much, was never measured. The diagnostics are then classical: for a correctly specified likelihood the score, the log-likelihood's gradient, averages to zero at the true parameters and its covariance equals the Fisher information reported. We tested eight likelihoods, from standard least squares on the mean current, which leaves the correlated gating fluctuation unmodelled, to a filter conditioning each interval average on both ends. The sweep runs over channel number, noise and interval in a two-state scheme, ten thousand exact simulations of the process they approximate at every point measured. Those that leave the correlation unmodelled misreport their information by an order of magnitude wherever the residual retains enough memory, and no rescaling repairs it, because the distortion has directions in parameter space. The filter conditioning on both ends is calibrated over almost the whole plane, with departures growing toward few channels and low noise. No region of the measured plane gives both information about the unitary current and a trustworthy least-squares interval, the two boundaries one to three decades of noise apart.
 \end{abstract}
 
 
@@ -56,7 +56,13 @@ An ion channel mechanism can leave a signature no model is needed to see: the fl
 %     measured set is EIGHT and Figure 3 now draws eight columns. "Seven-rung" stays literally true
 %     of THIS sentence, whose scope is the sweep over channel number, noise and interval: only ILSE
 %     is on the grid (zero nonlinearsqr_g files under figures/data), and LSE is measured at the one
-%     cell of Figure 3. A referee who counts Figure 3's columns will still find eight. The word is
+%     cell of Figure 3.
+%     ^^^ THAT PREMISE DIED THE SAME DAY, corrected 2026-08-12: figures/data/a202e03 (2026-08-06
+%     21:57) carries 96 nonlinearsqr_g files and both arms cover the same 30 cells at n_sims 1e4,
+%     so EIGHT members are swept, not seven, and "seven-rung" is no longer literally true of this
+%     sentence's scope either. The choice is now "eight" or a rung count that stops calling the two
+%     least-squares arms one rung. Nothing else in this note changes.
+%     A referee who counts Figure 3's columns will still find eight. The word is
 %     left alone because the abstract is at budget; the choice is seven-with-the-sweep-scope as it
 %     stands, or "eight" plus a clause saying seven of them are swept.
 %
@@ -692,7 +698,7 @@ An ion channel mechanism can leave a signature no model is needed to see: the fl
 %     the asymmetry arrived asserted rather than explained. What replaced it is five words inside the
 %     diagnostics sentence, "on exact simulations". CONSEQUENCE, recorded once and not relitigated:
 %     the section no longer says why simulation is exact where evaluation is not, so a methods reader
-%     is not told why a family of approximations exists at all. Theory answers it (02_theory_full.tex
+%     is not told why a family of approximations exists at all. Theory answers it (02_framework.tex
 %     :47-58, two obstructions, cost for the microscopic recursion and no closed form for the
 %     window-averaged law; and :501-506, the simulation realizes the intractable object at the top of
 %     the ladder). The four longer repairs offered instead, at +2 to +21 words, are in the thread and
@@ -882,6 +888,117 @@ An ion channel mechanism can leave a signature no model is needed to see: the fl
 %     - THE PROVENANCE KEYS BELOW. Note 1g flagged three orphaned keys; this pass orphans none further
 %       but repairs none either. Rekey before submission.
 %
+% 1l. A FACTUAL ERROR ABOUT OUR OWN PUBLISHED PAPER, CAUGHT AND FIXED, 2026-08-11. 252 -> 249 words.
+%
+%     THE ERROR, which stood in the installed section for part of one day: "dropping the recursion
+%     from the likelihood put A SYMMETRIC MECHANISM first". Checked against the PDF in
+%     docs/bibliography/ the same day, page 2: "A conformational scheme with asymmetric subunit
+%     coupling (Scheme IX) was decisively favored, exceeding its SYMMETRIC COUNTERPART (Scheme VIII)
+%     by a Bayes factor >5000. The top-ranked non-conformational alternative (the subunit-specific
+%     allosteric Scheme VI) was disfavored by a factor of 6.4". The non-recursive ordering of Fig. 1e
+%     is VI, IX, IV, VII, VIII. So what MacroINR puts first is Scheme VI, and the symmetric scheme of
+%     the published record, VIII, comes LAST in that same ordering. The sentence inverted the fact and
+%     contradicted the title of the paper it cites.
+%
+%     AND THE OBVIOUS REPAIR IS ALSO WRONG. "Asymmetric" does not fit Scheme VI either. Luciano,
+%     2026-08-11: VI is not the symmetric version of IX and is not asymmetric; the symmetric/asymmetric
+%     axis is defined in that paper inside the conformational family (IX against VIII) and VI is not in
+%     it. THE INFERENCE THAT CAUSED THIS, recorded so it is not repeated: "subunit-specific" was read
+%     as implying asymmetry. That reading is not in the paper and was supplied here.
+%
+%     WHAT IS INSTALLED is the wording that is citable verbatim: "put the top-ranked non-conformational
+%     alternative first", which a referee checks against page 2 and Fig. 1e and closes. Two other forms
+%     were available and were not taken. "Put a different mechanism first" is the wording the file
+%     settled on 2026-08-10 and carries zero exposure, but says less. "Put a mechanism carrying no such
+%     asymmetry first" is TRUE, on the author's own knowledge of the schemes he built, and is NOT
+%     checkable against the published record, which says nothing about the symmetry of VI. That is the
+%     distinction note 1f(i) exists to keep: citability is not knowledge. If that stronger form is ever
+%     wanted, the support has to be written into the body first.
+%     STILL AVAILABLE, and citable, at about five more words: the direction the paper itself publishes,
+%     "MacroINR systematically underestimated evidence for schemes with conformational intermediates".
+%
+%     THE OPENING, in the same pass. Luciano's added first sentence stays, by his decision, and the
+%     three defects it carried were repaired around it rather than by deleting it:
+%       - the comma splice becomes a semicolon;
+%       - "complex mechanisms RELY ON calibrated likelihoods" -> "complex ones NEED a calibrated
+%         likelihood". The first presupposes the calibration, which is the thing this paper puts in
+%         doubt, so as written the section's first sentence contradicted its own result. One verb.
+%       - the general half of the second sentence is cut, since the new first sentence now carries it
+%         and the two were saying the same thing in a row; sentence 2 is now the instance alone.
+%       - "trails" / "signature" for one thing in consecutive sentences is resolved to "trail",
+%         which is Luciano's word, in all three sites (leaves a trail, no model needed, leaves none).
+%       - "ion channel" moves into sentence 1, which also closes note 1h's flag that the term had
+%         disappeared from the section entirely.
+%
+%     STILL OPEN, and it is the only thing left on this section's list: nothing in the abstract now
+%     answers the two-state objection. The scope claim ("the same measurement can be repeated on
+%     another scheme") was cut with the closer in Luciano's pass, so the section ends on the negative
+%     universal. 19 words if it comes back.
+%
+% 1m. THE OPENING FRAME IS TAKEN FROM THE INTRODUCTION, 2026-08-12. 249 -> 248 words, and it is
+%     one edit in two places: sentence 1 is rewritten and sentence 3 loses the three words that
+%     sentence 1 now makes redundant.
+%
+%     WAS: "Simple ion channel mechanisms leave a trail in the signal; complex ones need a calibrated
+%     likelihood." ... "The asymmetric activation reported from the same recordings two decades later
+%     LEAVES NONE: IT rests on ratios of evidence, and ..."
+%     IS: "Some ion channel mechanisms leave a mark in the record; as inferences get finer, the claims
+%     leave none." ... "The asymmetric activation reported from the same recordings two decades later
+%     rests on ratios of evidence, and ..."
+%
+%     THE SOURCE IS 01_introduction.tex:254-257, which had already solved this and which the section
+%     had drifted from: "Some mechanisms leave a mark in the record that does not depend on fitting a
+%     particular model" and "As inferences get finer, claims are reached that leave no such mark".
+%     Luciano's sentence of 2026-08-11 (note 1l, "stays, by his decision") is not deleted; its move is
+%     kept and its axis and its predicate are replaced. Five defects go together, which is why this is
+%     cheaper than repairing them one at a time.
+%
+%     (i) THE SEMICOLON PROMISED A PARALLEL AND DELIVERED A CATEGORY SHIFT. First half a property of
+%         the phenomenon (what the mechanism leaves in the record), second half a requirement on the
+%         analyst (what the analyst needs). The parallel the syntax promises is "the finer ones leave
+%         none", which was sentence 3's own payoff, so sentence 1 pre-empted sentence 3 in the wrong
+%         form. Both halves are now the same kind of claim.
+%     (ii) "SIMPLE / COMPLEX" IS NOT THE AXIS AND OPENED A FREE FLANK. The contrast in sentences 2-3
+%         is a direct signature against a claim that rests on model comparison, not scheme complexity:
+%         the flip state is not a simple mechanism and both instances are the same receptor. Worse, the
+%         study is two-state, so "complex mechanisms need a calibrated likelihood" in line 1 against
+%         "in a two-state scheme" in sentence 6 hands a referee the two-state objection, raised in
+%         three consecutive outside rounds, in the section's first fifteen words. The Introduction's
+%         axis is the fineness of the INFERENCE, which the study does vary.
+%     (iii) IT PRESUPPOSED THE RESULT. "Need a calibrated likelihood" is this manuscript's thesis
+%         asserted as a premise, and the guion's ruling for this section is facts over theses (note
+%         1h). Note 1l had already fixed the weaker form of the same defect ("rely on calibrated
+%         likelihoods" presupposes the calibration exists); "need" removed the presupposition of
+%         existence and kept the thesis. It also rebuilt at the top the arc note 1f(iv) cut from the
+%         bottom for rule 5, "this family is broken, here is what you need". The object of the paper
+%         now arrives in sentences 4 and 5, where it is a finding.
+%     (iv) A COHESION DEFECT, MEASURED. "Leaves none" in sentence 3 had its antecedent ("a trail") 43
+%         words upstream, across a sentence that paraphrases the thing without naming it ("showed up
+%         as a delay ... with no model needed to see it"). The noun and its negation are now in the
+%         same sentence, and sentence 3 states the concrete form directly.
+%     (v) VOCABULARY DRIFT FROM THE BODY. "Trail" appears zero times in Introduction, Framework,
+%         Results, Discussion and Methods; the body's words are "mark" (4 in the Introduction, 5 in
+%         Results) and "signature" (3 in the Discussion). "The signal" appears once in the body and is
+%         not the manuscript's noun for the observable, which is "the record" or "the macroscopic
+%         current". This reverses note 1l's resolution to "trail" at three sites, which was taken to
+%         settle the mark/signature duplication note 1k(i) had opened; the duplication is settled here
+%         by using ONE body word, "mark", once.
+%
+%     WHAT IS PRESERVED, and any future rewrite has to keep all three: "ion channel" in sentence 1
+%     (the eLife rule, and note 1h's flag that the term had vanished from the section); field-level
+%     entry at eighteen words against the measured eLife median of nineteen; and the general move
+%     standing ahead of the instance, which note 1l(xiii) settled for the second time and said not to
+%     fold again. This is not a fold: the general claim is still a sentence-initial claim of its own.
+%
+%     WHAT IT COSTS. The first sentence no longer contains the word "calibrated", so an editor
+%     skimming the first line meets the problem and not the paper's object. That is deliberate and it
+%     is what (iii) buys. The section is 248 and the brief is 200-220; note 1l's standing
+%     recommendation to move the ceiling in writing is untouched by this pass and is still open.
+%
+%     NOT DONE: 00_abstract_v4.tex still holds the 249-word text and its header still says it mirrors
+%     what is installed. It is a dated rewind snapshot of the 2026-08-11 merge and is left alone;
+%     the header's "INSTALLED" is true of that day and not of this one.
+%
 % 2. PROVENANCE, keyed by the words the sentence opens with.
 %
 % "Kinetic schemes are usually fitted" -> 02_theory.tex:89-95 (LSE fits the deterministic
@@ -914,7 +1031,7 @@ An ion channel mechanism can leave a signature no model is needed to see: the fl
 %   does not rescue the recursive one, which is consistent with this sentence and with the
 %   declining sentence in the Discussion. Do not strengthen either past that.
 %
-% "At the true parameters" -> 03_diagnostics.tex; the diagnostic is classical (Huber 1967,
+% "At the true parameters" -> 02_framework.tex; the diagnostic is classical (Huber 1967,
 %   White 1982, Golden, Henley, White & Kashner) and the sentence states the identities
 %   rather than claiming them (rule 6). The four words "The test is classical:" were cut for
 %   budget; if a referee is expected to bite, they go back in and sentence 8 loses "and maps
@@ -1005,12 +1122,12 @@ An ion channel mechanism can leave a signature no model is needed to see: the fl
 %     should stay that way: the scope statement is a Theory and Discussion job, it costs 25 words
 %     that do not exist at 208, and the abstract makes no claim the omission falsifies. Sentence
 %     4's "acquisition interval" is the observable and is accurate. Canonical note, with the
-%     bound and the script, at 02_theory_full.tex under the Bessel paragraph.
+%     bound and the script, at 02_framework.tex under the Bessel paragraph.
 %     THE ONE EXPOSED SENTENCE IS 8, "so an experimenter can fit their own recording", which is
 %     the only one addressed to real data. It survives, because the fit macroir performs models
 %     the acquisition window and a reader's record can be block-averaged to it; what does not
 %     survive unqualified is the residual-whiteness check offered in the body, whose three sites
-%     carry their own notes (01_introduction.tex, 03_diagnostics.tex, 04_results.tex). No change
+%     carry their own notes (01_introduction.tex, 02_framework.tex, 04_results.tex). No change
 %     here; this entry exists so the next pass does not re-open it, and so that if a referee
 %     raises the filter the answer is known to be in Theory and not owed by the abstract.
 %     Same reasoning covers 07_backmatter.tex:5, which scopes the library and not the observable.

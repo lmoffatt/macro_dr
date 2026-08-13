@@ -64,4 +64,28 @@ factor $3$, maximum damping $10^{10}$) and three limits: at most $100$ iteration
 relative gradient tolerance of $10^{-6}$ and a value tolerance of $10^{-10}$.
 The Newton-decrement criterion that stops most fits is described in Methods.
 
+\section*{S1.5\quad The superseded numerical Fisher anchor}
+
+% MOVED HERE 2026-08-12 from Methods by papers/1_method/09_carve_plan.md. It is inventory about a
+% battery no reported number comes from, and Methods had no room for it: the section stood at 5,868
+% counted words against a published p95 of 5,046. Methods keeps four sentences and a pointer here.
+
+The earlier battery in data directory \texttt{433ed13} was anchored on a numerical Fisher
+information: a central difference of the analytic score, with per-coordinate step
+$h_i = h_{\mathrm{rel}}\max(|\theta_i|,1)$ at $h_{\mathrm{rel}} = 10^{-5}$, symmetrised as
+$(F_{\mathrm{num}} + F_{\mathrm{num}}^{\mathsf T})/2$. Because the score itself is obtained by
+automatic differentiation, this is a single numerical derivative rather than two.
+
+Where the two constructions can be compared on the runs the body does use, they agree for the
+members that condition on the past and they do not agree for the one that does not: the analytic
+form reproduces the differenced one to within about two per cent in size for \texttt{R},
+\texttt{MR} and \texttt{IR} over the measured range, while for \texttt{NR} it over-states the
+information as channels are added at low instrumental noise, by factors of $1.26$ and $1.60$ at
+$N_{\mathrm{ch}}=10^{3}$ and $10^{4}$, and misses by an amount that varies across directions by
+$1.9$ and $3.1$ there. Neither least-squares arm carries the comparison, since the sweep that
+formed the differenced Fisher was not run for them.
+% src: projects/eLife_2025/figures/figure_4_source_data/figure_4_source_data_gaussian_fisher.csv, pool anchor (medians over the seven intervals; the algorithms present are macro_NR, macro_R, macro_MR, macro_IR and the superseded macro_NMR, at noise 0.1, 1 and 10 only; nonlinearsqr, nonlinearsqr_g and macro_INR are absent from the file entirely, the _G sweep being Gaussian-only so the differenced Fisher is never formed there). Medians in size: R 1.011, MR 1.020, IR 1.000, NR 1.010 overall but 1.007/1.010/1.264/1.602 by channel count at noise 0.1. The single worst cell of the file, NR at N_ch 1e4 and interval 1, reads 11.5 and is the ill-conditioned corner Figure 4 greys, excluded from the sentence above for the same reason.
+% src: projects/eLife_2025/ops/local/figure_3_mle.macroir:151-157 (numerical Fisher; h_rel injected)
+% src: projects/eLife_2025/ops/slurm/dispatch_figure_3.sh:98 (H_RELS default 1e-5)
+
 \end{document}

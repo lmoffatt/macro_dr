@@ -15,7 +15,7 @@ and the lag supplement already measures the number it would use. It works if and
 distortion is a SCALAR: every parameter direction wrong by the same factor. This figure measures
 whether it is.
 
-WHAT IT IS. Two panels over the same plane, six members, one column each, 12 columns. Both read
+WHAT IT IS. Two panels over the same plane, seven members, one column each, 14 columns. Both read
 GIDM, the same matrix Figure 4's B half draws one diagonal entry of, and both are invariants of its
 whole spectrum:
 
@@ -55,13 +55,15 @@ apply here.
 WHAT IT SHOWS. Medians over the seven intervals at noise 0.1, pool anchor, as factors:
 
                      N_ch:     10       100      1000     10000
-    magnitude       ILSE       5.79     6.10     6.15     6.08
+    magnitude       LSE        5.79     6.03     6.12     6.13
+                    ILSE       5.79     6.10     6.15     6.08
                     NR         6.68    15.07    30.13    99.37
                     INR        5.16     5.01     4.94     4.93
                     R          1.09     1.15     1.23     1.24
                     MR         1.30     1.46     1.51     1.56
                     IR         1.02     1.00     1.00     1.00
-    anisotropy      ILSE       3.17     3.20     3.17     3.22
+    anisotropy      LSE        3.15     3.20     3.21     3.25
+                    ILSE       3.17     3.20     3.17     3.22
                     NR         3.90     5.99    15.32    86.15
                     INR        3.18     3.26     3.28     3.30
                     R          1.29     1.17     1.18     1.19
@@ -75,11 +77,24 @@ wrong by 20 and directions exist that are barely wrong at all. A single effectiv
 both. The claim the reader would otherwise make, that the integrated autocorrelation of the residual
 gives the correction, is refuted on the same page that would have supplied the number.
 
-ILSE AND INR ARE FLAT IN THE CHANNEL COUNT and nearly equal to each other, 6.1 against 4.9 in
-magnitude and 3.2 against 3.3 in shape. Neither tracks the temporal correlation, and what they lose
-by not tracking it does not depend on how many channels there are. NR, which does not track it
-either but keeps the sample-level variance, is the one that runs away: 99 and 86 at ten thousand,
-where the anisotropy has almost caught the magnitude.
+THE TWO LEAST-SQUARES ARMS AND INR ARE FLAT IN THE CHANNEL COUNT and nearly equal to each other,
+6.1 against 4.9 in magnitude and 3.2 against 3.3 in shape. None of the three tracks the temporal
+correlation, and what they lose by not tracking it does not depend on how many channels there are.
+NR, which does not track it either but keeps the sample-level variance, is the one that runs away:
+99 and 86 at ten thousand, where the anisotropy has almost caught the magnitude.
+
+WHERE THE TWO ARMS PART, and it is the reason the seventh column earns its place rather than
+duplicating the sixth. At noise 0.1 they are the same figure to two digits, above. Over the whole
+plane they are not: the un-averaged arm carries almost all of the CONSERVATIVE side of this page,
+11 cells of 210 below 1/1.15 against ILSE's 0, with only R's 4 anywhere else and every one of the
+fifteen at the two coarsest intervals.
+The extreme is N_ch = 1e4 at Delta_tilde = 1, where LSE reads 0.074 in size — it understates its
+own information by a factor of 13 — against ILSE's 1.00 in the same cell, at noise labels 1, 10
+and 0.1 alike. That is the mean model failing, not the variance model: at a window a whole tau
+wide the conductance at the sampling instant is nowhere near the interval average, so the fit
+inflates its residual variance and reports an error bar it cannot justify. It is the same premise
+break the ratio row of Figure 3's supplement carries, seen here in the invariants. Measured
+2026-08-12 from figure_4_source_data_spectrum.csv, pool anchor, `m` not Sconf.
 
 THE THREE RECURSIVE MEMBERS SEPARATE ON DIFFERENT AXES, which is worth a sentence in the caption.
 R's magnitude DRIFTS UP with the channel count, 1.09 to 1.24, while its shape sits flat at about
@@ -106,24 +121,29 @@ at ten thousand channels is the cell to watch: if it survives the collapse it is
 anisotropy, and if it goes white the floor is where it should be. That reading belongs in the
 caption either way, since it is what calibrates every other number on the page.
 
-THE ROSTER, and why MR is in it. The organising axis is the instantaneous/interval pairing at each
+THE ROSTER, COMPLETED 2026-08-12. The organising axis is the instantaneous/interval pairing at each
 level of the stochasticity ladder, which wants LSE and ILSE, NR and INR, R and IR. The un-averaged
-least squares (av = 0) has no run yet, so that column is a gap, and MR takes the sixth place until
-it lands. Two reasons, and the second is the one that decided it. MR is the partially-corrected
-interval member, so it belongs on the axis this figure draws and it turns out to carry the sharpest
-version of the ladder claim (above). And the page is what sets the column count: at five members the
-figure is 9.15 in tall against a 9.263 in text height, which leaves 0.11 in for a legend and does
-not fit. A column ADDED makes it shorter, since the cell narrows and a square cell then wants less
-height, so the sixth member is what puts the figure on the page at all. The arithmetic is in the
-render chunk.
+least squares (av = 0) was a gap in the six-member version of this figure, and MR held the sixth
+place in its stead; the note that stood here said the arm "has no run yet", which was true when it
+was written on 2026-08-02 and false four days later. figures/data/a202e03 landed 2026-08-06 21:57,
+and the arm now carries the SAME thirty (N_ch, noise) cells at n_sims 1e4 as ILSE, seven sampling
+intervals each: 210 cells in the shared source data for both. So the pairing is complete and the
+roster is seven.
 
-The member the rest of the set labels LSE is the AVERAGED one, av = 1, and it is labelled ILSE here
-because this figure is organised by exactly that distinction and calling it LSE would break the axis
-the figure is about. That relabel is pending across the rest of the set.
+MR STAYS, and it is not a filler column. It is the partially-corrected interval member, so it
+belongs on the axis this figure draws, and it carries the sharpest version of the ladder claim
+(above). What the page sets is only how many columns fit: at five members the figure is 9.15 in
+tall against a 9.263 in text height, which leaves 0.11 in for a legend and does not fit. A column
+ADDED makes it SHORTER, since the cell narrows and a square cell then wants less height, so
+fourteen columns is both the fuller roster and the shorter figure. The arithmetic is in the render
+chunk.
 
-VR IS NOT HERE, and it is the only member left out. Adding it is one line in the roster and one
-number in the render chunk, 14 columns at per_row 0.2128 and 6.65 in, already measured. It is out
-today only because six members is what the page wanted and MR was the more informative sixth.
+LSE IS av = 0 AND ILSE IS av = 1, and the rest of the set now spells them the same way (the relabel
+that was pending here landed across figure_2, figure_4, figure_4_S1 and figure_4_S4 on 2026-08-06).
+
+VR IS NOT HERE, and it is now the only member left out. Adding it is sixteen columns, which is not
+measured and puts the cell under 1.4 mm; the reading VR carries is in this figure's sibling on the
+recursive family, and the pairing this page is organised by has no eighth rung to give it.
 -->
 
 ```{r setup, include=FALSE}
@@ -132,12 +152,20 @@ knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 
 ```{r common, include=FALSE}
 # The ladder, in order, paired: no stochasticity, sample variance, recursion, each in its
-# instantaneous and its interval form. ../data/0ffbda7 carries the averaged least squares and
-# ../data/1f7138b carries INR; neither supplies anything the frozen dirs already have.
-FIG4_ALGOS     <- c("nonlinearsqr", "macro_NR", "macro_INR", "macro_R", "macro_MR", "macro_IR")
-FIG4_ALGO_LAB  <- c(nonlinearsqr = "ILSE", macro_NR = "NR", macro_INR = "INR",
-                    macro_R = "R", macro_MR = "MR", macro_IR = "IR")
-FIG4_DATA_DIRS <- c("../data/1c2ae6f", "../data/87889e6", "../data/0ffbda7", "../data/1f7138b")
+# instantaneous and its interval form. ../data/0ffbda7 carries the averaged least squares,
+# ../data/a202e03 the un-averaged one and ../data/1f7138b carries INR; none of the three supplies
+# anything the frozen dirs already have.
+# SEVEN MEMBERS SINCE 2026-08-12, and the seventh is the one this figure was waiting for: the
+# instantaneous/interval pairing the whole page is organised by now has its bottom rung complete,
+# LSE beside ILSE as NR sits beside INR and R beside IR. a202e03 is also what keeps the shared
+# source CSVs from being rebuilt WITHOUT the un-averaged arm: the stamp counts input files, so a
+# notebook that cannot see that directory silently regresses the set (figure_4_data.R:245).
+FIG4_ALGOS     <- c("nonlinearsqr_g", "nonlinearsqr", "macro_NR", "macro_INR",
+                    "macro_R", "macro_MR", "macro_IR")
+FIG4_ALGO_LAB  <- c(nonlinearsqr_g = "LSE", nonlinearsqr = "ILSE", macro_NR = "NR",
+                    macro_INR = "INR", macro_R = "R", macro_MR = "MR", macro_IR = "IR")
+FIG4_DATA_DIRS <- c("../data/1c2ae6f", "../data/87889e6", "../data/0ffbda7", "../data/1f7138b",
+                    "../data/a202e03")
 # The inner level is the QUANTITY, as in the lag/kappa supplement: neither has a parameter index,
 # so each member costs one column per side and the strip names what is in it.
 FIG4_PARS   <- c("mag", "aniso")
@@ -160,10 +188,18 @@ SIDES <- list(
        data = dplyr::filter(spec, param == "aniso"), zf = function(x) log10(x$Sconf)))
 ```
 
-```{r render, fig.width = 7.4, fig.height = 7.69}
-# 12 columns over two sides, no key row and no white contours: a standard error is not defined for a
-# quantity with no parameter index. per_row 0.2512, x 0.2289, y 0.2289, 100.0 per cent
-# (tmp/calib_fig4.R case 12T2), cell 1.66 mm.
+```{r render, fig.width = 7.4, fig.height = 6.49}
+# 14 columns over two sides, no key row and no white contours: a standard error is not defined for a
+# quantity with no parameter index. per_row 0.2072, 6.49 in, x 0.1908, y 0.1908, 100.0 per cent
+# measured on THIS pdf, cell 1.38 mm.
+#
+# DO NOT TAKE 0.2128 OFF THE SHELF, which is what the six-member version of this note advertised
+# as "14 columns, all seven, already measured". It was measured on tmp/calib_fig4.R case 14T2,
+# whose roster is ALL_A — eight members and sixteen columns since VR was added to it — so it is
+# not this figure's number at all. Rendered here it lands at 102.8 per cent. The seven-member case
+# is 14T2b in that file, added 2026-08-12, and it reads 0.2128 -> 100.0 on the SYNTHETIC harness
+# and 102.8 on the real render, so the harness is 2.8 per cent off for this roster and the knob
+# below was solved against the PDF. That is the layout note's own rule and this is what it is for.
 #
 # THE COLUMN COUNT IS SET BY THE PAGE, and the direction is the opposite of the obvious one: a
 # column ADDED makes this figure SHORTER, because the height follows from the cell being square and
@@ -174,12 +210,13 @@ SIDES <- list(
 #   10 columns, five members     per_row 0.3049, 9.15 in, cell 2.05 mm  DOES NOT FIT: 0.11 in left
 #                                                                       for a legend
 #   12 columns, six members      per_row 0.2512, 7.69 in, cell 1.66 mm  fits, 1.57 in for the legend
-#   14 columns, all seven        per_row 0.2128, 6.65 in, cell 1.38 mm  fits, 2.61 in, and lands on
-#                                                                       the lag/kappa geometry
-# Twelve is the one drawn. Fourteen is seven members, so it covers EITHER the un-averaged least
-# squares landing OR VR joining, not both: the two together are sixteen columns and are not
-# measured, and at that width the cell is under 1.4 mm and the roster wants a second look anyway.
-fig4_render(SIDES, per_row = 0.2512, out = "Figure_4_supplement_magnitude_anisotropy.pdf",
+#   14 columns, seven members    per_row 0.2072, 6.49 in, cell 1.38 mm  fits, 2.77 in for the
+#                                                                       legend
+# Fourteen is the one drawn, and its seventh member is the un-averaged least-squares arm rather
+# than VR: the pairing this figure is organised by wants LSE opposite ILSE, and the arm is now on
+# the same thirty cells as every other member. The two together are sixteen columns, are not
+# measured, and put the cell under 1.4 mm, so VR is a roster question and not a knob.
+fig4_render(SIDES, per_row = 0.2072, out = "Figure_4_S2.pdf",
             se_lines = FALSE, key = FALSE)
 ```
 

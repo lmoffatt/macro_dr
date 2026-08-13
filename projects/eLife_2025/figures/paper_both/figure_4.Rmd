@@ -365,3 +365,80 @@ SIDES <- list(
 # tmp/calib_fig4.R for the next time the roster moves.
 fig4_render(SIDES, per_row = 0.1595, out = "Figure_4.pdf")
 ```
+
+```{r interval-pairs-along-delta}
+# WHAT THE INTERVAL AVERAGE BUYS, ALONG THE INTERVAL AXIS, one flag apart in each family:
+# LSE against ILSE, NR against INR, R against IR. 04_results.tex answers this at ONE cell, from
+# Figure 2's ellipse areas, and reports that averaging is worth a great deal to a likelihood that
+# models the gating variance and next to nothing to one that does not. That is a statement about
+# the SECOND moment at Delta = 0.1. This chunk asks it of both moments over the whole interval axis.
+#
+# READ FROM `m`, NOT FROM `Bconf`/`Dconf`, for the same reason as everywhere: those are the CI edge
+# toward the null (figure_4_data.R:199 and :218) and collapse to the null wherever the interval
+# covers it, which is what the MAPS want and never what a table of values wants.
+PAIRS <- tibble::tribble(
+  ~pair,        ~naive,           ~aware,
+  "LSE/ILSE",   "nonlinearsqr_g", "nonlinearsqr",
+  "NR/INR",     "macro_NR",       "macro_INR",
+  "R/IR",       "macro_R",        "macro_IR")
+PAIR_MEMBERS <- c(PAIRS$naive, PAIRS$aware)
+# ONE NOISE LEVEL, label 0.1 (S_tilde = 0.01), which is the slice every other table in this project
+# is quoted at and the lowest every member reaches. Medians over the WHOLE plane were tried first
+# and are the wrong statistic here: nine of the twelve noise levels are high enough that every
+# member is calibrated, so the median washes the low-noise corner out and R came out at 1.01 on a
+# quantity that reads 1.4 in the cells this paper is about.
+NZ <- 0.1
+
+cat("\n=== A. bias at theta_sim, median |bias| in log10, over the four channel counts at noise label 0.1,",
+    "\n       by member and acquisition interval (k_off; the least-squares arms carry no other) ===\n")
+bias %>%
+  dplyr::filter(algo %in% PAIR_MEMBERS, param == "off", is.finite(m), as.numeric(noise) == NZ) %>%
+  dplyr::group_by(algo, interval_in_tau) %>%
+  dplyr::summarise(med_abs_bias = median(abs(m)), cells = dplyr::n(), .groups = "drop") %>%
+  dplyr::mutate(algo = factor(unname(ALGO_LAB[algo]), levels = unname(ALGO_LAB))) %>%
+  tidyr::pivot_wider(names_from = interval_in_tau, values_from = med_abs_bias,
+                     id_cols = algo, names_prefix = "D_") %>%
+  as.data.frame() %>% print(digits = 3, row.names = FALSE)
+
+cat("\n=== B. the same on the channel number, which the least-squares arms do not carry ===\n")
+bias %>%
+  dplyr::filter(algo %in% PAIR_MEMBERS, param == "Num_ch_mean", is.finite(m), as.numeric(noise) == NZ) %>%
+  dplyr::anti_join(EXCLUDE_ROWS, by = c("algo", "param")) %>%
+  dplyr::group_by(algo, interval_in_tau) %>%
+  dplyr::summarise(med_abs_bias = median(abs(m)), cells = dplyr::n(), .groups = "drop") %>%
+  dplyr::mutate(algo = factor(unname(ALGO_LAB[algo]), levels = unname(ALGO_LAB))) %>%
+  tidyr::pivot_wider(names_from = interval_in_tau, values_from = med_abs_bias,
+                     id_cols = algo, names_prefix = "D_") %>%
+  as.data.frame() %>% print(digits = 3, row.names = FALSE)
+
+cat("\n=== C. what the interval average BUYS, as |bias(naive)| / |bias(aware)| on k_off.",
+    "\n       Above 1 the averaged arm is the more centred one ===\n")
+bias %>%
+  dplyr::filter(algo %in% PAIR_MEMBERS, param == "off", is.finite(m), as.numeric(noise) == NZ) %>%
+  dplyr::group_by(algo, interval_in_tau) %>%
+  dplyr::summarise(b = median(abs(m)), .groups = "drop") %>%
+  tidyr::pivot_longer(cols = b) %>%
+  dplyr::select(algo, interval_in_tau, value) %>%
+  dplyr::inner_join(PAIRS, by = character()) %>%
+  dplyr::filter(algo == naive) %>% dplyr::rename(b_naive = value) %>%
+  dplyr::inner_join(bias %>% dplyr::filter(algo %in% PAIRS$aware, param == "off",
+                                           is.finite(m), as.numeric(noise) == NZ) %>%
+                      dplyr::group_by(aware = algo, interval_in_tau) %>%
+                      dplyr::summarise(b_aware = median(abs(m)), .groups = "drop"),
+                    by = c("aware", "interval_in_tau")) %>%
+  dplyr::mutate(gain = b_naive / b_aware) %>%
+  tidyr::pivot_wider(names_from = interval_in_tau, values_from = gain, id_cols = pair,
+                     names_prefix = "D_") %>%
+  as.data.frame() %>% print(digits = 3, row.names = FALSE)
+
+cat("\n=== D. information distortion at theta_pool, median over the four channel counts at noise label 0.1, by member and interval",
+    "\n       (k_off). This is the second moment, the one 04_results answers at a single cell ===\n")
+stat %>%
+  dplyr::filter(algo %in% PAIR_MEMBERS, comp == "total", param == "off", is.finite(m), as.numeric(noise) == NZ) %>%
+  dplyr::group_by(algo, interval_in_tau) %>%
+  dplyr::summarise(med = median(m), cells = dplyr::n(), .groups = "drop") %>%
+  dplyr::mutate(algo = factor(unname(ALGO_LAB[algo]), levels = unname(ALGO_LAB))) %>%
+  tidyr::pivot_wider(names_from = interval_in_tau, values_from = med,
+                     id_cols = algo, names_prefix = "D_") %>%
+  as.data.frame() %>% print(digits = 3, row.names = FALSE)
+```

@@ -34,8 +34,8 @@ DEPS=(figure_4_common.R figure_4_layout.R)
 JOBS=(
   "figure_4:Figure_4.pdf"
   "figure_4_supplement_standard_error:Figure_4_supplement_standard_error.pdf"
-  "figure_4_supplement_sample_corr:Figure_4_supplement_sample_corr.pdf"
-  "figure_4_supplement_recursive_ladder:Figure_4_supplement_recursive_ladder.pdf"
+  "figure_4_S1:Figure_4_supplement_sample_corr.pdf"
+  "figure_4_S3:Figure_4_supplement_recursive_ladder.pdf"
   "figure_4_supplement_lag_kappa:Figure_4_supplement_lag_kappa.pdf"
   "figure_4_supplement_se_kappa:Figure_4_supplement_se_kappa.pdf"
   "figure_4_supplement_coverage:Figure_4_supplement_coverage.pdf"

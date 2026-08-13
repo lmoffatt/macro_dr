@@ -11,7 +11,9 @@ NUMBER PENDING, as for the other rebuilt supplements. Replaces the draft
 variance; the variance is recorded at the foot of this note and is one side away from being drawn
 again.
 
-WHAT IT IS. Two panels over the same plane, all seven members, one column each, 14 columns:
+WHAT IT IS, as drawn since 2026-08-12: ONE panel over the plane, all eight members, one column
+each. The note below was written for the two-panel version and is kept because the removed side is
+still described in it; what the file renders is side A alone (see the sides chunk).
 
   A  tau_int   the integrated autocorrelation of the standardized residual (patch - y_mean) /
                sqrt(y_var), in normalized Sokal / Kish form. Null 1 for a white residual. It counts
@@ -37,23 +39,34 @@ takes decade bands with the one mark it has, 3e4, which is the ill-conditioning 
 project already used when the maps still greyed cells out. Neither borrows the other's colours and
 neither borrows the diverging scale's, so nothing on this page can be confused with a distortion.
 
-WHAT IT SHOWS. Medians over the seven intervals at noise 0.1:
+WHAT IT SHOWS. Medians over the seven intervals at noise 0.1, re-measured 2026-08-12 with the
+un-averaged arm on the roster. THE ROW THIS NOTE USED TO CALL "LSE" IS ILSE: the table was written
+against the data key `nonlinearsqr`, which is the av = 1 arm, and the label was corrected across
+the set on 2026-08-06. The genuinely un-averaged arm is the new first row of each block.
 
                   N_ch:      10       100      1000     10000
-    tau_int       LSE      8.684    9.233    9.325    9.286
+    tau_int       LSE      8.612    9.144    9.269    9.246
+                  ILSE     8.684    9.233    9.325    9.286
                   NR       7.856    8.611    3.010    1.337
                   INR      8.170    9.051    9.160    9.199
                   R        1.140    1.284    1.346    1.373
                   MR       1.308    1.633    1.773    1.816
                   VR       1.218    1.455    1.515    1.536
                   IR       1.038    1.011    1.001    1.005
-    kappa         LSE      709      5300     5.29e5   4.88e7
+    kappa         LSE      722      5.18e3   4.86e5   4.69e7
+                  ILSE     709      5.30e3   5.29e5   4.88e7
                   NR       738      1312     1.59e4   7.06e5
                   INR      647      1203     1.13e4   1.13e5
                   R        537      417      1451     1.49e4
-                  MR       454      414      2172     2.22e4
+                  MR       454      413      2172     2.22e4
                   VR       414      359      1786     1.82e4
                   IR       434      373      985      1.01e4
+
+The two least-squares arms are within a per cent of each other in both quantities at this noise
+level, which is what makes the eighth column a completeness matter rather than a new reading: it is
+there so a reader fitting the un-averaged classical model can find their own panel. Over the whole
+plane the two part at the coarsest sampling, the worst cell being N_ch 1e4 at Delta_tilde = 1,
+where ILSE's tau_int is 1.81 and LSE's 2.48.
 
 PANEL A IS THE DEGREES-OF-FREEDOM ARGUMENT, in the data. Least squares and the two open-loop
 members leave about nine intervals of memory for every interval they count, so they behave as
@@ -88,9 +101,12 @@ intervals, so the divisor is the NUMBER OF INTERVALS, 10 / interval_in_tau, and 
 the classical fit marginalises its noise scale and standardizes the residual by a variance fitted
 to that very residual.
 
-MR AND VR HAVE THREE AND TWO NOISE LEVELS and INR has one, so those columns are short bands with
-grey above, and anything under MIN_CONTOUR_LEVELS is drawn as tiles. All of it fills in as the
-runs land, with no edit here.
+MR, VR AND INR WERE SHORT COLUMNS when this was written (three, two and one noise level, so grey
+above and tiles rather than contours below MIN_CONTOUR_LEVELS). They are not any more: measured
+2026-08-12 off figures/figure_4_source_data/figure_4_source_data_cell_scalars.csv, every member
+of the roster carries 210 cells, thirty (N_ch, noise) combinations by seven sampling intervals,
+and IR carries 294. The grid is auto-detected per knit, so that filled in with no edit here,
+exactly as the note promised.
 -->
 
 ```{r setup, include=FALSE}
@@ -98,13 +114,22 @@ knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 ```
 
 ```{r common, include=FALSE}
-# All seven: neither quantity needs a parameter, so every member costs one column, and seven of
-# them fill the width at a legible cell where five would leave the figure too tall.
-FIG4_ALGOS     <- c("nonlinearsqr", "macro_NR", "macro_INR", "macro_R", "macro_MR",
-                    "macro_VR", "macro_IR")
-FIG4_ALGO_LAB  <- c(nonlinearsqr = "ILSE", macro_NR = "NR", macro_INR = "INR", macro_R = "R",
+# ALL EIGHT since 2026-08-12: neither quantity needs a parameter, so every member costs one column.
+# The eighth is the un-averaged least-squares arm, and it is the one column of this map a reader is
+# most likely to be standing in: the classical fit an experimentalist has already run is more often
+# least squares on the sample than on the interval average, and this figure exists to let them place
+# their own recording. It carries the same 210 cells as every other member (figures/data/a202e03).
+FIG4_ALGOS     <- c("nonlinearsqr_g", "nonlinearsqr", "macro_NR", "macro_INR", "macro_R",
+                    "macro_MR", "macro_VR", "macro_IR")
+FIG4_ALGO_LAB  <- c(nonlinearsqr_g = "LSE", nonlinearsqr = "ILSE", macro_NR = "NR",
+                    macro_INR = "INR", macro_R = "R",
                     macro_MR = "MR", macro_VR = "VR", macro_IR = "IR")
-FIG4_DATA_DIRS <- c("../data/1c2ae6f", "../data/87889e6", "../data/0ffbda7", "../data/1f7138b")
+# a202e03 is where the un-averaged arm lives, and it has to be on the search path for a second
+# reason as well: the shared source CSVs are stamped by the COUNT of input files
+# (figure_4_data.R:245), so a notebook that cannot see that directory rebuilds them without that
+# arm and every other figure then loses a column. That is how this file lost it in the first place.
+FIG4_DATA_DIRS <- c("../data/1c2ae6f", "../data/87889e6", "../data/0ffbda7", "../data/1f7138b",
+                    "../data/a202e03")
 # The inner level is the QUANTITY. Each side's data carries only its own, so each member gets one
 # column per side and the strip names what is in it.
 FIG4_PARS   <- c("lag", "kappa")
@@ -119,20 +144,27 @@ source("figure_4_layout.R")
 lk <- dplyr::filter(.fig4_src$scal, algo %in% ALGOS, param %in% c("lag", "kappa"),
                     is.finite(v), v > 0)
 
+# SIDE B REMOVED 2026-08-12 (Luciano). The condition number left this file with the pairing that
+# built it. Two reasons, and the second is the decisive one. tau_int runs 1.00 to 9.3 and kappa
+# runs over decades, so they cannot share a bar, and this was the only page in the set needing two
+# -- a colour stopped meaning one thing. And kappa has no citing sentence anywhere: its whole job
+# in the paper is the masking rule kappa > 3e4, which Methods states in prose and needs no map.
+# The remaining side is the one an experimentalist can compute on their own recording, which is
+# what makes this a Figure 5 supplement and not a Figure 4 one.
 SIDES <- list(
   list(lab = "memory left in the standardized residual", letter = "A",
        data = dplyr::filter(lk, param == "lag"), zf = function(x) log10(x$v),
        scale = modifyList(SCALE_ONESIDED,
-                          list(title = "intervals per interval,\nas a factor"))),
-  list(lab = "conditioning of the Gaussian Fisher", letter = "B",
-       data = dplyr::filter(lk, param == "kappa"), zf = function(x) log10(x$v),
-       scale = SCALE_KAPPA))
+                          list(title = "intervals per interval,\nas a factor"))))
 ```
 
-```{r render, fig.width = 7.4, fig.height = 6.64}
-# 14 columns over two sides, no key row and no white contours: a standard error is not defined for
-# a quantity with no parameter. per_row 0.2126, measured at x 0.1908, y 0.1908 (tmp/calib_fig4.R
-# case 14x2nokey), cell 1.38 mm.
-fig4_render(SIDES, per_row = 0.2126, out = "Figure_4_supplement_lag_kappa.pdf",
+```{r render, fig.width = 7.4, fig.height = 6.85}
+# 8 columns over ONE side, no key row and no white contours: a standard error is not defined for a
+# quantity with no parameter. Dropping side B roughly doubles the cell width at a fixed 7.4 in, so
+# the old two-side knob 0.2126 leaves the render half as tall as it should be. The seven-column
+# render was 0.4624; the eighth column narrows the cell by a factor 7/8, so the first guess was
+# 0.4624 x 7/8 = 0.4046, corrected by one measured pass to the value below.
+# Verify with `python3 tmp/measure_fig4.py <pdf>` against 100 per cent.
+fig4_render(SIDES, per_row = 0.4005, out = "Figure_5_S3.pdf",
             se_lines = FALSE, key = FALSE)
 ```

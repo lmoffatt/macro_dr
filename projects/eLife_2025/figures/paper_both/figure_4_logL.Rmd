@@ -1,0 +1,365 @@
+---
+title: "Figure (number pending) — the density half of the design plane: which approximation is closer to the truth, and along which axis of the family"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+NUMBER PENDING. The slot is not decided. The argument for putting it BEFORE Figure 4 is that it
+shows the ranking a likelihood comparison gives, so that Figure 4's headline then refutes something
+the reader has just been shown rather than asserting it cold. The argument for a supplement is page
+budget. Neither is settled here.
+
+THE QUANTITY, and it is the axis Figure 4 does not have. Every panel is a DIFFERENCE of summed
+log-likelihoods between two members, both evaluated at theta_sim, the simulation truth, so
+
+    E[log p_A] - E[log p_B] = KL(true || p_B) - KL(true || p_A),
+
+a difference of Kullback-Leibler divergence rates, positive when the member with more machinery is
+the closer density. There is no estimator in it. Figure 4 measures what a member's REPORT gets
+wrong, in the first moment and in the second; this page measures what its DENSITY gets wrong, which
+is the property a model comparison would actually rank on.
+
+WHY THETA_SIM AND NOT THETA_POOL, the opposite anchor from Figure 4's distortion half. The
+comparison means nothing unless every member is evaluated at the SAME parameter. At each member's
+own optimum the difference would mix density quality with parameter fitting and would penalise the
+two least-squares arms for holding the unitary current and the noise level fixed.
+
+THE UNIT IS NATS PER RECORDING AND IT IS NOT DIVIDED BY THE SAMPLE COUNT. Every recording on this
+grid is 10 tau long in every cell, verified against Sum_r2_std, whose null is the interval count
+10/Delta_tilde and which reads 999.5 / 499.8 / 199.9 against 1000 / 500 / 200. So the emitted SUM is
+already a quantity per unit time and there is no varying recording length to correct for. Dividing
+by the interval count multiplies by Delta_tilde/10, a hundredfold ramp along the horizontal axis
+that is nothing but the sample count. Measured both ways 2026-08-12, as the spread of the median
+contrast along the interval axis: raw is flatter in EIGHT of the nine contrasts, six of them by two
+orders of magnitude (ILSE-LSE 202x raw against 20200x per sample). The exception is R-NR, 14.7x raw
+against 8.75x per sample, and it is marginal. The `logl-normalisation` chunk prints the whole
+comparison rather than asking anyone to take this on trust.
+
+THE CONTRASTS ARE THE EDGES OF THE FAMILY'S LATTICE, always in the direction MORE MACHINERY minus
+LESS, so positive always means the extra step bought density and no panel is read backwards. Under
+that convention MR - R and VR - R come out negative, and that IS the finding rather than a sign to
+apologise for. They are grouped by WHICH AXIS OF THE FAMILY the step moves, and the grouping is the
+whole point of the page: the averaging block is nearly blank and the recursion block is saturated,
+which a reader gets before reading a single number. The two four-member squares are drawn with all
+their edges, which makes two of them redundant by construction, (ILSE-LSE) + (INR-ILSE) =
+(NR-LSE) + (INR-NR) exactly. That redundancy is kept: it is a visible closure check and it costs two
+narrow columns.
+
+THE SCALE REACHES BELOW ONE NAT AND STOPS AT 0.1, which is where the measurement says it has to
+stop. Each member is scored on its OWN ensemble of 10,000 simulated recordings, so a contrast is a
+difference of two INDEPENDENT means with standard error sqrt(v_A/n_A + v_B/n_B) from the emitted
+per-recording variance. That floor is NOT uniform over a panel: the summed log-likelihood's spread
+grows as the square root of the interval count, so 2 SE runs 0.64 nats at Delta_tilde = 0.01 and
+0.064 at Delta_tilde = 1, a factor of ten across the horizontal axis of every panel. Measured by
+band, the fraction of cells that clear their own floor: under 0.03 nats, NONE of 181; 0.03 to 0.1,
+5 per cent; 0.1 to 0.3, 19 per cent; 0.3 to 1, 73 per cent; 1 to 3, 94 per cent. A band at 0.03
+would therefore paint sampling noise in every cell it touched and is not drawn. 0.1 is drawn,
+because the smallest floor anywhere on the grid is 0.056 and a cell at the coarse end can earn it.
+
+WHICH IT HAS TO EARN, PER CELL. A cell whose difference is inside its own +-2 SE is set to exactly
+zero and renders white, so a sub-nat band appears only where the floor is below it. The figure
+therefore shows its own resolution rather than declaring it, and that is why the sub-nat structure
+fades leftward in every panel: the fine end of a panel cannot resolve a tenth of a nat and says so
+by going white. A white iso-line at the resolution boundary was tried and dropped, because after
+the collapse it traces the boundary of the field it sits on, which the layout's own note says reads
+as an error.
+
+BELOW THE PER-CELL FLOOR THERE IS STILL SIGNAL, and it is pooled rather than drawn. The
+`sub-nat-signal` chunk takes the inverse-variance weighted mean of the whole sub-1 region per
+contrast: every one of the nine is many standard errors from zero, +0.218 for IR - R, +0.110 for
+ILSE - LSE, -0.497 for NR - LSE and -0.455 for INR - ILSE. So the sub-nat region is not empty, it
+is merely below what one cell of this ensemble can see, and the two signs are worth the sentence:
+averaging gains a tenth to a fifth of a nat systematically, and modelling the gating variance
+COSTS about half a nat once the instrumental noise dominates.
+
+GEOMETRY IS THE SHARED RENDERER'S, not this notebook's. fig4_render with outer = "param" puts the
+axis group on the outer column level and the contrast on the inner one, which is structurally the
+same layout as figure_4_S4.Rmd's parameter blocks with members inside them. That buys the isotropy
+constraint (one decade of interval and one decade of noise the same physical distance), the row
+heights proportional to the noise span each channel count reaches, the boxed strips, the single x
+row and the colour bar, all identical to the rest of the set. The one thing it costs is that ALGOS
+has to be re-pointed at the contrasts AFTER figure_4_common.R has built GRID_BY_ALGO from the real
+members, so the detected grid and the row heights stay derived from runs on disk; the contrast keys
+inherit the grid of their more expensive member, which is the cell set the inner join produces
+anyway.
+
+GREY is the renderer's own terminal band, plus Figure 4's rule for the ill-conditioned corner
+(kappa > 3e4), read from Figure 4's own cell scalars so the two pages grey together.
+
+THE EXTRACTION HAS A TRAP, documented in figure_4_logL_data.R. Each (member, cell, interval) emits
+six rows with statistic == "mean": the point estimate at probit == "mean" and five
+percentile-bootstrap rows at probit == "quantile". They differ by about 0.05% of the sum, which on a
+sum of -7000 nats is +-4 nats, larger than several of the contrasts this page exists to measure.
+Both conditions are required.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+```{r common, include=FALSE}
+# STEP 1. Source the shared machinery with the REAL member roster, so GRID_BY_ALGO, YLIM, cells and
+# nch_noise_span are all derived from runs that exist on disk. FIG4_DATA_DIRS is figure_4.Rmd:331
+# verbatim: five directories, first hit wins. NOT a glob over ../data, which also turns up 82b956f
+# for IR, MR and R and is not on the figure's path.
+FIG4_ALGOS     <- c("nonlinearsqr_g", "nonlinearsqr", "macro_NR", "macro_INR",
+                    "macro_R", "macro_MR", "macro_VR", "macro_IR")
+FIG4_ALGO_LAB  <- c(nonlinearsqr_g = "LSE", nonlinearsqr = "ILSE", macro_NR = "NR",
+                    macro_INR = "INR", macro_R = "R", macro_MR = "MR",
+                    macro_VR = "VR", macro_IR = "IR")
+FIG4_DATA_DIRS <- c("../data/1c2ae6f", "../data/87889e6", "../data/0ffbda7", "../data/1f7138b",
+                    "../data/a202e03")
+MEMBERS <- FIG4_ALGOS
+
+# the outer column level is the axis of the family the step moves; labels are parsed as plotmath,
+# so they are quoted strings
+# the UNION of both sides' groups, in reading order. half() drops the ones a side has no data for,
+# so side A keeps the first four and side B the last three with no bookkeeping here.
+# ORDER on side A: the gating variance first, then the recursion, then the averaging, then the
+# partial rung that conditions on one endpoint instead of two. That is the order the argument runs
+# in, and it is not the order the lattice was written in: it puts the two steps that move the
+# density most next to each other and leaves the two that barely move it at the end, so the reader
+# meets the result before the null.
+FIG4_PARS   <- c("gvar", "rec", "avg", "part", "lsq", "open", "recur")
+FIG4_PSHORT <- c(avg  = "'averaging'", gvar = "'gating variance'", rec = "'recursion'",
+                 part = "'one endpoint'",
+                 lsq  = "'least squares'", open = "'open loop'", recur = "'recursive rungs'")
+
+source("figure_4_common.R")
+source("figure_4_logL_data.R")
+
+logl   <- fig4_logL_build()
+logl$m <- FIG4_ALGO_LAB[logl$algo]
+```
+
+```{r contrasts}
+# TWO SIDES, ONE MEASUREMENT. (A) the EDGES of the family's lattice, one step at a time, grouped by
+# which axis the step moves: what does each axis buy. (B) every member against IR, grouped by
+# family: how far behind is each member. Neither subsumes the other -- an edge can buy a lot without
+# the member that took it being any good, and a ranking says nothing about which step is
+# responsible -- and they share a quantity, a unit and a scale, so they share a colour bar.
+CONTRASTS <- tibble::tribble(
+  ~hi,    ~lo,    ~param, ~side,
+  "ILSE", "LSE",  "avg",   1,
+  "INR",  "NR",   "avg",   1,
+  "IR",   "R",    "avg",   1,
+  "NR",   "LSE",  "gvar",  1,
+  "INR",  "ILSE", "gvar",  1,
+  "R",    "NR",   "rec",   1,
+  "IR",   "INR",  "rec",   1,
+  "MR",   "R",    "part",  1,
+  "VR",   "R",    "part",  1,
+  # cheapest first inside every group, which is the cost ladder R -> MR -> VR -> IR, NOT the order
+  # the contrasts were first written in
+  "IR",   "LSE",  "lsq",   2,
+  "IR",   "ILSE", "lsq",   2,
+  "IR",   "NR",   "open",  2,
+  "IR",   "INR",  "open",  2,
+  "IR",   "R",    "recur", 2,
+  "IR",   "MR",   "recur", 2,
+  "IR",   "VR",   "recur", 2)
+# the key has to distinguish IR-R on side B from the IR-R edge on side A, which are the same
+# difference read for two different reasons and must not collide in ALGOS
+CONTRASTS$algo <- sprintf("%s_%s_%d", CONTRASTS$hi, CONTRASTS$lo, CONTRASTS$side)
+# THE COLUMN LABEL IS THE SUBTRACTION, ON TWO LINES. At sixteen columns "ILSE - LSE" on one line
+# does not fit the 1.33 mm cell and arrived clipped ("SE - LS"). Stacking it as atop() fits, and it
+# beats naming one member of the pair and leaving the group header to imply the other: the reader
+# sees WHICH difference the panel is without reconstructing it. Minuend on top, subtrahend below, so
+# every column reads the same way and side B's seven columns all repeat IR over the member it is
+# measured against. The layout's inner label passes an expression through unquoted; a plain token
+# still gets quoted, which is what every other figure in the set has.
+CONTRASTS$lab  <- sprintf("%s\n- %s", CONTRASTS$hi, CONTRASTS$lo)
+CONTRASTS$pair <- sprintf("%s - %s", CONTRASTS$hi, CONTRASTS$lo)
+KEY_OF_MEMBER  <- setNames(names(FIG4_ALGO_LAB), FIG4_ALGO_LAB)
+
+pair <- function(i) {
+  cols <- c("Num_ch", "noise", "interval_in_tau", "logL", "var_logL", "n_sim")
+  a <- dplyr::filter(logl, m == CONTRASTS$hi[i])[, cols]
+  b <- dplyr::filter(logl, m == CONTRASTS$lo[i])[, cols]
+  dplyr::inner_join(a, b, by = c("Num_ch", "noise", "interval_in_tau"),
+                    suffix = c(".a", ".b")) %>%
+    dplyr::transmute(Num_ch, noise, interval_in_tau,
+                     d  = logL.a - logL.b,
+                     se = sqrt(var_logL.a / n_sim.a + var_logL.b / n_sim.b),
+                     algo = CONTRASTS$algo[i], param = CONTRASTS$param[i],
+                     side = CONTRASTS$side[i], hi = CONTRASTS$hi[i], lo = CONTRASTS$lo[i])
+}
+CD <- dplyr::bind_rows(lapply(seq_len(nrow(CONTRASTS)), pair)) %>%
+  dplyr::filter(Num_ch %in% NCHS) %>%
+  dplyr::mutate(lx = log10(interval_in_tau), ly = log10(as.numeric(noise)),
+                noise = as.character(noise),
+                # 1 is where the cell resolves its OWN difference
+                z2 = abs(d) / (2 * se))
+
+# Figure 4's ill-conditioned corner, joined on whichever member of the pair is the one that runs
+# away: the more expensive one on side A, the cheaper one on side B, where IR is never it.
+kap <- .fig4_src$scal %>% dplyr::filter(param == "kappa") %>%
+  dplyr::transmute(kkey = algo, Num_ch, noise = as.character(noise), interval_in_tau, kappa = v)
+CD <- CD %>%
+  dplyr::mutate(kkey = KEY_OF_MEMBER[ifelse(side == 1, hi, lo)]) %>%
+  dplyr::left_join(kap, by = c("kkey", "Num_ch", "noise", "interval_in_tau"))
+
+# Re-point the roster at the contrasts, now that the grid is built from the real members. Each key
+# inherits the detected grid of the member that owns its cell set.
+for (i in seq_len(nrow(CONTRASTS)))
+  GRID_BY_ALGO[[CONTRASTS$algo[i]]] <-
+    GRID_BY_ALGO[[KEY_OF_MEMBER[[if (CONTRASTS$side[i] == 1) CONTRASTS$hi[i] else CONTRASTS$lo[i]]]]]
+ALGOS    <- CONTRASTS$algo
+ALGO_LAB <- setNames(CONTRASTS$lab, CONTRASTS$algo)
+EXCLUDE_ROWS <- tidyr::expand_grid(algo = CONTRASTS$algo, param = FIG4_PARS) %>%
+  dplyr::anti_join(CONTRASTS[, c("algo", "param")], by = c("algo", "param"))
+
+source("figure_4_layout.R")
+
+# THE OUTPUT DEVICE, and it is a one-line shadow rather than an edit to anything shared.
+# fig4_render ends in `ggsave(out, g, width = 7.4, height = H)` with no device argument, so a .pdf
+# goes out through the base pdf() device, which degrades every glyph outside its encoding to a full
+# stop: a delta arrives as "." whether it is written literally, as a \u0394 escape, or built with
+# intToUtf8, and it did. No PDF converter recovers it -- Ghostscript, which is what embedFonts()
+# drives, can embed and subset fonts but cannot put back a character the device never drew. The fix
+# has to happen at write time, and cairo_pdf writes Unicode.
+# Defining ggsave HERE, after the source, is enough: fig4_render resolves the name at call time and
+# finds this one first. figure_4_layout.R is untouched and every other notebook in the set keeps the
+# classic device it has always used.
+ggsave <- function(...) ggplot2::ggsave(..., device = cairo_pdf)
+```
+
+```{r scale}
+# SIGNED DECADES ABOUT ZERO, reaching down to 0.1 nats. 3 and 100 are band EDGES, so the two criteria
+# are named by the bar where they sit and the line key needs no swatch, which is Figure 4's device.
+# The floor at 0.1 is where the per-cell resolution ends: the smallest 2 SE anywhere on the grid is
+# 0.056, so a band at 0.03 could not be earned by any cell and is not drawn.
+LOGL_BRK <- c(-3300, -1000, -300, -100, -30, -10, -3, -1, -0.3, -0.1,
+              0.1, 0.3, 1, 3, 10, 30, 100, 300, 1000, 3300)
+SCALE_LOGL <- list(brk = LOGL_BRK, pal = bandcols(LOGL_BRK),
+                   lab = c("", formatC(LOGL_BRK[-c(1, length(LOGL_BRK))], format = "g"), ""),
+                   sol = c(-3, 3), dsh = c(-100, 100),
+                   title = "\u0394 log-likelihood,\nin nats per recording of 10 \u03c4")
+
+# THE SUB-NAT BANDS ARE DRAWN ONLY WHERE THE CELL EARNS THEM. A cell whose difference is inside its
+# own +-2 SE is set to exactly zero and renders white, so a band at 0.1 nats can only appear where
+# 2 SE is below 0.1, which happens at the coarse end of a panel and never at the fine end. The
+# figure therefore shows its own resolution instead of needing a line to declare it, and it is why
+# the sub-nat structure fades leftward in every panel. NOT a white iso-line on top: the layout's own
+# note says a line tracing the boundary of the field it sits on reads as an error, and after the
+# collapse that is exactly what it would trace.
+CD$dconf <- ifelse(CD$z2 > 1, CD$d, 0)
+
+# ONE SCALE, so the two sides share one bar spanning the whole width, which is what the renderer
+# does for commensurable quantities and what makes the comparison between the halves legitimate.
+SIDES <- list(
+  list(lab = "\u0394 log-likelihood: each step of the ladder, one at a time", letter = "A",
+       data = dplyr::filter(CD, side == 1), zf = function(x) x$dconf, scale = SCALE_LOGL),
+  list(lab = "\u0394 log-likelihood: every member against IR", letter = "B",
+       data = dplyr::filter(CD, side == 2), zf = function(x) x$dconf, scale = SCALE_LOGL))
+
+# NO SILENT CAPS.
+cat(sprintf("collapsed to zero as unresolved: %d of %d cells (%d of them above 1 nat)\n",
+            sum(CD$z2 <= 1), nrow(CD), sum(CD$z2 <= 1 & abs(CD$d) > 1)))
+cat(sprintf("clamped into the end band: %d cells; of those %d are ill-conditioned (kappa > 3e4)\n",
+            sum(CD$dconf < min(LOGL_BRK) | CD$dconf > max(LOGL_BRK)),
+            sum((CD$dconf < min(LOGL_BRK) | CD$dconf > max(LOGL_BRK)) &
+                is.finite(CD$kappa) & CD$kappa > 3e4)))
+cat(sprintf("cells on side B where a cheaper member beats IR by more than 3 nats: %d of %d\n",
+            sum(CD$d[CD$side == 2] < -3), sum(CD$side == 2)))
+```
+
+```{r render, fig.width = 7.39, fig.height = 6.40}
+# PER_ROW for SIXTEEN columns, which is the column count the harness has already solved: the note in
+# figure_4_layout.R gives 16 -> 0.204 (x 0.1817, y 0.1807, 99.5 per cent), measured on this same
+# layout. Verified here rather than assumed, with
+#   python3 tmp/measure_fig4.py <pdf>
+# against a target of 100 per cent isotropy.
+# WHY THE TWO SIDES ARE ONE FIGURE AND NOT TWO. Under the isotropy constraint the height goes as the
+# summed noise decades over the COLUMN COUNT, so putting the two sets side by side makes the page
+# SHORTER, not longer: nine columns alone came to 11.1 in and seven alone to 14.0, against 9.6 in of
+# usable text height measured off the built manuscript, so neither fitted a page with a caption.
+# Sixteen columns bring it to about 6.4 in and leave room for one. The merge is not a compromise
+# forced by the page; it is what the geometry rewards, and the two sets share a quantity, a unit and
+# a scale, so they also share a colour bar.
+# 0.204 is the harness's solved value for sixteen columns with a ONE-line inner strip. The stacked
+# two-line label eats vertical space inside the map row and took that render to 95.9 per cent, so it
+# is re-solved, and re-solved AGAIN after the device changed: cairo_pdf sets text with slightly
+# different metrics from the base pdf device, so the fixed rows take different inches and a knob
+# calibrated under one is wrong under the other. 0.208 measured 99.8 on the base device and 99.0 on
+# cairo; under cairo 0.210 and 0.212 give 100.1 and 101.2.
+PER_ROW_LOGL <- if (exists("PER_ROW_OVERRIDE")) PER_ROW_OVERRIDE else 0.210
+fig4_render(SIDES, per_row = PER_ROW_LOGL, out = "Figure_4_logL.pdf",
+            se_lines = FALSE, key = FALSE, outer = "param", drawn_axis = TRUE)
+```
+
+```{r logl-normalisation}
+# THE NORMALISATION, measured rather than argued, because the header asserts it. For each contrast,
+# the spread of the median along the interval axis under the two candidate units. Flat is better: a
+# trend one unit has and the other does not is a trend that unit manufactured, since nothing about
+# the members changes between the two columns. The blown corner is dropped first, NR's omitted N*ms
+# term reaching 5.2e6 nats there and owning every median it touches.
+flat <- function(x) { v <- abs(x); max(v) / max(min(v), 1e-12) }
+CD %>% dplyr::filter(!(Num_ch >= 1000 & interval_in_tau >= 0.5 & abs(d) > 1000)) %>%
+  dplyr::left_join(CONTRASTS[, c("algo", "pair")], by = "algo") %>%
+  dplyr::group_by(pair, interval_in_tau) %>%
+  dplyr::summarise(raw = median(d), per = median(d * interval_in_tau / 10), .groups = "drop") %>%
+  dplyr::group_by(pair) %>%
+  dplyr::summarise(`raw (nats per recording)` = flat(raw),
+                   `per interval`             = flat(per), .groups = "drop") %>%
+  dplyr::mutate(dplyr::across(where(is.numeric), ~signif(., 3))) %>% as.data.frame() %>% print()
+```
+
+```{r sub-nat-signal}
+# THE SUB-NAT REGION, which the scale now reaches into and which therefore has to be defended.
+# TWO questions. First, where is the per-cell floor: 2 SE by band of |difference|, and what fraction
+# of cells in each band clear their own floor. Second, is there systematic structure BELOW that
+# floor: the inverse-variance weighted mean of the sub-1 region against its own standard error, so
+# a |z| far from zero says the field is coherent even where no single cell is.
+cat("=== per-cell resolution floor, 2 SE in nats ===\n")
+print(signif(quantile(2 * CD$se, c(0, .25, .5, .75, .95, 1)), 3))
+cat("\n=== 2 SE by sampling interval (it grows as the square root of the interval count) ===\n")
+CD %>% dplyr::group_by(interval_in_tau) %>%
+  dplyr::summarise(`2 SE` = signif(median(2 * se), 2), .groups = "drop") %>%
+  as.data.frame() %>% print()
+cat("\n=== resolved cells by band of |difference| ===\n")
+CD %>% dplyr::mutate(band = cut(abs(d), c(0, .03, .1, .3, 1, 3, Inf),
+                                labels = c("<0.03", "0.03-0.1", "0.1-0.3", "0.3-1", "1-3", ">3"))) %>%
+  dplyr::group_by(band) %>%
+  dplyr::summarise(cells = dplyr::n(), resolved = sum(z2 > 1),
+                   fraction = signif(mean(z2 > 1), 2), .groups = "drop") %>%
+  as.data.frame() %>% print()
+cat("\n=== systematic signal in the sub-1 region: inverse-variance weighted mean and its z ===\n")
+CD %>% dplyr::filter(abs(d) < 1) %>%
+  dplyr::left_join(CONTRASTS[, c("algo", "param", "pair")], by = c("algo", "param")) %>%
+  dplyr::group_by(param, pair) %>%
+  dplyr::summarise(cells = dplyr::n(),
+                   `weighted mean` = sum(d / se^2) / sum(1 / se^2),
+                   z = (sum(d / se^2) / sum(1 / se^2)) * sqrt(sum(1 / se^2)), .groups = "drop") %>%
+  dplyr::mutate(dplyr::across(where(is.numeric), ~signif(., 3))) %>% as.data.frame() %>% print()
+```
+
+```{r what-the-likelihood-ranks}
+# WHAT THE LIKELIHOOD RANKS, the reading the page exists for and the number the manuscript would
+# quote. Fraction of cells where the more expensive member gains, or loses, more than the solid
+# criterion of 3 nats over one recording.
+CD %>% dplyr::left_join(CONTRASTS[, c("algo", "param", "pair")], by = c("algo", "param")) %>%
+  dplyr::group_by(param, pair) %>%
+  dplyr::summarise(cells = dplyr::n(),
+                   `gains > 3 nats` = mean(d >  3),
+                   `loses > 3 nats` = mean(d < -3),
+                   median = median(d), `worst loss` = min(d), .groups = "drop") %>%
+  dplyr::mutate(dplyr::across(where(is.numeric), ~signif(., 3))) %>% as.data.frame() %>% print()
+
+cat("\n=== median gain by channel count, nats per recording ===\n")
+CD %>% dplyr::filter(!(Num_ch >= 1000 & interval_in_tau >= 0.5 & abs(d) > 1000)) %>%
+  dplyr::left_join(CONTRASTS[, c("algo", "pair")], by = "algo") %>%
+  dplyr::group_by(pair, Num_ch) %>% dplyr::summarise(v = median(d), .groups = "drop") %>%
+  tidyr::pivot_wider(names_from = Num_ch, values_from = v) %>%
+  dplyr::mutate(dplyr::across(where(is.numeric), ~signif(., 3))) %>% as.data.frame() %>% print()
+
+cat("\n=== median gain by instrumental noise at N_ch = 100, nats per recording ===\n")
+CD %>% dplyr::filter(Num_ch == 100) %>%
+  dplyr::left_join(CONTRASTS[, c("algo", "pair")], by = "algo") %>%
+  dplyr::mutate(S = dimensionless_noise(as.numeric(noise))) %>%
+  dplyr::group_by(pair, S) %>% dplyr::summarise(v = median(d), .groups = "drop") %>%
+  tidyr::pivot_wider(names_from = S, values_from = v) %>%
+  dplyr::mutate(dplyr::across(where(is.numeric), ~signif(., 3))) %>% as.data.frame() %>% print()
+```

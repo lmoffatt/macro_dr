@@ -8,9 +8,14 @@ appendix.**
 
 Instrument: `../_program/wordcount.py` (eLife's definition of main text: comments, captions,
 equations, Methods, back matter and appendices all excluded). Every number below was measured with
-it, not estimated. Line ranges are against the working tree of 2026-08-11, repo at 37613b3,
-`02_theory_full.tex` md5 48d89887, `03_diagnostics.tex` md5 20666e1d. **The ranges drift the moment
-editing starts; re-measure rather than trusting them after Phase 1.**
+it, not estimated.
+
+**Line ranges: `03_diagnostics.tex` md5 20666e1d, unchanged since this plan was written, so that
+table is still good. `02_theory_full.tex` moved the same evening (48d89887 → d6af8bab) and its
+ranges are already approximate; re-derive them by heading before executing that table.** The ranges
+drift the moment editing starts, in this file as in any other. See the drift log at the bottom: the
+manuscript was being rewritten while this plan was being written, and the baseline below is the
+re-measured one.
 
 ## Decisions already taken (Luciano, 2026-08-11)
 
@@ -26,15 +31,17 @@ editing starts; re-measure rather than trusting them after Phase 1.**
 
 ## The state this plan starts from
 
+Re-measured 2026-08-11 at 19:30, after the Discussion rewrite of that evening.
+
 | section | counted | published median | note |
 |---|---|---|---|
 | Introduction | 1,310 | 873 | not touched here |
-| Theory | 3,320 | — | no counterpart in the survey |
+| Theory | 3,356 | — | no counterpart in the survey |
 | Diagnostics | 1,260 | — | idem |
-| Results | 4,753 | 3,066 | not touched here |
-| Discussion | 3,122 | 1,184 | not touched here |
-| **main text** | **13,765** | 5,209 | target 9,200 |
-| Methods (uncounted) | 5,627 | 2,249 | **p95 is 5,046: already over** |
+| Results | 4,747 | 3,066 | not touched here |
+| Discussion | 1,860 | 1,184 | rewritten 2026-08-11, was 3,122 |
+| **main text** | **12,533** | 5,209 | target 9,200 |
+| Methods (uncounted) | **5,868** | 2,249 | **p95 is 5,046, the plan's own cap is 6,000: 132 words of headroom** |
 | Appendix 1 + 2 | 5,348 + 1,294 | — | no stated limit |
 
 ## The evidence that sets the criterion
@@ -63,8 +70,9 @@ justification and goes down.
 ### The destination rule
 
 - **Methods**: only what is needed to *run* the thing (flags, values, safeguards, anchors, how a
-  quantity was computed). It receives ~150 words and **sheds ~350**; at 5,627 it is already past the
-  published p95 and cannot be the destination for derivation.
+  quantity was computed). **It receives nothing.** The 150 words it was to receive from Theory
+  arrived on 2026-08-11 in the Discussion pass, and at 5,868 it is 132 words from the plan's own cap
+  and 822 past the published p95. It cannot be the destination for derivation, and it has to shed.
 - **Appendix 1** (`08_appendix_derivation.tex`): every derivation and every justification of a
   modelling choice.
 - **A new appendix, "The diagnostics, derived"** (~550 words): the diagnostics algebra, which today
@@ -82,7 +90,7 @@ justification and goes down.
 | opening: model scope, the two obstructions | 28-65 | 247 | 110 | Ap.1 (the cost of the microscopic filter) |
 | the observable is an interval average | 67-84 | 155 | 150 | stays whole; it is the paper's central object |
 | uniform window, shared by every member | 85-92 | 117 | 40 | Methods (which already states it at :73-78) |
-| the Bessel bound | 94-111 | 259 | 60 | Ap.1, **with the deficit table from `decisions/recompute/bessel_bound.py`**, which today lives only in a comment |
+| the Bessel bound | 94-111 | 259 → **~295** | 60 | Ap.1, **with the deficit table from `decisions/recompute/bessel_bound.py`**, which today lives only in a comment. **Grew on 2026-08-11** (the Colquhoun rise-time citation, the first-order/second-order sentence, the tenfold-cost clause from the Discussion). Protected on the way down: the first-order-for-white, second-order-for-correlated sentence, which is what makes the kernel concession and the noise-model concession one concession; the canonical BESSEL-BOUND note says so and it was the last thing printed of it |
 | two closures, prose | 234-274 | 180 | 60 | folds into the box |
 | the closure BOX | 275-308 | 298 | 200 | compress; the two *Validity* entries are what predicts the diagonal boundary of Fig. 7 and must survive |
 | telegraph-like, no closed form | 310-352 | 169 | 35 | **dies**: Ap.1:24-41 already carries it at more length |
@@ -129,7 +137,13 @@ One section before the Results, about 2,400 counted words, in this order:
    conversion to error-bar units.
 
 Title to settle when it is on the page. It has to name both halves without promising a derivation:
-"The likelihood family and how it is tested" is the working one.
+"The likelihood family and how it is tested" was the working one. SETTLED 2026-08-12 as **"The
+likelihood family and its diagnostics"**, in the pass that rewrote every body heading against a
+verbatim survey of six eLife articles (the rule and the survey are in the comment block at the
+first subsection of 04_results.tex). Same two halves, one noun instead of the appositive clause.
+Still open in that pass and left to Luciano: all six surveyed articles carry exactly four top-level
+sections, so a fifth may be queried; the alternative is demoting this section to the first Results
+subsection, which moves decision 1 and not just a heading.
 
 **Table 1 is rebuilt, not moved.** Body version: member, what the states are conditioned on, one
 line of plain English. No equation columns. The equation columns move into
@@ -139,16 +153,43 @@ become two with disjoint jobs, and the forward-reference defect disappears with 
 
 ## What Methods sheds
 
-Net: receives ~150, sheds ~350, lands at ~5,400.
+Revised 2026-08-11 19:30. Methods is at 5,868 and receives **nothing**: the uniform-window sentence
+this plan was going to send it arrived that evening on its own, in the Discussion pass. The three
+rows below are no longer optional, and even with all three it lands at ~5,520, still past the
+published p95. **If a block has nowhere obvious to go, it goes to an appendix, not to Methods.**
 
 | out of Methods | lines | words | to |
 |---|---|---|---|
 | the least-squares-is-not-a-member argument, a verbatim-in-substance copy of Theory's | 152-158 | ~90 | a pointer |
 | the White 1982 restatement (Diagnostics owns the definition) | 742-748 | ~80 | a pointer |
 | the finite-difference Fisher construction and the superseded 433ed13 battery | 717-738 | ~180 | Supplementary File 1 |
+| the limitation half of "That license has a boundary" | 137-153 | ~115 of 155 | **back to the Discussion**, see below |
 
-In: the uniform-window sentence from Theory (~150). Nothing else. **If a block has nowhere obvious
-to go, it goes to an appendix, not to Methods.**
+### The block that has to go back
+
+The Discussion rewrite of 2026-08-11 moved three blocks into Methods. Two of them belong there and
+stay: the open-probability paragraph (:36-45, 66 words: during the step $k_{on}[A]=k_{off}$, so the
+sweep works at $p=0.5$, where the gating variance is largest and the skewness vanishes) and the
+perimeter declaration (:125-136, 80 words: simulated by design and not by convenience, likelihood
+only, no prior, no evidence). Both are specification of what was run, the Discussion now points at
+them rather than restating them, and the transfer rule $4Np(1-p)$ stays on the Discussion side where
+a reader with another receptor needs it.
+
+The third does not. "That license has a boundary" (:137-153, 155 words) is the Discussion's old
+*third boundary*: the diagnostic compares two independent implementations, so everything downstream
+of where they separate is tested and nothing upstream of it is, because they share one
+specification. That is a limitation of the study, and eLife prints Methods after the Discussion, so
+a limitation that lives only there is one most readers never reach. `08_length_plan.md`'s rule is
+that limitations are compressed and never cut; relocating one out of the body is a demotion by
+another route. Its last third is not method under any reading: "the general remedy is different in
+kind, verifying each object against the theorems it must satisfy ... a piece of work with its own
+design, not undertaken here" is future work.
+
+The split: Methods keeps the operative sentence, about 40 words, that the two implementations share
+one specification upstream and that this is why the section writes it out symbol by symbol. The
+limitation returns to "What this paper does not settle", compressed to about 50. The general remedy
+travels with it or dies. The Discussion's closing clause at :131 then stops being an orphan pointer
+and becomes the tail of a stated limitation.
 
 ## Appendix reorganisation
 
@@ -176,15 +217,16 @@ cross-reference renumbers.
 
 | | before | after |
 |---|---|---|
-| main text | 13,765 | ~11,600 |
-| of which the pre-Results section | 4,556 | ~2,400 |
-| Methods | 5,627 | ~5,400 |
+| main text | 12,533 | ~10,400 |
+| of which the pre-Results section | 4,616 | ~2,400 |
+| Methods | 5,868 | ~5,400 |
 | appendices | 6,642 | ~7,700, plus the new one |
 
-Still about 2,400 over the 9,200 target, and **it does not come from here.** It comes from the
-Results (4,753, mostly numeric series a figure already draws) and the Discussion (3,122 against a
-published median of 1,184). Say this out loud before cutting Theory to the bone, so that nobody
-discovers it afterwards and starts cutting caveats.
+About 1,200 over the 9,200 target, not the 2,400 this plan first estimated: the Discussion rewrite
+of 2026-08-11 took 1,262 out on its own. **The remainder does not come from here.** It comes from
+the Results (4,747, mostly numeric series a figure already draws, and 122 words measured as verbatim
+duplication with its own captions). Say this out loud before cutting the merged section to the bone,
+so that nobody discovers it afterwards and starts cutting caveats.
 
 ## Execution order
 
@@ -220,14 +262,66 @@ Not settled. What is at stake, so the discussion does not have to rediscover it:
 - Word budget: inside the merged section those 705 words sit in a section that has no counterpart in
   the eLife survey and is therefore judged on its own terms. Moved into the Results they count
   against a section that is already at 4,753 against a median of 3,066.
-- Reading order: the Results' first subsection ("Recovery at one design cell") uses the sandwich, the
+- Reading order: the Results' first subsection (retitled 2026-08-12; it is the one-design-cell
+  recovery subsection, now "Every member recovers the rates while ...") uses the sandwich, the
   distortion and the two anchors in its second paragraph, so the definitions have to arrive before
   it either way. The difference is whether the reader meets them as theory or as method.
 - Precedent in the niche: worth checking against Münch e62714 before deciding, since it is the one
   published article in this problem class that carries a comparable apparatus.
+
+## Drift log
+
+The manuscript was being rewritten while this plan was being written, which is the normal state of
+this file and the reason every table above carries a stamp.
+
+**2026-08-11, evening.** The Discussion pass. Discussion 3,122 → 1,860; Methods 5,627 → 5,868;
+Theory 3,320 → 3,356; Results 4,753 → 4,747; main text 13,765 → 12,533. Three blocks went from the
+Discussion into Methods (above, "The block that has to go back"), the Bessel paragraph in Theory
+grew rather than shrank, and `02_theory_full.tex` changed md5, so this file's Theory line ranges
+became approximate within the hour.
+
+What this changes in the plan: Methods stops being a destination for anything at all, its three
+optional sheds become mandatory and a fourth is added, and the gap left after the carve falls from
+~2,400 to ~1,200.
 
 ## Log
 
 | date | phase | main text | note |
 |---|---|---|---|
 | 2026-08-11 | baseline | 13,765 | this plan written |
+| 2026-08-11 19:30 | re-baseline | 12,533 | after the Discussion rewrite; Methods at 5,868 |
+| 2026-08-12 | A+B+C executed | 11,415 | merged section 3,006; Methods 5,584; appendices 7,907 |
+
+## What the execution of 2026-08-12 actually did
+
+Phases A (relocation), B (the tables) and C (compression) were run in one pass, on Luciano's
+instruction. **Nothing was compiled**, by standing instruction; the build is his to run, and the
+checks below were static.
+
+Done: `02_framework.tex` created and both originals retired to `archives/` with a dated suffix;
+`10_appendix_diagnostics.tex` created as Appendix 3 and repairs renamed to `11_`; the composition
+identity moved out of Appendix 1 into it; the Bessel bound printed as an Appendix 1 subsection with
+its table and its four properties, which existed only as a comment; the static-condensation reading
+moved to Appendix 1; Table 1 rebuilt without equation pointers and `tab:appendix-members` cited from
+its own appendix; Methods shed the least-squares duplicate, the White restatement and the numerical
+Fisher battery (to Supplementary File 1, new S1.5); the T2 limitation returned to the Discussion and
+the Münch quotations moved there from the body; `elife_paper.tex` and `_program/wordcount.py`
+repointed; every `(Theory)`/`(Diagnostics)` pointer in the other sections rewritten, and the stale
+line numbers in the `[BESSEL-BOUND]` pointer notes stripped and re-aimed at the appendix.
+
+Static checks run: the label/reference map over all sections shows **no undefined reference and no
+duplicate label**; `tab:members` is now cited from the Results opening, which was reference check 1.
+
+**Where it landed against the plan.** The merged section is 3,006 counted words against the ~2,400
+this plan projected. The gap is real and it is diffuse: after two compression rounds every remaining
+block is at or near its "keeps" number except three, the closure box and its lead-in (594 against
+435), the naming and axes block (598 against 555) and "What is measured" (864 against 705). Getting
+to 2,400 from here means removing content rather than prose, so it stops being this plan's call.
+Two candidates, both Luciano's: making the closure box a display item with a caption (about 300
+words, and captions are not counted, but that is only honest if the box is genuinely reference
+material the reader returns to), and cutting the three-regime vocabulary paragraph, which the
+Results use twice.
+
+Main text is 11,415 against the 9,200 target. As predicted, the remainder is in the Results, which
+grew to 5,048 in the author's own editing of 2026-08-11/12 and is now the largest section in the
+paper.

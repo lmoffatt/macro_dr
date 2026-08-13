@@ -139,14 +139,59 @@ factor is a **different statistic** — the empirical-over-Fisher standard-error
 may be updated from that script. Recheck it with D-4's own recipe against `macro_INR`, and note that
 the answer will not be a small correction: `INR`'s distortion is 22 where `NMR`'s pooled with `NR`.
 
-## Fig 1 = the four-column ladder LSE, NR, R, IR
+## Fig 1 = the window × recursion lattice: NR, INR, R, IR
 
-**Decided 2026-07-23 with the merge, and already built:** `paper_both/figure_1.Rmd:37` reads
-`COLS_TARGET <- c("LSE", "NR", "R", "IR")`. Fig 1 (the filter step, no statistics) shows the cost
-ladder in order. The non-recursive members fit the same grammar (row C reads "no update, open loop");
-LSE adds a flat global σ̂² band and a blank row C. Files: `figure_1.Rmd` (roster) over the shared
-`figure_1_panels.R`; the all-algorithm version is `figure_1_all.Rmd`, which writes its own
-`Figure_1_all.pdf` and carries no measured claim.
+**Decided 2026-08-12 (Luciano), built and rendered the same day.** `paper_both/figure_1.Rmd` reads
+`COLS_TARGET <- c("NR", "INR", "R", "IR")`: the 2×2 of the two axes, which is the reading that
+carries the mechanism (block above, 2026-08-01). The two least-squares columns come out, and the
+reason is measured rather than aesthetic. On the figure's own recording `LSE` predicts the same mean
+current as `NR` to 8.9e-16 pA and `ILSE` the same as `INR` to 2.2e-16, so rows A and B of each
+least-squares column were a copy of its neighbour's and row C was blank; the whole content of the
+pair was one constant predictive sd (3.536 pA for `LSE`, 3.559 for `ILSE`, against `NR`'s 0.224 to
+2.010), and in the body's two-interval crop "constant" does not even read, only "wider". What is
+bought is width: panels go from ~1.0 in to ~1.55 in, and `IR`'s two occupancy rows, their dashed
+covariance tie and the two-tone boundary disc are what needed it.
+
+**The fact those two columns carried is not lost, it moved into words**, in two places, and both are
+measured: the Theory paragraph that introduces the two arms now says each is the open-loop member at
+its own window setting with the gating variance replaced by one constant fitted over the record, and
+the Fig 1 caption says the least-squares arms are the open-loop columns with a band of constant
+height. The caption was NOT allowed to carry the full sentence: at 326 words the float overflows the
+page by ~12 pt, and at 287 it fits with ~14 pt of slack.
+
+**The caption was rewritten the same day, on four corrections from Luciano, and three of them are
+about what the figure is FOR.** It said "recorded" where the record is simulated. The reason the
+noise is the lowest cell of the design plane was nowhere: it is there so the reader can see that a
+window holds several gating transitions (four and five in the two drawn, measured off
+`figure_1_simulation.csv`) and that the recording keeps one number for each. The four undrawn
+members are now covered by naming what each drawn column REPRESENTS, which is stronger than saying
+they are not drawn: least squares is the open-loop column of its own window setting with a constant
+band, and `MR`/`VR` are the recursive column carrying `INR`'s prediction and innovation, which is
+the structural claim Table 1's caption already makes. And the x axis stopped being the clock: ticks
+name the acquisition interval, dotted verticals mark its boundaries in every panel, the duration is
+a caption fact. The caption is now 331 words and the float takes a page of its own with no slack
+left, verified by rendering page 9 of the build.
+
+**Rejected the same day: R vs IR alone** (Luciano floated it). Four reasons. The 2×2 is what the
+Results measure and each margin moves a different moment, so a figure showing one margin under-serves
+them; `NR` and `INR` are the two members with literature attribution (Milescu's independent-interval
+likelihood and the published `MacroINR`), and dropping them leaves the only mechanistic picture
+showing house members alone; the blank row-C cells are the one place the paper draws what open loop
+means; and the width no longer buys anything, the `IR` mechanism being fully legible at four columns.
+
+**Files.** `figure_1.Rmd` (roster) over the shared `figure_1_panels.R`, which is unchanged and still
+defines all eight columns, so the roster is one vector. No supplement (see the supplement table).
+The six-column predecessor is `archive/figure_1_superseded_20260812.{Rmd,pdf}` and its stale caption
+file, which still described the 2026-07-21 R/MR/VR/IR roster, is
+`archive/Figure_1_caption_superseded_20260812.md`; the caption now lives only in `02_framework.tex`.
+The all-algorithm version is `archive/figure_1_all.Rmd`, which writes its own `Figure_1_all.pdf` and
+carries no measured claim.
+
+**Superseded, kept for rewind (2026-07-23, the merge):** Fig 1 is the four-column cost ladder
+`LSE, NR, R, IR`, the non-recursive members fitting the same grammar, LSE adding a flat global σ̂²
+band and a blank row C. Extended to six on 2026-08-05 (`LSE, ILSE, NR, INR, R, IR`, the
+instantaneous/interval pair at each of the three levels of the gating description), which is the
+version that was superseded on 2026-08-12.
 
 **Superseded, kept for rewind (2026-07-21):** Fig 1 shows the recursive ladder **R, MR, VR, IR**, with
 recursion held fixed so the columns vary only the conductance conditioning. That was the A-strict
@@ -286,29 +331,69 @@ into `04_results.tex`, which has no region map at all; and decide whether the lo
 extrapolated below N_ch 10, is pinned by the ten cells the notebook's own open item asks for
 (N_ch 2 and 5 at noise 0.1 to 10). That last one is `../_program/program.md` §2.
 
-Attached supplements, each declared inside its parent's `figure` environment (eLife mechanics:
-`reference_elife_figure_guidelines` memory; naming the supplement in the parent legend is a SHOULD,
-auto-emitted, not a must):
+**THE SUPPLEMENT SET, SETTLED 2026-08-11/12 (Luciano), one parent at a time.** Eleven, declared
+inside each parent's `figure` environment and every one of them cited in the main text in ascending
+order per parent, which was checked file by file and is the one hygiene item the eLife census
+measures (4.3% of reviews complain about uncited or out-of-order supplements). The list below
+supersedes everything above it in this block.
 
-- **Fig 3—figure supplement 1**: per-step Fisher profiles across the ladder (ex-Figure 4, the
-  Fisher-to-zero result). Demoted because it discriminates nothing within the roster: the
-  when-each-parameter-is-measured shape holds for all four rungs, so it is a property of the
-  macroscopic observable, not of the closure. Q-3's "stays in the body" is thereby reversed; the
-  reason Q-3 gave (a shape is shown or lost) survives demotion, since a supplement is still a shown,
-  legended figure. Built.
-- **Fig 4—figure supplement 1**: distortion-induced bias, all five parameters, R vs IR. Built.
-- **Fig 4—figure supplement 2**: information distortion, all five parameters, R vs IR. Built.
-- **Fig 4—figure supplement 3**: the distortion decomposed into sample and correlation, on k_off,
-  R vs IR (ex-Figure 6, the decomposition). Built.
-- **Fig 4—figure supplement 4**: sample and correlation vs N_ch, k_off and N_ch, resolved by noise
-  (lines, not maps). The mechanism as a shape. Built.
-- **Pending, and probably a child of Fig 2 not Fig 4**: MR and VR added to the design-space map. It
-  generalises Fig 2's one-cell ladder measurement, so the parentage is on that claim, not on the
-  visual grammar. Blocked on the VR grid run.
+| Parent | # | What it carries |
+|---|---|---|
+| 1 filter step | — | none. The declared one drew samples 0–4 where the body draws 3–4, so it CONTAINED the body figure: a second crop, not a supplement, and never cited. A parent at zero is the eLife norm. |
+| 2 clouds | 1 | Mahalanobis Q-Q, the sandwich against the empirical multivariate distribution. MOVED here from Figure 4: its citing sentence is in this subsection, it runs on one cloud cell, and it uses no part of `figure_4_layout.R`. |
+| 3 cascade in time | 3 | per-step information vs score variance on k_on/k_off, the same on i/N_ch, and the checks the parent has no room for. The first two are ONE figure split by page height (8 rows = 11.2 in against a 9.2 in text block), not two answers. |
+| 4 plane | 3 | the distortion factored into per-sample and correlation; its size against its shape; and the same plane for the four rungs of the recursive family. |
+| 5 memory | 3 | each member against its OWN residual memory; the collapse through r = S̃/N_ch; and τ_int over the design plane. |
+| 6 IR's corner | — | none, settled 2026-07-31 and unchanged. |
+| 7 usage map | 1 | the distortion-corrected standard error over the plane: the continuous field under the map's solid boundary. |
 
-The old S1–S5 still carry the independent-numbering that eLife does not have and must be re-parented
-in the same pass: S1 → Fig 1—figure supplement 1 (from `figure_1.Rmd`), S3 (corner) → a Fig 2
-supplement, S4/S5 (dlik-fed) → Fig 3 supplements. Not yet done.
+**What left, and on what test.** Every candidate was asked for the one sentence in the body that
+cites it. The line version of the sample/correlation split went out because it broke this parent's
+grammar (lines against N_ch where every other supplement here is the plane) and drew two members
+where its replacement draws six. `lag_kappa` was SPLIT: τ_int survives as Figure 5's third
+supplement and the condition number was dropped outright, since its only job in the paper is the
+masking rule κ > 3e4, which Methods states in prose. Out with no sentence to write: `se_kappa`
+(its side A duplicates the standard error and it drops k_on, one of the four directions the usage
+map's boundary is built on), `coverage` and `qq_grid` (both ask what Figure 2's supplement already
+answers, and only they would add the plane, which no sentence claims), `other_parameters` (two
+pages of completeness), `eigendirections`. `Figure_4_supplement_residuals.pdf` turned out to be a
+dead file whose producer was replaced by `lag_kappa` on 2026-07-31.
+
+**The interval-pairs page is OUT, decided 2026-08-12, and the reason is a measurement rather than
+a preference.** It was the only candidate that put the acquisition interval on an axis of its own,
+and it was built to show that each pair closes as the window shrinks: at a hundredth of a time
+constant the interval average and the instantaneous sample differ by about two per cent, so the two
+members of a pair must coincide, a limit the implementation has to satisfy and one that does not
+come from the code under test. Measured at the shortest swept window, noise label 0.1, on the
+per-sample distortion, the premise fails and it fails asymmetrically. `R`/`IR` close to $0.07\%$ on
+the closing rate at ten channels and their gap shrinks with the window, which is the expected
+behaviour. `NR`/`INR` close to $8.3\%$ there and their gap does not go to zero. `LSE`/`ILSE` sit
+flat at about one per cent with no trend, which is what two members that differ only in the mean
+model look like.
+
+So the page cannot be read as a validation: a test that does not separate "both right" from "both
+wrong" certifies nothing, and at ten channels the `R`/`IR` pair closes partly because `IR` is itself
+departing there. Two things were learnt on the way out and they are worth more than the page was.
+The catastrophe of `NR` is exactly the omitted `N*ms`: the term is added only under
+`if constexpr (variance::value && averaging::value > 0)` (legacy/qmodel.h:4585-4618), `ms` is the
+within-window variance of ONE channel and is identically zero for an instantaneous observation, and
+`NR`'s per-sample distortion in the channel-number direction runs 1.12, 1.15, 22, 569, 3020,
+1.5e4, 3.5e4 across the seven windows at ten thousand channels while `INR` stays at 1.00. That
+finding survives, in the Figure 4—figure supplement 1 caption. And what sorts the closure is not the
+parameter, since the two pairs close equally in the channel-number direction at few channels (2.2%
+against 2.0%) and differ by 120-fold on the rate; it appears to be the recursion, which absorbs a
+variance misspecification through the update where an open-loop member passes it straight into the
+score. That last is a conjecture, measured at one noise level, and is not in the manuscript.
+
+**Still open, blocked on Luciano.**  The figure for the expected
+Fisher not being positive definite, from the 2026-08-09 audio, which nothing on hand answers:
+`figure_4_gaussian_vs_numeric_fisher.Rmd` asks a different question and its own header says it
+cannot reach the two members that matter.
+
+**One roster question left inside a declared supplement.** Figure 4's supplement 2 carries `ILSE`,
+`NR`, `INR`, `R`, `MR`, `IR`: six members, but not the body figure's six. `MR` is deliberate, the
+paragraph it serves names it. `LSE` being absent is not settled, and the abstract's "no rescaling
+repairs it" covers that member.
 
 ## Figure 4 is R against IR, and the fusion (2026-07-22)
 

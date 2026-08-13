@@ -75,15 +75,16 @@
 % section they brief. Add nothing here but \input lines.
 
 \input{sections/01_introduction}
-% 2026-08-09: repointed from 02_theory to 02_theory_full, and this file is now the single master.
-% The two-master fork (elife_paper / elife_paper_full) and the two-theory fork are closed in the
-% same move: 02_theory.tex was NOT a shorter cut of the same text but an older organisation, five
-% subsections byte-identical and an "interval update" 7,000 characters longer because it still had
-% inlined what the full file separates out. Using it as the base for the length pass would have
-% reverted that split. Both retired to archives/ with a dated suffix; the long build's last render
-% is archives-adjacent as elife_paper_full_old.pdf.
-\input{sections/02_theory_full}
-\input{sections/03_diagnostics}
+% 2026-08-12: 02_theory_full and 03_diagnostics MERGED into 02_framework, one section before the
+% Results, by papers/1_method/09_carve_plan.md (Luciano's decision 1). Both originals are retired
+% whole to archives/ with a dated suffix, so their comment history is quotable; the merged file
+% carries forward the notes that still constrain an edit. The carve keeps what the Results use and
+% sends derivation and justification to the appendices: the evidence for the cut is that the
+% Results cite no equation and no table, and that Table 1 and Figure 1 are cited from nowhere
+% outside their own section.
+% 2026-08-09: this file became the single master (the elife_paper / elife_paper_full fork and the
+% 02_theory / 02_theory_full fork were closed in one move).
+\input{sections/02_framework}
 \input{sections/04_results}
 \input{sections/05_discussion}
 \input{sections/06_methods}
@@ -95,9 +96,15 @@
 % The third was added 2026-08-11 and is input LAST for that reason: 08 stays Appendix 1 and 09 stays
 % Appendix 2, so nothing renumbers. It holds the menu of repairs that do not change the likelihood,
 % moved out of the Discussion by decision (ii) of that section's rewrite.
+% 2026-08-12: a third appendix is inserted before the repairs one, holding the algebra behind the
+% diagnostics. It exists because that algebra had no owner: the expansion behind the sandwich was
+% promised in the body as "see Supplementary Information" and was written nowhere, and the
+% composition identity was inside the derivation appendix. Repairs moves from 10_ to 11_ and becomes
+% Appendix 4; nothing hard-codes an appendix number, every reference goes through \ref.
 \input{sections/08_appendix_derivation}
 \input{sections/09_appendix_members}
-\input{sections/10_appendix_repairs}
+\input{sections/10_appendix_diagnostics}
+\input{sections/11_appendix_repairs}
 
 % Reads biblio.bib, the CITED-ONLY file. It was repointed to biblio_full on 2026-07-28 because
 % biblio.bib then had 15 entries and broke on the first prior-art citation; on 2026-07-29 the six

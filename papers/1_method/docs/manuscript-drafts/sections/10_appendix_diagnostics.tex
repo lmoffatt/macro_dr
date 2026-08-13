@@ -1,0 +1,103 @@
+% Appendix 3: the algebra behind the diagnostics.
+%
+% Created 2026-08-12 by papers/1_method/09_carve_plan.md. It exists because that algebra had no
+% owner: the first-order expansion behind the sandwich and the bias was promised in the body as
+% "(see Supplementary Information)" and appeared in NO file of the manuscript, the composition
+% identity was sitting inside the derivation appendix, and two quantities the body and the Results
+% use (the affine-invariant distance, the finite-sample floor of the anisotropy statistic) were
+% defined only in a comment or in a `% src` line pointing at a script.
+%
+% INPUT ORDER: after 09_appendix_members and before 11_appendix_repairs, so it is Appendix 3.
+% Nothing hard-codes an appendix number; every cross-reference goes through \ref.
+
+\begin{appendixbox}
+\label{app:diagnostics}
+\section*{The diagnostics, derived}
+
+The body states the three checks and the two matrices they produce. This appendix carries what is
+behind them: the expansion that turns a score into a parameter displacement, the exact sense in
+which the two parts of the distortion compose, and the two scalar summaries with the floor below
+which neither can be read.
+
+\subsection*{The sandwich and the bias are one first-order expansion}
+
+Both corrections come from the same step. Expanding the total score around the parameters
+$\bm{\theta}_0$ the recordings were generated from,
+\begin{equation}
+  S(\hat{\bm{\theta}}) \;\approx\; S(\bm{\theta}_0)
+    + \nabla_{\bm{\theta}} S(\bm{\theta}_0)\,(\hat{\bm{\theta}}-\bm{\theta}_0),
+  \label{eq:score-expansion}
+\end{equation}
+and using $S(\hat{\bm{\theta}})=0$ at a maximum-likelihood estimate, with the empirical Hessian
+replaced by its expectation $-\mathbf{H}$,
+\begin{equation}
+  \hat{\bm{\theta}}-\bm{\theta}_0 \;\approx\; \mathbf{H}^{-1}S(\bm{\theta}_0).
+  \label{eq:displacement}
+\end{equation}
+Taking the covariance of Eq.~\ref{eq:displacement} over independent recordings gives the sandwich,
+\begin{equation}
+  \bm{\Sigma} \;=\; \mathbf{H}^{-1}\mathbf{J}\,\mathbf{H}^{-1}
+   \;=\; \mathbf{H}^{-1/2}\,\mathbf{C}\,\mathbf{H}^{-1/2},
+  \label{eq:sandwich}
+\end{equation}
+and taking its expectation gives the bias, $b=\mathbf{H}^{-1}\mathbb{E}[S]$, which is nonzero
+exactly when the mean score is. The two are therefore the same approximation applied to the two
+moments of one displacement, which is why a member can fail them separately: $\mathbb{E}[S]$ can
+vanish while $\mathrm{Cov}(S)$ departs from $\mathbf{H}$, and at $\bm{\theta}_{\mathrm{pool}}$ it
+does so by construction. When $\mathbf{C}=\mathbf{I}$, Eq.~\ref{eq:sandwich} returns
+$\mathbf{H}^{-1}$ and the correction is inert. Where $\mathbf{H}$ is singular, every inverse is
+taken on its retained eigenspace (Methods).
+
+Both are first order, and the manuscript does not lean on that. The sandwich is verified directly
+against the empirical covariance of the estimates over the simulated recordings
+(Figure~\ref{fig:clouds}), and against their multivariate distribution through the coverage of the
+nominal region, which is what an expansion cannot certify on its own.
+% src: theory/macroir/docs/Likelihood_Information_Distortion/supplement_information_distortion_main.tex
+% sections 6 and 7 (DCC and DIB), transcribed 2026-08-12 rather than re-derived. That file is the
+% origin of the "(see Supplementary Information)" pointer the body used to carry; the Supplementary
+% Information it named was never written, and the pointer resolved to nothing from 2026-08-09 until
+% this appendix was created.
+
+\subsection*{How the two parts of the distortion compose}
+
+These compose exactly. The exact identity is
+\[ \mathbf{C}=\mathbf{K}\,\mathbf{R}\,\mathbf{K}^\top,\qquad \mathbf{K}=\mathbf{H}^{-1/2}\,\mathbf{J}_s^{1/2}, \]
+which holds as algebra for any $\mathbf{H}$ and $\mathbf{J}_s$, since substituting the definitions collapses the chain. The factor $\mathbf{K}$ satisfies $\mathbf{K}\mathbf{K}^\top=\mathbf{C}_s$, so it is a legitimate square-root factor of the sample distortion, but it is not the symmetric principal square root, and the form $\mathbf{C}=\mathbf{C}_s^{1/2}\,\mathbf{R}\,\mathbf{C}_s^{1/2}$ holds only where $\mathbf{H}$ and $\mathbf{J}_s$ commute. What composes with no assumption at all is the information volume,
+\[ \log\det\mathbf{C}=\log\det\mathbf{C}_s+\log\det\mathbf{R}, \]
+an exact identity because the determinant is multiplicative. The per-parameter diagonal, the trace, the eigenvalues and the Frobenius norm do not compose across the split; only the volume does, and only the volume is decomposed in the maps.
+% MOVED 2026-08-12 from 08_appendix_derivation.tex, verbatim, not one word edited. It was the only
+% block of that appendix that derives nothing about the likelihood: it is a property of the
+% diagnostic, and the figure it licenses (Figure 4--figure supplement 1) reads the product of two
+% cells against a total, which is the reading the last sentence bounds.
+
+\subsection*{The two scalars, and the distance they are the components of}
+
+With $\lambda_1,\dots,\lambda_d$ the eigenvalues of $\mathbf{C}$ on the retained subspace, the
+magnitude $m=e^{\bar e}$ and the anisotropy $a=e^{s}$ of Eq.~\ref{eq:magnitude-anisotropy} are the
+exponentials of the mean and the standard deviation of $\log\lambda_i$. They are not two arbitrary
+summaries: they are the two orthogonal components of the affine-invariant Riemannian distance from
+the identity,
+\begin{equation}
+  D_{\mathrm{AI}} \;=\; \Bigl(\textstyle\sum_i \log^2\lambda_i\Bigr)^{1/2}
+   \;=\; \sqrt{d\,(\bar e^{\,2}+s^2)},
+  \label{eq:dai}
+\end{equation}
+so that a member sits at $m=a=1$ if and only if $D_{\mathrm{AI}}=0$, and the two coordinates say
+whether a departure is a common factor on every direction or a spread between them. The pair is
+reported throughout and $D_{\mathrm{AI}}$ is reported nowhere in its place, because the decision the
+Results support is exactly the one the pair separates and the single number collapses: whether a
+scalar correction can work at all ($a=1$) and what factor it should use ($m$).
+
+Neither reads below its own sampling floor. The anisotropy of an estimated distortion is positive by
+construction even when the truth is isotropic, since the eigenvalues of a matrix estimated from a
+finite cloud spread on their own. Drawing a thousand estimates in two dimensions from a perfectly
+calibrated covariance and forming the same statistic gives a median of $1.038$ and a $95$th
+percentile of $1.081$, so a measured spread of that size is not evidence of shape; and that is a
+lower bound on the floor, because the reported covariance the statistic is formed against is itself
+estimated.
+% src: papers/1_method/decisions/recompute/fig2_shape_and_floor.R (20,000 null draws at p=2,
+% n=1000; median 1.038, 95th percentile 1.081). The Results quote the 1.081 as "a finite-sample
+% floor of at least 1.08" and, before this appendix, its only trace in the manuscript was that
+% sentence and a `% src` line: a reader had the number and no way to reconstruct it.
+
+\end{appendixbox}

@@ -13,11 +13,22 @@
 % cannot leave the Discussion". Second tellings die and leave a pointer; caveats with a home elsewhere
 % MOVE and stay in the paper. The three moves were executed in the same pass and must not be undone
 % without bringing the content back here:
-%   T1 -> 02_theory_full.tex, the closing sentence of the acquisition-kernel paragraph: the published
+%   T1 -> 02_framework.tex, the closing sentence of the acquisition-kernel paragraph: the published
 %         tenfold cost estimate for a general kernel, with its guardrail (nine-scheme comparison, NOT
 %         a likelihood evaluation).
 %   T2 -> 06_methods.tex, after the sentence that licenses the simulator as the reference: what the
 %         comparison between two independent implementations cannot see, the shared specification.
+%         T2 WAS SPLIT AND HALF-REVERSED 2026-08-12 by papers/1_method/09_carve_plan.md. The
+%         LIMITATION is back below, as the third boundary of "What this paper does not settle",
+%         compressed from 157 words to about 90: eLife prints Methods after the Discussion, so a
+%         limitation that lives only there is one most readers never reach, and 08_length_plan.md's
+%         rule is that limitations are compressed and never cut. Methods keeps the operative half,
+%         that the shared specification is small enough to check by eye and that this is why that
+%         section writes it out symbol by symbol, which was T2's own argument for the move. The
+%         enumeration of the theorems a general remedy would check did not come back.
+%   T4 (new, same pass) <- 02_framework.tex: the three quoted phrases from munch2022bayesian on
+%         losing conjugacy and on mean and covariance not being sufficient statistics. It is a
+%         concession to another group's work and it now sits in the paragraph that discusses them.
 %   T3 -> 06_methods.tex: the data are simulated by design, the inference is likelihood only, and the
 %         open probability of one half is now stated where the parameters are given.
 %
@@ -52,6 +63,34 @@ That correlation also tells an experimenter which regime they are in. Over the m
 
 Once the agonist is removed, a member that has conditioned on the past gains nothing further about the channel number or the opening rate, while the closing rate and the unitary current stay informative through the decay (Figure~\ref{fig:time}--figure supplements 1 and 2); the non-recursive members do not share that shape (Results), so this is about conditioning. An experiment after those first two should spend its samples on the jump and its rise. % src: as at 04_results.tex:330-331, washout table row C
 
+A second result speaks to how a record should be reduced before it is fitted. The acquisition is
+fast and uniform and is not the choice; the choice is how its samples are grouped, and nothing
+requires the groups to be of one size. Grouping is closed under the observable of
+Eq.~\ref{eq:obs-avg}: the average of consecutive window averages is the average over the longer
+window they span, so a reduced record is the same kind of measurement at a larger $\Delta$, with a
+proportionately smaller instrumental variance and no sample discarded. Where each parameter's
+information sits then says what the grouping should be. The rates live in the shape of the
+transient, so groups shorter than the relaxation add almost nothing to them, and after a
+concentration change the groups can be allowed to grow with the transient they follow,
+geometrically, without the rates noticing. The unitary current and the channel count are the
+constraint, since what separates those two is the gating fluctuation, and resolving more of it is
+what finer groups buy, up to where the instrumental noise covers it (Results). So the grouping is
+set by which of the two the experiment is for, and a record can be reduced by orders of magnitude
+for a kinetic question and hardly at all for an amplitude one. What makes an uneven grouping
+legitimate rather than an approximation is that the likelihood takes the window as an argument and
+not as a constant: a member written for an instant is describing the wrong random variable on a
+grouped record, and one written for a fixed window cannot follow a schedule that changes. The
+temporal structure of the record becomes something to design, and the cost of the fit follows it,
+since the recursion is linear in the groups it is given.
+% VERIFIED IN THE SOURCE 2026-08-12 before this paragraph was written, because it claims something
+% about the implementation and not only about the formalism. Each step of the protocol carries its
+% own sample count (legacy/experiment.h:31, Agonist_step = Vector_Space<number_of_samples,
+% Agonist_concentration>), the interval is computed from it step by step (legacy/qmodel.h:3104,
+% dt = get<number_of_samples>(t_step)()/fs), the elapsed time accumulates the same way
+% (experiment.h:111), and the step list is READ FROM A FILE with one count per step
+% (experiment.h:392). number_of_samples is a double, so a group need not be a whole number of raw
+% samples either. An uneven schedule is an input, not an extension.
+
 The ordering of the boundaries is what an experimenter can act on: everywhere on the measured plane, one to three decades of noise separate the point at which the fluctuations stop carrying the unitary current or the channel number from the point at which the classical error bar becomes honest (Figure~\ref{fig:usage}). It is a concept map, not a phase diagram, its boundaries level sets that a looser criterion moves by up to a decade without changing the layout, and its classical arm is one least-squares fit rather than a fluctuation analysis. The software carries the calibrated member with its score and its Fisher information and the exact simulator, so a reader can run the two identities on their own scheme, at their own open probability; the cheaper members are not in it, so the comparison between rungs is reproducible only from the engine.
 % THE LIBRARY SENTENCE IS SCOPED EXACTLY TO 07_backmatter.tex:5. Claiming a reader can reproduce the
 % ladder would be false. PENDING UPGRADE, not written because it was not verified first-hand here:
@@ -67,7 +106,12 @@ The device is conceded; what is specific here is the realization for an exact co
 % repair is at 06_methods.tex, which defers to this paragraph by name for the Kalman correspondence,
 % so this is still the only place the correspondence is stated.
 
-\citet{munch2022bayesian} asked this paper's question of a filter of this family and answered it by counting coverage over repeated simulated data sets. Three things separate that from what is done here. What their count tests is a posterior, so the prior and the sampler are inside the verdict together with the likelihood; the identities used here are evaluated on the likelihood alone, at parameters that are known, with no prior and no sampler. What their count returns is a probability that a region holds the truth; what is returned here is a matrix, which says by how much and in which parameter the reported uncertainty departs and separates what each interval commits from what accumulates across them. And a coverage rate costs one posterior fit per replicate at every design point, which keeps such a study to a line of conditions, while a score and an information at known parameters cost one pass each, which is what puts $560$ cells within reach. On the two axes of this study their filter maps the instantaneous occupancy to the observation rather than conditioning on the ends of an acquisition interval, which places it with the instantaneous recursive member; what it generalizes is the emission, through state-dependent open-channel noise and a fluorescence observable, and that generalization costs them the analytical update and obliges a closure at two moments of their own.
+\citet{munch2022bayesian} asked this paper's question of a filter of this family and answered it by counting coverage over repeated simulated data sets. Three things separate that from what is done here. What their count tests is a posterior, so the prior and the sampler are inside the verdict together with the likelihood; the identities used here are evaluated on the likelihood alone, at parameters that are known, with no prior and no sampler. What their count returns is a probability that a region holds the truth; what is returned here is a matrix, which says by how much and in which parameter the reported uncertainty departs and separates what each interval commits from what accumulates across them. And a coverage rate costs one posterior fit per replicate at every design point, which keeps such a study to a line of conditions, while a score and an information at known parameters cost one pass each, which is what puts $560$ cells within reach. On the two axes of this study their filter maps the instantaneous occupancy to the observation rather than conditioning on the ends of an acquisition interval, which places it with the instantaneous recursive member; what it generalizes is the emission, through state-dependent open-channel noise and a fluorescence observable, and that generalization costs them the analytical update and obliges a closure at two moments of their own. That closure is the same obstruction the update of Eq.~\ref{eq:macror} meets and resolves the same way: they note that the state-dependent term makes the incremental likelihood intractable because ``the conjugacy property is lost'', apply the total-variance decomposition to recover mean and covariance, and state the cost in the terms used here, that the covariance equations ``are still exact for the more general noise model'' while ``mean and covariance just do not form a set of sufficient statistics anymore''. Two groups reached one device from different motivations.
+% MOVED HERE 2026-08-12 from the body's sufficiency paragraph (09_carve_plan.md): it is a concession
+% to another group's work and it belongs in the paragraph that discusses them, not in a section a
+% reader reads to learn what the members are. The CLAIM it supports, that the update conditions a
+% Gaussian carrying the exact first two moments and is not the exact Bayesian update, stays in the
+% body, where the posterior-as-prior closure leans on it.
 % VERIFIED FIRST-HAND 2026-08-07 against docs/bibliography/Munch_2022_Bayesian_Kalman_IonChannels_eLife.pdf.
 % Their Eq. 3-4 (p.6, Figure 2a) map the INSTANTANEOUS state to the observation, so the placement is
 % exact; p.2 states the emission generalization and that "the central Bayesian update equation loses
@@ -106,11 +150,11 @@ Stated as a conjecture and in those words: the limits behave like a balance that
 % perimeter below, and what IS measured, where each parameter stops being reachable, is at
 % 04_results.tex:764-766.
 
-A second boundary is the measurement model. The instrumental contribution is taken to be Gaussian and white, as the simulator emits it (Methods); where a recording departs from that, through a trapped charge in the headstage or amplifier flicker \cite{lei2020considering}, the diagnostic would report a distortion belonging to the noise model and not to the gating closure, and we have not run that. The uniform acquisition window is a departure of the same kind adopted knowingly, and unlike those processes its residue is computable in advance from two numbers the experimenter chose (Theory).
+A second boundary is the measurement model. The instrumental contribution is taken to be Gaussian and white, as the simulator emits it (Methods); where a recording departs from that, through a trapped charge in the headstage or amplifier flicker \cite{lei2020considering}, the diagnostic would report a distortion belonging to the noise model and not to the gating closure, and we have not run that. The uniform acquisition window is a departure of the same kind adopted knowingly, and unlike those processes its residue is computable in advance from two numbers the experimenter chose (Appendix~\ref{app:derivation}).
 % THIS IS THE HEAD THAT ROLLED, 403 words to 85. The noise premise is Methods' (06_methods.tex:41,
 % "The emission model is white instrumental noise only", with the pink and proportional channels at
 % zero), so what survives here is the consequence, which is the only part Methods does not state. The
-% kernel half is printed whole at 02_theory_full.tex:94: the dimensionless group, the unit-gain
+% kernel half is printed whole at 02_framework.tex: the dimensionless group, the unit-gain
 % argument, the three per cent at five times the inverse cutoff, the first-order/second-order split,
 % block-averaging as the remedy, the jump interval as the exception, and the general kernel left to
 % later work, which now also carries the published tenfold cost estimate (transplant T1).
@@ -120,6 +164,16 @@ A second boundary is the measurement model. The instrumental contribution is tak
 % the gating variance, the direction of the classical filtering bias on the unitary current in
 % fluctuation analysis (Sigworth 1980, Heinemann and Conti). Neither PDF is in docs/bibliography/.
 
+A third boundary is the diagnostic's own. The comparison is between two independent implementations, the likelihood and the exact simulator, so everything downstream of the point where they separate is tested: the propagation, the update, the emission arithmetic, the accumulation. Upstream they share one specification, the rate matrix built from the parameters, the conductance vector, the protocol and the sampling times, and a diagnostic built on their agreement cannot see an error there. The general remedy is different in kind, verifying each object against the theorems it must satisfy, and that is a piece of work with its own design, not undertaken here.
+% RETURNED HERE 2026-08-12 by papers/1_method/09_carve_plan.md, compressed from the 157 words that
+% TRANSPLANT T2 had moved to Methods on 2026-08-11. It is a limitation of the study, eLife prints
+% Methods after the Discussion, and 08_length_plan.md's rule is that limitations are compressed and
+% never cut; relocating one below the body is a demotion by another route. What stayed in Methods is
+% the operative half, that the shared specification is small enough to check by eye and that this is
+% why that section writes it out symbol by symbol. The enumeration of the theorems (semigroup and
+% Chapman-Kolmogorov, stationarity, normalisation of the occupancy, the moment identities of the
+% emission) came out with it and is not restored: naming the class is what the sentence needs.
+
 The perimeter is a model, and Methods declares it as one: two states at an open probability of one half, a single concentration jump, simulated data, likelihood only. The fixed open probability means a channel count and an opening count differ throughout by a factor of two that no measurement here can settle. What the channel-number axis carries at $p=0.5$ is the gating variance, so a reader whose receptor sits elsewhere can enter the map at $4Np(1-p)$ in place of $N$; the substitution is exact for the variance and says nothing about the skewness, which vanishes at $p=0.5$ and which no cell here probes. Richer schemes, the stationary regime, the few-channel boundary, the filtered kernel and experimental data are named companions rather than omissions, and the kernel is one for a stated reason: the condition that makes its residue negligible is hardest to meet at windows short against the relaxation, which is where the boundary-conditioned member's advantage is largest.
 % THE OPEN-PROBABILITY RULE IS NOT A MEASUREMENT and must not be written as one: it is a variance
 % match read off the model's own binomial, N p (1-p) against N/4, so a receptor with a thousand
@@ -128,4 +182,42 @@ The perimeter is a model, and Methods declares it as one: two states at an open 
 % half: the binomial skewness goes as (1-2p). That is why the rule is offered and a P_open sweep is
 % still a companion.
 
-What this changes is what the paper hands over. The reader supplies their sweep count, their rundown, their model size and their tolerance, and decides; what they cannot measure for themselves, and what is supplied here, is whether a reported interval is the interval that is delivered. What the diagnostic cannot see is the specification the likelihood and the simulator share (Methods).
+What this changes is what the paper hands over. The reader supplies their sweep count, their rundown, their model size and their tolerance, and decides; what they cannot measure for themselves, and what is supplied here, is whether a reported interval is the interval that is delivered. What the diagnostic cannot see is the specification the likelihood and the simulator share (Methods). A mechanism once left a mark anyone could point to; choosing between mechanisms now means navigating by likelihood, and the likelihood is the instrument, which has to be calibrated before what it selects can be believed.
+% THE CLOSING SENTENCE, 2026-08-12 (Luciano: "we reach the point we have to navigate by likelihood").
+% +35 words on a block the guion budgets at 55 and that was at 62. What it buys, and why it is worth
+% more than the diagnostic-limit sentence it now follows rather than replaces:
+%   THE RING. It returns to :60, the flip state with "a signature anyone could point to in the record",
+%   which is the paragraph that makes the whole section about mechanism selection and not error bars.
+%   The section previously ended on what the diagnostic cannot see, so its last words were a
+%   limitation, with the significance stranded in the middle of the paragraph. The order is now
+%   capability, limit, consequence.
+%   IT ALSO CLOSES THE SECTION AGAINST THE ABSTRACT, whose first sentence since 2026-08-12 is "Some ion
+%   channel mechanisms leave a mark in the record; as inferences get finer, the claims leave none"
+%   (00_abstract.tex, note 1m). Same fact at both ends of the paper, stated forwards at the start and
+%   backwards at the end.
+% RULE 8 (no aphorisms) IS THE ONE TO WATCH IF THIS IS EVER REWRITTEN. It survives because the first
+% clause names the specific situation this paper opened with and the third states a condition on
+% belief, so the navigation clause is carried between two facts rather than standing alone. The
+% aphorism-only form ("a method you navigate by has to have its error known") stays REFUSED: it is
+% the forbidden shape.
+% "INSTRUMENT" IS IN, and the objection against it was withdrawn the same day (Luciano, 2026-08-12:
+% the concept IS the idea, that discriminating models requires calibrating our instrument and our
+% instrument is the likelihood). The collision with instrumental variables is real only for a bare
+% plural with no measurement verb around it, which is the case 00_abstract.tex note 1k(iii) removed
+% ("The instruments are then classical"). Beside "calibrated" the word can only be read
+% metrologically, and calibration in the metrological sense is exactly what this paper does: it
+% determines the relation between what a likelihood reports and what it delivers.
+% THE ONE THING TO KEEP AN EYE ON is that "calibrate" not become an ACTION ON THE LIKELIHOOD. Every
+% other site in the manuscript uses "calibrated" as a STATE of a member, and 00_abstract.tex sentence
+% 8 says no rescaling repairs the distortion because it has directions in parameter space, so an
+% active reading promises an adjustment the paper forecloses. The passive, as a precondition on
+% belief, is on the right side of that. Do not rewrite it into "we have to calibrate the likelihood".
+% RULE 5 holds: no product is named, and what the sentence claims is a property of the field's
+% position, not of the calibrated member.
+% WHAT IT DROPPED, and it is recoverable in four words if wanted: "part of the evidence", the eLife
+% assessment vocabulary, which also picked up "ratios of evidence between schemes" at :60. It went
+% because "before what it selects can be believed" names the SELECTION, which is the section's thesis
+% at :60 and is what the evidence formulation only implied.
+% LENGTH. The section is 2496 words against the guion's 1500, so this addition is not paid for. If the
+% cut ever comes, this sentence is not the place to take it from: the diagnostic-limit sentence in
+% front of it has a full home in Methods (transplant T2) and can go back to being a pointer.

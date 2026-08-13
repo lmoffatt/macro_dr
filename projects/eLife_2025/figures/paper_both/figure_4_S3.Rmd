@@ -94,7 +94,11 @@ knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 # the body figure's.
 FIG4_ALGOS     <- c("macro_R", "macro_MR", "macro_VR", "macro_IR")
 FIG4_ALGO_LAB  <- c(macro_R = "R", macro_MR = "MR", macro_VR = "VR", macro_IR = "IR")
-FIG4_DATA_DIRS <- c("../data/1c2ae6f", "../data/87889e6", "../data/0ffbda7", "../data/1f7138b")
+# a202e03 is listed although no least-squares arm is drawn here: the shared source CSVs are
+# stamped by the COUNT of input files (figure_4_data.R:245), so a notebook that cannot see that
+# directory rebuilds them without the un-averaged arm and every other figure then loses a column.
+FIG4_DATA_DIRS <- c("../data/1c2ae6f", "../data/87889e6", "../data/0ffbda7", "../data/1f7138b",
+                    "../data/a202e03")
 source("figure_4_common.R")
 source("figure_4_layout.R")
 ```
@@ -114,5 +118,37 @@ SIDES <- list(
 # 16 columns, so per_row is NOT the body's. MEASURED, not solved: a synthetic render of this same
 # layout at 16 columns puts 0.204 at x 0.1817, y 0.1807, 99.5 per cent isotropic
 # (tmp/calib_fig4.R, tmp/measure_fig4.py). The cell comes out 1.32 mm, wider than the body's 1.14.
-fig4_render(SIDES, per_row = 0.204, out = "Figure_4_supplement_recursive_ladder.pdf")
+fig4_render(SIDES, per_row = 0.204, out = "Figure_4_S3.pdf")
+```
+
+```{r measured-table}
+# THE TABLE THIS FILE'S HEADER CARRIED BY HAND, generated instead, for the same reason as in
+# figure_4_S1.Rmd: a note that repeats a measurement is a note that will one
+# day disagree with it. The manuscript quotes these numbers, so they have to come from the render.
+# READ FROM `m`, NOT FROM `Dconf`. Dconf is the CI edge toward the null (figure_4_data.R:199) and
+# collapses to exactly 1 wherever the bootstrap interval brackets it, which is what the MAPS want
+# and the wrong quantity for a table of values.
+NOISE_LAB <- 0.1                  # the LABEL. S_tilde = label/10 = 0.01 (noise_units.R)
+rl <- stat %>%
+  dplyr::filter(comp == "total", param %in% PARAM_LONG,
+                as.numeric(noise) == NOISE_LAB, is.finite(m)) %>%
+  dplyr::group_by(param, algo, Num_ch) %>%
+  dplyr::summarise(med = median(m), nint = dplyr::n(), .groups = "drop") %>%
+  dplyr::mutate(algo = factor(unname(ALGO_LAB[algo]), levels = unname(ALGO_LAB))) %>%
+  dplyr::arrange(param, algo)
+
+cat("\n=== information distortion, medians over the swept intervals, noise label ", NOISE_LAB,
+    " (S_tilde = ", NOISE_LAB / 10, "), from m ===\n", sep = "")
+rl %>% dplyr::select(param, algo, Num_ch, med) %>%
+  tidyr::pivot_wider(names_from = Num_ch, values_from = med, names_prefix = "N_ch_") %>%
+  as.data.frame() %>% print(digits = 4, row.names = FALSE)
+
+# THE ORDERING CLAIM, stated as the comparison the manuscript makes: is MR worse than R, and does
+# the gap grow with the channel count? Printed so the sentence in 04_results.tex has a source.
+cat("\nMR against R, and VR against R, on each parameter (ratio of the two medians):\n")
+rl %>% dplyr::select(param, algo, Num_ch, med) %>%
+  tidyr::pivot_wider(names_from = algo, values_from = med) %>%
+  dplyr::mutate(MR_over_R = MR / R, VR_over_R = VR / R, IR_over_R = IR / R) %>%
+  dplyr::select(param, Num_ch, MR_over_R, VR_over_R, IR_over_R) %>%
+  as.data.frame() %>% print(digits = 3, row.names = FALSE)
 ```

@@ -104,7 +104,8 @@ Out of Diagnostics: the composition identity C = K R Kᵀ with the non-symmetric
 and the log-det additivity, and the sandwich Taylor expansion, to Appendix 2 (about 300 words). The
 near-singular anchor rule with its 1e-10 tolerance and the grey-cell convention, to Methods (149).
 
-Out of Results: the subsection "Where the calibrated member departs" with Figure 5 and its caption,
+Out of Results: the `fig:limit` subsection (was "Where the calibrated member departs"; retitled
+2026-08-12 to "In the few-channel corner ...") with Figure 5 and its caption,
 to Appendix 2. 306 words of prose, a 231-word caption and a full-width float. `fig:limit` is cited
 from nowhere outside Results, which was checked, so nothing breaks.
 

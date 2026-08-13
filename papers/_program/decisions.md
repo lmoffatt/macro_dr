@@ -57,6 +57,11 @@
   current, data key `nonlinearsqr`, display `LSE`, engine flag `family_approximation = 2`. On the
   lattice: `NR`, `INR`, `R`, `MR`, `VR`, `IR`. **Body: `LSE`, `NR`, `R`, `IR`. Supplement: `MR`, `VR`,
   `INR`** (`program.md` §1).
+- **Three names per member, and which goes where** (Luciano, 2026-08-12). Code where a number is
+  attached, descriptor at a heading, a first mention, a caption or a structural point, published name
+  (`MacroIR`, `MacroINR`) only where the prior work is at stake. The full rule, the reason a uniform
+  naming by published name does not exist to be adopted, and what the pass measured:
+  `nomenclature.md`, "Which of the three names to use where". Applied to the manuscript the same day.
 - **LSE is not a rung of the family** (2026-07-20). In the dispatcher it carries the same two knob
   settings as `INR` (`recursive=false, averaging=1`) and differs only by the third flag.
   The "one object with two knobs" framing is retired; the structure is a root question with the ladder

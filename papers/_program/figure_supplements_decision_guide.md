@@ -142,8 +142,10 @@ Inventory of what is already built, 2026-07-31. **~31 candidates**, not the 16 t
 have been working with; the extra came from `paper_1` and from the `figure_5_IR_*` family. Titles are
 the `.Rmd` front matter. Paths relative to `projects/eLife_2025/figures/`.
 
-**Figure 1 — the filter step along the cost ladder**
-- `paper_both/figure_1_all.Rmd` — one filter step across the whole roster (NR, MNR, R, MR, VR, IR)
+**Figure 1 — the filter step over the window × recursion lattice** (roster `NR, INR, R, IR` since
+2026-08-12; the body figure has no supplement)
+- `archive/figure_1_all.Rmd` — one filter step across the whole roster (NR, MNR, R, MR, VR, IR)
+- `archive/figure_1_superseded_20260812.Rmd` — the six-column version, `LSE ILSE NR INR R IR`
 - `paper_1/Figure_S1*.pdf` + `paper_both/Figure_1_seed_{4,16,47,48}.pdf` — the same step on other seeds
 
 **Figure 2 — recovery clouds**

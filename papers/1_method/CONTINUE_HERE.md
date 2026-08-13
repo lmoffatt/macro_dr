@@ -14,8 +14,12 @@
 
 ## Where the figures stand
 
-- **Fig 1** built: the four-column ladder R → MR → VR → IR, over `figure_1_panels.R`, shared with
-  `figure_1_all.Rmd` (six columns, orientation only, its own PDFs).
+- **Fig 1** built, roster settled 2026-08-12: **four columns, `NR`, `INR`, `R`, `IR`**, the window ×
+  recursion lattice, over `figure_1_panels.R`. No supplement. The two least-squares columns were
+  removed the same day (their means equal `NR`'s and `INR`'s to 1e-15, so they were copies with a
+  constant band) and the caption says so in a clause; `decisions.md` carries the measurement and the
+  rejected R-vs-IR-only variant. Predecessors in `figures/archive/`, including `figure_1_all.Rmd`,
+  which renders every algorithm to its own PDFs.
 - **Fig 2** built: the A-strict roster on the **Gaussian anchor**, VR read from `0ffbda7` and the rest
   from `1c2ae6f` by a search path, so a new algorithm joins by itself when its files land.
 - **Fig 3** built on regenerated dumps (engine `0ffbda7`, **seed now fixed** at 20260722; it was `0`,

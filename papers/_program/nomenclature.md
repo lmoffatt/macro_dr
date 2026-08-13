@@ -187,6 +187,53 @@ identifier falls out.
 practical regime" (`decisions.md` §6). The ladder still makes `IR` the top rung, and that structural
 point stands; what is retired is stating a one-band result as a global verdict.
 
+## Which of the three names to use where (settled 2026-08-12, Luciano)
+
+Every member has up to three names and they are not alternatives: the **code** (`IR`, `R`, `NR`), the
+**descriptor** (the boundary-conditioned member, the recursive instantaneous filter, the open-loop
+member), and for two of the eight the **published name** (`MacroIR`, `MacroINR`). The question that
+opened this was whether the published name could simply replace the descriptor everywhere and save
+the words. It cannot, and the reason is not style: only `IR` and `INR` have a published name at all,
+`MacroR`, `MacroNR`, `MacroMR` and `MacroVR` would have to be coined for a handful of uses each, and
+the two least-squares arms cannot take the prefix, since they are not members of the macroscopic
+family. A uniform naming by published name does not exist to be adopted.
+
+The rule, in the manuscript body:
+
+- **Code where a number is attached to the member.** Any sentence that reports a distortion, a bias,
+  a fraction or a count names its members `\texttt{IR}`, `\texttt{R}`, `\texttt{NR}`. This is what
+  the figures print, and a descriptor carrying a list of numbers ("$1.32$ for the recursive
+  instantaneous filter, $1.97$ for `MR`") mixes two naming systems inside one sentence.
+- **Descriptor at a heading, at a first mention, in a caption, and where the point is structural.**
+  A caption is its own unit and must stay self-contained. A structural point is one about what the
+  member conditions on or why it succeeds, where the descriptor is the argument and the code would
+  hide it: the Discussion's concession paragraph and the mechanism sentence about the update are the
+  cases in this manuscript.
+- **Published name only where the prior work is at stake**: the Introduction's citation of
+  \citet{moffatt2025bayesian}, the bridges `IR` = MacroIR and `INR` = MacroINR, and the software
+  availability sentence. The abstract's own option stands as it is (`nomenclature.md` above): name
+  MacroIR without a gloss, or describe by the axes, which is what the current abstract does.
+
+**Why the descriptor is not simply cut.** The paper's claim is structural: what buys calibration is
+conditioning on both endpoints. "MacroIR is calibrated over almost the whole plane" reports that a
+program did well; "the boundary-conditioned member is calibrated" reports which property did it, and
+that transfers to any other scheme. The descriptor is carrying the thesis wherever it survives.
+
+**The dictionary is what makes the mixture legible** and it lives in `02_framework.tex`, in the
+sentence that binds each code to its descriptor, and in Table 1's last column. Neither may be cut
+while both naming systems are in use. Note that the framework sentence stating the rule was the
+opposite one ("usually named by what it conditions on rather than by its code") for a single day,
+2026-08-11 to 2026-08-12; it is amended in place and its comment block records the reversal.
+
+**What the pass measured.** Before: 26 occurrences of "boundary-conditioned" and 20 of the other
+member descriptors across the live text of the six included sections, of which the Results carried
+about thirty references in total. After: the Results body prose names no member by descriptor in a
+number-carrying sentence, what remains being its two subsection headings, four captions, one
+reference to the *set* of window-ignoring members, and one contrast against "the open-loop gating
+likelihood" that exists to separate the least-squares failure from a gating-aware one. The saving is
+about 115 words on a 9,200-word target, so this was decided on how it reads and not on length
+(`papers/1_method/08_length_plan.md`).
+
 ## `ILSE`: the window axis crosses the root question (2026-08-06)
 
 **The least-squares rung splits in two.** The window axis is not the family's property: the recording
@@ -207,10 +254,18 @@ way on purpose so nothing already reading it is silently relabelled; the crossin
 only in the predictive variance. Measured from the figure-1 dumps 2026-08-06, 12 intervals:
 max|LSE − NR| = 8.882e-16, max|ILSE − INR| = 2.220e-16, max|LSE − ILSE| = 5.469e-02.
 
-**Where each is measured.** `ILSE` is the ONLY least-squares arm on the design grid: zero
-`nonlinearsqr_g` files under `figures/data`, so every plane/map/cloud number the paper quotes as
-"LSE" is `ILSE`. `LSE` proper is measured only at the single cell of figure 3 (both arms produced by
-one run of `figure_3_time.macroir`, git `ccd26f9-dirty`, 2026-08-05) and drawn in figure 1.
+**Where each is measured. CORRECTED 2026-08-12; the paragraph this replaces was true for one day.**
+BOTH arms are on the design grid, over the same cells: `figures/data/a202e03` (stamped 2026-08-06
+21:57) carries 96 `nonlinearsqr_g` files, and the coverage measured from the file names on
+2026-08-12 is 30 (N_ch, noise) cells at n_sims 1e4 for `nonlinearsqr_g` against the same 30 plus
+four superseded 1e3 cells and two at N_ch = 5 for `nonlinearsqr`. No cell carries `LSE` and not
+`ILSE`. `figure_2.Rmd`, `figure_4.Rmd`, `figure_4_S1.Rmd` and `figure_4_S4.Rmd` list that directory
+among their `DATA_DIRS`, so plane and cloud numbers quoted for `LSE` may now be `LSE`: READ THE
+NOTEBOOK, do not assume the tag means `ILSE`. What the retired paragraph said, and what is false:
+"`ILSE` is the ONLY least-squares arm on the design grid: zero `nonlinearsqr_g` files under
+`figures/data` ... `LSE` proper is measured only at the single cell of figure 3 (both arms produced
+by one run of `figure_3_time.macroir`, git `ccd26f9-dirty`, 2026-08-05) and drawn in figure 1."
+Figure 1 no longer draws either arm: its roster has been `NR`, `INR`, `R`, `IR` since 2026-08-12.
 
 **The av = 0 branch was BROKEN before 2026-08-05**: it propagated the occupancy by `P_half` and
 evaluated the mean before advancing, so the member fell half a step further behind every interval.
@@ -239,9 +294,12 @@ scoped to the sweep — open, see `00_abstract.tex` COUNT OPEN note.
 | the full trajectory | (exact) | intractable; the stochastic simulation supplies it as ground truth |
 
 `IR` is the top rung below intractability. **Superseded 2026-08-06**: the body no longer walks a
-single chain `LSE → NR → R → IR`. Figure 1 walks the 3×2 grid, three levels of the gating description
-crossed with the window setting: `LSE`/`ILSE`, `NR`/`INR`, `R`/`IR`. `MR` and `VR` split the R → IR
-step and live in a supplement (`program.md` §1).
+single chain `LSE → NR → R → IR`. **Revised 2026-08-12**: Figure 1 walks the 2×2 of the window
+setting crossed with recursion, `NR`/`INR`/`R`/`IR`, and the two least-squares arms are named in the
+caption rather than drawn, each being the open-loop column at its window setting with a band of
+constant height. The 3×2 grid it walked between 2026-08-05 and 2026-08-12, `LSE`/`ILSE` above
+`NR`/`INR` above `R`/`IR`, is in `1_method/decisions.md` with the measurement that retired it. `MR`
+and `VR` split the R → IR step and live in a supplement (`program.md` §1).
 
 `INR` gets its own row rather than sitting with `MR` and `VR`, because it does not condition on one
 endpoint *by choice*: without a gain the question does not apply to it, which is the degeneracy in the

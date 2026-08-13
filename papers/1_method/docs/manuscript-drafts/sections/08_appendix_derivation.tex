@@ -29,7 +29,7 @@
 \label{app:derivation}
 \section*{The interval likelihood, derived}
 
-The Theory section states what each member of the family conditions on and what that buys. This
+The body states what each member of the family conditions on and what that buys. This
 appendix carries the derivation behind those statements: the boundary-state construction and the
 moments it needs, what separates the start-conditioned members from the boundary-conditioned one,
 and the correspondence with the linear-filtering literature. It is written to be checked rather
@@ -46,7 +46,7 @@ $\bar\gamma_{i\to\cdot}$; for a probability the weight is already inside and the
 plain margin. Across a recording a subscript $t$ indexes the window, as in $\bar y_t$; inside a window the two
 ends are $0$ and $\Delta$, and a collapsed object is defined the moment its pair-resolved version is.
 \end{tcolorbox}
-% MOVED HERE 2026-08-10 from 02_theory_full.tex, where it opened the section. It is appendix
+% MOVED HERE 2026-08-10 from 02_framework.tex, where it opened the section. It is appendix
 % vocabulary: two of its three marks (the instant subscripts 0 and Delta, the dot collapse) are used
 % in this file and in no body sentence, and the third, the arrow, is now glossed in the body at "The
 % boundary state", where the first arrow-marked object of the body appears. The reason for the move
@@ -68,8 +68,77 @@ ends are $0$ and $\Delta$, and a collapsed object is defined the moment its pair
 % (iii) the SI's E_i for the collapsed second moment is not used: E_2 and E_3 are the divided
 %       differences here, and a third E would collide.
 
+\subsection*{The acquisition kernel, and what the uniform window misses}
+% [BESSEL-BOUND] THIS IS NOW THE CANONICAL SITE. Moved here 2026-08-12 from a comment block under
+% the Theory paragraph, where the bound had been computed and printed in prose but the algebra and
+% the table were visible only to whoever opened the source. The note was CLOSED 2026-08-11 and stays
+% closed; what follows is its content as text. The body keeps two sentences, one of which (first
+% order for a white contribution, second order for a correlated one) is what makes this concession
+% and the noise-model concession of the Discussion one concession. Do not re-open the question of
+% how much to print without reading 05_discussion.tex's Bessel paragraph first: the three sites are
+% deliberately divided into the scope statement (body), the algebra (here) and the operational
+% recipe (Discussion).
+
+The likelihood implements the boxcar of Eq.~\ref{eq:obs-avg} exactly, while a real acquisition
+kernel is that boxcar composed with the amplifier's analogue low-pass, so what is unmodelled is
+governed by one dimensionless group, the cutoff frequency against the acquisition window,
+$f_c\Delta$. For any component flat on the scale of $\Delta$, the effect on the two objects the
+likelihood uses, the variance of a recorded value and the covariance between consecutive ones, is
+
+\begin{center}
+\begin{tabular}{@{}lccccccc@{}}
+\toprule
+$f_c\Delta$ & $0.2$ & $0.5$ & $1$ & $2$ & $5$ & $10$ & $20$ \\
+\midrule
+variance deficit & $61.5\%$ & $29.6\%$ & $14.7\%$ & $7.4\%$ & $2.9\%$ & $1.5\%$ & $0.74\%$ \\
+lag-one correlation $\rho_1$ & $64.1\%$ & $21.1\%$ & $8.6\%$ & $4.0\%$ & $1.5\%$ & $0.75\%$ & $0.37\%$ \\
+error on a confidence interval & $61\%$ & $19\%$ & $8.3\%$ & $3.9\%$ & $1.5\%$ & $0.74\%$ & $0.37\%$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Four properties of that table matter more than the numbers in it. From $f_c\Delta=1$ upward the
+deficit is $0.147/(f_c\Delta)$ and $\rho_1$ is $0.075/(f_c\Delta)$, while $\rho_2$ and every longer
+lag are zero to four decimals: the residue is a nearest-neighbour effect of known size. The total is
+conserved, $\mathrm{Var}+2\sum_k\mathrm{Cov}_k=S/\Delta$ to six decimals at every setting, forced by
+the filter having unit gain at zero frequency, so what a likelihood allowing no such covariance sees
+is a misallocation of variance between the diagonal and its neighbours rather than a loss of it. The
+pole count does not enter: four poles, eight poles and a Gaussian of the same $-3\;\mathrm{dB}$
+frequency agree to the third decimal from $f_c\Delta=0.5$ upward, so the width can be quoted as the
+Gaussian equivalent $\sigma_f=\sqrt{\ln 2}/(2\pi f_c)=0.1325/f_c$, a ten-to-ninety rise time of
+$0.34/f_c$, which is the convention electrophysiology already uses for filter width
+\citep{colquhoun1995fitting}.
+% CITATION RESTORED 2026-08-12. Compressing the body's Bessel paragraph dropped
+% \citep{colquhoun1995fitting} and left the entry uncited, which check.sh item 5 caught. It belongs
+% here rather than there: the rise-time convention is what lets a reader check sigma_f against their
+% own amplifier's specification instead of taking ours.
+And the kinetics are the protected part: the deficit is first order in $1/(f_c\Delta)$
+for the instrumental noise and second order for a component carrying a correlation time of its own,
+because unit gain at zero frequency preserves the integral of an autocovariance and the
+block-averaged variance of a short-correlated component depends on that integral alone to leading
+order. At $f_c\Delta=5$ the white term loses $2.94\%$ and a gating term with correlation time
+$\Delta$ loses $0.11\%$, a factor of $27$, so the residue lands in the instrumental-noise partition,
+which is where the Discussion already argues an unmeasured departure of the noise model lives. The
+two concessions are one concession.
+
+What does not scale with the group is the interval holding the concentration jump: group delay plus
+rise displace and smear the transient by about $0.69/f_c$ at four poles, a fixed time rather than a
+fraction of $\Delta$, so that one interval carries an error the expansion says nothing about, and
+the honest recipe discards or flags the first interval after a step.
+
+One property of this family follows from the same algebra and a point-sampling method does not have
+it. Because the observable \emph{is} the integral, block-averaging a record down to a coarser
+$\Delta$ produces exactly the observable of Eq.~\ref{eq:obs-avg} at any decimation factor, with no
+aliasing question to answer; after decimation the only unmodelled piece left is the residual kernel,
+which is the table above. That is what makes ``average the record first'' a scoping statement rather
+than a workaround.
+% src: papers/1_method/decisions/recompute/bessel_bound.py (numpy + scipy, no data files, ~30 s),
+% which computes the table and each of the four properties. Read and re-run before quoting any of
+% these numbers in a different context; they are properties of boxcar-composed-with-Bessel and of
+% nothing in this paper's simulations, which carry no filter at all.
+
 \subsection*{The interval average, and how the members are built}
-% MOVED HERE 2026-08-10 from 02_theory_full.tex, three blocks, no sentence rewritten except where
+% MOVED HERE 2026-08-10 from 02_framework.tex, three blocks, no sentence rewritten except where
 % the connective tissue had to change: the telegraph mechanics from "Two Gaussian approximations",
 % and the per-channel algebra, the three steps and the tilted semigroup from "The interval update".
 % The body keeps the claims it argues from and a bridge; this is where they are cashed. Placed
@@ -400,6 +469,16 @@ depends on the pair that channel took. Marginalize over the start index, which t
 has no use for. Every equation in this subsection is one of those three steps carried out, and
 the two objects the interval likelihood is usually written with are those two contractions
 read on the larger space.
+
+Conditioning on the pair rather than on one end is the same device as static condensation, or as
+the spatial Markov property, applied on the time axis: the filter holds the states at the interval
+boundaries and marginalizes the trajectory between them analytically, and chaining intervals leaves
+a single state variable per junction, since the end state of one interval is the start state of the
+next. It is not a transition state in the mechanistic sense, and the word \emph{transition} is not
+used for it anywhere in this paper.
+% MOVED 2026-08-12 from the body's boundary-state paragraph (09_carve_plan.md): both sentences are
+% readings of the construction rather than vocabulary the Results need. What the body keeps is the
+% definition of the pair, the single-variable-per-junction consequence and the cost claim.
 
 The boundary state's own Gaussian follows from the prior and the propagator. Let
 $\mathbf{X}_{0\to\Delta}$ be the indicator of the pair a single channel takes, one on the
@@ -787,13 +866,11 @@ it.
 % because E[D] = 0 under that law.
 % src of the derivation: papers/1_method/decisions/recompute/mr_vs_ir_boxes.py
 
-\subsection*{How the two parts of the distortion compose}
-
-These compose exactly. The exact identity is
-\[ \mathbf{C}=\mathbf{K}\,\mathbf{R}\,\mathbf{K}^\top,\qquad \mathbf{K}=\mathbf{H}^{-1/2}\,\mathbf{J}_s^{1/2}, \]
-which holds as algebra for any $\mathbf{H}$ and $\mathbf{J}_s$, since substituting the definitions collapses the chain. The factor $\mathbf{K}$ satisfies $\mathbf{K}\mathbf{K}^\top=\mathbf{C}_s$, so it is a legitimate square-root factor of the sample distortion, but it is not the symmetric principal square root, and the form $\mathbf{C}=\mathbf{C}_s^{1/2}\,\mathbf{R}\,\mathbf{C}_s^{1/2}$ holds only where $\mathbf{H}$ and $\mathbf{J}_s$ commute. What composes with no assumption at all is the information volume,
-\[ \log\det\mathbf{C}=\log\det\mathbf{C}_s+\log\det\mathbf{R}, \]
-an exact identity because the determinant is multiplicative. The per-parameter diagonal, the trace, the eigenvalues and the Frobenius norm do not compose across the split; only the volume does, and only the volume is decomposed in the maps.
+% SUBSECTION "How the two parts of the distortion compose" MOVED 2026-08-12 to
+% 10_appendix_diagnostics.tex, verbatim (09_carve_plan.md). It derives nothing about the
+% likelihood: C, C_s and R are properties of the diagnostic, and this appendix is the derivation of
+% the interval likelihood. Appendix 3 now holds it beside the expansion behind the sandwich, which
+% is the material it was separated from.
 
 \subsection*{The same construction in the linear-filtering frame}
 

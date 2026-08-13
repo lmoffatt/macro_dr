@@ -170,6 +170,80 @@ SIDES <- list(
 # target of 100 per cent, and do not trust the nominal: the layout heights are null units.
 # THE COST, and it is the real objection to this page: five parameter blocks across 7.4 in put the
 # cell under a millimetre, against 1.14 mm on the body figure. Narrowest in the set.
-fig4_render(SIDES, per_row = 0.1475, out = "Figure_4_supplement_standard_error.pdf",
+fig4_render(SIDES, per_row = 0.1475, out = "Figure_4_S4.pdf",
             se_lines = FALSE, key = FALSE, outer = "param", drawn_axis = TRUE)
+```
+
+```{r what-each-axis-buys}
+# WHAT EACH DESIGN AXIS BUYS, measured, because the readings below were argued from the picture and
+# from first principles and neither is evidence. Two questions, both asked of the same object the
+# figure fills with, `sedel$se`, the distortion-corrected standard error in log10 units of the
+# parameter. Nothing here is a new computation; it is the field the panels draw, summarised.
+#
+# Q1. IS THE NOISE PARAMETER'S ERROR SET BY THE INTERVAL AND NOT BY THE NOISE? The prediction is
+# that it is, and it is the cheapest thing in the figure to teach the axes with: sigma is the scale
+# of a WHITE process, so its relative error goes as 1/sqrt(2N) with N the sample count, T/Delta.
+# That has two consequences and both are testable here. Flat in the noise level, since a scale
+# parameter's relative error does not depend on its own value. And going as sqrt(Delta), so the
+# log-log slope against the interval is +0.5.
+# EXCLUDE_ROWS IS NOT OPTIONAL HERE, and the first run of this chunk proved it. The least-squares
+# arms index their OWN four parameters and the mapping does not line up: `nonlinearsqr`'s index 3
+# is Num_ch_mean where the macro members have Current_Noise, so the shared index-to-name map files
+# LSE's CHANNEL NUMBER under sigma_noise. Reading it as the noise gave a slope of -0.007 against
+# the interval, which looked like a finding and was a mislabelled parameter. The panels never show
+# it because EXCLUDE_ROWS drops both arms from this block; this chunk has to drop them too.
+se_noise <- dplyr::filter(sedel, param == "Current_Noise", is.finite(se), se > 0) %>%
+  dplyr::anti_join(EXCLUDE_ROWS, by = c("algo", "param"))
+cat("\n=== Q1a. sigma_noise: spread of the standard error ACROSS noise levels,\n",
+    "         at fixed member, N_ch and interval (0 = perfectly flat) ===\n", sep = "")
+se_noise %>%
+  dplyr::group_by(algo, Num_ch, interval_in_tau) %>%
+  dplyr::filter(dplyr::n() >= 3) %>%
+  dplyr::summarise(n_noise = dplyr::n(), rel_spread = sd(se) / mean(se), .groups = "drop") %>%
+  dplyr::group_by(algo) %>%
+  dplyr::summarise(cells = dplyr::n(), median_rel_spread = median(rel_spread),
+                   max_rel_spread = max(rel_spread), .groups = "drop") %>%
+  as.data.frame() %>% print(digits = 3, row.names = FALSE)
+
+cat("\n=== Q1b. sigma_noise: log-log slope of the standard error against the interval\n",
+    "         (prediction +0.5 if it is 1/sqrt(sample count)) ===\n", sep = "")
+se_noise %>%
+  dplyr::group_by(algo, Num_ch, noise) %>%
+  dplyr::filter(dplyr::n() >= 3) %>%
+  dplyr::summarise(slope = coef(lm(log10(se) ~ log10(interval_in_tau)))[2], .groups = "drop") %>%
+  dplyr::group_by(algo) %>%
+  dplyr::summarise(fits = dplyr::n(), median_slope = median(slope),
+                   q10 = quantile(slope, 0.1), q90 = quantile(slope, 0.9), .groups = "drop") %>%
+  as.data.frame() %>% print(digits = 3, row.names = FALSE)
+
+# Q2. WHAT DOES SAMPLING FASTER BUY, and where? The ratio of the standard error at the coarsest
+# swept interval to the one at the finest, per parameter and per noise level, at the largest patch.
+# 1 means the extra samples bought nothing; 10 would be the full 1/sqrt(N) of a hundredfold change
+# in Delta. Anything between is the autocorrelation eating the extra samples: averaging n samples of
+# a correlated process divides the variance by n/tau_int and not by n.
+D_LO <- min(sedel$interval_in_tau); D_HI <- max(sedel$interval_in_tau)
+cat("\n=== Q2. gain from sampling at Delta = ", D_LO, " instead of ", D_HI,
+    ", as se(coarse)/se(fine), at N_ch = 10^4 ===\n", sep = "")
+sedel %>%
+  dplyr::anti_join(EXCLUDE_ROWS, by = c("algo", "param")) %>%
+  dplyr::filter(Num_ch == 10000, interval_in_tau %in% c(D_LO, D_HI), is.finite(se), se > 0) %>%
+  dplyr::select(algo, param, noise, interval_in_tau, se) %>%
+  tidyr::pivot_wider(names_from = interval_in_tau, values_from = se,
+                     names_prefix = "D_") %>%
+  dplyr::filter(!is.na(.data[[paste0("D_", D_LO)]]), !is.na(.data[[paste0("D_", D_HI)]])) %>%
+  dplyr::mutate(gain = .data[[paste0("D_", D_HI)]] / .data[[paste0("D_", D_LO)]]) %>%
+  dplyr::group_by(param, noise) %>%
+  dplyr::summarise(members = dplyr::n(), median_gain = median(gain), .groups = "drop") %>%
+  # ONLY THE COLUMNS EVERY MEMBER REACHES. The three non-decade noise levels (0.05, 0.2, 0.5) are
+  # run for ONE member and not six, so their median is that member's value and is not comparable
+  # with the rest. The first run of this chunk printed them beside the others and the 0.2 column
+  # came out at twice its neighbours in EVERY parameter at once, which is what a coverage artefact
+  # looks like and what a physical effect does not.
+  dplyr::group_by(noise) %>% dplyr::filter(max(members) >= 4) %>% dplyr::ungroup() %>%
+  tidyr::pivot_wider(names_from = noise, values_from = median_gain, id_cols = param,
+                     names_prefix = "z_") %>%
+  as.data.frame() %>% print(digits = 3, row.names = FALSE)
+
+cat("\n(the three non-decade noise levels are one member only and are dropped from the table above;\n",
+    " the lowest level every member reaches is the label 0.1, i.e. S_tilde = 0.01)\n", sep = "")
 ```

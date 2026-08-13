@@ -76,6 +76,7 @@ wrong. **TO MOVE** = lives at the old path, belongs at the new one. **REWRITE+MO
 | `model_and_sim.md` | `scheme_CO`, the emission model, exact CTMC uniformization, the six parameters and their units | CREATE | merge the model half of `1_method/docs/manuscript-drafts/sections/06_methods.tex` + `1_method/decisions/D-2_parameter_units.md` |
 | `submission.md` | front/back matter, CRediT, data availability, MDAR, article type | CREATE | from `elife-author-instructions.md` + the missing-owner list |
 | `check.sh` | the done-oracle + index completeness, **taking the paper as an argument** | LIVE | done 2026-07-20: it sits at `_program/check.sh`, takes the paper folder as its argument, and item 9 checks this index. Do **not** triplicate it |
+| `concept_firstuse.py` | the forward-reference check behind `1_method/10_concept_census.md`: first use of a concept measured in reading order against the section that defines it | LIVE | opened 2026-08-12, run as `check.sh` item 10. It checks the manuscript against the census; the census stays the owner of where a concept is defined |
 
 **Not in `_program/`, but shared and cited by it:** `docs/bibliography/` lives at the **repo root**, not
 in the papers tree, because the engine and theory layers cite it too. It owns the novelty position,
@@ -102,6 +103,9 @@ scoped to the old single-paper frame.
 | `decisions/D-0, D-3, D-4` | freeze scope, the novelty claim, the ranking verdict | LIVE | D-4 rescopes to band A rather than being rewritten |
 | `docs/manuscript-drafts/` | the vessel. Owns nothing; every claim in it is owned upstream | LIVE | — |
 | `grid.md` | paper 1's cells: which N_ch, which noise, which methods | CREATE | from `_program/axes.md` §3–7 once the N_ch ranges and `VR` are settled |
+| `08_length_plan.md` | the length target, the published-length evidence, and the relocate-before-compressing rule | LIVE | opened 2026-08-09; its Phases 1 and 2 are done and logged in it |
+| `09_carve_plan.md` | what the pre-Results sections keep and where every relocated block went | LIVE | opened 2026-08-11, executed 2026-08-12; owns the Theory+Diagnostics merge and the three-destination routing rule |
+| `10_concept_census.md` | every concept, **where the manuscript defines it**, and what it depends on | LIVE | opened 2026-08-12. Does not duplicate `nomenclature.md` (the letters), `machinery.md` (the diagnostic definitions) or `notation_map.md` (symbol↔code): it owns definition SITES and the dependency order. Kept honest by `_program/concept_firstuse.py`, run as `check.sh` item 10 |
 | `components/`, `archive/` | parked proof-of-concept and tombstones | RETIRED | never fact owners |
 
 ### Retired, do not read as current

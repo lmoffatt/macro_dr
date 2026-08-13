@@ -220,6 +220,22 @@ if [ "$N_UNREG" -eq 0 ]; then green "9. index: every working .md is registered i
   printf '%s\n' "$UNREG" | while IFS= read -r b; do [ -n "$b" ] && detail "$b"; done
 fi
 
+# --- 10. concept census: no concept used before it is defined -------------------------
+# Added 2026-08-12 with papers/1_method/10_concept_census.md. The census owns WHERE each concept
+# is defined; this only checks that the manuscript agrees, by measuring first use in reading order.
+# It is a warn and not a fail: some forward references are deliberate (an introduction may name a
+# quantity the body defines), and the census says which. Only rows carrying a `<!-- pat: ... -->`
+# marker are checked, and the script prints how many that is, so partial coverage never reads as
+# full coverage.
+if [ "$PAPER" = "1_method" ] && [ -f "$HERE/concept_firstuse.py" ]; then
+  CC=$(python3 "$HERE/concept_firstuse.py" 2>&1)
+  CC_N=$(printf '%s' "$CC" | head -1 | sed -n 's/.*, \([0-9]*\) forward reference.*/\1/p')
+  if [ "${CC_N:-0}" -eq 0 ]; then green "10. concepts: $(printf '%s' "$CC" | head -1)"; else
+    warn "10. concepts: $(printf '%s' "$CC" | head -1)"
+    printf '%s\n' "$CC" | tail -n +2 | while IFS= read -r b; do [ -n "$b" ] && detail "$b"; done
+  fi
+fi
+
 echo
 printf 'pass %d   fail %d   warn %d\n' "$PASS" "$FAIL" "$WARN"
 [ "$VERBOSE" = 0 ] && [ "$FAIL" -gt 0 ] && echo "(re-run with -v to list the offending lines)"

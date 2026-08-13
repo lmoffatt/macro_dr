@@ -100,9 +100,11 @@ build/gcc-release/macrodr_cli projects/eLife_2025/ops/local/figure_1.macroir
 
 **One inconsistency to be aware of.** This script builds NR and R with `variance_approximation = 0` while MNR, MR, VR and IR get `variance_approximation = 1`. Runs 2, 3 and 4 use `variance_approximation = true` for all five. Figure 1 is illustrative rather than quantitative, so this does not propagate into any reported number, but it should not be described as "the same five builds as the rest of the paper".
 
-**Notebook.** Since 2026-07-21 there are **two** notebooks over one shared body, `figures/paper/figure_1_panels.R`: `figure_1.Rmd` renders the paper's four recursive columns (R, MR, VR, IR) to `Figure_1.pdf` / `Figure_S1.pdf`, and `figure_1_all.Rmd` renders all six to `Figure_1_all.pdf` / `Figure_S1_all.pdf`. They differ by one vector, `COLS`, and cannot overwrite each other. Both read those CSVs (seven since VR, with no `skip`, see §2; the algorithm label is carried by the FILENAME and attached POSITIONALLY from two parallel vectors, since these CSVs have no `algorithm` column), and assemble a four-row panel: prior open probability, predicted current with its spread and the innovation, posterior (NR and MNR, when present, are marked "no update (open loop)"), and cumulative log-likelihood. Each calls `build_figure` twice, producing the zoom from samples 3 and 4 (6 to 10 ms) and the supplement from samples 0 to 4. Both are saved at 7.0 by 7.5 inches.
+**Notebook, rewritten 2026-08-12 with the roster call.** The notebooks live in `figures/paper_both/` (not `figures/paper/`, renamed with the 1+2 merge) over one shared body, `figure_1_panels.R`, which defines all eight columns and is untouched by roster changes. `figure_1.Rmd` renders the paper's Figure 1 and nothing else: **four columns, `NR`, `INR`, `R`, `IR`**, the window × recursion lattice, one `build_figure` call on samples 3 and 4 (the 6 to 10 ms zoom) at 7.0 by 6.05 inches, output `Figure_1.pdf` (504 × 435 pt). `figure_1_all.Rmd`, now in `figures/archive/`, renders every algorithm to its own `Figure_1_all.pdf` and cannot overwrite the paper's file. The reader carries the algorithm label in the FILENAME and attaches it POSITIONALLY from two parallel vectors, since these CSVs have no `algorithm` column. Rows: prior open probability, predicted current with its spread and the innovation, posterior (the open-loop columns are marked "no update (open loop)"), cumulative log-likelihood.
 
-**Caption correction needed.** `Figure_1_caption.md:5` calls Figure S1 the whole recording. It is not: `sel` filters `sample_index %in% 0:4` (`figure_1.Rmd:508`) and the recording has samples 0 to 5, so sample 5 is dropped and S1 shows 0 to 10 ms of a 12 ms record. Figure S1 also has no caption file of its own.
+**Which dumps are on disk.** The ones the notebook currently reads are stamped 2026-08-05 22:54 and include `figure_1_likelihood_diagnostic_LSE.csv` and `..._LSE_av0.csv`, so they come from the `figure_1_plus_lse.macroir` sibling, which is the run that owns the data at the moment. The two least-squares dumps are no longer drawn (the columns came out on 2026-08-12) but stay on disk: Methods and Theory both quote a mean-model identity measured from them, and the roster in `figure_1.Rmd` still maps their crossed file tokens.
+
+**Retired 2026-08-12: the supplement and its caption file.** `Figure_S1.pdf` (samples 0–4) was withdrawn because it contained the body figure rather than supplementing it, so the `build_figure(0:4, ...)` call is gone and the file is deleted; Figure 1 has no supplement. `Figure_1_caption.md` went to `figures/archive/Figure_1_caption_superseded_20260812.md`: it still described the 2026-07-21 R/MR/VR/IR roster and called Figure S1 the whole recording (it was 0 to 10 ms of a 12 ms record). The live caption is the one in `02_framework.tex`, and there is no caption file for this figure any more.
 
 ## 5. Run 2: the numerical-Fisher MLE battery (`433ed13`), feeding Figure 2 and its supplements (ex-S2, ex-S3) — numerical anchor, superseded for the body by the Gaussian rebuild
 
@@ -189,23 +191,66 @@ The canonical arc is `1_method/docs/manuscript-drafts/sections/04_results.md` (u
 body-vs-supplement) is owned by `1_method/decisions.md` "The figure set"; both supersede the figure list
 in `1_method/00_plan.md` §5.
 
-| Figure (new) | Notebook | PDF | Data | Status |
-|---|---|---|---|---|
-| 1 | `figure_1.Rmd` | `Figure_1.pdf` | run 1 | finished, captioned |
-| 2 | `figure_2.Rmd` | `Figure_2.pdf` | Gaussian anchor (`1c2ae6f` + `0ffbda7`) | rebuilt 2026-07-22 on the Gaussian anchor, captioned |
-| 3 | `figure_3.Rmd` | `Figure_3.pdf` | run 3, regenerated at `0ffbda7` seed 20260722 | finished, captioned |
-| 3—fig. supp. 1 (ex-Fig 4) | `figure_3_supplement_1.Rmd` | `Figure_3_supplement_1.pdf` | run 3 | built (per-step Fisher / Fisher-to-zero) |
-| 4 (R vs IR) | `figure_4.Rmd` | `Figure_4.pdf`, `Figure_4_short_variant.pdf` | Gaussian anchor | built 2026-07-22; merges the old IR-only map |
-| 4—fig. supp. 1–2 | `figure_4_supplement_{1,2}.Rmd` | `Figure_4_supplement_{1,2}.pdf` | Gaussian anchor | built (bias, distortion, all five params, R vs IR) |
-| 4—fig. supp. 3 (ex-Fig 6) | `figure_4_supplement_3.Rmd` | `Figure_4_supplement_3.pdf` | Gaussian anchor | built (sample/correlation decomposition, k_off) |
-| 4—fig. supp. 4 | `figure_4_supplement_4.Rmd` | `Figure_4_supplement_4.pdf` | Gaussian anchor | built (sample/correlation vs N_ch) |
-| 5 (design trade-off, ex-8) | none selected | none | intended `1c2ae6f`, corrected covariance | **not built.** Candidates in `figures/in_progress/figure_5_IR_*` |
-| 1—fig. supp. 1 (ex-S1) | `figure_1.Rmd` | `Figure_S1.pdf` | run 1 | built, no caption file, caption text wrong (§4) |
-| 2—fig. supp. 1 (ex-S2) | `figure_S2.Rmd` | `Figure_S2.pdf` | `433ed13` | finished |
-| 2—fig. supp. 2 (ex-S3) | `figure_S3.Rmd` | `Figure_S3.pdf` | `433ed13` | finished |
-| 3—fig. supp. 2–3 (ex-S4, S5) | `figure_S4_S5.Rmd` | `Figure_S4.pdf`, `Figure_S5.pdf` | run 3 | finished; `Figure_S4_acf_caption.md` describes the file saved as `Figure_S5.pdf` |
+| Display item | Producer (`figures/paper_both/`) | Graphics file | Data dirs the producer declares |
+|---|---|---|---|
+| Figure 1 | `figure_1.Rmd` | `Figure_1.pdf` | none declared |
+| Figure 2 | `figure_2.Rmd` | `Figure_2.pdf` | 0ffbda7 1c2ae6f 1f7138b 433ed13 87889e6 a202e03 |
+| 2—fig. supp. 1 | `figure_2_S1.Rmd` | `Figure_2_S1.pdf` | one cloud cell, named in its header |
+| Figure 3 | `figure_3.Rmd` | `Figure_3.pdf` | none declared |
+| 3—fig. supp. 1 | `figure_3_S1_S2.Rmd` | `Figure_3_S1.pdf` | none declared |
+| 3—fig. supp. 2 | `figure_3_S1_S2.Rmd` | `Figure_3_S2.pdf` | none declared |
+| 3—fig. supp. 3 | `figure_3_S3.Rmd` | `Figure_3_S3.pdf` | none declared |
+| Figure 4 | `figure_4.Rmd` | `Figure_4.pdf` | 0ffbda7 1c2ae6f 1f7138b 87889e6 a202e03 |
+| 4—fig. supp. 1 | `figure_4_S1.Rmd` | `Figure_4_S1.pdf` | 0ffbda7 1c2ae6f 1f7138b 87889e6 a202e03 |
+| 4—fig. supp. 2 | `figure_4_S2.Rmd` | `Figure_4_S2.pdf` | 0ffbda7 1c2ae6f 1f7138b 87889e6 a202e03 |
+| 4—fig. supp. 3 | `figure_4_S3.Rmd` | `Figure_4_S3.pdf` | 0ffbda7 1c2ae6f 1f7138b 87889e6 a202e03 |
+| Figure 5 | `figure_5.Rmd` | `Figure_5.pdf` | none declared |
+| 5—fig. supp. 1 | `figure_5_S1.Rmd` | `Figure_5_S1.pdf` | none declared |
+| 5—fig. supp. 2 | `figure_5_S2.Rmd` | `Figure_5_S2.pdf` | none declared |
+| 5—fig. supp. 3 | `figure_5_S3.Rmd` | `Figure_5_S3.pdf` | 0ffbda7 1c2ae6f 1f7138b 87889e6 a202e03 |
+| Figure 6 | `figure_6.Rmd` | `Figure_6.pdf` | none declared |
+| Figure 7 | `figure_7.Rmd` | `Figure_7.pdf` | 0ffbda7 1c2ae6f 87889e6 |
+| 7—fig. supp. 1 | `figure_7_supplement_standard_error.Rmd` | `Figure_7_supplement_standard_error.pdf` | 0ffbda7 1c2ae6f 1f7138b 87889e6 a202e03 |
 
-The manuscript itself is not yet assembled: `docs/manuscript-drafts/elife_paper.tex` loads `graphicx` but contains zero `\includegraphics` and zero figure environments. The figures are named only in `%` comments, two of which (Figure 2 and Figure 5) end with "[regenerate on Gaussian rerun]". Nothing has been staged into `papers/1_method/figures/`, which holds only `instructions.md`.
+**Regenerated 2026-08-12, and how.** The display-item column is not typed by hand: it is every
+`\includegraphics` in `docs/manuscript-drafts/sections/*.tex`, and the producer column is the file
+whose `ggsave`/`fig4_render` writes that exact name. The table that stood here was the July
+numbering and had drifted badly enough to change a decision: it sent `figure_3_supplement_1.Rmd`
+to `Figure_3_supplement_1.pdf`, which is a dead file no producer writes, while the notebook of
+that name actually writes `Figure_3_S1.pdf` and `Figure_3_S2.pdf`. Do not hand-edit this table.
+
+**RENAMED 2026-08-12 to the parent's own numbering**, producer and output together and never one
+alone: every display item is now `Figure_<parent>[_S<n>]` and its producer `figure_<parent>[_S<n>].Rmd`,
+with `figure_3_S1_S2.Rmd` carrying both of the pages it writes in its name. The one exception is
+Figure 7's supplement, left under its content name because another thread is working on it.
+Superseded files that had held these names are suffixed `_superseded_20260812` in the archive.
+
+**No name disagrees with its content.** The two supplements that moved parent were renamed the
+same day, in the producer and in the manuscript together and never in one alone: the Mahalanobis
+Q-Q from `figure_4_supplement_mahalanobis_qq.Rmd`/`Figure_4_S2.pdf` to
+`figure_2_supplement_mahalanobis_qq.Rmd`/`Figure_2_supplement_mahalanobis_qq.pdf`, and the
+delivered standard error from the Figure 4 names to the Figure 7 ones. Renaming only the file on
+disk would have recreated the defect the hand-copied `Figure_4_S3.pdf` had: a display item no
+`ggsave` writes, which a re-render silently fails to update.
+
+**Data dirs are what the producer declares, read out of its `DATA_DIRS`/`FIG4_DATA_DIRS`
+assignment.** "None declared" means the notebook builds its paths another way, usually through
+`figure_4_common.R` or `figure_4_data.R`; it is not a claim that the figure has no data. Nothing in
+this column was re-verified against the files on disk in this pass, except for the four producers
+edited on 2026-08-11 and 2026-08-12, where `a202e03` was added because it is the only directory
+carrying the un-averaged least-squares arm.
+
+**`a202e03` belongs on EVERY `FIG4_DATA_DIRS`, drawn or not**, and three more producers got it on
+2026-08-12 (`figure_4_S2`, `figure_4_S3`, `figure_5_S3`). The reason is not the roster: the shared
+source CSVs under `figures/figure_4_source_data/` are stamped by the COUNT of input files
+(`figure_4_data.R:245`), so a notebook that cannot see that directory rebuilds them WITHOUT the
+un-averaged arm, and the next figure to render then draws one column fewer with nothing to say so.
+That is a silent regression across the whole set from one missing path in one notebook.
+
+**Every graphic in `figures/paper_both/` that is not in this table was moved on 2026-08-12 to
+`figures/archive/not_display_items_20260812/`**, 76 files. The rule, from Luciano: a graphic is
+either a body figure, or a figure supplement, or it lives in the archive. Producers were NOT moved,
+because their `../data/...` paths are relative and moving them breaks the read.
 
 ## 9. The R layer, and what is not reproducible
 

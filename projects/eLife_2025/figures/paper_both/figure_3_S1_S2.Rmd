@@ -7,7 +7,7 @@ output: html_document
 
 <!--
 REVIVED, NOT REWRITTEN (Luciano, 2026-07-31). This is the archived
-`figure_3_supplements_superseded_20260731/figure_3_supplement_2.Rmd` brought back on its own layout,
+`figure_3_supplements_superseded_20260731/figure_3_S3.Rmd` brought back on its own layout,
 which the archive README already named as the candidate to start from. A first attempt at this
 supplement put the four parameters as four COLOURS inside the parent's panels and was rejected on
 sight: four curves and four ribbons in a 1.3 in panel is unreadable, and the two amplitude

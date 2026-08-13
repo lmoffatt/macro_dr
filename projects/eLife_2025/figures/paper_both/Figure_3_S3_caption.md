@@ -16,7 +16,7 @@ That is the same ordering the per-interval information ratio gives (Figure 3—f
 
 **(C) The autocorrelations.** At lag one LSE reads 0.833 and 0.836 on k_on and i, NR 0.347 and 0.478, INR about 0.87, R 0.207 and 0.195, and IR −0.013, −0.011 and −0.010, whose intervals narrowly exclude zero at this ensemble size. Figure 3's row G carries the same statistic for k_off and N_ch beside the residual autocorrelation, which reads 0.846, 0.510, 0.118 and −0.010 across the four members.
 
-<!-- Source: projects/eLife_2025/figures/paper_both/figure_3_supplement_2.Rmd (three rows, seven
+<!-- Source: projects/eLife_2025/figures/paper_both/figure_3_S3.Rmd (three rows, seven
      columns, three parameters, 7.0 x 5.8 in; widened from four columns on 2026-07-31 once
      macro_INR had run). Supersedes the residual triptych built earlier on
      2026-07-31, which was three quarters contained in the parent; what was new in it went two ways,

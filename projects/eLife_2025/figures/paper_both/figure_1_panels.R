@@ -185,6 +185,15 @@ markov_arrow = arrow(length = unit(0.07, "in"), type="closed")
 bayes_arrow= arrow(length = unit(0.07, "in"), type="closed")
 pred_arrow = arrow(length = unit(0.07, "in"), type="closed")
 
+# BOW OF THE MARKOV ARC, 2026-08-12. geom_curve places its control point at a perpendicular offset of
+# about (curvature/2) x (segment length) in INCHES, so the bow deepens when the panel widens while
+# the data range does not. At 0.6 and six columns the arc already dipped to the axis in the open-loop
+# columns, whose priors sit at the bottom of row A's shared range; at four columns the panel went
+# from ~1.0 to ~1.55 in and the arc left the panel, taking the arrow with it (Luciano, on the first
+# four-column render). Two things fix it together and neither alone: this value, and the asymmetric
+# bottom pad on yP in build_figure. RE-CHECK BOTH if the roster length or the figure width changes.
+MK_CURV <- 0.3
+
 # de-emphasis for an arrow's ORIGIN: the state carried in from the previous step is drawn faded, so it
 # recedes to context while the full-colour mark is the state the panel produces. One value for points
 # and segments alike; kept high enough that the hue still reads (not grey) after PDF downsample.
@@ -335,7 +344,7 @@ ir_prior_panel <- function(g, P = IRP) {
   ar <- ir_shrink(P$v$xs, P$v$pri_y1, m$mx, m$my, g, IR_RHO + IR_GAP, 0)
   ggplot() + ir_marks(g, P, ORIG_ALPHA, 1) +
     geom_curve(data = ar, aes(x = x, y = y, xend = xend, yend = yend, colour = "Markov & prior"),
-               curvature = 0.6, angle = 90, ncp = 10, linewidth = 0.5,
+               curvature = MK_CURV, angle = 90, ncp = 10, linewidth = 0.5,
                arrow = markov_arrow, na.rm = TRUE) +
     scale_fill_manual(values = SEM, guide = "none") +
     sem_scale + ylab("P(open)") + common_theme + x_only_ticks + guides(colour="none") + xcommon
@@ -410,7 +419,7 @@ fE_IR
 fB_NR<-ggplot(d_NR)+
   geom_point(aes(x=step_middle, y=P_mean_t15_y0, color="Markov & prior"), linewidth = 1, alpha=1)+
 geom_curve(aes(x=lag(step_middle), xend = step_middle, y=lag(P_mean_t15_y0),
-   yend = P_mean_t15_y0, color="Markov & prior"),curvature = 0.6,  angle = 90, ncp=10,linetype = 1, linewidth = 0.5, arrow=markov_arrow)+
+   yend = P_mean_t15_y0, color="Markov & prior"),curvature = MK_CURV,  angle = 90, ncp=10,linetype = 1, linewidth = 0.5, arrow=markov_arrow)+
   sem_scale + ylab("P(open)") + common_theme+x_only_ticks + guides(colour="none") + xcommon
 
 fB_NR
@@ -439,7 +448,7 @@ fC_NR
 fB_LSE<-ggplot(d_LSE)+
   geom_point(aes(x=step_middle, y=P_mean_t20_y1, color="Markov & prior"), linewidth = 1, alpha=1)+
 geom_curve(aes(x=lag(step_middle), xend = step_middle, y=lag(P_mean_t20_y1),
-   yend = P_mean_t20_y1, color="Markov & prior"),curvature = 0.6,  angle = 90, ncp=10,linetype = 1, linewidth = 0.5, arrow=markov_arrow)+
+   yend = P_mean_t20_y1, color="Markov & prior"),curvature = MK_CURV,  angle = 90, ncp=10,linetype = 1, linewidth = 0.5, arrow=markov_arrow)+
   sem_scale + ylab("P(open)") + common_theme+x_only_ticks + guides(colour="none") + xcommon
 
 # THE LEAST-SQUARES PAIR, 2026-08-05. LSE is av = 0 and ILSE is av = 1, and they differ in the data:
@@ -461,7 +470,7 @@ fC_LSE<-ggplot(d_LSE)+
 fB_ILSE<-ggplot(d_ILSE)+
   geom_point(aes(x=step_start, y=P_mean_t20_y1, color="Markov & prior"), linewidth = 1, alpha=1)+
 geom_curve(aes(x=lag(step_start), xend = step_start, y=lag(P_mean_t20_y1),
-   yend = P_mean_t20_y1, color="Markov & prior"),curvature = 0.6,  angle = 90, ncp=10,linetype = 1, linewidth = 0.5, arrow=markov_arrow)+
+   yend = P_mean_t20_y1, color="Markov & prior"),curvature = MK_CURV,  angle = 90, ncp=10,linetype = 1, linewidth = 0.5, arrow=markov_arrow)+
   sem_scale + ylab("P(open)") + common_theme+x_only_ticks + guides(colour="none") + xcommon
 
 # fC_ILSE = fC_INR's interval grammar (rect over the window, mean drawn as a segment across it) on the
@@ -494,7 +503,7 @@ fE_NR
 fB_INR<-ggplot(d_INR)+
   geom_point(aes(x=step_start, y=lag(P_mean_t2_y0), color="Markov & prior"), linewidth = 1, alpha=1)+
 geom_curve(aes(x=lag(step_start), xend = step_start, y=lag(lag(P_mean_t2_y0)),
-   yend = lag(P_mean_t2_y0), color="Markov & prior"),curvature = 0.6,  angle = 90, ncp=10,linetype = 1, linewidth = 0.5, arrow=markov_arrow)+
+   yend = lag(P_mean_t2_y0), color="Markov & prior"),curvature = MK_CURV,  angle = 90, ncp=10,linetype = 1, linewidth = 0.5, arrow=markov_arrow)+
   sem_scale + ylab("P(open)") + common_theme+x_only_ticks + guides(colour="none") + xcommon
 
 fB_INR
@@ -530,7 +539,7 @@ fB_R<-ggplot(d_R)+
   geom_point(aes(x=lag(step_middle), y=lag(P_mean_t15_y1), color="Bayes & posterior"), alpha=ORIG_ALPHA)+
   geom_point(aes(x=lead(step_middle), y=lead(P_mean_t15_y0), color="Markov & prior"),  alpha=1)+
 geom_curve(aes(x=lag(step_middle), xend = step_middle, y=lag(P_mean_t15_y1),
-   yend = P_mean_t15_y0, color="Markov & prior"),curvature = 0.6,  angle = 90, ncp=10,linetype = 1, linewidth = 0.5, arrow=markov_arrow)+
+   yend = P_mean_t15_y0, color="Markov & prior"),curvature = MK_CURV,  angle = 90, ncp=10,linetype = 1, linewidth = 0.5, arrow=markov_arrow)+
   sem_scale + ylab("P(open)") + common_theme+x_only_ticks + guides(colour="none") + xcommon
 
 fB_R
@@ -583,7 +592,7 @@ fB_MR<-d_MR%>%filter(sample_index>0)%>%ggplot()+
   geom_point(aes(x=step_start, y=P_mean_t1_y1, color="Bayes & posterior"), alpha=ORIG_ALPHA)+
   geom_point(aes(x=step_end, y=P_mean_t2_y1, color="Markov & prior"),  alpha=1)+
 geom_curve(aes(x=step_start, xend = step_end, y=P_mean_t1_y1,
-   yend = P_mean_t2_y1, color="Markov & prior"),curvature = 0.6,  angle = 90, ncp=10,linetype = 1, linewidth = 0.5, arrow=markov_arrow)+
+   yend = P_mean_t2_y1, color="Markov & prior"),curvature = MK_CURV,  angle = 90, ncp=10,linetype = 1, linewidth = 0.5, arrow=markov_arrow)+
   sem_scale + ylab("P(open)") + common_theme + x_only_ticks + guides(colour="none") + xcommon
 
 fB_MR
@@ -629,7 +638,7 @@ fB_VR<-d_VR%>%filter(sample_index>0)%>%ggplot()+
   geom_point(aes(x=step_start, y=P_mean_t1_y1, color="Bayes & posterior"), alpha=ORIG_ALPHA)+
   geom_point(aes(x=step_end, y=P_mean_t2_y1, color="Markov & prior"),  alpha=1)+
 geom_curve(aes(x=step_start, xend = step_end, y=P_mean_t1_y1,
-   yend = P_mean_t2_y1, color="Markov & prior"),curvature = 0.6,  angle = 90, ncp=10,linetype = 1, linewidth = 0.5, arrow=markov_arrow)+
+   yend = P_mean_t2_y1, color="Markov & prior"),curvature = MK_CURV,  angle = 90, ncp=10,linetype = 1, linewidth = 0.5, arrow=markov_arrow)+
   sem_scale + ylab("P(open)") + common_theme + x_only_ticks + guides(colour="none") + xcommon
 
 fB_VR
@@ -762,13 +771,32 @@ build_figure <- function(sel, outfile, cols, hgt = 7.5, wdt = 7.0) {
     xlim <- range(c(win(d_s)$step_start, win(d_s)$step_end), na.rm = TRUE)
   }
 
+  # X AXIS = THE ACQUISITION INTERVAL, NOT THE CLOCK (2026-08-12, Luciano). The figure's subject is
+  # what one interval contains and what the recording keeps of it, so the ticks are the interval
+  # BOUNDARIES and the label is the index of the interval that starts there (the last tick carries
+  # the next index, since it is the boundary that closes the crop). The dotted verticals are the
+  # same boundaries drawn inside every panel: without them the reader has to infer where a window
+  # begins from the marks themselves, which is what the figure is trying to teach. Seconds are gone
+  # from the axis; the interval duration is a caption fact.
+  bnd <- win(d_s) %>% dplyr::group_by(sample_index) %>%
+    dplyr::summarise(s = min(step_start), e = max(step_end), .groups = "drop") %>%
+    dplyr::arrange(sample_index)
+  xbnd <- c(bnd$s, max(bnd$e))                       # boundaries: the dotted verticals
+  xbrk <- (bnd$s + bnd$e) / 2                        # labels sit at the MIDDLE of the interval they
+  xlbl <- bnd$sample_index                           # name, not at its edge, so two intervals read
+  vgrid <- geom_vline(xintercept = xbnd, linetype = "dotted",   # as two rather than as three ticks
+                      linewidth = 0.25, colour = "grey70")
+
   # AUTO y-ranges from the (windowed) data, SHARED across the roster per row. The full recording
   # keeps the data range (which reaches 0); a zoom uses the window's own range (non-zero) so the
   # arrows are large, padded a touch so arrowheads at the extremes are not clipped.
-  pad <- function(r, f = 0.06) r + c(-1, 1) * diff(r) * f
+  pad <- function(r, lo = 0.06, hi = 0.06) r + c(-lo, hi) * diff(r)
   yP <- range(unlist(lapply(dW, .dP)), na.rm = TRUE)
   yI <- range(c(-win(d_s)$patch_current, unlist(lapply(dW, .dI))), na.rm = TRUE)
-  if (!is.null(sel)) { yP <- pad(yP); yI <- pad(yI) }
+  # row A's bottom pad is larger than its top: the Markov arc bows DOWNWARD (MK_CURV) and the
+  # open-loop columns' priors are the lowest points in the row, so a symmetric pad clips the arc and
+  # the arrowhead with it. The pad and MK_CURV are one fix in two places; change them together.
+  if (!is.null(sel)) { yP <- pad(yP, lo = 0.20); yI <- pad(yI) }
 
   # IR's two state rows are rebuilt HERE and nowhere else: their tie lives in physical space, so it
   # needs this call's crop AND the panel box. The box is the figure minus the axis furniture, and it
@@ -806,12 +834,13 @@ build_figure <- function(sel, outfile, cols, hgt = 7.5, wdt = 7.0) {
   # per-cell placement. ONE coord per cell crops BOTH axes (x = window; y = the row's shared auto
   # range; coord CLIPS instead of dropping, so arrows at the edge survive).
   cell <- function(p, ylim, col, bottom = FALSE, tag = NULL, yl = NULL, title = NULL) {
+    p$layers <- c(list(vgrid), p$layers)          # PREPENDED, so the boundaries sit under the marks
     p <- p + coord_cartesian(xlim = xlim, ylim = ylim)
     if (col == first) p <- p + ylab(yl) + theme(axis.title.y = element_text(size = 8))
     else if (length(naive) && col == recg[1] && bottom && !unify) p <- p + y_no_title  # 2nd logL axis
     else p <- p + y_only_ticks
     if (bottom) {
-      if (col == xcol) p <- p + xlab("time (ms)") else p <- p + theme(axis.title.x = element_blank())
+      if (col == xcol) p <- p + xlab("acquisition interval") else p <- p + theme(axis.title.x = element_blank())
     } else p <- p + x_only_ticks
     if (!is.null(tag)) p <- p + labs(tag = tag)
     if (!is.null(title)) p <- p + ggtitle(title) +
@@ -853,7 +882,8 @@ build_figure <- function(sel, outfile, cols, hgt = 7.5, wdt = 7.0) {
           legend.key.width = unit(1, "lines"),
           legend.key.spacing.x = unit(3, "pt"),
           plot.margin = margin(1.5, 2, 1.5, 2)) &
-    scale_x_continuous(labels = function(x) x * 1000)   # seconds -> ms
+    scale_x_continuous(breaks = xbrk, labels = xlbl) &                 # one label per interval
+    theme(axis.ticks.x = element_blank())   # the dotted boundaries carry the x structure, not ticks
 
   ggsave(outfile, g, width = wdt, height = hgt)
   g

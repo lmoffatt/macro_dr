@@ -68,7 +68,7 @@ variance over the interval, and $N_{\mathrm{ch}}\,v_t$ the channel-gating varian
 The white variance $e_t$ falls as the interval lengthens, because more raw samples
 are averaged into each recorded value. The gating variance $v_t$ is the
 single-interval conductance variance, whose form differs across the algorithm
-family and is derived in the Theory section.
+family and is derived in Appendix~\ref{app:derivation}.
 
 The stimulus is a single concentration jump in three segments, a pre-pulse at
 $0\;\mu\mathrm{M}$, an agonist step at $10\;\mu\mathrm{M}$, and a post-pulse at
@@ -81,13 +81,13 @@ number of raw samples entering each recorded value.
 % src: papers/1_method/archive/section-plans-20260729/methods.md#M2 (interval = averaging window, not a filter)
 The averaging is uniform over the window and no analogue filter stage is simulated,
 so a recorded value is a boxcar average of the trajectory, which is the observable
-every likelihood in the family is written for (Theory). Recordings from a real
+every likelihood in the family is written for (Eq.~\ref{eq:obs-avg}). Recordings from a real
 amplifier are Bessel filtered instead. That kernel is not simulated here, and how much of it the
 uniform window misses is bounded in Theory, as a condition on the acquisition window against the
 filter's response time rather than as an open size.
-% [BESSEL-BOUND] CLOSED 2026-08-11. The bound is PRINTED, at 02_theory_full.tex in the
+% [BESSEL-BOUND] CLOSED 2026-08-11. The bound is PRINTED, at 08_appendix_derivation.tex (moved there 2026-08-12) in the
 % paragraph beginning "How much of the kernel the uniform window misses". Everything below was
-% written while it was open (2026-08-06) and is kept for its site-specific content only.. Canonical note at 02_theory_full.tex, under the Bessel paragraph;
+% written while it was open (2026-08-06) and is kept for its site-specific content only.. Canonical note at 08_appendix_derivation.tex, the acquisition-kernel subsection (moved 2026-08-12);
 % the decision on how much to print is at 05_discussion.tex, beside the Bessel paragraph there.
 % THIS IS WHERE A READER WITH A RECORDING LOOKS, and the sentence above sends them away without
 % an instruction. "Outside the scope of this paper" is true and unhelpful: it does not say
@@ -135,28 +135,32 @@ evidence computation.
 % the single concentration jump, were already declared in this section. The Discussion now says "the
 % perimeter is a model, and Methods declares it as one" and points here, so this sentence is what it
 % points at and must not be removed without putting the enumeration back there.
-That license has a boundary, and it bounds what the comparison verifies. The
-likelihood and the simulator are two independent implementations, so everything
-downstream of the point where they separate is tested: the propagation, the update,
-the emission arithmetic, the accumulation. Upstream they share one specification, the
-rate matrix built from the parameters, the conductance vector, the protocol and the
-sampling times, and a diagnostic built on their agreement cannot see an error there.
-For a two-state scheme that specification is small enough to be read and checked by
-eye, which is why this section writes it out symbol by symbol below. The general
-remedy is different in kind, verifying each object against the theorems it must
-satisfy, the semigroup and Chapman-Kolmogorov identities for the propagator, the
-stationarity condition, the normalisation of the occupancy and the moment identities
-of the emission, and that is a piece of work with its own design, not undertaken
-here.
-% TRANSPLANT T2, 2026-08-11, the whole "what the diagnostic cannot see" paragraph, moved out of the
-% Discussion (157 words) because it is a statement about this section's own specification and belongs
-% beside the sentence that licenses the comparison. The Discussion keeps a one-clause pointer in its
-% closing sentence; if this paragraph is ever removed, that clause has to be expanded back into a
-% paragraph there.
+The likelihood and the simulator are two independent implementations, so everything
+downstream of the point where they separate is tested; upstream they share one
+specification, the rate matrix built from the parameters, the conductance vector, the
+protocol and the sampling times, which is why this section writes that specification
+out symbol by symbol below. What the sharing costs the diagnostic is a limitation of
+the study and is stated with the others in the Discussion.
+% TRANSPLANT T2 SPLIT 2026-08-12 (papers/1_method/09_carve_plan.md). T2 had moved the whole "what
+% the diagnostic cannot see" paragraph here from the Discussion on 2026-08-11, 157 words. Two of
+% its three parts have gone back:
+%   - the LIMITATION (a diagnostic built on the agreement of two implementations cannot see an
+%     error in what they share) is now a paragraph of "What this paper does not settle", because
+%     eLife prints Methods after the Discussion and a limitation that lives only here is one most
+%     readers never reach. 08_length_plan.md's rule is that limitations are compressed and never
+%     cut; relocating one out of the body is a demotion by another route.
+%     WHAT IS PRESERVED FROM T2's ARGUMENT: the operative half, that the specification is small
+%     enough to check by eye and that this is WHY the section writes it out, stays here, which was
+%     T2's reason for the move in the first place.
+%   - the GENERAL REMEDY (verify each object against the theorems it must satisfy: semigroup and
+%     Chapman-Kolmogorov, stationarity, normalisation of the occupancy, the moment identities of
+%     the emission) travelled with it: it is future work, and it is not method under any reading.
+% The Discussion's closing clause is no longer an orphan pointer; it is the tail of a stated
+% limitation.
 Every
 maximum-likelihood grid cell reported here, the least-squares arm included, used
 $10^4$ recordings, with one exception: the cell that carries the coverage result
-($N_{\mathrm{ch}}=10$, $\widetilde{S} = 0.005$, boundary-conditioned member) was run at
+($N_{\mathrm{ch}}=10$, $\widetilde{S} = 0.005$, \texttt{IR}) was run at
 $10^5$, because coverage of a nominal $95\%$ region in six parameters needs a thousand
 independent fits and those fits are taken at group size $100$, so $10^5$ recordings are
 required to produce them. The time-resolved run used $1{,}000$ recordings; the
@@ -186,13 +190,15 @@ stable; the Monte-Carlo standard here is statistical equivalence, not bit identi
 
 \subsection*{The likelihood family and its members}
 
-The members compared here answer one question first, then a second. The first
-question is whether the gating fluctuations are modelled at all. Classical nonlinear
-least squares answers no: it fits the deterministic mean current and treats every
-departure from it as independent measurement error. The macroscopic likelihoods
-answer yes, and among them the second question is how much of the acquisition
-interval the interval-averaged conductance is conditioned on. Least squares is the
-bottom rung of that cost ladder and the comparison anchor of this paper.
+The members are the two axes of the preceding section crossed: whether the gating
+fluctuations are modelled at all, and how much of the acquisition interval the
+interval-averaged conductance is conditioned on. This subsection gives the flags each
+setting is dispatched under and nothing else.
+% COMPRESSED 2026-08-12 (papers/1_method/09_carve_plan.md). The paragraph restated, in substance
+% and nearly in order, the argument the body makes at "Least squares, and the two axes of the
+% family": the prior question, least squares answering no, the second question, least squares as
+% the bottom rung and the comparison anchor. One owner: the body owns the argument, this section
+% owns the flags.
 
 Least squares is selected by the family flag \emph{family approximation} $= 2$ and runs
 non-recursive; the variance flag is accepted and ignored on this branch. The averaging flag
@@ -224,12 +230,25 @@ lattice.
 % (sample_index, step_start), 12 intervals: max|LSE-NR| = 8.882e-16, max|ILSE-INR| = 2.220e-16,
 % max|LSE-ILSE| = 5.469e-02. Checked 2026-08-06.
 
-Every cell of the design grid is run with \texttt{ILSE}: the un-averaged arm was never
-dispatched on the grid, and there is no \texttt{nonlinearsqr\_g} output under
-\texttt{figures/data}. \texttt{LSE} is measured at the single cell of the time-resolved
-figure, from the same script that produces the ensemble the other members score, and drawn
-on the illustrative recording of Figure~\ref{fig:ladder}.
-% src: projects/eLife_2025/figures/data (0ffbda7: 99 nonlinearsqr files, 82b956f: 8; zero nonlinearsqr_g in any directory, checked 2026-08-06)
+Both least-squares arms are dispatched over the design grid, and over the same cells: the
+thirty combinations of channel number and noise level swept at ten thousand simulations are
+run with \texttt{ILSE} and with \texttt{LSE} alike, from the same script that produces the
+ensemble the other members score. Four further cells exist for \texttt{ILSE} at a thousand
+simulations, superseded by the ten-thousand-simulation run of the same cells, and two at
+$N_{\mathrm{ch}}=5$, below the range this paper reports.
+% CORRECTED 2026-08-12. The paragraph read "the un-averaged arm was never dispatched on the grid,
+% and there is no nonlinearsqr_g output under figures/data", with a src note dated 2026-08-06. It
+% was true when written and false hours later: figures/data/a202e03 is time-stamped 2026-08-06
+% 21:57 and carries 96 nonlinearsqr_g files. It is not a dead directory either — figure_2.Rmd,
+% figure_4.Rmd, figure_4_S1.Rmd and figure_4_S4.Rmd all list it among their DATA_DIRS, and the
+% body already quotes an LSE number off the design plane (04_results.tex, kinetic area ratio 14.73
+% against ILSE's 14.77), which the retired sentence contradicted.
+% src: projects/eLife_2025/figures/data/a202e03 (96 nonlinearsqr_g files). Coverage measured
+% 2026-08-12 by listing the (N_ch, n_sims, noise) triple of every file name: nonlinearsqr_g = 30
+% cells at n_sims 1e4; nonlinearsqr = the same 30, plus (10,1e3,100), (100,1e3,1e3),
+% (1000,1e3,1e4), (10000,1e3,1e5) and (5,1e4,0.1), (5,1e4,1). No cell carries LSE and not ILSE.
+% The clause "and drawn on the illustrative recording of Figure 1" was also dropped: Figure 1 has
+% carried NR, INR, R and IR alone since 2026-08-12.
 % PROVENANCE, load-bearing for anyone reproducing the av=0 arm: before 2026-08-05 the av=0 branch of
 % nonlinearsqr propagated the threaded occupancy by P_half and evaluated the mean before advancing,
 % so the member fell half a step further behind on every interval. Fixed at legacy/qmodel.h:7490.
@@ -240,7 +259,7 @@ run under flags that set how the interval-averaged conductance is conditioned. T
 \emph{recursive} flag sets whether the occupancy covariance is propagated between
 intervals. The \emph{averaging} flag $\mathrm{av}\in\{0,1,2\}$ counts the number of
 interval endpoints the hidden state is conditioned on, and it is the program's name for the
-window axis of the Theory section: $0$ an instant, $1$ the state at the window's start, $2$
+window axis of the likelihood family: $0$ an instant, $1$ the state at the window's start, $2$
 the states at both of its ends. A third flag, the
 \emph{variance form}, distinguishes the two members that condition on the interval
 start: MR predicts the interval variance with the total per-start-state conductance
@@ -294,8 +313,8 @@ variance.
 written by different producers, so their output files carry different prefixes,
 \texttt{figure\_3\_LSE\_} and \texttt{figure\_3\_G\_}. INR is the member published as
 MacroINR in \citet{moffatt2025bayesian}, where it served as the control against which
-the boundary-conditioned member was compared; it is reported here only in the
-supplement.}
+MacroIR, the member called \texttt{IR} here, was compared; it is reported here only in
+the supplement.}
 % src: papers/_program/decisions.md sec.2 (INR = MacroINR, the published control; supplement member 2026-07-29)
 % NOTE 2026-07-31: the caption used to end "because over the range measured it is not separable from NR",
 % sourced to D-4 sec.5 (envelope 1.23-3.6e4 vs NR 1.21-3.5e4; 0/336 within 15% for both). It stays
@@ -303,7 +322,7 @@ supplement.}
 % N*ms interval-variance term; macro_INR ran on 2026-07-31 for the figure_3 time cell, and there the two
 % are plainly separable: +14.78 nats of log-likelihood over NR, mean squared standardized residual
 % 0.9995 against NR's 1.1526, and an accumulated information ratio of 20.8 against NR's 13.6.
-% src: projects/eLife_2025/figures/paper_both/figure_3_supplement_1.html (INR-against-neighbours block)
+% src: projects/eLife_2025/figures/paper_both/figure_3_S1_S2.html (INR-against-neighbours block)
 % What is NOT settled: that re-run covers ONE design cell. The D-4 sentence was a statement about the
 % envelope over the whole plane, and restating it in either direction needs the plane re-run on
 % macro_INR, which has not been done. Do not carry the one-cell numbers across to it.
@@ -317,7 +336,7 @@ trajectory (what the simulator supplies) as the unreachable top rung.
 % src: papers/_program/nomenclature.md (endpoint ladder)
 \texttt{IR} is the top implemented rung: it conditions on the pair of channel states at
 the two ends of the interval, which we call the boundary state, and marginalises the
-interior analytically. It is specified by the construction of the Theory section and is
+interior analytically. It is specified by the construction of Appendix~\ref{app:derivation} and is
 placed here as one member of the completed grid; an interval-recursive likelihood of this
 family was first applied to macroscopic recordings, of the P2X$_2$ receptor
 \citep{moffatt2025bayesian}. It coincides with a time-integrated Kalman filter, a
@@ -454,7 +473,13 @@ cannot occur, and without the other two the recursive members return no value at
 smaller channel counts.
 
 The first sits upstream of the filter cycle, in the construction of the boundary-conditioned
-moments of Eq.~\ref{eq:gammabar-vbar}. Both are quotients by the transition probability
+moments of Eq.~\ref{eq:gammabar-vbar}, which are built from $\mathbf{F}_1(\Delta)$ and
+$\mathbf{F}_2(\Delta)$, the two derivatives of the conductance-tilted semigroup whose
+$(i\to j)$ entries carry the first and second moments of the integrated conductance over
+paths from $i$ to $j$ (Appendix~\ref{app:derivation}). Both are quotients by the transition probability
+% ADDED 2026-08-12 (10_concept_census.md, defect 6 and the one live hit of the new check.sh item
+% 10). F_1 and F_2 appeared in Eq. pseudocount, in this section, with no gloss, and their definition
+% is in Appendix 1, which prints after Methods. One clause; the derivation stays where it is.
 $P_{i\to j}(\Delta)$, and that denominator is zero wherever the transition cannot happen
 within one window, which on this design is not an edge case: at zero agonist
 $k_{\mathrm{on}}[A]$ vanishes identically and $P_{C\to O}$ is zero over the whole pre-pulse
@@ -721,54 +746,46 @@ likelihood-level diagnostics: standardized residuals, the score (the gradient of
 the log-likelihood), and an information-distortion matrix that compares the
 covariance $J$ of the score across replicates with the model's own Fisher
 information. The definitions, sign conventions, and thresholds of these
-diagnostics are owned by the Diagnostics section and its metric registry; here we
+diagnostics are given where they are introduced, above; here we
 describe only how they were computed.
 % src: papers/1_method/archive/03_metrics_diagnostics.md (diagnostic definitions owned there)
 
 Every diagnostic reported in this paper is anchored on the analytic Gaussian Fisher
 information, summed over the intervals of a recording and then averaged over the
 recordings of the ensemble, $\bar G = \mathbb{E}\bigl[\sum_t \mathrm{GFI}_t\bigr]$. This
-is the anchor the Diagnostics section writes $\mathbf{H}$, and the expectation is not
+is the anchor written $\mathbf{H}$ above, and the expectation is not
 decoration: for the recursive members the predictive moments of interval $t$ depend on the
 data already seen, so $\sum_t \mathrm{GFI}_t$ is itself a random matrix and the object the
 score covariance is compared against is its ensemble mean, taken over the same recordings
 that supply that covariance. Its per-interval term is
 % CORRECTED 2026-08-10 in the length pass. The sentence read "$\bar G = \sum_t \mathrm{GFI}_t$,
-% summed over intervals", with no expectation, while 03_diagnostics.tex defines the same object with
+% summed over intervals", with no expectation, while 02_framework.tex defines the same object with
 % one. For the non-recursive members the two readings coincide and the discrepancy is invisible; for
 % the recursive members, which are what the paper is about, they are different objects.
 % VERIFIED against the producer rather than inferred: src/core/likelihood.cpp:3462 builds
 % G_b = mean<Sum<Gaussian_Fisher_Information>>, the ensemble mean of the per-recording sum, against
 % J = covariance<Sum<dlogL>> on the same ensemble. So Diagnostics was right and this was the
 % incomplete statement of the two.
-\[
-  \mathrm{GFI}_t = \frac{(\partial_\theta \bar y_t)(\partial_\theta \bar y_t)^{\mathsf T}}{\sigma_t^2}
-  + \frac{(\partial_\theta \sigma_t^2)(\partial_\theta \sigma_t^2)^{\mathsf T}}{2\,\sigma_t^4},
-\]
+the summand of Eq.~\ref{eq:gaussian-fisher},
+% DISPLAY REMOVED 2026-08-12 (10_concept_census.md, defect 4). The same formula was printed twice,
+% here and in the body, in the same form; the census asked which site owns it and the answer is the
+% body, where the reader first meets the anchor and where the equation is now numbered. What stays
+% here is the computational statement rather than the definition: that the anchor is the ENSEMBLE
+% MEAN of the per-recording sum, which for the recursive members is a different object from the sum
+% itself, and that it costs no extra pass.
 which follows from the analytic derivative alone and needs no extra likelihood
 passes. It is positive semidefinite by construction, so no anchor used here can be
 indefinite.
 % src: papers/_program/provenance.md#7 (Gaussian Fisher G_b = sum_t GFI_t; legacy/qmodel.h:6096-6098)
 % src: projects/eLife_2025/ops/local/figure_3_mle_LSE.macroir:152-168 (Fim-less gaussian battery; gidm/gfc/gdcc/gdib)
 
-A second Fisher construction exists in the codebase and was used in an earlier
-battery: a central difference of the analytic score, with per-coordinate step
-$h_i = h_{\mathrm{rel}}\max(|\theta_i|,1)$ at $h_{\mathrm{rel}} = 10^{-5}$,
-symmetrised as $(F_{\mathrm{num}} + F_{\mathrm{num}}^{\mathsf T})/2$. Because the score
-itself is obtained by automatic differentiation, this is a single numerical derivative
-rather than two. It is not interchangeable with the analytic anchor per recording: the
-numerical Fisher is widely indefinite replicate by replicate, and only pooling across
-replicates recovers a definite matrix, which is one reason the body is anchored on the
-analytic construction. That battery (data directory \texttt{433ed13}) is retained in the
-deposit, and no number reported in this paper is taken from it. Where the two constructions can be
-compared on the runs the body does use, they agree for the members that condition on the past and
-they do not agree for the one that does not: the analytic form reproduces the differenced one to
-within about two per cent in size for \texttt{R}, \texttt{MR} and \texttt{IR} over the measured
-range, while for \texttt{NR} it over-states the information as channels are added at low
-instrumental noise, by factors of $1.26$ and $1.60$ at $N_{\mathrm{ch}}=10^{3}$ and $10^{4}$, and
-misses by an amount that varies across directions by $1.9$ and $3.1$ there. Neither least-squares
-arm carries the comparison, since the sweep that formed the differenced Fisher was not run for
-them. % src: projects/eLife_2025/figures/figure_4_source_data/figure_4_source_data_gaussian_fisher.csv, pool anchor (medians over the seven intervals; the algorithms present are macro_NR, macro_R, macro_MR, macro_IR and the superseded macro_NMR, at noise 0.1, 1 and 10 only; nonlinearsqr, nonlinearsqr_g and macro_INR are absent from the file entirely, the _G sweep being Gaussian-only so the differenced Fisher is never formed there). Medians in size: R 1.011, MR 1.020, IR 1.000, NR 1.010 overall but 1.007/1.010/1.264/1.602 by channel count at noise 0.1. The single worst cell of the file, NR at N_ch 1e4 and interval 1, reads 11.5 and is the ill-conditioned corner Figure 4 greys, excluded from the sentence above for the same reason.
+A second Fisher construction exists in the codebase, a central difference of the
+analytic score, and it anchored an earlier battery (data directory \texttt{433ed13})
+that is retained in the deposit. No number reported in this paper is taken from it. It
+is not interchangeable with the analytic anchor per recording, being widely indefinite
+replicate by replicate, which is one reason the body is anchored on the analytic
+construction; its settings, and the comparison between the two constructions on the
+runs the body does use, are in Supplementary File~1. % src: projects/eLife_2025/figures/figure_4_source_data/figure_4_source_data_gaussian_fisher.csv, pool anchor (medians over the seven intervals; the algorithms present are macro_NR, macro_R, macro_MR, macro_IR and the superseded macro_NMR, at noise 0.1, 1 and 10 only; nonlinearsqr, nonlinearsqr_g and macro_INR are absent from the file entirely, the _G sweep being Gaussian-only so the differenced Fisher is never formed there). Medians in size: R 1.011, MR 1.020, IR 1.000, NR 1.010 overall but 1.007/1.010/1.264/1.602 by channel count at noise 0.1. The single worst cell of the file, NR at N_ch 1e4 and interval 1, reads 11.5 and is the ill-conditioned corner Figure 4 greys, excluded from the sentence above for the same reason.
 % src: projects/eLife_2025/ops/local/figure_3_mle.macroir:151-157 (numerical Fisher; h_rel injected)
 % src: projects/eLife_2025/ops/slurm/dispatch_figure_3.sh:98 (H_RELS default 1e-5)
 % src: papers/_program/provenance.md#5 (433ed13 = numerical anchor, superseded for the body)
@@ -776,12 +793,14 @@ them. % src: projects/eLife_2025/figures/figure_4_source_data/figure_4_source_da
 
 One edge case governs how a cell is summarised, and it is by design rather than by accident. The anchor can be near-singular where a parameter is unidentifiable, which happens once the open population relaxes (Figure~\ref{fig:time}--figure supplements 1 and 2); there we diagonalize $\mathbf{H}$ and retain the eigenmodes whose eigenvalue exceeds a tolerance set relative to the largest, $\lambda_i > \lambda_{\max}\cdot 10^{-10}$, evaluate every inverse power on that retained subspace alone, and leave the quantity undefined, not finite, when the retained subspace is empty. The dimension $d$ of Eq.~\ref{eq:magnitude-anisotropy} is the dimension of that subspace, so a cell where a direction has been dropped is summarised over fewer directions than one where none has. Undefined is not zero, and the maps render those cells in grey to keep the two apart.
 
-Comparing the score covariance $J$ against the Fisher information is the sandwich, or
-information-matrix-equality, diagnostic \citep{white1982maximum}: equality
-$\mathbf{H} = J$ holds only when the likelihood is correctly specified, and the extent
-to which the two differ is what the distortion matrix quantifies. The comparison has a
-further premise on the least-squares branch, where $\bar G$ presumes homoscedastic
-residuals; the Diagnostics section states that premise where the distortion is defined.
+The comparison of $J$ against $\bar G$ is defined, with its sign convention and its two
+scalar summaries, in the section that introduces it; on the least-squares branch it
+carries a further premise, that the residuals are homoscedastic, and the Results state
+that premise where the ratio is quoted.
+% COMPRESSED 2026-08-12 (09_carve_plan.md). The sentence restated the white1982
+% information-matrix-equality framing that the body already owns and that this section had already
+% cited two paragraphs earlier. What a Methods reader needs is where the definition lives and what
+% is special about the least-squares branch, which is what is left.
 
 Uncertainty on every reported statistic comes from a nonparametric bootstrap over
 groups, reported as percentile intervals at the $2.5$, $16$, $50$, $84$ and
@@ -790,9 +809,16 @@ applied; the intervals are ordinary empirical percentiles, verified equal to the
 R quantile of type~$6$.
 % src: papers/1_method/archive/section-plans-20260729/methods.md#M8 (percentile bootstrap over groups; NOT probit; quantiles listed)
 % src: projects/eLife_2025/ops/local/figure_3_mle.macroir:111 (probit_cis = [0.025,0.16,0.5,0.84,0.975])
-The diagnostic battery used $100$ bootstrap replicates and a maximum lag of $10$ for
-the score autocorrelation, and the empirical-versus-theoretical distortion capstone
+The diagnostic battery used $100$ bootstrap replicates and a maximum lag of $10$, which
+is the truncation of every autocorrelation it reports, of the score and of the
+standardized residual alike, and the empirical-versus-theoretical distortion capstone
 used $200$.
+% CORRECTED 2026-08-12 (10_concept_census.md, defect 2). The sentence said "a maximum lag of 10 for
+% the score autocorrelation", which reads as if the residual autocorrelation had a different
+% truncation or none. It is ONE battery parameter: max_lag = 10 is passed once to
+% likelihood_derivative_basic_diagnostics, which emits both. Verified at
+% ops/local/figure_3_mle_LSE.macroir:158-166. The body now defines tau_int and points here for the
+% truncation, so this had to stop being score-only.
 % src: projects/eLife_2025/ops/local/figure_3_mle_LSE.macroir:158-166 (n_boostrap_samples 100, max_lag 10) ; :173-176 (capstone n_bootstrap 200)
 The per-group estimate cloud is deposited raw. The program does run a group
 bootstrap of it, with a floor of $10$ groups below which it falls back to a single
@@ -832,9 +858,9 @@ one recorded point rises as $1/\Delta_t$ and the noise per unit bandwidth is unc
 % clause is gone, so the bench-realisability guard the canonical note wanted to hang on it has
 % only two candidate sites left, here and the Discussion's Bessel paragraph.
 % src: legacy/qmodel.h:3740-3741 (Current_Noise enters only as e = S*fs/n_samp)
-% [BESSEL-BOUND] CLOSED 2026-08-11. The bound is PRINTED, at 02_theory_full.tex in the
+% [BESSEL-BOUND] CLOSED 2026-08-11. The bound is PRINTED, at 08_appendix_derivation.tex (moved there 2026-08-12) in the
 % paragraph beginning "How much of the kernel the uniform window misses". Everything below was
-% written while it was open (2026-08-06) and is kept for its site-specific content only.. Canonical note at 02_theory_full.tex, under the Bessel paragraph.
+% written while it was open (2026-08-06) and is kept for its site-specific content only.. Canonical note at 08_appendix_derivation.tex, the acquisition-kernel subsection (moved 2026-08-12).
 % "WITH NO CORRELATION TIME OF ITS OWN" IS THE PREMISE THE FILTER BREAKS, and this is the one
 % place in the manuscript where it is written as a property of the engine parameter rather than
 % as a modelling choice, so it reads as a fact about the noise instead of a fact about the
@@ -869,7 +895,7 @@ $i = 1$ the reference cell used throughout is $\widetilde{S} = 0.01$, and $\wide
 % nothing: it is stating the run values that enter the formula.
 the level at which the instrumental noise over one channel time constant equals the
 single-channel signal power. The accent carries one other meaning in this paper, the
-boundary-pair contractions of the Theory section, Eq.~\ref{eq:tilde} and
+boundary-pair contractions of Appendix~\ref{app:derivation}, Eq.~\ref{eq:tilde} and
 Eq.~\ref{eq:vector-tilde}; those are written over bold symbols and the two uses never meet in
 one expression.
 % ADDED 2026-08-06 (Luciano). Delta_tilde replaces the product Delta*k_off, which was written out
@@ -877,7 +903,7 @@ one expression.
 % stated law instead of being an unexplained mark on a single symbol. Why Delta_tilde and not
 % tau_tilde or I_tilde, both of which were considered: the letter under the tilde is the QUANTITY
 % and the unit lives in the law, so tau_tilde would be 1 by that same rule; and I is already the
-% identity matrix (02_theory.tex:448, 03_diagnostics.tex:34) and I_t the per-interval Fisher
+% identity matrix (02_theory.tex:448, 02_framework.tex) and I_t the per-interval Fisher
 % information (this file, ~line 610). The disjointness sentence is also stated in the appendix
 % subsection "The tilde operator", which otherwise claims the accent for the contraction alone.
 % INTERNAL, and deliberately not in the printed text (2026-08-06). The sweep was declared
@@ -918,8 +944,8 @@ carry information and coarse on the side where they do not.
 % The twelve values are the ones present on disk, from
 % papers/1_method/decisions/recompute/d4_distortion_envelopes.py re-run 2026-08-04, which prints
 % "noise levels present: 0.05 0.1 0.2 0.5 1 10 100 1000 10000 100000 1000000 10000000".
-Coverage is deliberately not a rectangle and it differs by member: the boundary-conditioned
-member spans eleven channel counts from $5$ to $10^4$ across all twelve noise levels, and every
+Coverage is deliberately not a rectangle and it differs by member: \texttt{IR} spans eleven
+channel counts from $5$ to $10^4$ across all twelve noise levels, and every
 other member covers less. The per-member cell manifest is in Supplementary File~1.
 The noise range is deliberately not rectangular: the highest levels were run only
 at the larger channel numbers, where the crossover the map measures sits. The figure

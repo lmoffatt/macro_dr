@@ -19,10 +19,11 @@ DEFAULT = os.path.normpath(os.path.join(
     HERE, "..", "1_method", "docs", "manuscript-drafts", "sections"))
 
 # (file, counts toward main text?)
-MAIN = ["01_introduction.tex", "02_theory_full.tex", "03_diagnostics.tex",
+MAIN = ["01_introduction.tex", "02_framework.tex",
         "04_results.tex", "05_discussion.tex"]
 EXCLUDED = ["00_abstract.tex", "06_methods.tex", "07_backmatter.tex",
-            "08_appendix_derivation.tex", "09_appendix_members.tex"]
+            "08_appendix_derivation.tex", "09_appendix_members.tex",
+            "10_appendix_diagnostics.tex", "11_appendix_repairs.tex"]
 
 BENCH = [("median", 5209), ("p75", 6543), ("p90", 8017), ("p95", 9066),
          ("Munch e62714", 11515), ("longest of 413", 13300)]

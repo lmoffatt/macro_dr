@@ -210,7 +210,10 @@ ellipse_path <- function(cx, cy, S, level = 0.95, npoints = 200) {
   sqrt(max(ev) / min(ev))
 }
 # printed as a spread, not as a factor, so it cannot be read as "multiply by this"
-.fmts <- function(r) ifelse(!is.finite(r), "", sprintf("×÷%.1f", r))
+# WRITTEN IN PARENTHESES, 2026-08-12. The pair printed as "15× ×÷1.4" put two multiplication signs
+# side by side with only a space between them, which on the page reads as one garbled symbol. The
+# parenthesis separates them and costs two characters.
+.fmts <- function(r) ifelse(!is.finite(r), "", sprintf("(×÷%.1f)", r))
 
 battery_cov_pair <- function(comp, algo, ix, jx) {           # ix,jx = param indices
   df <- battery %>%
@@ -299,34 +302,42 @@ pair_plot <- function(px, py, algos = ALGOS) {
       transmute(x = .data[[px]], y = .data[[py]]) %>% filter(is.finite(x), is.finite(y))
     if (nrow(cl) < 3) return(NULL)
     Aemp <- .area(cov(cbind(cl$x, cl$y)))
-    # put the two ratio labels in whichever TOP corner is OFF the cloud's tilt (same rule as the
-    # Part B corner): positive correlation -> cloud runs bottom-left..top-right, top-left empty
-    # (hj=0); negative -> top-right empty (hj=1). The on/off and N_ch/i clouds are both negatively
-    # correlated, so the old fixed top-left placement sat the numbers on top of the points.
-    rho <- suppressWarnings(cor(cl$x, cl$y))
-    hj  <- if (is.finite(rho) && rho < 0) 1 else 0
+    # LABELS OUT OF THE DATA, 2026-08-12. They used to sit inside the panel, in whichever top corner
+    # was off the cloud's tilt, and in the k_off row the widest clouds reach BOTH top corners: the
+    # LSE and ILSE numbers were clipped by the panel edge and drawn over their own ellipse (same in
+    # the N_ch row for NR). They now live in a band above the data that the y expansion opens, one
+    # text row instead of two, orange at the left edge and blue at the right, so no tilt rule is
+    # needed and nothing can collide with the cloud whatever its shape. TWO ROWS, not one: at 7 pt in
+    # a 0.74 in panel the three numbers do not fit on a line, and putting them on one had them
+    # overprinting each other, which is worse than what it fixed.
     SF <- battery_cov_pair(C_FISHER, a, pix, piy)
     # size and shape on ONE line. They are one decomposition and reading them as a pair is the whole
     # point; stacking them also cost a third text row, which pushed the blue number down into the
     # cloud in the panels whose ellipses are widest.
-    tibble(algo  = factor(ALGO_LAB[a], levels = ALGO_LV), hj = hj,
+    tibble(algo  = factor(ALGO_LAB[a], levels = ALGO_LV),
            lab_F = paste(.fmt(Aemp / .area(SF)),
                          .fmts(.shape(cov(cbind(cl$x, cl$y)), SF))),
            lab_C = .fmt(Aemp / .area(battery_cov_pair(C_CORRECTED, a, pix, piy))))
-  }) %>% mutate(x = tx + ifelse(hj == 1, hx, -hx) * 0.94, yF = ty + hy * 0.92, yC = ty + hy * 0.60)
+  }) %>% mutate(x  = tx - hx * 0.99,
+                yF = ty + hy * (1 + 2 * YPAD * 0.78),    # top row of the band, orange
+                yC = ty + hy * (1 + 2 * YPAD * 0.30))    # second row, blue; vjust=1 hangs each below
+  # DROPPED HALF A TEXT LINE, 2026-08-12: at 0.98 the orange row sat on the panel's top border, a
+  # hair under the facet strip. Half a line is 0.137 hy here (0.055 in against a 0.403 in hy), which
+  # is 0.20 of the band, so both rows moved by 0.20 and their spacing is unchanged.
 
   ggplot() +
     geom_point(data = cl_all, aes(x, y), colour = "grey55", size = .35, alpha = .18) +
     geom_path(data = ellipses, aes(x, y, colour = source, linetype = source, linewidth = source)) +
     geom_point(data = centers, aes(x, y, shape = kind), size = 2.4, stroke = .9,
                colour = "black", inherit.aes = FALSE) +
-    geom_text(data = labs_df, aes(x, yF, label = lab_F, hjust = hj), colour = "#D55E00",
+    geom_text(data = labs_df, aes(x, yF, label = lab_F), hjust = 0, colour = "#D55E00",
               size = 2.8, vjust = 1) +
-    geom_text(data = labs_df, aes(x, yC, label = lab_C, hjust = hj), colour = "#0072B2",
+    geom_text(data = labs_df, aes(x, yC, label = lab_C), hjust = 0, colour = "#0072B2",
               size = 2.8, vjust = 1) +
     facet_wrap(~ algo, nrow = 1) +
     coord_cartesian(xlim = tx + c(-hx, hx), ylim = ty + c(-hy, hy)) +
-    scale_x_continuous(breaks = xb) + scale_y_continuous(breaks = yb) +
+    scale_x_continuous(breaks = xb) +
+    scale_y_continuous(breaks = yb, expand = expansion(mult = c(0.03, YPAD))) +
     # "Fisher rescaled" takes the Fisher COLOUR because it is the Fisher ellipse, with the single
     # degree of freedom a scalar correction has already spent in its favour. Its own dash pattern,
     # and thin, so it reads as a construction and not as a fourth estimate of the covariance.
@@ -480,6 +491,16 @@ W <- 7.0
 # the panels take what is left. Authored at 7 pt, not at 6.6 relying on the 6.1% enlargement that
 # \includegraphics[width=\linewidth] applies inside fullwidth: an explicit width would break that.
 PT <- 7
+# Y HEADROOM AND PANEL ASPECT, 2026-08-12. YPAD is the fraction of the full y range added ABOVE the
+# data, where the two ratio labels now live; the data band itself is unchanged, so the truth stays at
+# the centre of the DATA and only the axis grows. ASPECT then makes the panel taller by the same
+# amount, so opening that band costs the cloud none of its height on the page.
+YPAD   <- 0.34
+# ASPECT compensates the band. At 1 + 2*YPAD it gives the cloud MORE height than it had before the
+# band existed (0.90 in against 0.70), and the float then does not fit its caption on the page. 1.50
+# leaves the cloud at 0.80 in, still taller than the square panels it replaces, and takes 0.4 in off
+# the figure.
+ASPECT <- 1.50
 DIET <- theme(panel.spacing.x = unit(6, "pt"), panel.spacing.y = unit(4, "pt"),
               plot.margin = margin(1, 1, 1, 1),
               axis.text = element_text(size = PT), axis.title = element_text(size = PT),
@@ -514,15 +535,15 @@ geom_of <- function(p) {
        ow = sum(convertWidth(g$widths[-cc], "in", valueOnly = TRUE)))
 }
 gm <- lapply(list(r1, r2, r3), function(p) geom_of(p + theme(legend.position = "none")))
-pw <- (W - gm[[1]]$ow) / gm[[1]]$nc                       # square panel side, in inches
+pw <- (W - gm[[1]]$ow) / gm[[1]]$nc                       # panel WIDTH, in inches
 
 g2 <- (r1 / r2 / r3) +
-  plot_layout(heights = unit(vapply(gm, function(z) pw + z$oh, 0), "in"), guides = "collect") &
+  plot_layout(heights = unit(vapply(gm, function(z) pw * ASPECT + z$oh, 0), "in"), guides = "collect") &
   theme(legend.position = "bottom", legend.box = "horizontal", legend.title = element_blank(),
         legend.margin = margin(0, 0, 0, 0), legend.spacing.x = unit(5, "pt"),
         legend.text = element_text(size = PT), legend.key.size = unit(10, "pt"))
 H <- sum(convertHeight(patchwork::patchworkGrob(g2)$heights, "in", valueOnly = TRUE))
-cat(sprintf("figure_2: panel %.3f in, figure %.2f x %.2f in\n", pw, W, H))
+cat(sprintf("figure_2: panel %.3f x %.3f in, figure %.2f x %.2f in\n", pw, pw * ASPECT, W, H))
 g2
 ggsave("Figure_2.pdf", g2, width = W, height = H)
 ```

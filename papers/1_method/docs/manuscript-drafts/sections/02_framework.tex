@@ -1,0 +1,605 @@
+\section*{The likelihood family and its diagnostics}
+% HEADINGS REWRITTEN 2026-08-12 in the same pass as 04_results.tex; the survey and the rule are in
+% that file's note at the first subsection. "The observable is an interval average" was already the
+% target shape and is unchanged. TWO THINGS FLAGGED AND NOT ACTED ON, because they are Luciano's:
+%  (1) all six surveyed eLife articles carry EXACTLY four top-level sections (Introduction, Results,
+%      Discussion, Materials and methods; Munch merges the middle two). A fifth is a deviation an
+%      editor may query. The alternative is to demote this whole section to a first Results
+%      subsection, which is what 82566 does with "Methods for inference on representational
+%      geometries". Not done: it would move the carve plan's decision 1, not just a heading.
+%  (2) the old title's "and how it is tested" is the same appositive shape as the retired
+%      subsections; "its diagnostics" says the same thing in a noun the Results already use.
+% THIS FILE REPLACES 02_theory_full.tex AND 03_diagnostics.tex, merged 2026-08-12 under
+% papers/1_method/09_carve_plan.md, decision 1 (Luciano). Both originals are retired whole to
+% archives/ with a dated suffix, so every historical note they carried survives there and is
+% quotable; what is kept below is the subset of those notes that still CONSTRAINS an edit.
+% THE RULE THE MERGE APPLIES: a block stays here if the Results use it, meaning it names a member,
+% names a region, names a plotted quantity, or carries a caveat the Results invoke. Derivation and
+% justification went to Appendix 1 and to the new diagnostics appendix. Nothing in the three
+% protected categories (scope caveats, limitations, concessions) was cut; each was compressed or
+% relocated with a pointer left behind.
+% WHAT THE EVIDENCE FOR THE CUT WAS, so it is not re-litigated: the Results cite no equations at
+% all, and cite no table; Table 1 and Figure 1 are cited from nowhere outside this section. The
+% apparatus was serving itself.
+% DECISIONS LOCKED 2026-08-11 (Luciano): Eq. macror stays in the body; Figure 1 stays in the body;
+% Theory and Diagnostics become one section. Open and NOT settled here: whether "What is measured"
+% ends this section or opens the Results. It ends this section for now, because the first Results
+% paragraph uses the sandwich and the distortion by name.
+
+A macroscopic current is the summed signal of a population of ion channels, each an
+independent continuous-time Markov chain over a few conformational states. $N_{\mathrm{ch}}$
+is the number of channels and $K$ the number of kinetic states of one channel ($K=2$ % src: papers/_program/program.md §7 (model scope: two states)
+throughout this paper, carried symbolically). Each channel has a generator (rate) matrix
+$\mathbf{Q}\in\mathbb{R}^{K\times K}$, hence the row-stochastic transition matrix
+$\mathbf{P}(t)=e^{\mathbf{Q}t}$ over an elapsed time $t$, with entries $P_{i\to j}(t)$ from
+state $i$ to state $j$, and a conductance $\gamma_k$ in state $k$, collected in
+$\bm{\gamma}\in\mathbb{R}^{K}$.
+
+Writing that likelihood exactly calls for two objects, and neither is available here: a
+microscopic description keeping each channel discrete, which is explicit and ruled out by cost,
+and the law of the conductance averaged over the acquisition window, which has no closed form at
+any channel count although its low-order moments do (Appendix~\ref{app:derivation}). Every member
+replaces both with Gaussians, and they differ in which object the second Gaussian describes, what
+it is conditioned on and how its variance is accounted.
+% COMPRESSED 2026-08-12 (carve). The two obstructions and their asymmetry are kept, in one
+% sentence instead of five; the cost argument for the microscopic filter and its citation travel to
+% Appendix 1, which is where the exact law is stated. CORRECTED 2026-08-06 and still binding: the
+% exact likelihood needs BOTH objects, and the microscopic one IS in closed form (Micro R,
+% moffatt2007estimation) and is ruled out by cost, not by absence of a closed form. Do not
+% re-collapse this to "the interval law has no closed form", which was the defect that correction
+% fixed.
+
+\subsection*{The observable is an interval average}
+
+A recorded sample is the current averaged over the acquisition window rather than sampled at an
+instant: the current is low-pass filtered in analogue form before it reaches the converter, so
+each stored value carries a weighted average of the recent current and not a reading of it at a
+point. Writing the sampling period as $\Delta$ and taking the weighting to be uniform across it,
+the quantity a likelihood must describe is the windowed average
+\begin{equation}
+  \bar{y}_t \;=\; \frac{1}{\Delta}\int_{t-\Delta}^{t} y(\tau)\,\mathrm{d}\tau \;+\; \eta_t,
+  \label{eq:obs-avg}
+\end{equation}
+where $y(\tau)$ is the instantaneous population current and $\eta_t$ is the instrumental
+noise accumulated over the window. This interval average is the physical observable. When
+$\Delta$ is much shorter than the fastest relaxation of $\mathbf{Q}$ the average sits close
+to the instantaneous current and the distinction is negligible; when $\Delta$ is comparable
+to or longer than that relaxation the two diverge, and a likelihood built on instantaneous
+sampling describes the wrong random variable.
+
+Uniform weighting is a first approximation to what the electronics do, the real kernel being the
+impulse response of the amplifier's analogue low-pass. The simulator and every member share the
+uniform window (Methods), so data and likelihood describe the same observable and the window does
+not enter the measurement here; the closures below are the approximation the diagnostic sees. What
+the window misses is set by one dimensionless group, the acquisition window against the filter's
+response time, and the residue is first order in its reciprocal for a white contribution and second
+order for one carrying a correlation time of its own, so it lands in the instrumental part of the
+predictive variance and not in the gating part the closures approximate.
+Appendix~\ref{app:derivation} bounds it and gives the remedy, which is to block-average a record
+down to that scale before analysis.
+% [BESSEL-BOUND] The canonical note MOVED 2026-08-12 to 08_appendix_derivation.tex, with the bound
+% itself, the deficit table and the four properties it turns on. It was closed on 2026-08-11 and
+% stays closed. TWO SENTENCES HERE ARE LOAD-BEARING AND MUST NOT BE CUT TO SAVE WORDS:
+%  (1) "The simulator and every member share the uniform window ... the approximation the diagnostic
+%      sees" is the CORRECTED 2026-08-04 repair; it is what keeps this approximation out of the
+%      measurement, and an earlier version claimed the closures were the ONLY approximation, which
+%      05_discussion.tex contradicts.
+%  (2) the first-order/second-order sentence, printed 2026-08-11, is what makes this concession and
+%      the noise-model concession of the Discussion ONE concession rather than two open ones.
+% Everything else of the paragraph (the pole-count independence, sigma_f, the group-delay caveat on
+% the interval holding the jump, the tenfold cost of an explicit kernel) is in the appendix.
+
+\subsection*{The two Gaussian closures fail in different regimes}
+
+To close a distribution is to replace it by the Gaussian with the same mean and covariance. Two
+closures are available, and every member makes the first; whether it pays for the second is set by
+what it predicts. The current at an instant is $\bm{\gamma}$ contracted against the occupancies at
+one time, and the linear image of a Gaussian is Gaussian; the interval average is a functional of
+the path inside the window and needs a closure of its own. An instantaneous member drops that
+evolution instead, one snapshot standing in for the average the recording holds, which misspecifies
+the random variable rather than closing it, and in the unhelpful direction, since averaging is what
+brings the law closer to Gaussian.
+% CORRECTED 2026-08-06 and STILL THE ONLY SITE: an earlier version read as denying that the
+% instantaneous members Gaussianize the observation, which is false. The narrow true statement is
+% the one above, that no second moment matching is performed because the map is linear, and that
+% the instantaneous member's error at the signal level is misspecification. It is stated here and
+% nowhere else; do not cut it from this paragraph.
+
+\begin{tcolorbox}[title={The two Gaussian approximations}, colback=gray!5, colframe=gray!55]
+\textbf{Occupancy closure.} One probability per occupancy vector, a count that grows with
+$N_{\mathrm{ch}}$, is replaced by a Gaussian in the per-channel pair $(\bm{\mu},\bm{\Sigma})$, the
+same size at every channel count and living on the simplex.
+\emph{Validity:} two conditions, not one. The channel count must be high enough for the counts to
+behave as a continuum, which fails as $N_{\mathrm{ch}}$ falls; and the recorded sample must not
+resolve the step in predicted current made by moving one channel between states, which fails as
+the instrumental noise falls. The second is why the boundary of the failing region in the Results
+runs across the plane of channel count against noise rather than down a line of constant
+$N_{\mathrm{ch}}$.
+
+\smallskip
+\textbf{Interval-signal closure.} The law of the conductance averaged over one window is replaced
+by a Gaussian carrying its first two moments. The exact law is telegraph-like, a mixed law closed
+only at $K=2$ and proliferating with $K$, which neither the few distinct conductances channel
+models carry nor the independence of the channels rescues (Appendix~\ref{app:derivation}).
+\emph{Validity:} the window must span many transitions, or the instrumental noise must be large
+enough to make the departure immaterial. The second half is exact rather than heuristic: noise
+independent of the gating current adds to the variance of the recorded sample and leaves every
+cumulant above the second unchanged, so the standardized departures shrink as the noise grows.
+
+\smallskip
+The two are controlled by different quantities, the occupancy closure by the channel count and
+the interval-signal closure by the window against the gating timescale, while instrumental noise
+relaxes both. That makes them separable by design, which is why the Results sweep a plane of
+channel count against noise at one window before moving the window along an axis of its own.
+\end{tcolorbox}
+
+The closure is indifferent to the shape of the law it replaces, and the moments it keeps are
+closed-form single-channel objects, independent of $N_{\mathrm{ch}}$ and of the topology
+(Appendix~\ref{app:derivation}). That asymmetry, an exact law that degrades with $K$ and with
+$N_{\mathrm{ch}}$ against moments that do neither, is what justifies the closure beyond the
+two-state case run here.
+
+What they discard does not vanish. It reappears as temporal correlation the likelihood does not
+predict, which is what the correlation term of the distortion measures (below). Three regimes
+follow, named here so the maps in the Results have vocabulary: the \emph{microscopic} regime, few
+channels, where the occupancy closure fails and only the microscopic description is exact; the
+\emph{telegraphic} regime, windows far shorter than the relaxation time, where the interval-signal
+closure fails; and the \emph{Gaussian} regime, where both hold. Any Gaussian likelihood of this
+kind must fail somewhere, and this paper's aim is to show that the failures are the predicted
+degradation of these two closures rather than defects of a particular algorithm.
+
+Two design quantities are reported throughout in the natural units of the model, and a tilde marks
+them. Time is measured in the channel time constant $\tau=1/k_{\mathrm{off}}$, the closing time
+constant, and current in the unitary current $i$, which gives the acquisition interval
+$\widetilde{\Delta}=\Delta\,k_{\mathrm{off}}=\Delta/\tau$ and the instrumental noise
+$\widetilde{S}=S\,k_{\mathrm{off}}/i^{2}$, with $S$ the instrumental noise power spectral density,
+so $\widetilde{S}$ is the noise power accumulated over one channel time constant measured against
+the single-channel signal power (Methods).
+
+Both are per-sample variances, which is what makes them comparable to the gating fluctuation the
+family models. The instrumental variance of one recorded sample is
+$i^{2}\widetilde{S}/\widetilde{\Delta}$, so $\widetilde{S}=1$ is a sample one channel time constant
+long whose noise carries a standard deviation of exactly one single-channel current, and a decade
+of that axis is half a decade of current. The gating variance of the same sample rises as the
+window shortens only until the window is shorter than the channel's own correlation time, after
+which it saturates, while the instrumental variance keeps rising as $1/\widetilde{\Delta}$; at the
+open probability of one half the two are equal along
+\[
+  \frac{\widetilde{S}}{N_{\mathrm{ch}}} \;=\;
+  \frac{2\widetilde{\Delta}-1+e^{-2\widetilde{\Delta}}}{8\,\widetilde{\Delta}},
+\]
+which is $\widetilde{\Delta}/4$ for windows short against that correlation time and a quarter for
+long ones. So the channel count and the instrumental noise enter the comparison through their
+ratio, which is the variable the design plane collapses in (Results).
+% ADDED 2026-08-12 (Luciano's question: what mental picture does a reader hold of the noise axis
+% against the gating noise). DERIVATION, so the three constants can be rechecked without redoing
+% it. Per recorded sample the instrumental variance is e_t = S/Delta = i^2 S_tilde / Delta_tilde,
+% which is the emission model printed in Methods (e_t = Current_Noise * f_s / n_samp) and nothing
+% else. The gating variance of ONE channel over a boxcar window of length Delta, for a two-state
+% channel with stationary variance i^2 p(1-p) and correlation time tau_c, is
+%   i^2 p(1-p) * G,  G = 2(a - 1 + e^{-a}) / a^2,  a = Delta / tau_c,
+% G -> 1 - a/3 for short windows and G -> 2/a for long ones. At the run values p = 0.5 and
+% k_on[A] + k_off = 200 s^-1 = 2 k_off, so tau_c = tau/2 and a = 2 Delta_tilde, giving
+% gating/instrumental = (N_ch / S_tilde) * h, h = (2D - 1 + e^{-2D}) / (8D) with D = Delta_tilde.
+% h = 0.0024834, 0.023414, 0.141917 at D = 0.01, 0.1, 1, and h -> D/4 as D -> 0, h -> 1/4 as
+% D -> infinity. TWO THINGS THIS PARAGRAPH DELIBERATELY DOES NOT SAY. (i) It is the plateau of the
+% agonist step; during either zero-agonist segment the gating variance is not this. (ii) The
+% quarter and the D/4 are p = 0.5 numbers, which is why the clause names the open probability: any
+% other p carries p(1-p) and a different tau_c, so this is a reading of THIS sweep and not a law.
+% NOT A NEW UNIT. S_tilde keeps the i^2 reference, which is the only dimensionless combination of
+% S, k_off and i and needs no p; referencing the noise axis to the gating noise instead would drag
+% p and k_on[A] into it, so the axis would move when the kinetics moved.
+% MOVED HERE 2026-08-12 from the opening of 04_results.tex (10_concept_census.md, defect 3). Both
+% were defined in the Results and pointed at Methods for the sweep, and Methods prints after the
+% Results, so the manuscript's two design axes were defined at their first use and nowhere earlier.
+% Net cost zero: the Results opening loses the same sentence. The sweep values, the ladder and the
+% unit conversion stay in Methods, which owns them.
+% FORMULA ADDED 2026-08-12. S_tilde carried only the verbal gloss here and pointed at Methods for
+% its law, while Delta_tilde carried its law in place; Methods prints AFTER the Results, so a
+% linear reader met the noise axis of every design-plane figure with words alone. Methods keeps
+% everything else it owns: the run values, the twelve-level ladder, the argument that S k_off / i^2
+% is the only dimensionless combination of the three, and the note that the accent has a second,
+% disjoint use over bold symbols (the boundary-pair contraction of the Appendix).
+
+\subsection*{Least squares models no gating, and the family above it varies in window and recursion}
+
+Before any of the choices above comes a prior question: does the method model the gating
+fluctuations at all? Classical nonlinear least squares answers no. It fits
+the deterministic mean current and assigns one constant variance to every residual, so it
+carries neither an occupancy distribution nor a conductance conditioned on anything, and
+the temporal structure the two closures approximate is absent from it. Least squares is
+therefore not a member of the family. It is the bottom rung of the ladder of computational
+cost this paper walks, and it is the anchor against which every member above it is
+measured, because it is the method most readers are using.
+
+The methods differ along two axes. One is the window: how much of the acquisition interval the
+predicted current is conditioned on. The other is recursion: a recursive (prequential) member
+factorizes the likelihood as $\prod_t q_t(\bar{y}_t \mid \bar{y}_{1:t-1})$, so the occupancy
+distribution carried into each window is the posterior left by the previous ones, while a
+non-recursive (open-loop) member factorizes as $\prod_t m_t(\bar{y}_t)$, each window propagated
+from the initial condition and never conditioned on the observed trace.
+
+The window axis is not the family's property alone: any method that predicts a recorded value has
+to decide whether to predict the current at an instant or averaged over the window, and that
+decision is available at every level of the gating description, least squares included. Least
+squares therefore has two arms here, identical but for that decision, so the pair isolates the
+acquisition average with nothing else moving, which no pair inside the family does.
+
+The members are named from the two axes and the names are read off them. The suffix is the
+recursion axis: \texttt{NR} for a non-recursive member, \texttt{R} for a recursive one. The
+% CORRECTED 2026-08-06 (Luciano). The suffix was given as "N or R", which does not parse: NR ends
+% in R. The split that works on all six names is NR against R. papers/_program/nomenclature.md:98
+% carries the same note; keep the two in step.
+prefix is the window axis: none for the current at an instant, \texttt{M} for the interval
+mean given the state at the window's start, \texttt{I} for the interval mean given the states at
+both of its ends. Five members follow rather than six, because without an update the state
+at the end of a window is never observed and the two interval prefixes describe the same
+method on the non-recursive side: \texttt{NR} and \texttt{R} predict an instant, \texttt{INR}
+is the non-recursive interval member, and \texttt{MR} and \texttt{IR} are where the start
+state and the boundary separate. The \texttt{M} is the mean conductance and not an
+abbreviation of macroscopic; every member of the family is macroscopic. One letter names neither
+axis: \texttt{VR} is \texttt{MR} with the residual interval variance in place of the total one,
+the one member whose variance form is a choice rather than a consequence of what it conditions on
+(Appendix~\ref{app:members}). The two least-squares arms sit off this lattice, \texttt{LSE} fitting
+the instantaneous deterministic mean and \texttt{ILSE} the same mean averaged over the interval,
+where the \texttt{I} records the window setting and nothing else. Each of them is the open-loop
+member at its own window setting with the gating variance replaced by one constant fitted over the
+whole record: on the recording of Figure~\ref{fig:ladder} \texttt{LSE} and \texttt{NR} predict the
+same current interval by interval, and so do \texttt{ILSE} and \texttt{INR}, to within
+$10^{-15}$~pA, and what the least-squares arm discards is the variance (Methods).
+% ADDED 2026-08-12 with the removal of the two least-squares columns from Figure 1 (Luciano's call,
+% decisions.md). It is the bridge from the incumbent method to the family, it was carried only by a
+% Methods sentence the reader reaches twenty pages later, and it is what makes the figure's four
+% columns sufficient: a reader who wants the least-squares picture reads the open-loop column with a
+% band of one height. The numbers are MEASURED (max|LSE-NR| = 8.882e-16 pA, max|ILSE-INR| =
+% 2.220e-16 pA over the twelve intervals of that recording), not asserted; Methods carries the same
+% measurement with its provenance.
+% LATEX DEFECT FIXED 2026-08-12: the opener of the sentence below ("Below, each member is usually")
+% had been swallowed into the comment line above when that block was appended, so the compiled text
+% ran "...discards is the variance (Methods). named by what it conditions on...". Check the rendered
+% paragraph, not the source, when a comment block is appended mid-sentence.
+Below, a member is named by its code where a number is attached to it and by what it conditions on
+where the point is structural: \texttt{NR} is the open-loop member and \texttt{INR} the open-loop
+interval member, \texttt{R} the recursive instantaneous filter, \texttt{MR} the one-endpoint member
+and \texttt{VR} the variance-corrected rung, \texttt{IR} the boundary-conditioned member, and the two
+least-squares arms together the classical fit.
+% ADDED 2026-08-12 (papers/1_method/10_concept_census.md, defect 1). Counted before writing:
+% "boundary-conditioned" occurs 12 times in the Results, 6 in Methods and 4 in the Discussion and
+% occurred ZERO times in this section; "open-loop member" 8 and 0; "window-ignoring" 3 and 0; "the
+% classical fit" 4 and 0. Only "recursive instantaneous" was bound here, and by accident of the
+% prior-art sentence. Each mapping was read off its use sites in 04_results.tex, not assumed: MR is
+% "the one-endpoint member" and VR "the variance-corrected rung", per the paragraph that runs both
+% against R at four channel counts, where "the member it corrects" is R. "Window-ignoring" is left
+% out on purpose: it is not a member but a set, the three that predict an instant, and the Results
+% sentence that uses it names them. Table 1 carries the same map in a column.
+% AMENDED 2026-08-12 (Luciano). "usually named by what it conditions on rather than by its code" was
+% the rule for one day and it is now the other way round in the number-carrying sentences: the code
+% where a number is attached, the descriptor at a heading, a first mention or a structural point, the
+% published name only where the prior work is at stake. The dictionary above is what makes both
+% halves legible and it stays. The rule and its rationale live in papers/_program/nomenclature.md,
+% "Which of the three names to use where"; the descriptor count in the Results went 26 -> 7 in the
+% pass that recorded it.
+% ADDED 2026-08-06 (Luciano) and it closes the section's largest gap: before it, six member codes
+% were used before being defined anywhere the reader had reached. What is stated is the NAMING RULE
+% rather than eight glosses (papers/_program/nomenclature.md:98-121: suffix = recursion axis,
+% prefix = window axis, V = variance form). NOT ADDED, deliberately: a clause disarming the three
+% readings of the letter I. Both are disarmed in place, INR by "five members follow rather than six"
+% and ILSE by "records the window setting and nothing else".
+
+Two things follow. \texttt{IR} occupies the top rung below the intractable exact likelihood, so
+its standing is structural and set before any measurement; and the lower rungs are established
+likelihoods rather than constructed foils, the non-recursive instantaneous member being the
+independent-interval likelihood of \citet{milescu2005maximum} and the recursive instantaneous
+member the macroscopic filter of \citet{moffatt2007estimation} and the generalized filter of
+\citet{munch2022bayesian}. Above all of them sits the exact likelihood, which conditions on the
+full trajectory inside each window and is intractable, which is why the closures are needed at all;
+the same model can nonetheless be simulated forward exactly, so the simulation realizes the top of
+the ladder and is the ground truth every rung below it is judged against.
+
+\subsection*{The interval likelihood is the instantaneous one applied to the boundary state}
+\begin{figure}[htbp]
+\begin{fullwidth}
+\centering
+\includegraphics[width=\linewidth]{Figure_1}
+\end{fullwidth}
+\caption{\textbf{One filter step, and what each of the two axes changes.} A simulated patch of
+$N_{\mathrm{ch}}=20$ two-state channels. The green trace is the current the channels carry, resolved
+inside the acquisition window; the two windows drawn hold four and five gating transitions, and the
+recording keeps one number for each of them, the average over the window. Dotted lines are the
+window boundaries and the axis counts windows, each $2$~ms. The instrumental noise is the lowest of
+the design plane, $\widetilde{S}=0.01$, so the recorded value sits essentially on the average of
+that trace.
+Four representative members score it (columns), the two axes crossed: the open-loop gating
+likelihood (\texttt{NR}), its interval-averaged partner (\texttt{INR}), the recursive filter
+(\texttt{R}) and the interval-conditioned filter (\texttt{IR}). Each stands for more than itself:
+least squares is the open-loop column of its own window setting with a band of constant height
+(above), and \texttt{MR} and \texttt{VR} are the recursive column carrying \texttt{INR}'s
+prediction and innovation (Table~\ref{tab:members}). Rows follow one turn of the cycle:
+(A) the prior open probability, (B) the predicted current with its spread and the innovation,
+(C) the Bayesian posterior, absent from the open-loop columns, and (D) the log-likelihood from
+zero. The window axis is read across row (B): \texttt{NR} and
+\texttt{R} predict an instant, a point at the sample with an error bar, \texttt{INR} and \texttt{IR}
+the interval average, a segment across the interval with a band. In (A) and (C), \texttt{IR} alone
+carries a pair of occupancies, one at each end of the interval, tied by a dashed arc: the arc is
+their covariance and implies no path through it. The two-tone disc is the instant that
+closes one window and opens the next, and the Markov arrow leaves it: that marginal is all that
+crosses the boundary. Colour is the filter phase (orange
+predict, blue observe, purple update, black the score), arrows are operations, and a state carried in
+from the neighbouring window is faded. No number is quoted from
+this simulated recording.} % src: projects/eLife_2025/figures/paper_both/figure_1.Rmd (ROSTER OF FOUR, 2026-08-12: NR/INR/R/IR, the window x recursion lattice; the six-column predecessor is archive/figure_1_superseded_20260812.Rmd). NO NUMBER IS QUOTED FROM THIS FIGURE AND NONE SHOULD BE: the run is seeded with seed = 0, the sentinel for a random draw (ops/local/figure_1_plus_lse.macroir:75), so the trace differs on every re-run and with it every quantity read off the realisation. The occupancy trajectory of row (A) is the deterministic Markov mean and does NOT move: LSE and NR agree to seven decimals at every interval and so do ILSE and INR. THE LEAST-SQUARES SENTENCE IS MEASURED, not a paraphrase: max|LSE-NR| = 8.882e-16 pA and max|ILSE-INR| = 2.220e-16 pA over the twelve intervals (the same measurement Methods reports), and the constant predictive sd is 3.536 pA for LSE and 3.559 for ILSE against 0.224 to 2.010 for NR, read off figures/data/figure_1_likelihood_diagnostic_{LSE_av0,LSE,NR}.csv on 2026-08-12. SO ARE THE OTHER THREE NUMBERS OF THE OPENING, all 2026-08-12: "four and five gating transitions" counts the changes of patch_current inside samples 3 and 4 of figures/data/figure_1_simulation.csv (250 sub-steps per window; the six windows run 0, 7, 5, 4, 5, 10); "each 2 ms" is 100 raw samples at 50 kHz (provenance.md#4); and "the lowest of the design plane, S~ = 0.01" is Current_Noise = 1e-4 in ops/local/figure_1_plus_lse.macroir:58, which is noise label 0.1, the smallest label swept anywhere under figures/data. MR/VR SENTENCE: it is the structural claim Table 1's own caption makes ("INR and MR carry identical Gaussians and differ only in whether the recording is fed back"), stated for the figure's grammar; it is NOT a claim that their numbers coincide along a recording, which they do not. LENGTH: at 280 words and six columns the float spanned 84 to 711 pt against a text block of 57 to 721, ~19 pt of slack. The art is the same height at four columns (504 x 435 pt); this caption now counts 331 words after the 2026-08-12 rewrite (simulated not recorded, the low-noise reason, the representative-member sentence, the interval axis) and the float takes a page of its own, page 9 of the current build, with the caption complete and no Overfull vbox (the log's four are all on the Figure 5 supplement pages, 66 and 68). It has no slack left: anything added has to displace something. VERIFIED by rendering page 9, not inferred from the compile exiting 0. papers/_program/provenance.md#4 (20 channels, 250 substeps)
+\label{fig:ladder}
+% KEPT IN THE BODY by decision 3 of the carve plan (Luciano, 2026-08-11), on the record because it
+% is the only display item in the paper that measures nothing and it is cited from nowhere in the
+% Results: it fixes the member vocabulary in pictures and costs no counted words.
+\end{figure}
+
+
+A \emph{boundary state} is the pair $(i\to j)$ of a channel's states at the two ends of
+an acquisition interval; an arrow marks an object that spans the window, so
+$P_{i\to j}(\Delta)$ is a transition across it and $\bar\gamma_{i\to j}$ an average
+over it. Chaining intervals leaves a single state variable per junction, since the end state of
+one interval is the start state of the next, and the moments over the $K^2$ pairs are built from
+objects of side $K$, with no explicit $K^2$ object formed anywhere
+(Appendix~\ref{app:derivation}).
+% MOVED 2026-08-12 to Appendix 1: the reading of the device as static condensation or the spatial
+% Markov property applied on the time axis, and the disclaimer that this is not a transition state
+% in the mechanistic sense. What survives here is the definition and the cost claim, which is what
+% the Results' vocabulary needs. CUT EARLIER, 2026-08-10, and it stays cut: the Kronecker-sum
+% justification, whose attribution was wrong (Q(+)Q generates two independent copies of the chain,
+% while the pair (X_0, X_Delta) of ONE channel is a single chain).
+
+The interval likelihood is the instantaneous one applied to the boundary state. The recursive
+member of \citet{moffatt2007estimation} carries a Gaussian over the channel occupancies and
+conditions it on each recorded sample: in the per-channel normalization used throughout, with
+$\bm{\gamma}$ the per-state conductance and $\epsilon^2$ the instrumental variance,
+\begin{align}
+  y^{\mathrm{pred}} &= N_{\mathrm{ch}}\,\bm{\mu}^\top\bm{\gamma},
+  \qquad
+  \mathbf{g} = \bm{\Sigma}\bm{\gamma},
+  \qquad
+  \sigma^2 = \epsilon^2 + N_{\mathrm{ch}}\,\bm{\gamma}^\top\bm{\Sigma}\bm{\gamma},
+  \nonumber\\
+  \bm{\mu}^{\mathrm{post}} &= \bm{\mu} + \frac{\mathbf{g}}{\sigma^2}\,\delta,
+  \qquad
+  \bm{\Sigma}^{\mathrm{post}} = \bm{\Sigma} - \frac{N_{\mathrm{ch}}\,\mathbf{g}\mathbf{g}^\top}{\sigma^2},
+  \qquad
+  \delta = y^{\mathrm{obs}} - y^{\mathrm{pred}}.
+  \label{eq:macror}
+\end{align}
+This is the Gaussian conditioning of the pair (state, observation) on the value recorded. The
+gain $\mathbf{g}$ is the covariance between the state a channel is in and the current it
+carries, and it is the whole of what brings the observation to the state: the predicted
+variance divides it, and nothing else in the update touches the data. It is also the object
+the interval version has to rebuild. Every moment here belongs to a single channel, and the
+factors of $N_{\mathrm{ch}}$ are where the counts over the ensemble enter
+(Appendix~\ref{app:derivation}).
+% SLOT SYMBOLS, settled 2026-08-06 (Luciano), after two rounds of getting it wrong: this equation is
+% not a template, it is MacroR, published with gamma, so no neutral letter goes on that slot; k
+% collides with the state count and with the channel index. Sigma*gamma is named g, the name the
+% object already has at Eq. mu-post and in the derivation, introduced here where it is first built.
+% One symbol, one meaning across the three members. KEPT IN THE BODY by decision 2 of the carve
+% plan (Luciano, 2026-08-11): it is the one algorithmic anchor a reader gets before the Results.
+
+What it gives up is not exactness but \emph{sufficiency}: the three moments it consumes are exact
+functions of $(\bm{\mu},\bm{\Sigma})$, but $\mathrm{Var}[\bar y\mid\mathbf{N}]$ depends on
+$\mathbf{N}$, so $(\mathbf{N},\bar y)$ is not jointly Gaussian and Eq.~\ref{eq:macror} is not the
+exact Bayesian update; it conditions a Gaussian carrying the exact first two moments, treating a
+heteroscedastic emission as if it were homoscedastic.
+% MOVED 2026-08-12 to 05_discussion.tex, the relation-to-other-work half: that munch2022bayesian
+% meet the same obstruction and resolve it the same way, with their three quoted phrases ("the
+% conjugacy property is lost"; the covariance equations "are still exact for the more general noise
+% model"; "mean and covariance just do not form a set of sufficient statistics anymore"). It is a
+% concession to another group's work and it belongs where the paper discusses them. The CLAIM stays
+% here, because the closure sentence below leans on it.
+
+What stops Eq.~\ref{eq:macror} from being used on the interval average is that the average is not a
+function of the occupancy at any one time, so no conductance vector on the $K$ states delivers its
+mean. On the $K^2$ pairs of states a channel occupies at the two ends of the window one does, and
+the construction of every interval member is that substitution, whose only approximation is the
+Gaussian replacement at the end of it (Appendix~\ref{app:derivation}).
+
+In a recursive member the posterior pair becomes the prior for the next window; in a non-recursive
+member it is not carried forward. Reusing it is itself a closure, exact only while the end marginal
+is a sufficient summary of the boundary posterior, which the Gaussian projection does not
+guarantee. For this reason the recursive members' Gaussian information is a model-based quantity
+and is not claimed to be the exact information of the process; how far it departs from the truth is
+what the diagnostics below measure.
+
+\begin{table}[htbp]
+\begin{fullwidth}
+\centering
+\begin{tabularx}{\linewidth}{@{}l
+    >{\hsize=0.75\hsize\raggedright\arraybackslash}X
+    >{\hsize=0.85\hsize\raggedright\arraybackslash}X
+    >{\hsize=1.25\hsize\raggedright\arraybackslash}X
+    >{\hsize=1.15\hsize\raggedright\arraybackslash}X@{}}
+\toprule
+Member & The states are conditioned on & Predicted mean & Predicted variance beyond the instrumental term & Called, in the Results \\
+\midrule
+\multicolumn{5}{@{}l}{\emph{Open loop}: no update; every window is propagated from the initial condition} \\
+\addlinespace[2pt]
+\texttt{LSE} & nothing: there are no states & the deterministic mean current at the middle of the window & none: one constant over the whole record, fitted as the residual sum of squares & the classical fit, un-averaged arm \\
+\texttt{ILSE} & nothing: there are no states & the same mean current averaged over the window & the same constant & the classical fit, or the least-squares arm \\
+\texttt{NR} & an instant, the middle of the window & the current at that instant & the spread of the instantaneous conductance across the states the channels occupy & the open-loop member \\
+\texttt{INR} & the state at the start of the window & the interval-mean current given that state & the spread of that interval mean across the occupied states, and the variance of one channel's interval mean given its start state & the open-loop interval member \\
+\midrule
+\multicolumn{5}{@{}l}{\emph{Recursive}: the posterior of one window is the prior of the next} \\
+\addlinespace[2pt]
+\texttt{R} & an instant, the middle of the window & the current at that instant & the spread of the instantaneous conductance across the states the channels occupy & the recursive instantaneous filter \\
+\texttt{MR} & the state at the start of the window & the interval-mean current given that state & the spread of that interval mean across the occupied states, and the variance of one channel's interval mean given its start state & the one-endpoint member \\
+\texttt{VR} & the start, and both ends for the interval variance alone & the interval-mean current given the start state & the spread of that interval mean across the occupied states, and the variance of one channel's interval mean given both its endpoints & the variance-corrected rung \\
+\texttt{IR} & the states at both ends of the window & the interval-mean current, the unobserved end state marginalized & the spread of the interval mean across the occupied pairs of endpoint states, and the variance of one channel's interval mean given both its endpoints & the boundary-conditioned member \\
+\bottomrule
+\end{tabularx}
+\end{fullwidth}
+\caption{\textbf{The eight members as settings of one construction.} One conditioning choice runs
+through each row: the states an interval is conditioned on are the states its conductance is
+computed from and the states its update is taken on, so the second column governs the gain as well
+as the two columns beside it. Reading down, the second column is the window axis and the two
+blocks are the recursion axis. Three consequences are worth reading off. \texttt{LSE} and
+\texttt{ILSE} differ in the mean alone, which isolates the acquisition average with nothing
+else moving; \texttt{NR} and \texttt{R}, and \texttt{INR} and \texttt{MR}, carry identical
+Gaussians and differ only in whether the recording is fed back into the states; and
+\texttt{MR} and \texttt{IR}, taken from the same state, assign the same variance by two
+decompositions that rearrange into each other, so what separates them is the gain, which is
+then what makes the variances they report along a recording differ after all. \texttt{VR}
+drops the between-endpoint spread from the third term without restoring it in the second and
+predicts less than either from any state. In print, \texttt{IR} is MacroIR and \texttt{INR} is
+MacroINR. All eight are implemented, and all eight are run over the design plane; the four that
+cross the two axes are drawn as one turn of the filter cycle in Figure~\ref{fig:ladder}, the
+equation-level specification is
+Appendix~\ref{app:members}, and the dispatched flags and data keys are in
+Table~\ref{tab:family}.}
+% CORRECTED 2026-08-12, both halves. "Six are drawn" was true until Figure 1 dropped the two
+% least-squares columns the same day (decisions.md, "Fig 1 = the window x recursion lattice"). And
+% "seven are run over the design plane and the un-averaged arm at a single cell" was false from
+% 2026-08-06 21:57, when figures/data/a202e03 landed with 96 nonlinearsqr_g files: LSE and ILSE
+% carry the SAME thirty (N_ch, noise) cells at nsim = 1e4, and figure_2.Rmd, figure_4.Rmd,
+% figure_4_S1.Rmd and figure_4_S4.Rmd all read that directory. Measured 2026-08-12 by listing the
+% (nch, nsim, noise) triples of every data key: nonlinearsqr_g 30 cells at 1e4, nonlinearsqr the
+% same 30 plus four superseded 1e3 cells and two at N_ch = 5; every macro_* key >= 30.
+% EQUATION POINTERS REMOVED FROM THE HEADERS 2026-08-12 (carve plan, Phase B). They read
+% "(Eq. ypred)" and "(Eq. pred-var)", and both equations live in Appendix 1, so a body table on
+% page 10 was indexing equations printed twenty pages later. The columns are English and lose
+% nothing; the equation-level version of this table is tab:appendix-members, which now carries the
+% pointers and is cited from its own appendix. % src: papers/_program/nomenclature.md (the lattice as implemented; what the letters mean) ; legacy/qmodel.h:4531-4645, read 2026-08-06 for the three columns member by member: t_P is P_half at av=0 and P otherwise (mid-window evaluation state, qmodel.h:4489-4505), t_gmean_i is g at av=0 and gmean_i at av>0 INCLUDING av=2, gSg gains its boundary term only at av=2, and ms switches total against residual on (av==2 || variance_form==residual). NOTE for the record: the predicted MEAN of IR is built from gmean_i, the start-conditioned interval mean, exactly as MR's is; the boundary object enters the variance and the gain, not the mean.
+\label{tab:members}
+\end{table}
+
+
+\subsection*{The distortion is a matrix, and only the residual check runs on a real recording}
+
+Everything below is read off ensembles of exactly simulated recordings at two parameter vectors, and
+every figure states which one it shows: the simulation truth $\theta_{\mathrm{sim}}$, never known in
+an experiment, and the pooled optimum $\theta_{\mathrm{pool}}$, the fit of the member under test to
+all the recordings of one cell at once (Methods). Their difference is the misspecification bias
+itself. At $\theta_{\mathrm{sim}}$ a nonzero mean score is visible at all; at
+$\theta_{\mathrm{pool}}$ it vanishes by construction, so the information comparison is not
+contaminated by a displaced gradient.
+
+Three quantities are read off the simulation, in increasing strength. The first is the standardized
+residual $r_t=(y_t-\mu_t)/\sigma_t$, with $\mu_t$ and $\sigma_t^2$ the likelihood's own predictive
+mean and variance for interval $t$: mean zero, unit variance and no autocorrelation across intervals
+if the one-step predictive distribution is correct \emph{at the parameters it is evaluated at}. It is
+the only one of the three an experimentalist can run on a real recording, needing no ensemble and no
+known truth, and it does need a fitted point. A fit with the baseline and the noise level free
+absorbs most of the first two properties; the temporal structure is what no fit absorbs. That
+structure is summarised by the integrated autocorrelation of the residual,
+$\tau_{\mathrm{int}}=1+2\sum_{k\ge1}\rho_k$ with $\rho_k$ its lag-$k$ correlation, summed to the
+maximum lag stated in Methods: it reads one for a white residual, and above one it counts how many
+intervals a fit effectively has for every interval it believes it has.
+% ADDED 2026-08-12 (10_concept_census.md, defect 2). tau_int is the one quantity this paper offers
+% an experimentalist to compute on their own recording, and it had no definition anywhere in the
+% body: the Introduction used it, the symbol first appeared in the Figure 5 caption and the gloss
+% was a subordinate clause in the Results.
+% THE FORM IS THE PRODUCER'S, read rather than assumed: legacy/moment_statistics.h:1680-1730,
+% series_integral_correlation_lag, computes Omega/C(0) with Omega = sum_i [k_i(0) + 2 sum_{off>0}
+% k_i(off)] and C(0) = sum_i k_i(0), which is 1 + 2 sum_k rho_k, the Kish/Sokal integral
+% autocorrelation time with positive and negative lags counted symmetrically. Its own header says
+% so. The truncation is the battery's max_lag, which Methods states. % src: projects/eLife_2025/figures/paper_both/figure_3.html (row G caption numbers; lag-one residual and score ACF by member: LSE 0.846/0.856, NR 0.510/0.864, R 0.118/0.191, IR -0.010/-0.004)
+% [BESSEL-BOUND] THE TRAP THIS PARAGRAPH CARRIES, kept from 03_diagnostics.tex and still the sharpest
+% of the sites, because it is about the paper's single experimenter-facing deliverable: on a REAL
+% recording the analogue filter puts correlation into the residual by itself, of size
+% 0.075/(f_c*Delta), which is 8.6% where the window equals the inverse cutoff. Against IR's measured
+% -0.010 that is the whole signal. The check is sound at f_c*Delta of a few and upward. Nothing
+% measured in this paper is affected: the simulator emits the uniform window with white noise.
+
+The second is the score. With $\ell(\theta)$ the total log-likelihood and
+$S(\theta)=\nabla_\theta\ell(\theta)$ its gradient, correct specification requires
+$\mathbb{E}[S(\theta_{\mathrm{sim}})]=0$. Projected through the parameter covariance, a nonzero mean
+score becomes a displacement in parameter units, $b=\mathbf{H}^{-1}\,\mathbb{E}[S]$, with
+$\mathbf{H}$ the Gaussian Fisher information the likelihood itself reports: how far the estimate is
+pushed. This one cannot be run on an experiment at all, needing a known truth and an ensemble to
+take the expectation over.
+
+The third and strongest is the information itself. Correct specification requires
+$\mathrm{Cov}[S]=\mathbf{H}$, the covariance taken over independent recordings of the same cell,
+which no experiment supplies: one recording gives one score. An approximation can pass the residual
+and score checks and still violate this one by an order of magnitude. Because the failure is
+directional, we record it as a matrix,
+\[ \mathbf{C}=\mathbf{H}^{-1/2}\,\mathbf{J}\,\mathbf{H}^{-1/2}, \]
+with $\mathbf{J}=\mathrm{Cov}(S)$ the covariance of the total score, cross-interval terms included,
+so that $\mathbf{C}=\mathbf{I}$ exactly under correct specification. This is the classical
+information-matrix-equality comparison \cite{white1982maximum}, measured here rather than tested,
+and read as a property of each approximation rather than as a hypothesis to accept or reject.
+% [SIGN VERIFIED 2026-08-04] Direction confirmed against the producing code and left as written.
+% legacy/lapack_headers.h:2519 computes H^(-1/2) J H^(-1/2) with H the FIRST argument, and
+% legacy/distributions.h:470-478 states that the reported Fisher information is the H reference of
+% Likelihood_Information_Distortion. So C > 1 means the score varies more than the reported
+% information. Cross-checked against papers/_program/machinery.md section 4 and the NR reading of
+% 13-17 on a member that ignores the correlation and must therefore over-state information.
+We fix the direction by convention: $C_{ii}>1$ means the likelihood under-reports the uncertainty in
+parameter $i$ and is over-confident, $C_{ii}<1$ means it over-reports and is conservative. The
+anchor $\mathbf{H}$ is the likelihood's own Gaussian Fisher information, formed from the predictive
+moments and their parameter derivatives that the score already requires,
+\begin{equation}
+  \mathbf{H}=\sum_t\mathbb{E}\!\left[
+    \frac{(\nabla\mu_t)(\nabla\mu_t)^\top}{\sigma_t^2}
+    +\frac{(\nabla\sigma_t^2)(\nabla\sigma_t^2)^\top}{2\sigma_t^4}\right],
+  \label{eq:gaussian-fisher}
+\end{equation}
+positive semidefinite by construction and costing no extra likelihood pass (Methods). The comparison
+is not circular: $\mathbf{H}$ is the information the likelihood claims and $\mathbf{J}$ the information
+it delivers against data from the true process. All three checks run on the whole cost ladder; the
+bottom rung needs a qualification, its predictive variance being one constant rather than a gating
+quantity, and the Results state it where the number is quoted.
+% EQUATION DROPPED 2026-08-12 (carve). The display of H was printed twice in the manuscript, here
+% and at 06_methods.tex, in the same form; eq:gaussian-fisher was cited from inside this section and
+% from nowhere else. Methods keeps the display, since that is where the reader who has to recompute
+% it looks.
+% THE LEAST-SQUARES QUALIFICATION was 170 words here and is restated in full by 04_results.tex where
+% the factor of fifteen is quoted. Single owner: the Results. What stays here is the clause, so that
+% the reader who never reaches that number still knows the premise is not shared.
+
+The same matrix repairs what it measures. The sandwich covariance \cite{huber1967behavior,godambe1960optimum}
+\[ \Sigma=\mathbf{H}^{-1}\,\mathbf{J}\,\mathbf{H}^{-1}=\mathbf{H}^{-1/2}\,\mathbf{C}\,\mathbf{H}^{-1/2} \]
+substitutes the information the likelihood actually carries for the information it reported. It and
+the bias vector $b$ are first-order approximations (Appendix~\ref{app:diagnostics}). We verify it
+directly, without leaning on the expansion, against the empirical covariance of the estimates over
+the simulated recordings (Figure~\ref{fig:clouds}).
+
+The distortion splits into two physically distinct parts (Figure~\ref{fig:plane}--figure supplement 1).
+The sample distortion $\mathbf{C}_s=\mathbf{H}^{-1/2}\,\mathbf{J}_s\,\mathbf{H}^{-1/2}$, built from
+the within-interval score covariance $\mathbf{J}_s=\sum_t\mathrm{Cov}(s_t)$ with
+$s_t=\nabla_\theta\ell_t$, measures per-sample departure from Gaussianity, to leading order the
+third and fourth cumulants of the interval current. The correlation distortion
+$\mathbf{R}=\mathbf{J}_s^{-1/2}\,\mathbf{J}\,\mathbf{J}_s^{-1/2}$ measures the cross-interval
+correlation of the score, which $\mathbf{J}_s$ misses and which is the local time correlation of the
+current that \cite{milescu2005maximum} named as the dominant error of non-recursive fitting. One
+parameter at a time, $F_t$ is the Gaussian Fisher information of interval $t$ alone and
+$J_t=\mathrm{Var}(s_t)$, and accumulated it is $J_T=\mathrm{Var}(\sum_{t\le T}s_t)$, not the sum of
+the $J_t$, that the reported $F_T$ has to match, so per-interval and accumulated calibration are not
+equivalent. How the two parts compose is Appendix~\ref{app:diagnostics}.
+
+The correlation part has a reader-facing translation. Where $\mathbf{R}$ is one number times the
+identity, that number is the factor by which a likelihood over-counts its intervals, and dividing
+the record's interval count by it gives the count the likelihood effectively has: an open-loop
+member believing it holds a thousand independent intervals may hold the information of a hundred.
+Where $\mathbf{R}$ is anisotropic, or $\mathbf{C}_s\neq\mathbf{I}$, no such correction suffices at
+any factor and the full matrix is needed.
+% SYMBOLS CUT 2026-08-12 (10_concept_census.md, defect 5): kappa and T_eff were defined here and
+% used nowhere else in the manuscript, verified by grep over every section. The Results argument
+% about whether a scalar correction can work runs on m and a, not on kappa, so the two symbols were
+% vestigial. The idea is what the Results use, in words, and it is what stays.
+
+A matrix is not a number, and two scalars summarise it without pretending to replace it. With
+$\lambda_i$ the eigenvalues of $\mathbf{C}$ on the retained subspace (Methods),
+$\bar e = d^{-1}\sum_i \log\lambda_i$ and $s^2 = \mathrm{Var}_i(\log\lambda_i)$, the two reported
+throughout are the exponentials
+\begin{equation}
+  m \;=\; e^{\bar e} \;=\; \Bigl(\textstyle\prod_i \lambda_i\Bigr)^{1/d},
+  \qquad
+  a \;=\; e^{\,s},
+  \label{eq:magnitude-anisotropy}
+\end{equation}
+so that $m$ is the typical factor by which the reported information is wrong, the geometric mean of
+the per-direction factors, and $a$ is their multiplicative spread from direction to direction, both
+one at correct specification. In error-bar units take the square root of any of these, since the
+distortion is a ratio of informations: $1.15$ is a $7\%$ error on a confidence interval, $2$ is
+$41\%$, and $4$ turns a nominal $95\%$ interval into about $68\%$.
+% src: src/core/likelihood.cpp:560-563 (the emitter's own header: e-bar, s^2 and D_AI) and
+% figures/paper_both/figure_5_variant_2members.Rmd:25-30 for the exponentiation the figures report;
+% the error-bar scale is that file's lines 36-39.
+% MOVED 2026-08-12 to Appendix 3: the affine-invariant distance D_AI = sqrt(sum log^2 lambda_i),
+% which is defined in terms of the same two scalars and is "reported nowhere in place of the pair",
+% and is therefore a definition the Results never use.

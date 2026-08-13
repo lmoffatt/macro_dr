@@ -64,7 +64,7 @@
 % in it points into ../archives/01_introduction_SUPERSEDED_20260810.tex, not into this file. The one
 % that matters, "01_introduction.tex:317-319 records [BESSEL-BOUND] as closed here", is now the
 % [BESSEL-BOUND] CLOSED note reattached to the closing paragraph below. The canonical note pointer
-% is right and was verified today: 02_theory_full.tex:129 is the canonical [BESSEL-BOUND] block.
+% is right and was verified today: 08_appendix_derivation.tex is the canonical [BESSEL-BOUND] site as of 2026-08-12.
 % V7, 2026-08-10. v6 plus four restorations, after three outside reads (GPT, DeepSeek, Gemini) all
 % took v6 as the base. v6 stays at tmp/intro_v6.tex, v5 at tmp/intro_v5.tex. The block below is v6's
 % record; the v7 changes are at the foot of it.
@@ -100,7 +100,7 @@
 %  4. THE ANALOGUE-FILTER CLAUSE in the closing, ~30 words. THIS REOPENS [BESSEL-BOUND] AT THIS SITE:
 %     01_introduction.tex:317-319 records it as closed here on 2026-08-07 by exactly those fifteen
 %     words, on the argument that the paper's one offer to a reader with data in hand is misleading
-%     on an oversampled record. Canonical note at 02_theory_full.tex:129. If v6 ships, the guard has
+%     on an oversampled record. Canonical note at 08_appendix_derivation.tex (moved there 2026-08-12). If v6 ships, the guard has
 %     to land in Methods or the Discussion.
 %  5. delcore2025parameter's cost sentence, ~15 words (two homes at 05_discussion.tex, no loss).
 %  6. THE LOWER-BOUND CAVEAT, ~28 words: "which isolates the error the approximation itself commits
@@ -144,7 +144,7 @@
 %      NOT the one DeepSeek describes: v6 kept the tau_int offer whole ("it costs nothing, since the
 %      fit was going to be made anyway") and dropped only its guard, so the paper's one actionable
 %      offer stood unqualified on a record sampled faster than its own bandwidth. Restoring the
-%      clause re-closes [BESSEL-BOUND] at this site (canonical note 02_theory_full.tex:129).
+%      clause re-closes [BESSEL-BOUND] at this site (canonical note 08_appendix_derivation.tex).
 %      Ledger item 4 is discharged.
 %  (d) THE TWO-FAILURES PARAGRAPH IS UNPACKED, ~35 words, GPT's best point and uncontested. It now
 %      names the distinction before using it (what a method gets wrong against what it says about
@@ -181,7 +181,7 @@
 % apparatus outright.
 % WHAT CAME OUT, all of it verified to survive somewhere else except where marked:
 %  - the error-bar conversion table (1.15 -> 7%, 2 -> 41%, 4 -> 95% becomes ~68%), which is stated
-%    verbatim at 03_diagnostics.tex:90-92 and belongs there.
+%    verbatim at 02_framework.tex and belongs there.
 %  - "held at fixed spectral density so that shortening the interval raises the noise in each
 %    sample and leaves the noise per unit bandwidth unchanged" from the design paragraph. Methods
 %    owns it: 06_methods.tex:760-765 defines Current_Noise as a white-noise power spectral density
@@ -383,11 +383,11 @@ test checks the code.
 % the [OPEN] question below is still settled here by default as "nothing here" and the guard
 % still has to land at 06_methods.tex or in the Discussion's Bessel paragraph.
 % POINTER CORRECTED 2026-08-10: the note below says "02_theory.tex". There is no such file; the
-% canonical [BESSEL-BOUND] block is at 02_theory_full.tex:129, verified today. Same correction
+% canonical [BESSEL-BOUND] block is at 08_appendix_derivation.tex (moved 2026-08-12), verified today. Same correction
 % applies to the two copies of that pointer in the closing paragraph's notes.
-% [BESSEL-BOUND] CLOSED 2026-08-11. The bound is PRINTED, at 02_theory_full.tex in the
+% [BESSEL-BOUND] CLOSED 2026-08-11. The bound is PRINTED, at 08_appendix_derivation.tex (moved there 2026-08-12) in the
 % paragraph beginning "How much of the kernel the uniform window misses". Everything below was
-% written while it was open (2026-08-06) and is kept for its site-specific content only.. Canonical note at 02_theory_full.tex, under the Bessel paragraph.
+% written while it was open (2026-08-06) and is kept for its site-specific content only.. Canonical note at 08_appendix_derivation.tex, the acquisition-kernel subsection (moved 2026-08-12).
 % READ WITH THE LENGTH-PASS NOTE IN THE HEADER: the clause this note guards was removed on
 % 2026-08-09 as specification detail Methods owns, so the [OPEN] question below is settled here by
 % default and the guard has to land at 06_methods.tex or in the Discussion's Bessel paragraph.
@@ -454,7 +454,7 @@ schemes, stationary protocols and filtered recordings remain to be tested.
 % is the factor-two mark.
 % LENGTH PASS 2026-08-09: the conversion table this src note documents ("in units a reader can act
 % on: a distortion of 1.15 is a 7% error on a confidence interval, 2 is 41%, and 4 turns a nominal
-% 95% interval into about 68%") was cut from the sentence above because 03_diagnostics.tex:90-92
+% 95% interval into about 68%") was cut from the sentence above because 02_framework.tex
 % states it verbatim, in the paragraph that defines the distortion it converts. The src note stays
 % here because the sentence it also supports, on what the two numbers say about the width of the
 % reported interval, stays.
@@ -463,7 +463,7 @@ schemes, stationary protocols and filtered recordings remain to be tested.
 % already measured the right version.
 % [BESSEL-BOUND] CLOSED HERE 2026-08-07 by the fifteen-word clause the note below asked for
 % ("as they did the analogue filter, which contributes to the same statistic on a record sampled
-% faster than its own bandwidth"). The other two sites, 03_diagnostics.tex beside the
+% faster than its own bandwidth"). The other two sites, 02_framework.tex beside the
 % residual-whiteness check and the scope clause in the design paragraph above, are still open, and
 % the canonical note with the bound and the script stays at 02_theory.tex under the Bessel
 % paragraph. What was bought: the paragraph no longer asserts that two design variables enter the
@@ -472,10 +472,10 @@ schemes, stationary protocols and filtered recordings remain to be tested.
 % reader chose exactly as they chose the sampling rate. What was NOT bought and must not be read
 % in: no size for the contribution is stated here, deliberately, because stating it commits to the
 % expansion, which belongs in Theory. Original note follows.
-% [BESSEL-BOUND] CLOSED 2026-08-11. The bound is PRINTED, at 02_theory_full.tex in the
+% [BESSEL-BOUND] CLOSED 2026-08-11. The bound is PRINTED, at 08_appendix_derivation.tex (moved there 2026-08-12) in the
 % paragraph beginning "How much of the kernel the uniform window misses". Everything below was
-% written while it was open (2026-08-06) and is kept for its site-specific content only.. Canonical note at 02_theory_full.tex; the argument for why this
-% particular sentence needs guarding is at 03_diagnostics.tex, beside the residual-whiteness
+% written while it was open (2026-08-06) and is kept for its site-specific content only.. Canonical note at 02_framework.tex; the argument for why this
+% particular sentence needs guarding is at 02_framework.tex, beside the residual-whiteness
 % check.
 % THIS PARAGRAPH MAKES THE PAPER'S ONE OFFER TO A READER WITH DATA IN HAND: "the integrated
 % autocorrelation of the standardized least-squares residual ... costs nothing, since the fit was
