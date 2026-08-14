@@ -1,4 +1,10 @@
 #!/bin/bash
+# =============================================================================
+# SUPERSEDED 2026-08-14, never run. Use dispatch_figure_3_fisher_only.sh: same
+# measurement, whole roster (macro + micro + both least-squares members, VR included)
+# in one lane, without the per-group MLE stage that made these jobs take days. This one
+# survives only for the empirical capstone anchored on the numerical Fisher.
+# =============================================================================
 # Dispatch figure_3_mle_LSE_numfim (nonlinearsqr / classical-LSE MLE validation WITH
 # the finite-difference Fisher) across
 # the grid — one SLURM job per (algorithm, Nchannels). Dedicated clone of

@@ -1,0 +1,209 @@
+# =============================================================================
+# figure_3_mle_fisher_only — macro/micro roster, FINITE-DIFFERENCE Fisher against the
+# analytic Gaussian one. Dispatched by ops/slurm/dispatch_figure_3_fisher_only.sh.
+# Stages 2-5 ONLY (the per-group cloud and the empirical capstone are dropped).
+#
+# WHY IT EXISTS. The Gaussian-vs-numerical Fisher comparison exists today only in
+# 433ed13 (macro NR/R/MR/IR + the superseded NMR), which the manuscript declares
+# superseded and quotes nothing from (04_results.tex:7, _program/provenance.md#5).
+# INR, VR, LSE and ILSE were never measured at all: the _G sweep is gaussian-only and
+# never forms F_b, so its Likelihood_Numerical_Fisher_Information rows carry
+# bootstrap_count and no values. This script rebuilds the whole roster in ONE lane at
+# HEAD so the comparison is quotable as one measurement.
+#
+# WHAT WAS DROPPED AND WHY. figure_3_mle_LSE_numfim.macroir runs Stages 1-6; Stage 1
+# (per-group MLE over the group_size axis 1/10/100) is what makes those jobs take days
+# and it feeds only Stage 6. Neither is needed for the Fisher comparison: F_b at both
+# anchors comes from Stage 3 and the paired battery of Stage 5. So group_size,
+# n_bootstrap_samples and min_groups_for_bootstrap are NOT injected here and must not
+# be. What is lost: Cov_emp, the empirical capstone and the Optimum_Fisher_Distortion
+# family. The empirical validation is already measured on the gaussian lane.
+#
+# TRAP 1 — WHERE THE NON-POSITIVITY IS READ. F_b at theta_sim can be indefinite; that
+# is a reported finding, not an accident. It must be read off
+# Eigenvalue_Spectrum<Likelihood_Gaussian_Fisher_Distortion>, which carries the FULL
+# spectrum including negatives (lapack_headers.h:3047-3057, via the lenient fallback
+# in compute_psd_decomp when the strict PSD test fails). It must NOT be read off
+# Min_Eigenvalue<...>: that scalar comes from compute_distortion_scalars
+# (likelihood.cpp:591-595), which keeps only eigenvalues above the retention
+# tolerance, so it never returns a negative and reads as a floor near zero exactly
+# where the matrix is indefinite. The code comment on Min_Eigenvalue<Optimum_Fisher_
+# Distortion> (cmd/likelihood.h:1012) calls it the indefiniteness readout; it is not.
+# The inertia IS legitimate to read off the distortion: G_b^-1/2 F_b G_b^-1/2 is a
+# congruence by a symmetric positive definite matrix, so by Sylvester it has exactly
+# as many negative eigenvalues as F_b.
+#
+# TRAP 2 — PER-REPLICATE INDEFINITENESS OVERSTATES IT. lambda_min is concave, so
+# E[lambda_min(F_i)] <= lambda_min(E[F_i]). Measured 2026-06-10 (dirac, nsim 1024):
+# negatives pervasive per replicate, but the genuine bias was ONLY NR at coarse
+# sampling (lambda_min prop. -Num_ch), R at interval_in_tau=1 and MR in pockets; IR
+# clean everywhere, NMR noise-only. This pipeline already does the right thing:
+# compute_F_b averages F over recordings BEFORE the congruence, so what is emitted is
+# the mean matrix. Never report "X% of replicates were indefinite".
+#
+# SEED. Injected (sim_seed), NOT the 0 sentinel: calc_seed treats 0 as "draw from
+# random_device" (legacy/mcmc.h:37-45) and the resolved value is consumed locally and
+# never written anywhere, so a seed=0 ensemble cannot be regenerated. That is the hole
+# 433ed13 has. One seed per cell also pairs the ensemble across algorithms, which is
+# what makes the cross-member comparison a comparison.
+#
+# COST. calc_numerical_fisher_information is 2*n_params extra likelihood passes per
+# recording, run at BOTH anchors: with six free parameters, 24 passes per recording on
+# top of the two dlikelihood passes, per interval. The only fit left is the single
+# joint MLE of Stage 2.
+#
+# FILE CONTRACT — this file must NOT define the injected names itself (they must stay
+# commented/undefined): axis_Nchanels, Num_ch, axis_noise, current_noise,
+# n_simulations, filepath, sim_seed, algorithm_axis, algo_recursive_approximation,
+# algo_averaging_approximation, algo_taylor_approximation, algo_family_approximation,
+# algo_variance_form, axis_interval, exp_n_step_/exp_n_samp_, gn_max_iter,
+# axis_h_fim, h_rel_value.
+#
+# TWO ANCHORS, two complementary questions (see theory: misspecification frame):
+#   theta_sim  = the simulation truth (par_tr). The indefiniteness question lives here.
+#   theta_pool = the JOINT MLE over ALL replicates (the pseudo-true value the estimator
+#            centres on; a single stationary point, NOT the mean theta_bar of per-group
+#            fits — those differ when the likelihood is non-quadratic). The operative
+#            anchor: F_b here is the one every distortion is built on.
+#
+# Stages (numbering kept from figure_3_mle.macroir so the two are diffable):
+#   2) JOINT MLE (group_size = n_simulations) -> theta_pool;
+#   3) numerical Fisher at theta_sim AND theta_pool;
+#   4) score / dlikelihood at theta_sim AND theta_pool (-> J + Gaussian Fisher G at each);
+#   5) PAIRED diagnostic battery at theta_sim AND theta_pool: numerical-F-anchored and
+#      Gaussian-anchored columns side by side in ONE file, which is the measurement.
+# =============================================================================
+
+model = load_model("scheme_CO")
+
+# Dispatcher injects filepath (the run-name prefix); jobs write nch/algo-distinct files.
+filepath_run = filepath
+
+# figure_2 canonical scheme_CO values; Current_Noise and Num_ch_mean are injected.
+# Six free parameters — the configuration every macro number in the paper is quoted in.
+# The least-squares members run the LSE sibling of this file, which fixes two of them.
+parameter = create_parameters(
+   model = model,
+   parameters_info = [
+      {"on","Log10",10},
+      {"off","Log10",100},
+      {"unitary_current","Log10",1},
+      {"Current_Noise","Log10",current_noise},
+      {"Current_Baseline","Log10",1},
+      {"Num_ch_mean","Log10", Num_ch}])
+
+# Experiment step/sample sizes are indexed over axis_interval (injected). Three
+# segments: pre @ 0 µM, agonist @ 10 µM, post @ 0 µM.
+experiment = create_experiment(
+   experiment_structure = [
+      {exp_n_step_1, exp_n_samp_1, 0.0},
+      {exp_n_step_2, exp_n_samp_2, 10.0},
+      {exp_n_step_3, exp_n_samp_3, 0.0}],
+   frequency_of_sampling = 50e3,
+   initial_agonist = 0.0,
+   initial_time = 0.0)
+
+observations = set_observations(values_set = [0,0,0,0])
+
+par_tr = get_standard_parameter_transformed_values(parameter)
+
+simulation_axis = axis(name = "simulation_algorithm", labels = ["uniformization"])
+
+simulations = simulate(
+   model = model, parameter_transformed = par_tr, n_simulations = n_simulations,
+   experiment = experiment, observations = observations,
+   simulation_algorithm = indexed_string_by(axis = simulation_axis, values = ["uniformization"]),
+   number_of_substeps = indexed_size_by(axis = simulation_axis, values = [1000]),
+   seed = sim_seed)
+
+recordings = get_recordings_from_simulations(simulations = simulations)
+
+# Algorithm selected by the dispatcher (one per job) via algorithm_axis + the
+# indexed algo_* flags — mirrors figure_2. Result is Indexed; the MLE/score
+# commands broadcast over it (single algorithm here). variance_form_approximation is
+# INJECTED here, where the older scripts hard-wire it to 0: it is what macro_VR needs
+# (residual interval variance on MR's mean and gain), and VR is the control that
+# splits the MR->IR gap into a variance step and a gain step. Every other member is
+# dispatched with 0, so the injection changes nothing for them.
+algorithm = build_likelihood_function_with_family(
+   model = model,
+   adaptive_approximation = false,
+   recursive_approximation = algo_recursive_approximation,
+   averaging_approximation = algo_averaging_approximation,
+   variance_approximation = true,
+   taylor_variance_correction = algo_taylor_approximation,
+   family_approximation = algo_family_approximation,
+   variance_form_approximation = algo_variance_form,
+   taylor_qdt_approximation = false)
+
+# GN inner-loop options. max_iter is injected (the dominant cost lever); the rest
+# are numerical-method constants (Newton decrement is the primary convergence).
+gn_opts = build_gauss_newton_options(
+   lambda_kickoff = 10.0, lambda_factor = 3.0, lambda_max = 1e10,
+   max_iter = gn_max_iter, grad_rtol = 1e-6, dvalue_tol = 1e-10, verbose = false)
+
+# ---- Stage 2: JOINT MLE (group_size=n_simulations) -> theta_pool --------------
+# The only fit in this script. One group, so no bootstrap over groups (n=0) and the
+# min_groups guard is inert (2).
+pool = calc_MLE_per_group_of_replicates(
+   likelihood_algorithm = algorithm,
+   theta_warmstart = par_tr,
+   theta_reference = par_tr,
+   experiment = experiment,
+   recordings = recordings,
+   group_size = n_simulations,
+   n_bootstrap_samples = get_number(n = 0),
+   min_groups_for_bootstrap = get_number(n = 2),
+   probit_cis = [0.025, 0.16, 0.5, 0.84, 0.975],
+   probit_sample_heights = [0.5],
+   ranking_variables = ["Maximum_logL"],
+   seed = 0,
+   gauss_newton_options = gn_opts)
+
+pool_csv = write_csv(analysis = pool, path = concat(filepath_run, "_pool"))
+
+theta_pool = get_parameters_mean(cloud = pool)
+
+# ---- Stage 3: numerical Fisher at theta_sim AND theta_pool -------------------
+fim_sim = calc_numerical_fisher_information(
+   likelihood_algorithm = algorithm, parameters = par_tr, experiment = experiment,
+   data_series = simulations, h_rel = h_rel_value, decimate = 1)
+
+fim_pool = calc_numerical_fisher_information(
+   likelihood_algorithm = algorithm, parameters = theta_pool, experiment = experiment,
+   data_series = simulations, h_rel = h_rel_value, decimate = 1)
+
+# ---- Stage 4: score / dlikelihood at theta_sim AND theta_pool -----------------
+# dlik_pool feeds the Gaussian bread G_bar + J (score covariance); dlik_sim is the
+# Optimum-G numerator (Gaussian Fisher at the truth). Both are load-bearing here.
+dlik_sim = calc_dlikelihood_predictions(
+   likelihood_algorithm = algorithm, parameters = par_tr, experiment = experiment,
+   data_series = simulations)
+
+dlik_pool = calc_dlikelihood_predictions(
+   likelihood_algorithm = algorithm, parameters = theta_pool, experiment = experiment,
+   data_series = simulations)
+
+# ---- Stage 5: PAIRED diagnostic battery at theta_sim AND theta_pool ------------
+# The _paired command takes the numerical Fisher, so it emits the F-anchored family
+# and the Gaussian-anchored one (gidm/gfc/gdcc/gdib) in the SAME file. Comparing the
+# two inside one battery is the measurement this run exists for. It also emits
+# Likelihood_Sample_Distortion (F-anchored) next to Gaussian_Sample_Distortion, which
+# is what the micro arm of this run is for.
+battery_sim = likelihood_derivative_basic_diagnostics_paired(
+   dlikelihood_predictions = dlik_sim,
+   numerical_fisher_information = fim_sim,
+   n_boostrap_samples = 100,
+   probits = [0.025, 0.16, 0.5, 0.84, 0.975], seed = 0, max_lag = 10,
+   samples_dir = "")
+
+battery_sim_csv = write_csv(analysis = battery_sim, path = concat(filepath_run, "_battery_sim"))
+
+battery_pool = likelihood_derivative_basic_diagnostics_paired(
+   dlikelihood_predictions = dlik_pool,
+   numerical_fisher_information = fim_pool,
+   n_boostrap_samples = 100,
+   probits = [0.025, 0.16, 0.5, 0.84, 0.975], seed = 0, max_lag = 10,
+   samples_dir = "")
+
+battery_pool_csv = write_csv(analysis = battery_pool, path = concat(filepath_run, "_battery_pool"))

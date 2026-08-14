@@ -4,6 +4,23 @@
 % paper, least squares as the comparison anchor).
 %
 % ============================================================================================
+% OUTSIDE-READ PASS 2026-08-13. A fourth outside read (GPT, on the built PDF of that morning,
+% 69 pages) returned a 54-item cutting list. What was taken here: one paragraph deleted and three
+% compressed, 1,310 counted words -> see the log at 08_length_plan.md. Each site carries its own
+% note below and each note says what was NOT taken and why, so the trade is not re-litigated.
+% THE THREE THINGS THE LIST ASKED FOR AND DID NOT GET, all in this section:
+%  - the closing paragraph ("Making the measurement takes an ensemble"), which it would cut to its
+%    first two sentences. That paragraph carries the narrow-novelty concession to
+%    anderson1973voltage, and the v6 ledger above lists that concession among the protected items.
+%    Untouched.
+%  - the goodness-of-fit pre-emption, which it would compress. It is v7 restoration (a) and the
+%    argument for restoring it against one outside read is in this header already.
+%  - the volume-term clause. 05_discussion.tex's own header records that the volume and
+%    effective-sample formulas rolled out of that section and survive HERE, in prose. Cutting it
+%    would take them out of the manuscript.
+% ============================================================================================
+%
+% ============================================================================================
 % BODY REPLACED 2026-08-10 BY tmp/intro_v7.tex. 1771 countable words -> 1305, measured the same
 % way (comments stripped, cite keys stripped). eLife reference points from
 % _program/elife_main_text_length_survey.md:50: median Introduction 873, p75 1079, p90 1324. This
@@ -341,32 +358,41 @@ instantaneously was expected to degrade as the channel count falls and as the re
 its non-recursive counterpart to have no useful regime at all, the damage falling on the error rates
 rather than on the estimates \citep{moffatt2007estimation}.
 
-They are also harder to watch. A least-squares fit predicts the current at every point from the
-parameters alone, so a wrong parameter displaces the whole predicted trace and a reader sees it. A
-recursive likelihood is handed the data as it goes and re-anchors on each sample before predicting
-the next, so what the parameters are left to predict is the increment from one sample to the next,
-and whether that is being done right is much harder to see.
-
+% CUT 2026-08-13, outside-read pass (header note of that date). "They are also harder to watch",
+% 62 words contrasting a least-squares trace whose error a reader sees with a recursive prediction
+% whose error they do not. Explanatory rather than evidential, and 04_results.tex opens on the same
+% fact with the measurement behind it ("A recursive likelihood cannot be checked against a record by
+% eye ... it follows the record whether or not the uncertainty it reports is the uncertainty it
+% delivers"). "settles it either" below still resolves: the paragraph above says where the members
+% break was never located.
 No statistic computed on a single recording settles it either. Whether the error bar a method
 reports matches the spread it delivers is a property of the sampling distribution, and one recording
-is one draw from it. The generating model is unknown as well, so a departure between what a
-likelihood reports and what it delivers may belong to the approximation or to the model. The
-question has to be put from outside, over an ensemble drawn from known parameters, and for this
-class of model that is possible: the forward process simulates exactly where its likelihood cannot
-be evaluated exactly.
+is one draw from it; the generating model is unknown as well, so a departure may belong to the
+approximation or to the model. The question has to be put from outside, over an ensemble drawn from
+known parameters, and for this class of model that is possible: the forward process simulates
+exactly where its likelihood cannot be evaluated exactly.
 
 The instruments are then classical. For a correctly specified likelihood the score, the gradient of
 the log-likelihood in the parameters, has mean zero at the parameters that generated the data, and
 its covariance across recordings equals the Fisher information the likelihood reports
-\citep{huber1967behavior,white1982maximum}. An approximation can depart from either identity or from
-both, and how far is a measurable quantity rather than a test to be passed. Goodness of fit does not
-answer the question, since an approximation can reproduce the mean current closely and still
-misreport the information by more than an order of magnitude, and comparing two approximations
-against each other does not answer it either, because both may be wrong. Near the maximum that
-same matrix enters the Bayesian evidence through a volume term and a rescaling of the effective
-sample size, so a likelihood that misreports it carries the error into every comparison built on it.
-The correction is derived elsewhere; this paper measures its input and computes no evidence, and it
-never benchmarks against non-stationary fluctuation analysis \citep{stepanyuk2014maximum}.
+\citep{huber1967behavior,white1982maximum}. How far an approximation departs from either identity is
+a measurable quantity rather than a test to be passed. Goodness of fit does not answer the question,
+since an approximation can reproduce the mean current closely and still misreport the information by
+more than an order of magnitude, and comparing two approximations against each other does not answer
+it either, because both may be wrong. Near the maximum that same matrix enters the Bayesian evidence
+through a volume term and a rescaling of the effective sample size, so a likelihood that misreports
+it carries the error into every comparison built on it. The correction is derived elsewhere; this
+paper measures its input and computes no evidence, and it never benchmarks against non-stationary
+fluctuation analysis \citep{stepanyuk2014maximum}.
+% COMPRESSED 2026-08-13, same pass, 245 words to 210 across the two paragraphs above. What went is
+% wording only: "The generating model is unknown as well, so a departure between what a likelihood
+% reports and what it delivers may belong to the approximation or to the model" keeps its clause and
+% loses its restatement, and "An approximation can depart from either identity or from both, and how
+% far is a measurable quantity" becomes one clause. PROTECTED AND UNTOUCHED, verified against the
+% v6/v7 ledger in the header: the goodness-of-fit pre-emption (restoration (a)), the volume-term and
+% effective-sample clause, which the Discussion's own note records as surviving HERE and nowhere
+% else, and the non-stationary-fluctuation-analysis disclaimer, which is stepanyuk2014maximum's only
+% home in the body.
 
 We measured both departures over a plane whose coordinates are the number of channels, the
 acquisition interval in units of the relaxation time, and the instrumental noise in units of the
@@ -413,29 +439,76 @@ test checks the code.
 % in the section.
 
 The plane separates two failures usually named as one: what a method gets wrong, and what it says
-about how wrong it is. On the first the ladder is nearly flat. The members that treat each sample as
-instantaneous carry a bias in the channel number, and averaging the model over the acquisition
-interval removes it; least squares carries none in what it fits at all. So the members are hard to
-tell apart by their estimates, and what separates them is what they report about those estimates.
-There the ones that leave the
-correlation unmodelled misreport their information by an order of magnitude wherever the residual
-retains enough memory, and the discrepancy is carried by the correlation in time of the score, which
-is why it does not show up one interval at a time. One of the eight is calibrated over almost the
-whole plane, the one conditioning on both ends of the interval, and where it fails is located too,
-at the fewest channels and lowest noise. The map includes that member in what it audits, since a
-method whose limits are unmapped has been endorsed rather than characterised, and it carries an
-ordering independent of any level set: no region of the plane gives both information about the
-unitary current or the channel number and a trustworthy classical interval.
+about how wrong it is. On the first the ladder is nearly flat, since averaging the model over the
+acquisition interval removes the channel-number bias of the members that treat each sample as
+instantaneous, and least squares carries no bias in what it fits at all. What separates the members
+is what they report about those estimates. There the ones that leave the correlation unmodelled
+misreport their information by an order of magnitude wherever the residual retains enough memory,
+and the discrepancy is carried by the correlation in time of the score, which is why it does not
+show up one interval at a time. One of the eight is calibrated over almost the whole plane, the one
+conditioning on both ends of the interval, and where it fails is located too, at the fewest channels
+and lowest noise. The map includes that member in what it audits, since a method whose limits are
+unmapped has been endorsed rather than characterised, and it carries an ordering independent of any
+level set: no region of the plane gives both information about the unitary current or the channel
+number and a trustworthy classical interval.
+% COMPRESSED 2026-08-13, same pass, 196 words to 166. The bias contrast is stated once instead of
+% twice ("So the members are hard to tell apart by their estimates" was the same sentence read
+% backwards). NOT TAKEN, against the outside read, which would have stopped this paragraph after the
+% few-channel corner: the audit clause (a method whose limits are unmapped has been endorsed rather
+% than characterised) is a scope statement, and the closing ordering is the section's falsifiable
+% claim and was flagged untouchable by the 2026-08-09 triage. Both stay whole.
 
 Making the measurement takes an ensemble. Using it does not: the integrated autocorrelation of the
 standardized least-squares residual counts how many intervals a fit effectively has for every
 interval it believes it has, and it costs nothing, since the fit was going to be made anyway. It
 also picks up the analogue filter on a record sampled faster than its own bandwidth, and that is a
-number the reader chose as they chose the sampling rate. What is new here is narrow, and the likelihood is not part of it: its construction was published with the
-P2X$_2$ analysis. A joint estimate of rates and amplitudes from fluctuation data, carrying standard
+number the reader chose as they chose the sampling rate. What is new here is narrow, and the
+likelihood's construction is not part of it: that was published with the P2X$_2$ analysis. Its
+derivatives are. The gradient of the log-likelihood is analytic and comes out of one implementation:
+the recursion is written once, over a templated C++ type that carries a value and its derivative
+together, so the expression that returns the log-likelihood returns its score. The Fisher
+information is then wired by hand as the Gaussian form over the predictive moments and the
+derivatives the score has already produced, so it costs no second pass over the record. Analytic
+gradients of a likelihood over independent intervals are \citet{milescu2005maximum}; a joint
+estimate of rates and amplitudes from fluctuation data, carrying standard
 errors, is \citet{anderson1973voltage}. What this work adds, for a non-stationary protocol read from
 a single record, is an interval whose calibration has been verified rather than assumed. Richer
 schemes, stationary protocols and filtered recordings remain to be tested.
+% DERIVATIVE MACHINERY ADDED HERE 2026-08-13 (Luciano), 62 words, and it is a NOVELTY CLAIM and not
+% a method detail, so it is on the record why it sits in this paragraph and in this form.
+% WHY IT GOES IN AT ALL. Until today the fact lived only at 06_methods.tex, which eLife prints after
+% the Discussion, and the Discussion's own "what is specific here" list did not carry it. Precedent
+% in the field settles that it earns the space: milescu2005maximum bills the analytic gradient in its
+% ABSTRACT, as the reason its method beats celentano2004use ("in part due to the analytical
+% calculation of the likelihood gradients"), and that key is already in this manuscript.
+% WHAT THE CLAIM IS, and it was corrected twice before landing. It is NOT "we used automatic
+% differentiation rather than finite differences": the repo's finite-difference construction is a
+% central difference OF THE ANALYTIC SCORE, so it presupposes the derivatives and the contrast is
+% empty. The claim is that the derivatives are ANALYTIC and come from ONE implementation, the same
+% expression returning the log-likelihood and its gradient, where the comparison class (Milescu) has
+% analytic gradients written out by hand. Nothing is asserted here about how anyone else implemented
+% theirs; the citation stays a citation for analytic gradients over independent intervals.
+% THE FISHER IS SEPARATED ON PURPOSE AND THE SENTENCE MUST NOT BE COLLAPSED. The Gaussian Fisher does
+% NOT fall out of the differentiation: it is an expectation under the model, not a derivative of the
+% recorded log-likelihood, so it is wired by hand over the moments and the first derivatives the
+% score already produced. That is exactly why it is positive semidefinite by construction and costs
+% no extra pass, which 02_framework.tex and 06_methods.tex both state. An earlier draft of this
+% paragraph, and the shipped Methods sentence it replaced, both put the Fisher on the differentiated
+% side; that reading is wrong and is what this wording fixes.
+% "PRIMITIVE" WAS ASKED FOR AND IS NOT USED, deliberately: beside "derivative" a reader takes it as
+% the antiderivative. It is the code's word (primitive() on a Derivative<>), it appears nowhere in
+% the printed manuscript, and 08_appendix_derivation.tex already uses it in a second sense. "Value".
+% "ITS CONSTRUCTION" replaces "the likelihood" in the first sentence so that the claim does not
+% depend on the OPEN attribution seam: this paragraph says the construction was published with the
+% P2X2 analysis while 06_methods.tex:344 says the specification is this manuscript's and 2025 is the
+% first application. That is unresolved and is LUCIANO'S CALL; the derivative claim is true under
+% either reading, which is why it could be written before the seam is closed. Do not let a later
+% edit make this sentence depend on it.
+% ONE CONSEQUENCE THIS CREATES, and it is now urgent rather than latent: 06_methods.tex:1005 records
+% that \citep{moffatt2025macroir} is the Zenodo software record v1.0.0 of September 2025, while the
+% differentiated recursion enters the codebase in October. With the derivative machinery claimed as a
+% contribution, a reader who downloads the cited version cannot reproduce any score-based result.
+% The backmatter has to pin a later version before submission.
 % src: projects/eLife_2025/figures/paper_both/figure_7.html (crossing table, fitted slopes)
 % supports the falsifiable ordering stated in the paragraph above this one. v7 states it
 % without the "one to three decades" figure, which is carried at 04_results.tex:600-602.

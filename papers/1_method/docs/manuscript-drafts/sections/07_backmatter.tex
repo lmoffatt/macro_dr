@@ -1,6 +1,20 @@
 \section*{Data and code availability}
 
-All code needed to reproduce the study is openly available. The analysis pipeline that generates the figures, together with the simulation configurations that define every run, is deposited in a public repository (\texttt{macroir-validity}) and archived at Zenodo, with the DOI issued on acceptance. The simulation and inference engine is the \texttt{macro\_dr} software \cite{moffatt2025macroir}, referenced at the pinned version that produced the deposited data; each output file records the engine commit hash that generated it. No experimental data were used: every dataset in the paper is simulated, and is regenerable from the deposited configurations. % NOTE (LM): confirm the public repo name/URL and mint the Zenodo DOI at submission.
+All code needed to reproduce the study is openly available. The analysis pipeline that generates the figures, together with the simulation configurations that define every run, is deposited in a public repository (\texttt{macroir-validity}) and archived at Zenodo, with the DOI issued on acceptance. The simulation and inference engine is the \texttt{macro\_dr} software \cite{moffatt2025macroir}, referenced at the pinned version that produced the deposited data; each output file records the engine commit hash that generated it. No experimental data were used: every dataset in the paper is simulated, and is regenerable from the deposited configurations up to the simulation seed, which was not recorded (Materials and methods). % NOTE (LM): confirm the public repo name/URL and mint the Zenodo DOI at submission.
+% SEED CLAUSE ADDED 2026-08-13, outside-read pass, and it is a correction rather than a trim. As it
+% stood this sentence said the datasets are "regenerable from the deposited configurations" while
+% 06_methods.tex says twice that the exact deposited ensembles "cannot be regenerated bit for bit"
+% because the seed was the random_device sentinel and the resolved value was never logged. A referee
+% who reads both sections finds a contradiction, and it is the kind that costs more than the eleven
+% words it takes to remove.
+% WHAT WAS PROPOSED AND REFUSED, on the record so it is not proposed again: the outside read asked
+% for the repository to be fixed and for Methods to then say "Simulation seeds were recorded for
+% every production ensemble and are included with the deposited configurations", with the old state
+% left unmentioned. That sentence would be FALSE of the ensembles behind every figure in this paper.
+% Recording seeds from here on does not retro-record the runs that produced the freeze; making it
+% true means re-running the whole grid. Methods already carries the defensible position, which is
+% that the standard here is statistical equivalence and not bit identity, on ensembles of 10^3 to
+% 10^4 recordings.
 
 A separate library, \texttt{macroir}, carries the boundary-conditioned likelihood, its score and its Gaussian Fisher information out of the engine and into a small self-contained C++ core, with an R package and a Python package over it. The scope of that library is narrower than the paper: it implements the boundary-conditioned member, the exact simulator and a Gauss-Newton fit, and it does not implement least squares, the open-loop member or the recursive member on instantaneous samples, so the comparisons reported here are reproducible only from \texttt{macro\_dr}. The core was transcribed from the engine and checked against it on eight cells, covering four kinetic schemes, three acquisition intervals spanning a factor of a hundred, a protocol whose concentration jumps split sampling intervals, and a recording with a gap, agreeing on the total log-likelihood to between $10^{-16}$ and $6\times10^{-15}$ relative and on the score to between $8\times10^{-14}$ and $1.4\times10^{-9}$. % src: macroir/docs/status.md ("What it is checked against", checkpoint cells and tolerances)
 The two language packages are bindings over that one core rather than independent reimplementations, and they were run against it once on a single cell, by \texttt{tools/cross\_language\_check.py}, which is the evidence for the statement that the three interfaces return the same numbers. % src: macroir/tools/cross_language_check.py (one cell: scheme_CO, one parameter vector, one protocol, one seed)

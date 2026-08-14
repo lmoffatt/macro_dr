@@ -304,11 +304,10 @@ the ladder and is the ground truth every rung below it is judged against.
 \end{fullwidth}
 \caption{\textbf{One filter step, and what each of the two axes changes.} A simulated patch of
 $N_{\mathrm{ch}}=20$ two-state channels. The green trace is the current the channels carry, resolved
-inside the acquisition window; the two windows drawn hold four and five gating transitions, and the
-recording keeps one number for each of them, the average over the window. Dotted lines are the
-window boundaries and the axis counts windows, each $2$~ms. The instrumental noise is the lowest of
-the design plane, $\widetilde{S}=0.01$, so the recorded value sits essentially on the average of
-that trace.
+inside the acquisition window, and the recording keeps one number per window, the average over it;
+dotted lines are the window boundaries and the axis counts windows, each $2$~ms. The instrumental
+noise is the lowest of the design plane, $\widetilde{S}=0.01$, so the recorded value sits essentially
+on the average of that trace.
 Four representative members score it (columns), the two axes crossed: the open-loop gating
 likelihood (\texttt{NR}), its interval-averaged partner (\texttt{INR}), the recursive filter
 (\texttt{R}) and the interval-conditioned filter (\texttt{IR}). Each stands for more than itself:
@@ -320,14 +319,25 @@ prediction and innovation (Table~\ref{tab:members}). Rows follow one turn of the
 zero. The window axis is read across row (B): \texttt{NR} and
 \texttt{R} predict an instant, a point at the sample with an error bar, \texttt{INR} and \texttt{IR}
 the interval average, a segment across the interval with a band. In (A) and (C), \texttt{IR} alone
-carries a pair of occupancies, one at each end of the interval, tied by a dashed arc: the arc is
-their covariance and implies no path through it. The two-tone disc is the instant that
-closes one window and opens the next, and the Markov arrow leaves it: that marginal is all that
-crosses the boundary. Colour is the filter phase (orange
-predict, blue observe, purple update, black the score), arrows are operations, and a state carried in
-from the neighbouring window is faded. No number is quoted from
+carries a pair of occupancies, one at each end of the interval, tied by a dashed arc that is their
+covariance and implies no path through it. Colour is the filter phase (orange
+predict, blue observe, purple update, black the score). No number is quoted from
 this simulated recording.} % src: projects/eLife_2025/figures/paper_both/figure_1.Rmd (ROSTER OF FOUR, 2026-08-12: NR/INR/R/IR, the window x recursion lattice; the six-column predecessor is archive/figure_1_superseded_20260812.Rmd). NO NUMBER IS QUOTED FROM THIS FIGURE AND NONE SHOULD BE: the run is seeded with seed = 0, the sentinel for a random draw (ops/local/figure_1_plus_lse.macroir:75), so the trace differs on every re-run and with it every quantity read off the realisation. The occupancy trajectory of row (A) is the deterministic Markov mean and does NOT move: LSE and NR agree to seven decimals at every interval and so do ILSE and INR. THE LEAST-SQUARES SENTENCE IS MEASURED, not a paraphrase: max|LSE-NR| = 8.882e-16 pA and max|ILSE-INR| = 2.220e-16 pA over the twelve intervals (the same measurement Methods reports), and the constant predictive sd is 3.536 pA for LSE and 3.559 for ILSE against 0.224 to 2.010 for NR, read off figures/data/figure_1_likelihood_diagnostic_{LSE_av0,LSE,NR}.csv on 2026-08-12. SO ARE THE OTHER THREE NUMBERS OF THE OPENING, all 2026-08-12: "four and five gating transitions" counts the changes of patch_current inside samples 3 and 4 of figures/data/figure_1_simulation.csv (250 sub-steps per window; the six windows run 0, 7, 5, 4, 5, 10); "each 2 ms" is 100 raw samples at 50 kHz (provenance.md#4); and "the lowest of the design plane, S~ = 0.01" is Current_Noise = 1e-4 in ops/local/figure_1_plus_lse.macroir:58, which is noise label 0.1, the smallest label swept anywhere under figures/data. MR/VR SENTENCE: it is the structural claim Table 1's own caption makes ("INR and MR carry identical Gaussians and differ only in whether the recording is fed back"), stated for the figure's grammar; it is NOT a claim that their numbers coincide along a recording, which they do not. LENGTH: at 280 words and six columns the float spanned 84 to 711 pt against a text block of 57 to 721, ~19 pt of slack. The art is the same height at four columns (504 x 435 pt); this caption now counts 331 words after the 2026-08-12 rewrite (simulated not recorded, the low-noise reason, the representative-member sentence, the interval axis) and the float takes a page of its own, page 9 of the current build, with the caption complete and no Overfull vbox (the log's four are all on the Figure 5 supplement pages, 66 and 68). It has no slack left: anything added has to displace something. VERIFIED by rendering page 9, not inferred from the compile exiting 0. papers/_program/provenance.md#4 (20 channels, 250 substeps)
 \label{fig:ladder}
+% CAPTION TRIMMED 2026-08-13, outside-read pass, 331 words to 275, against a published band of 150
+% to 260 (measured, not estimated). It was the second longest in the paper and the float already takes a page of its own, so
+% the trim buys page and costs nothing to the geometry. What went is decoration, not reading
+% instruction: the transition counts of the two drawn windows ("hold four and five gating
+% transitions"), the two-tone disc and the Markov arrow ("that marginal is all that crosses the
+% boundary"), and "arrows are operations, and a state carried in from the neighbouring window is
+% faded".
+% NOT TAKEN, against the outside read, which would have cut this caption to about 60 words: the row
+% legend (A) to (D) and the reading of the window axis across row (B) stay, because an eLife legend
+% has to stand alone and without them the four columns cannot be parsed; the colour-phase key stays
+% for the same reason, the figure carrying no key of its own; the representative-member sentence
+% stays, because it is what makes four columns sufficient after the two least-squares columns were
+% dropped on 2026-08-12; and "No number is quoted from this simulated recording" stays, because the
+% run is seeded with the random sentinel and the trace differs on every re-run.
 % KEPT IN THE BODY by decision 3 of the carve plan (Luciano, 2026-08-11), on the record because it
 % is the only display item in the paper that measures nothing and it is cited from nowhere in the
 % Results: it fixes the member vocabulary in pictures and costs no counted words.

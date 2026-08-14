@@ -1,0 +1,168 @@
+# =============================================================================
+# figure_3_mle_LSE_fisher_only — nonlinearsqr (classical LSE) sibling of
+# figure_3_mle_fisher_only. Dispatched by ops/slurm/dispatch_figure_3_fisher_only.sh,
+# which picks this file whenever the algorithm's family is 2.
+# Stages 2-5 ONLY (the per-group cloud and the empirical capstone are dropped).
+#
+# THE ONLY DIFFERENCE from figure_3_mle_fisher_only.macroir is the parameter block:
+# unitary_current AND Current_Noise are FIXED, so the comparison runs in the
+# four-parameter configuration. They are flat directions for least squares (the LSE
+# mean has no noise term, and N*g is a single amplitude ridge), and that four-parameter
+# configuration is the one the manuscript quotes for the least-squares distortion.
+# Everything else, including the header of the sibling, applies verbatim — read the
+# two traps there before touching either file:
+#   TRAP 1: the non-positivity of F_b at theta_sim is read off
+#           Eigenvalue_Spectrum<Likelihood_Gaussian_Fisher_Distortion> (full spectrum,
+#           negatives included), NEVER off Min_Eigenvalue<...>, which keeps only the
+#           eigenvalues above the retention tolerance and so never returns a negative.
+#   TRAP 2: per-replicate indefiniteness overstates it (Jensen; lambda_min is concave).
+#           compute_F_b already averages over recordings, so the emitted matrix is the
+#           mean. Never report a fraction of indefinite replicates.
+#
+# CONSEQUENCE OF THE FIXED PAIR, and it must be said in any caption: the size and shape
+# scalars here are a 4x4 spectrum against the sibling's 6x6. Each member is measured in
+# the configuration the paper actually uses it in, which makes the per-member question
+# ("does the analytic Fisher reproduce the differenced one for THIS member") sound, and
+# makes a cross-member table of the scalars a comparison of different dimensions.
+#
+# LSE selection is by family_approximation = 2, injected. See nonlinearsqr_cpp_spec.md
+# §H for why Stages 4-5 apply unchanged to LSE: per-interval y_var == sigma_hat^2 with
+# a zero derivative makes every downstream formula yield the LSE quantity.
+#
+# SEED. Injected (sim_seed), NOT the 0 sentinel — see the sibling's header.
+#
+# COST. calc_numerical_fisher_information is 2*n_params extra likelihood passes per
+# recording at BOTH anchors: with four free parameters, 16 passes per recording per
+# interval. The only fit left is the single joint MLE of Stage 2.
+#
+# FILE CONTRACT — this file must NOT define the injected names itself (they must stay
+# commented/undefined): axis_Nchanels, Num_ch, axis_noise, current_noise,
+# n_simulations, filepath, sim_seed, algorithm_axis, algo_recursive_approximation,
+# algo_averaging_approximation, algo_taylor_approximation, algo_family_approximation,
+# algo_variance_form, axis_interval, exp_n_step_/exp_n_samp_, gn_max_iter,
+# axis_h_fim, h_rel_value.
+# =============================================================================
+
+model = load_model("scheme_CO")
+
+# Dispatcher injects filepath (the run-name prefix); jobs write nch/algo-distinct files.
+filepath_run = filepath
+
+# figure_2 canonical scheme_CO values; Current_Noise and Num_ch_mean are injected.
+# Four free parameters: unitary_current and Current_Noise are FIXED for least squares.
+parameter = create_parameters(
+   model = model,
+   parameters_info = [
+      {"on","Log10",10},
+      {"off","Log10",100},
+      {"unitary_current","Fixed",1},
+      {"Current_Noise","Fixed",current_noise},
+      {"Current_Baseline","Log10",1},
+      {"Num_ch_mean","Log10", Num_ch}])
+
+# Experiment step/sample sizes are indexed over axis_interval (injected). Three
+# segments: pre @ 0 µM, agonist @ 10 µM, post @ 0 µM.
+experiment = create_experiment(
+   experiment_structure = [
+      {exp_n_step_1, exp_n_samp_1, 0.0},
+      {exp_n_step_2, exp_n_samp_2, 10.0},
+      {exp_n_step_3, exp_n_samp_3, 0.0}],
+   frequency_of_sampling = 50e3,
+   initial_agonist = 0.0,
+   initial_time = 0.0)
+
+observations = set_observations(values_set = [0,0,0,0])
+
+par_tr = get_standard_parameter_transformed_values(parameter)
+
+simulation_axis = axis(name = "simulation_algorithm", labels = ["uniformization"])
+
+simulations = simulate(
+   model = model, parameter_transformed = par_tr, n_simulations = n_simulations,
+   experiment = experiment, observations = observations,
+   simulation_algorithm = indexed_string_by(axis = simulation_axis, values = ["uniformization"]),
+   number_of_substeps = indexed_size_by(axis = simulation_axis, values = [1000]),
+   seed = sim_seed)
+
+recordings = get_recordings_from_simulations(simulations = simulations)
+
+# Algorithm selected by the dispatcher (one per job) via algorithm_axis + the
+# indexed algo_* flags. family_approximation = 2 selects LSE. variance_form is
+# injected and is 0 for both least-squares members.
+algorithm = build_likelihood_function_with_family(
+   model = model,
+   adaptive_approximation = false,
+   recursive_approximation = algo_recursive_approximation,
+   averaging_approximation = algo_averaging_approximation,
+   variance_approximation = true,
+   taylor_variance_correction = algo_taylor_approximation,
+   family_approximation = algo_family_approximation,
+   variance_form_approximation = algo_variance_form,
+   taylor_qdt_approximation = false)
+
+# GN inner-loop options. max_iter is injected (the dominant cost lever); the rest
+# are numerical-method constants (Newton decrement is the primary convergence).
+gn_opts = build_gauss_newton_options(
+   lambda_kickoff = 10.0, lambda_factor = 3.0, lambda_max = 1e10,
+   max_iter = gn_max_iter, grad_rtol = 1e-6, dvalue_tol = 1e-10, verbose = false)
+
+# ---- Stage 2: JOINT MLE (group_size=n_simulations) -> theta_pool --------------
+# The only fit in this script. One group, so no bootstrap over groups (n=0) and the
+# min_groups guard is inert (2).
+pool = calc_MLE_per_group_of_replicates(
+   likelihood_algorithm = algorithm,
+   theta_warmstart = par_tr,
+   theta_reference = par_tr,
+   experiment = experiment,
+   recordings = recordings,
+   group_size = n_simulations,
+   n_bootstrap_samples = get_number(n = 0),
+   min_groups_for_bootstrap = get_number(n = 2),
+   probit_cis = [0.025, 0.16, 0.5, 0.84, 0.975],
+   probit_sample_heights = [0.5],
+   ranking_variables = ["Maximum_logL"],
+   seed = 0,
+   gauss_newton_options = gn_opts)
+
+pool_csv = write_csv(analysis = pool, path = concat(filepath_run, "_pool"))
+
+theta_pool = get_parameters_mean(cloud = pool)
+
+# ---- Stage 3: numerical Fisher at theta_sim AND theta_pool -------------------
+fim_sim = calc_numerical_fisher_information(
+   likelihood_algorithm = algorithm, parameters = par_tr, experiment = experiment,
+   data_series = simulations, h_rel = h_rel_value, decimate = 1)
+
+fim_pool = calc_numerical_fisher_information(
+   likelihood_algorithm = algorithm, parameters = theta_pool, experiment = experiment,
+   data_series = simulations, h_rel = h_rel_value, decimate = 1)
+
+# ---- Stage 4: score / dlikelihood at theta_sim AND theta_pool -----------------
+dlik_sim = calc_dlikelihood_predictions(
+   likelihood_algorithm = algorithm, parameters = par_tr, experiment = experiment,
+   data_series = simulations)
+
+dlik_pool = calc_dlikelihood_predictions(
+   likelihood_algorithm = algorithm, parameters = theta_pool, experiment = experiment,
+   data_series = simulations)
+
+# ---- Stage 5: PAIRED diagnostic battery at theta_sim AND theta_pool ------------
+# Emits the F-anchored family and the Gaussian-anchored one in the SAME file. That
+# pairing is the measurement this run exists for.
+battery_sim = likelihood_derivative_basic_diagnostics_paired(
+   dlikelihood_predictions = dlik_sim,
+   numerical_fisher_information = fim_sim,
+   n_boostrap_samples = 100,
+   probits = [0.025, 0.16, 0.5, 0.84, 0.975], seed = 0, max_lag = 10,
+   samples_dir = "")
+
+battery_sim_csv = write_csv(analysis = battery_sim, path = concat(filepath_run, "_battery_sim"))
+
+battery_pool = likelihood_derivative_basic_diagnostics_paired(
+   dlikelihood_predictions = dlik_pool,
+   numerical_fisher_information = fim_pool,
+   n_boostrap_samples = 100,
+   probits = [0.025, 0.16, 0.5, 0.84, 0.975], seed = 0, max_lag = 10,
+   samples_dir = "")
+
+battery_pool_csv = write_csv(analysis = battery_pool, path = concat(filepath_run, "_battery_pool"))

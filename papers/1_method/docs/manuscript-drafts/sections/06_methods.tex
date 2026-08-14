@@ -538,7 +538,13 @@ The second holds the occupancy mean on the probability simplex. Nothing in the G
 conditioning of Eq.~\ref{eq:mu-post} knows that $\bm{\mu}$ is a probability vector, and an
 undamped step can drive its entries negative or above one, so the mean step is scaled
 by a trust coefficient $\alpha_\mu\in(0,1]$, the largest scaling that keeps the posterior
-on the simplex. The covariance is treated separately and takes its full step, since the
+on the simplex. Damping the step is what replaced correcting the state after it. The
+earlier form of this code took the undamped step and truncated the occupancy entrywise at
+zero before renormalising, which is not differentiable where it acts and so carries, one
+level up, the defect this paragraph rejects for the coefficient itself; with the step
+damped instead no operation produces a negative entry, and the renormalisation that
+follows validates rather than repairs, failing on a real one.
+The covariance is treated separately and takes its full step, since the
 rank-one down-date of Eq.~\ref{eq:sig-post} is positive semidefinite by construction; the
 two trusts are not tied to a common factor. The form of the damping matters here in a way
 it would not in an ordinary filter. This paper differentiates the log-likelihood with
@@ -558,6 +564,28 @@ mean current and corrupts every quantity this paper measures.
 The third is a pair of constants: a binomial-count floor of $5$, below which the expected
 count in a state is too small for the Gaussian treatment of that state and the member falls
 back to its non-recursive form, and a minimum occupancy probability of $10^{-12}$.
+% THE TRUNCATION SENTENCES ADDED 2026-08-13 (Luciano), and every clause was verified first-hand in
+% the commit the P2X2 paper's Data Availability points at rather than recalled.
+%   dc1d295:qmodel.h:3394 (and :3424, :3456) takes the UNDAMPED step and pushes the result back:
+%     auto Maybe_r_P_mean = to_Probability(p_P_mean() * t_P() + chi * gS);
+%   dc1d295:qmodel.h:320, inside that to_Probability, is the truncation itself:
+%     auto out = apply([](auto e) { return max(e, 0.0); }, x);
+%   and `calculate_trust_coefficient` does not occur anywhere in that file; it first appears at
+%   a3e0a89.
+% TRAP, and it cost a wrong answer before the right one: at dc1d295 the file is `qmodel.h` at the
+% repository ROOT, not `legacy/qmodel.h`. A `git show dc1d295:legacy/qmodel.h` returns an empty
+% stream, and grep over an empty stream reports zero matches, which reads exactly like a verified
+% absence. Use `git ls-tree -r --name-only dc1d295` first.
+% THE ARGUMENT IS NOT NEW, it is this paragraph's own applied one level up: entrywise max(e, 0) has
+% a kink in theta exactly where it binds, which is the same object as the hard min(1, c*alpha_p)
+% rejected below, so it cannot stand in a recursion whose derivatives are propagated. That is why
+% this belongs beside the safeguard and not in a numerical-housekeeping list.
+% SCOPE, deliberate and not to be widened: the sentences describe the earlier form OF THIS CODE.
+% They say nothing about the results published in moffatt2025bayesian, which is the same restriction
+% the 2026-08-07 attribution correction imposes at :344 and for the same reason, that a claim about
+% another paper's implementation is one this manuscript cannot support.
+% THE CURRENT to_Probability CARRIES THE SAME HISTORY in its own header (legacy/qmodel_types.h,
+% "DESIGN NOTE - why no clamp"), which is the second independent source for these two sentences.
 % EXPANDED 2026-08-04. The previous paragraph named the two safeguards and gave neither the
 % rule nor the form, which a replication audit reported as cannot-implement: the four recursive
 % members return NaN at N_ch 10 and 100 without them. Source: docs/math/trust_coefficient.md
@@ -974,16 +1002,44 @@ documented per file.
 % src: papers/1_method/decisions/D-0_freeze_and_rerun_scope.md (each CSV self-stamps its hash; multi-commit provenance accepted)
 
 The engine that produced these results is not the build behind the P2X$_2$ analysis of
-\citet{moffatt2025bayesian}. Every score, Fisher information and distortion quantity
-reported here comes from automatic differentiation of the likelihood with respect to
-$\bm{\theta}$, propagated through the recursion itself rather than from finite differences
-of the log-likelihood. That layer reached the macroscopic likelihood after the earlier
-analysis had been run: the differentiation types were already in the codebase at that
-revision, the file holding the recursion carried none of them, and the fits reported there
-were obtained by Markov chain Monte Carlo, which needs no gradient. The dependence is not
+\citet{moffatt2025bayesian}. Every score reported here comes from automatic
+differentiation of the likelihood with respect to $\bm{\theta}$, propagated through the
+recursion itself: value and derivative travel through the same code, carried together by
+one templated C++ type, so the derivative of the spectral reconstruction is taken where
+the reconstruction is, with its divided differences and its coincidence limits
+(Appendix~\ref{app:derivation}). The Fisher information does not arrive with it. It is an
+expectation under the model rather than a derivative of the recorded log-likelihood, so it
+is wired by hand, as the Gaussian form of Eq.~\ref{eq:gaussian-fisher} over the predictive
+moments and the first derivatives the score has already produced; that is what makes it
+positive semidefinite by construction and free of a second pass over the record. The
+distortion quantities follow from the two. That layer reached the macroscopic likelihood
+after the earlier analysis had been run, whose fits were obtained by Markov chain Monte
+Carlo and needed no gradient. The dependence is not
 incidental, since it is what forces the trust coefficient above to be infinitely
 differentiable, and it is why the score-based diagnostics of this paper are new here rather
 than carried over from that work.
+% REWRITTEN 2026-08-13 (Luciano), and TWO of the three changes are corrections rather than trims.
+%  (1) THE FISHER WAS ON THE WRONG SIDE. The sentence read "Every score, Fisher information and
+%      distortion quantity reported here comes from automatic differentiation of the likelihood ...
+%      rather than from finite differences of the log-likelihood". The Gaussian Fisher is NOT
+%      differentiated out of anything: it is an expectation under the model, wired by hand as
+%      Eq. gaussian-fisher over the predictive moments and the first derivatives the score already
+%      produced, which is what 02_framework.tex says ("formed from the predictive moments and their
+%      parameter derivatives that the score already requires") and what makes it PSD by construction
+%      and free of a second pass. The two sections disagreed and this one was the loose one.
+%  (2) THE FINITE-DIFFERENCE CONTRAST IS DROPPED. It was empty: the construction in the codebase is
+%      a central difference OF THE ANALYTIC SCORE (the paragraph on 433ed13 above says so), so it
+%      presupposes the derivatives. What replaces it is the claim that actually separates this work,
+%      that the analytic derivative comes from ONE implementation and no derivative formula for the
+%      recursion is written out a second time. Note the scope: that is a statement about the
+%      recursion, NOT about every derivative in the program, since the Fisher above is hand-wired.
+%  (3) THE GIT ARCHAEOLOGY IS OUT of the printed text ("the differentiation types were already in the
+%      codebase at that revision, the file holding the recursion carried none of them"). The
+%      verification stays in the note below, with its hashes, which is where it belongs. "Markov
+%      chain Monte Carlo ... needed no gradient" STAYS: it is what explains why the earlier work did
+%      not need them, and without it the claim about another build is an assertion with no reason.
+% THE PRIMARY SITE FOR THIS CLAIM IS NOW 01_introduction.tex, closing paragraph, with the Discussion
+% carrying it in the novelty list. All three must keep the Fisher on the wired side.
 % ADDED 2026-08-11, on the author's instruction in the audio of that day at 14.13.27:
 % "no habia usado las derivadas automaticas ... eso en algun lado tiene que estar, esto es muy
 % importante ... es un [aporte] importante".

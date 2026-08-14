@@ -100,7 +100,18 @@ The ordering of the boundaries is what an experimenter can act on: everywhere on
 % keep the guard: only the calibrated member is in it.
 
 As an algorithm, MacroIR is an integrated-measurement augmented Kalman filter, a device long known in control and target tracking \cite{zadrozny1988gaussian}, and its predictions coincide with that construction to about $10^{-8}$. % src: docs/bibliography/MacroIR_prior_art_map.md (verified 1e-8)
-The device is conceded; what is specific here is the realization for an exact continuous-time Markov chain of channel occupancies, its use from $5$ to $10^{4}$ channels where the single-molecule integrated filters do not reach, the validity map, and the measurement of what the cheaper members cost. The lineage is \cite{moffatt2007estimation} and \cite{munch2022bayesian}; the family's first macroscopic application is \cite{moffatt2025bayesian}. % src: papers/1_method/decisions/recompute/d4_distortion_envelopes.py (N_ch range of the measured grid)
+The device is conceded; what is specific here is the realization for an exact continuous-time Markov chain of channel occupancies, its differentiation through the recursion, its use from $5$ to $10^{4}$ channels where the single-molecule integrated filters do not reach, the validity map, and the measurement of what the cheaper members cost. The derivatives are what the diagnostic could not be run without. \citet{milescu2005maximum} computes them analytically for a likelihood over independent intervals; through a recursion the chain runs the length of the record, which puts the derivative of the spectral reconstruction inside it (Appendix~\ref{app:derivation}) and reaches the filter itself: the occupancy is held on the probability simplex by damping the update rather than by correcting the state after it, and that damping is smooth rather than a hard minimum, both because an operation that is not differentiable where it binds pumps variance into the score (Methods). The lineage is \cite{moffatt2007estimation} and \cite{munch2022bayesian}; the family's first macroscopic application is \cite{moffatt2025bayesian}. % src:
+% DERIVATIVES ADDED TO THE NOVELTY LIST 2026-08-13 (Luciano), 78 words on a section already over its
+% guion. It is content and not prose: this list is where a reader looks for what is specific to this
+% work, and the derivative machinery was in Methods alone, which prints after this section.
+% THE FULL RECORD OF THE CLAIM, including what it is NOT and why the Fisher is excluded from it, is
+% at the closing paragraph of 01_introduction.tex, which is the primary site. THE TWO MUST NOT DRIFT:
+% neither site may say that the Fisher information comes out of the differentiation, and neither may
+% say anything about how milescu2005maximum implemented theirs.
+% WHY THE SAFEGUARD CLAUSE IS HERE rather than left in Methods: it is the one piece of evidence in
+% the manuscript that differentiating through a constrained recursion is not free, and Methods states
+% the consequence in its own words, that a hard minimum "reproduces the mean current and corrupts
+% every quantity this paper measures". papers/1_method/decisions/recompute/d4_distortion_envelopes.py (N_ch range of the measured grid)
 % THE ATTRIBUTION IS THE 2026-08-07 CORRECTION AND MUST NOT DRIFT BACK: the continuous-time
 % realization is this manuscript's, in Theory; moffatt2025bayesian is the application. The identical
 % repair is at 06_methods.tex, which defers to this paragraph by name for the Kalman correspondence,

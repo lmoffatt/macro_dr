@@ -1,4 +1,10 @@
 # =============================================================================
+# SUPERSEDED 2026-08-14, never run. Use figure_3_mle_LSE_fisher_only.macroir via
+# dispatch_figure_3_fisher_only.sh: same measurement, whole roster in one lane, without
+# Stage 1 (the per-group cloud), which is what made these jobs take days and which feeds
+# only Stage 6. Keep this file only if the empirical capstone anchored on the numerical
+# Fisher is wanted; that is the one thing the replacement drops.
+# =============================================================================
 # figure_3_mle_LSE_numfim — nonlinearsqr (classical LSE) with the FINITE-DIFFERENCE
 # Fisher. Dispatched by ops/slurm/dispatch_figure_3_LSE_numfim.sh. FULL pipeline
 # (Stages 1-6).
