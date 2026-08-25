@@ -120,11 +120,16 @@ Luciano Moffatt
 
 ## Impact statement (submission form, 15–30 words, third person)
 
-In a published comparison of nine gating schemes for a ligand-gated receptor the ranking moved with
-the likelihood; measuring each likelihood's score and information against exact simulation shows
-which reported uncertainties can be believed, and where.
+A likelihood for macroscopic ion-channel currents whose reported information is measured against
+the exact process, with the apparatus to repeat the measurement on any scheme, available from R
+and Python.
 
-(29 words.)
+(30 words. Replaced 2026-08-25, Luciano's decision: the tool-forward form, the home found for the
+deliverable trio the abstract panel evicted from the abstract's closer. The previous
+finding-forward version, kept in case the venue prefers a finding: "In a published comparison of
+nine gating schemes for a ligand-gated receptor the ranking moved with the likelihood; measuring
+each likelihood's score and information against exact simulation shows which reported
+uncertainties can be believed, and where." 29 words.)
 
 ---
 
