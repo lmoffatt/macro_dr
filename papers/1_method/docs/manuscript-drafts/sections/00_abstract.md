@@ -23,11 +23,11 @@ saying who can act on the result.
 - 200 to 220 words. **[SETTLED SINCE]** The old rule was "write to 150, treat 200 as the ceiling".
   Measured against 41 recent eLife research articles: median 197, 39% over 200, and the
   computational/structural/biophysics subset has a median of **210**. Do not spend words getting to 200.
-  **[SETTLED SINCE, 2026-08-25]** The live version stands at 274 by decision, ~p95 of the 413-article
-  survey (260 = p92, max 310): the trade accepted is arc closure (the P2X2 verdict clause) plus the
-  two surprises (non-monotonicity, white residual) over word count. The change log and the ranked
-  cut list if it must shrink are `00_abstract.tex` note 1n; the four-lens panel behind it is cited
-  there. Do not re-shrink to 220 without re-reading that note.
+  **[SETTLED SINCE, 2026-08-25]** The live version stands at 294 by decision (~p97 of the
+  413-article survey, max 310): the panel version (274, note 1n) plus the outside-AI round's four
+  edits (note 1o: anti-inversion of the P2X2 verdict, the gap sentence's class scope, the
+  two-state justification, the closer's boundaries named). The change log and the ranked cut list
+  if it must shrink are notes 1n and 1o. Do not re-shrink without re-reading both.
 - Name the biological system in the first sentence.
 - **The paraphrase test.** Every technical term must survive being restated by an editor who is not a
   statistician, because that restatement is published and permanent. If an editor cannot write the

@@ -1,5 +1,5 @@
 \begin{abstract}
-Some ion channel mechanisms leave a mark in the record that does not depend on fitting a model: the flip state of P2X$_2$ showed up as a delay before the macroscopic current rose. The asymmetric activation reported from the same recordings two decades later leaves no such mark: it rests on evidence ratios, and a published control without the recursion put a non-conformational alternative first. Where likelihood approximations distort what they report, and by how much, was never measured. The diagnostics are classical: for a correctly specified likelihood the score, the log-likelihood's gradient, averages to zero at the true parameters and its covariance equals the reported Fisher information. We tested eight likelihoods, from least squares on the mean current, which leaves the correlated gating fluctuation unmodelled, to a filter conditioning each interval average on both ends. The sweep runs over channel number, noise and interval in a two-state scheme, ten thousand exact simulations of the process they approximate at every point. Those that leave the correlation unmodelled misreport their information, and with it their error bars, by an order of magnitude wherever the residual retains memory, and no single rescaling repairs it, because the distortion has directions in parameter space. The likelihood without the recursion is among them. Neither partial correction improves on the likelihood it corrects, and a white residual does not certify calibration. The filter conditioning on both ends is calibrated over almost the whole measured range, with departures growing toward few channels and low noise. No measured region gives both information about the unitary current and a trustworthy least-squares error bar, the two boundaries one to three decades of noise apart.
+Some ion channel mechanisms leave a mark in the record that does not depend on fitting a model: the flip state of P2X$_2$ showed up as a delay before the macroscopic current rose. The asymmetric activation reported from the same recordings two decades later leaves no such mark: it rests on evidence ratios under a recursive likelihood, and a published control without the recursion put a non-conformational alternative first. Where likelihood approximations distort what they report, and by how much, was never measured for macroscopic currents. The diagnostics are classical: for a correctly specified likelihood the score, the log-likelihood's gradient, averages to zero at the true parameters and its covariance equals the reported Fisher information. We tested eight likelihoods, from least squares on the mean current, which leaves the correlated gating fluctuation unmodelled, to a filter conditioning each interval average on both ends. The sweep runs over channel number, noise and interval in a two-state scheme, the smallest that isolates the approximation's own error, ten thousand exact simulations of the process they approximate at every point. Those that leave the correlation unmodelled misreport their information, and with it their error bars, by an order of magnitude wherever the residual retains memory, and no single rescaling repairs it, because the distortion has directions in parameter space. The published control's likelihood is among them. Neither partial correction improves on the likelihood it corrects, and a white residual does not certify calibration. The filter conditioning on both ends is calibrated over almost the whole measured range, with departures growing toward few channels and low noise. The noise at which the least-squares error bar becomes honest lies one to three decades above the noise at which the fluctuations stop carrying the unitary current: no measured region gives both.
 \end{abstract}
 
 
@@ -10,6 +10,43 @@ Some ion channel mechanisms leave a mark in the record that does not depend on f
 % recommendations on deleting them. Two of the three then criticised numbers that appear
 % only inside those comments. Provenance is kept, keyed by sentence, in section 2.
 % =========================================================================================
+%
+% 1o. THE OUTSIDE-AI ROUND (2026-08-25, later the same day; read after 1n). Two abstract-only
+%     reads (DeepSeek, ChatGPT) were triaged against the manuscript; four edits taken, 274 -> 294
+%     words (~p97 of the 413-article survey, max 310).
+%     THE DECISIVE DATUM: DeepSeek INVERTED the P2X2 verdict — it read the abstract as convicting
+%     the published asymmetric-activation claim, when the convicted instrument is the CONTROL and
+%     the measurement supports the published choice of arm. A capable reader can build the
+%     inverted reading because the abstract never said which arm ranked the published claim.
+%     (i)   Sentence 3: "rests on evidence ratios" -> "rests on evidence ratios UNDER A RECURSIVE
+%           LIKELIHOOD" (+4). With (ii), the inversion becomes near-impossible.
+%     (ii)  The verdict: "The likelihood without the recursion is among them" -> "The PUBLISHED
+%           CONTROL'S likelihood is among them" (-1). Third reader tripping on the old referent
+%           (DeepSeek inverted it, the panel's electrophysiologist asked "what recursion?",
+%           ChatGPT called it cryptic and supplied the word "published").
+%     (iii) The gap sentence gains its class scope: "was never measured FOR MACROSCOPIC CURRENTS"
+%           (+3). ChatGPT's best point, and it was already OUR rule 6 ("what is new is the
+%           measurement for this class"); the unscoped form invited a one-cite refutation from
+%           the sandwich/quasi-likelihood literature.
+%     (iv)  The two-state clause carries its justification: ", the smallest that isolates the
+%           approximation's own error" (+8). Fifth independent reader raising the two-state
+%           objection (three outside rounds + DeepSeek + ChatGPT); the minimal-model argument is
+%           the cover letter's, compressed.
+%     (v)   The closer restructured: the two boundaries are now NAMED before the claim ("The
+%           noise at which the least-squares error bar becomes honest lies one to three decades
+%           above the noise at which the fluctuations stop carrying the unitary current: no
+%           measured region gives both", +6). Same defect family as the old opener (definite
+%           article with no antecedent), flagged twice (internal read + ChatGPT). "least-squares"
+%           not "classical", which would collide with "The diagnostics are classical".
+%     DECLINED, with reasons so they are not re-litigated: the title (settled by the 4-review +
+%     9-judge study; "can distort" is the hedge that study rejected, "kinetic inference" loses
+%     the measured object); the explicit roster hierarchy (would install the monotone prior the
+%     non-monotonicity sentence exists to refute); naming MacroINR in the abstract (the
+%     no-jargon rule; "published control" does the work). VALIDATED from outside: the
+%     white-residual sentence (ChatGPT: "a reviewer may actually remember this sentence") — the
+%     -8-word cut candidate of note 1n is retired. "Information"'s measured sense is defined in
+%     02 before first load-bearing use (census rows 122-125), so the three-senses objection is
+%     answered at the definition site.
 %
 % 1n. WHAT THE 2026-08-25 VERSION CHANGES (out of numeric order so it is read first; the
 %     sections below describe earlier versions). 274 words, was 258 by wc. Source: a
