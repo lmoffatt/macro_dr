@@ -170,10 +170,10 @@ fi
 # least as many graphics as captions.
 N_FIG=$(grep -c '\\includegraphics' "$BODY_TMP" || true)
 N_CAP=$(grep -c '\\caption{' "$BODY_TMP" || true)
-if [ "$N_CAP" -ge 6 ] && [ "$N_FIG" -ge "$N_CAP" ]; then
+if [ "$N_CAP" -ge 7 ] && [ "$N_FIG" -ge "$N_CAP" ]; then
   green "6. figures: $N_CAP captioned body figures, $N_FIG graphics incl. supplements"
 else
-  red "6. figures: $N_CAP captioned body figures (need >=6), $N_FIG graphics"
+  red "6. figures: $N_CAP captioned body figures (need >=7), $N_FIG graphics"
 fi
 
 # --- 7. front/back matter -----------------------------------------------------------

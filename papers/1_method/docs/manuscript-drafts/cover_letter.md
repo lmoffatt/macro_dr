@@ -60,7 +60,8 @@ came from ratios of evidence alone. When we ranked the nine twice, under two lik
 the interval averaging and the gating variance and differed in whether each interval is conditioned
 on the data already observed, the two orderings put a different mechanism first: the conformational
 asymmetric scheme under one, the subunit-specific allosteric alternative under the other. We
-reported the sensitivity and had no way to adjudicate it.
+reported the sensitivity, and the direction we gave for it rested on argument: on recordings there
+is no ground truth to measure a likelihood against.
 
 Nothing in ordinary practice adjudicates it. A recursive likelihood follows the record whether its
 assumptions hold or not, so its residual cannot be read the way a least-squares residual can, and
@@ -86,12 +87,24 @@ plane of 560 design cells within reach. We do not offer another filter. Our best
 with an integrated-measurement Kalman filter known since 1988 to about one part in 10^8, and we say
 so in the Discussion. What is new is the measurement.
 
+The measurement does adjudicate the two instruments of the P2X2 comparison, and that is the one
+statement about our own record the manuscript now makes: the control that reordered the schemes is
+the non-recursive member of the ladder, measured to misreport its information about twentyfold at
+macroscopic channel counts, which is exactly the factor the recursion restores. For the job of
+reporting uncertainty, a likelihood whose identities have never been measured supplies estimates
+whose stated precision cannot be acted on; in that operational sense the field did not yet have a
+calibrated instrument for macroscopic currents. It has one now, with its own measured limits at few
+channels and low noise, and it has the apparatus that certified it, which runs on any scheme an
+exact simulator can reach.
+
 The study is simulation on a two-state scheme sampled through a uniform acquisition window, and no
 experimental recordings are analysed. The scheme is deliberately small so that what the diagnostic
 reports is the approximation's own error, with no misspecified mechanism mixed into it, and the
 manuscript states those limits beside the results. The software carries the calibrated member with
-its score and its Fisher information together with the exact simulator, so a reader can run the same
-two identities on their own scheme rather than extrapolate from ours.
+its score and its Fisher information together with the exact simulator, and the measuring apparatus
+itself: the distortion matrix, its eigenvalues and the first-order bias come back from one call in R
+or Python, so a reader can run the same two identities on their own scheme rather than extrapolate
+from ours.
 
 One reading of the map does not depend on where a level set is drawn. No region of the measured
 plane gives both information about the unitary current and a trustworthy least-squares error bar,

@@ -313,9 +313,18 @@ variance.
 written by different producers, so their output files carry different prefixes,
 \texttt{figure\_3\_LSE\_} and \texttt{figure\_3\_G\_}. INR is the member published as
 MacroINR in \citet{moffatt2025bayesian}, where it served as the control against which
-MacroIR, the member called \texttt{IR} here, was compared; it is reported here only in
-the supplement.}
+MacroIR, the member called \texttt{IR} here, was compared; the deposited run metadata
+of that study confirm the identification, its two arms differing in the recursion flag
+alone, and the deposited endpoint flag coincides with this study's INR exactly, because
+without a recursive update conditioning on one end and conditioning on both describe
+the same likelihood, reproduced to the byte on the reference binary. It is reported
+here only in the supplement.}
 % src: papers/_program/decisions.md sec.2 (INR = MacroINR, the published control; supplement member 2026-07-29)
+% src: docs/bibliography/MacroIR_prior_art_map.md A.11 (deposit metadata: 414 _likelihood_model.csv,
+% recursive 0<->SNR / 1<->DR one to one, every other flag constant; SNR ran averaging=2)
+% src: tmp/verify_av2_no_update.macroir on the reference binary macrodr-reference-0ffbda7, 2026-08-25:
+% non-recursive averaging=2 vs averaging=1, same simulation, outputs byte-identical
+% (tmp/verify_av2_diag_av{1,2}.csv, cmp -s). This closes A.11's one open [VERIFY] link.
 % NOTE 2026-07-31: the caption used to end "because over the range measured it is not separable from NR",
 % sourced to D-4 sec.5 (envelope 1.23-3.6e4 vs NR 1.21-3.5e4; 0/336 within 15% for both). It stays
 % REMOVED, and now for a second reason. Those numbers were measured on macro_NMR, the build missing the
@@ -808,14 +817,20 @@ indefinite.
 % src: projects/eLife_2025/ops/local/figure_3_mle_LSE.macroir:152-168 (Fim-less gaussian battery; gidm/gfc/gdcc/gdib)
 
 A second Fisher construction exists in the codebase, a central difference of the
-analytic score, and it anchored an earlier battery (data directory \texttt{433ed13})
-that is retained in the deposit. No number reported in this paper is taken from it. It
-is not interchangeable with the analytic anchor per recording, being widely indefinite
-replicate by replicate, which is one reason the body is anchored on the analytic
-construction; its settings, and the comparison between the two constructions on the
-runs the body does use, are in Supplementary File~1. % src: projects/eLife_2025/figures/figure_4_source_data/figure_4_source_data_gaussian_fisher.csv, pool anchor (medians over the seven intervals; the algorithms present are macro_NR, macro_R, macro_MR, macro_IR and the superseded macro_NMR, at noise 0.1, 1 and 10 only; nonlinearsqr, nonlinearsqr_g and macro_INR are absent from the file entirely, the _G sweep being Gaussian-only so the differenced Fisher is never formed there). Medians in size: R 1.011, MR 1.020, IR 1.000, NR 1.010 overall but 1.007/1.010/1.264/1.602 by channel count at noise 0.1. The single worst cell of the file, NR at N_ch 1e4 and interval 1, reads 11.5 and is the ill-conditioned corner Figure 4 greys, excluded from the sentence above for the same reason.
-% src: projects/eLife_2025/ops/local/figure_3_mle.macroir:151-157 (numerical Fisher; h_rel injected)
-% src: projects/eLife_2025/ops/slurm/dispatch_figure_3.sh:98 (H_RELS default 1e-5)
+analytic score. It is not interchangeable with the analytic anchor per recording,
+being widely indefinite replicate by replicate, which is one reason the body is
+anchored on the analytic construction; averaged over recordings it is the check the
+analytic anchor is measured against, over the full roster, in Supplementary File~1,
+which also holds its settings and the direction convention of the comparison. An
+earlier battery anchored on it (data directory \texttt{433ed13}) is retained in the
+deposit; no number reported in this paper is taken from it.
+% src: supplementary_file_1.tex S1.5 (rewritten 2026-08-25: full-roster comparison from
+% figures/data/a202e03, fisher_only lane, seed 20260814; the 433ed13 medians and the old
+% partial-roster caveat that stood in this src comment are retired there. The old prose verb
+% "over-states" was inconsistent with the producer's convention, likelihood.cpp:3509, and no
+% direction verb survives at any of the three sites.)
+% src: projects/eLife_2025/ops/local/figure_3_mle_fisher_only.macroir (numerical Fisher; h_rel injected)
+% src: projects/eLife_2025/ops/slurm/dispatch_figure_3_fisher_only.sh (H_RELS default 1e-5)
 % src: papers/_program/provenance.md#5 (433ed13 = numerical anchor, superseded for the body)
 % src: papers/1_method/decisions/D-0_freeze_and_rerun_scope.md (body moved to the Gaussian anchor)
 

@@ -1,0 +1,57 @@
+# A.11 [VERIFY]: does the non-recursive interval likelihood with averaging = 2 coincide
+# with averaging = 1 (INR) when there is no update? The deposited Comm Biol SNR ran av = 2;
+# this study's INR is av = 1. legacy/qmodel.h:4425-4427 asserts they coincide without an
+# update; qmodel.h:3214-3216 vs :3247 write different gSg expressions. One interval on the
+# reference binary settles it (docs/bibliography/MacroIR_prior_art_map.md A.11).
+# Copied from projects/eLife_2025/ops/local/figure_1.macroir, everything but the two members
+# dropped. Both members evaluate the SAME simulation, so the random seed does not matter.
+
+model = load_model("scheme_CO")
+
+parameter = create_parameters(
+   model = model,
+   parameters_info = [
+      {"on","Log10",10},
+      {"off","Log10",100},
+      {"unitary_current","Log10",1},
+      {"Current_Noise","Log10",0.0001},
+      {"Current_Baseline","Log10",1},
+      {"Num_ch_mean","Log10", 20}])
+
+experiment = create_experiment(experiment_structure=[{1,100,0.0},{1,100,10.0},{1,100,10.0},{1,100,10.0},{1,100,10.0},{1,100,10.0}],
+frequency_of_sampling = 50e3,
+initial_agonist = 0.0,
+initial_time = 0.0)
+
+observations = set_observations(values_set= [0,0,0,0])
+
+par_tr = get_standard_parameter_transformed_values(parameter)
+
+simulation_with_sub_intervals  = simulate_with_sub_intervals(model= model, parameters = par_tr, experiment = experiment,
+                         observations = observations, number_of_substeps = 250, seed = 0)
+
+simulation = remove_intervals(simulation_with_sub_intervals)
+
+macro_INR_av1 = build_likelihood_function(model =model,
+            adaptive_approximation = 0, recursive_approximation = 0, averaging_approximation = 1,
+            variance_approximation = 1, taylor_variance_correction = 0,
+            micro_approximation        = false,
+            taylor_qdt_approximation   = false )
+
+macro_INR_av2 = build_likelihood_function(model =model,
+            adaptive_approximation = 0, recursive_approximation = 0, averaging_approximation = 2,
+            variance_approximation = 1, taylor_variance_correction = 0,
+            micro_approximation        = false,
+            taylor_qdt_approximation   = false )
+
+diag_av1 = calc_likelihood_diagnostic(likelihood_algorithm =macro_INR_av1, parameters=par_tr, experiment =experiment,
+simulation = simulation)
+
+file_av1 = write_csv(experiment= experiment, simulation = simulation, likelihood = diag_av1,
+   path= "tmp/verify_av2_diag_av1")
+
+diag_av2 = calc_likelihood_diagnostic(likelihood_algorithm =macro_INR_av2, parameters=par_tr, experiment =experiment,
+simulation = simulation)
+
+file_av2 = write_csv(experiment= experiment, simulation = simulation, likelihood = diag_av2,
+   path= "tmp/verify_av2_diag_av2")

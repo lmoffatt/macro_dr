@@ -64,28 +64,78 @@ factor $3$, maximum damping $10^{10}$) and three limits: at most $100$ iteration
 relative gradient tolerance of $10^{-6}$ and a value tolerance of $10^{-10}$.
 The Newton-decrement criterion that stops most fits is described in Methods.
 
-\section*{S1.5\quad The superseded numerical Fisher anchor}
+\section*{S1.5\quad The differenced-Fisher check of the Gaussian anchor}
 
-% MOVED HERE 2026-08-12 from Methods by papers/1_method/09_carve_plan.md. It is inventory about a
-% battery no reported number comes from, and Methods had no room for it: the section stood at 5,868
-% counted words against a published p95 of 5,046. Methods keeps four sentences and a pointer here.
+% REWRITTEN 2026-08-25. This section used to describe the superseded 433ed13 battery and quote its
+% partial comparison (four members, no least-squares arm, no INR), with the direction stated by a
+% verb ("over-states") that the producer's convention contradicts. The fisher_only lane
+% (dispatch_figure_3_fisher_only.sh, seed 20260814, data figures/data/a202e03) has since run the
+% comparison over the FULL roster at nsim 10^4, noise 0.1, closing 04_results.tex's item (f). The
+% direction is now stated operationally, by the formula, never by a verb: the old prose's
+% "over-states" was inconsistent with the producer (C > 1 means the differenced Fisher EXCEEDS the
+% analytic one, src/core/likelihood.cpp:3509), while its arithmetic ("narrows 76.5 by 1.60") was
+% consistent with it; only the verb was wrong.
 
-The earlier battery in data directory \texttt{433ed13} was anchored on a numerical Fisher
-information: a central difference of the analytic score, with per-coordinate step
-$h_i = h_{\mathrm{rel}}\max(|\theta_i|,1)$ at $h_{\mathrm{rel}} = 10^{-5}$, symmetrised as
-$(F_{\mathrm{num}} + F_{\mathrm{num}}^{\mathsf T})/2$. Because the score itself is obtained by
-automatic differentiation, this is a single numerical derivative rather than two.
+The differenced Fisher information $\mathbf{F}$ is a central difference of the analytic score,
+with per-coordinate step $h_i = h_{\mathrm{rel}}\max(|\theta_i|,1)$ at
+$h_{\mathrm{rel}} = 10^{-5}$, symmetrised as $(\mathbf{F} + \mathbf{F}^{\mathsf T})/2$ and
+averaged over recordings before any decomposition. Because the score itself is obtained by
+automatic differentiation, this is a single numerical derivative rather than two. The check is
+the congruence $\mathbf{C} = \mathbf{G}^{-1/2}\,\mathbf{F}\,\mathbf{G}^{-1/2}$ with
+$\mathbf{G}$ the analytic Gaussian Fisher information that anchors every distortion in the body:
+$\mathbf{C}$ at the identity means the cheap analytic form carries the member's true curvature,
+and an entry of the table is the geometric mean of $\mathbf{C}$'s eigenvalues, the median over
+the seven acquisition intervals, at $\widetilde{S}=0.01$ and $n_{\mathrm{sim}}=10^{4}$ exact
+simulations per cell.
+% src: projects/eLife_2025/NOISE_AXIS_UNITS.md (display S_tilde = 0.1 x the noise label; the run's label is 0.1)
+% src: src/core/likelihood.cpp:3509 (Likelihood_Gaussian_Fisher_Distortion = inv(sqrt(G_b)) F_b inv(sqrt(G_b)))
+% src: tmp/fim_vs_gaussian_table.py over projects/eLife_2025/figures/data/a202e03/figure_3_fim_*_nsim_10000_*_battery_sim.csv
+% (full matrices, probit=mean/statistic=value/operation=probit, eigendecomposed in the script; the
+% emitted spectra are NOT used, because where F fails strict positive semidefiniteness the
+% congruence helpers emit a zero matrix — jobs_to_be_run.md, Job 2, aviso 1)
+% src: projects/eLife_2025/ops/slurm/dispatch_figure_3_fisher_only.sh (seed 20260814, h_rel 1e-5)
 
-Where the two constructions can be compared on the runs the body does use, they agree for the
-members that condition on the past and they do not agree for the one that does not: the analytic
-form reproduces the differenced one to within about two per cent in size for \texttt{R},
-\texttt{MR} and \texttt{IR} over the measured range, while for \texttt{NR} it over-states the
-information as channels are added at low instrumental noise, by factors of $1.26$ and $1.60$ at
-$N_{\mathrm{ch}}=10^{3}$ and $10^{4}$, and misses by an amount that varies across directions by
-$1.9$ and $3.1$ there. Neither least-squares arm carries the comparison, since the sweep that
-formed the differenced Fisher was not run for them.
-% src: projects/eLife_2025/figures/figure_4_source_data/figure_4_source_data_gaussian_fisher.csv, pool anchor (medians over the seven intervals; the algorithms present are macro_NR, macro_R, macro_MR, macro_IR and the superseded macro_NMR, at noise 0.1, 1 and 10 only; nonlinearsqr, nonlinearsqr_g and macro_INR are absent from the file entirely, the _G sweep being Gaussian-only so the differenced Fisher is never formed there). Medians in size: R 1.011, MR 1.020, IR 1.000, NR 1.010 overall but 1.007/1.010/1.264/1.602 by channel count at noise 0.1. The single worst cell of the file, NR at N_ch 1e4 and interval 1, reads 11.5 and is the ill-conditioned corner Figure 4 greys, excluded from the sentence above for the same reason.
-% src: projects/eLife_2025/ops/local/figure_3_mle.macroir:151-157 (numerical Fisher; h_rel injected)
-% src: projects/eLife_2025/ops/slurm/dispatch_figure_3.sh:98 (H_RELS default 1e-5)
+\begin{center}
+\begin{tabular}{lrrrr}
+\hline
+member & $N_{\mathrm{ch}}=10$ & $10^{2}$ & $10^{3}$ & $10^{4}$ \\
+\hline
+LSE  & $0.71$ & $0.78$ & $0.78^{\dagger}$ & $0.55^{\dagger}$ \\
+ILSE & $0.71$ & $0.78$ & $0.78$ & $0.71$ \\
+NR   & $0.91^{\dagger}$ & $0.99^{\dagger}$ & $1.16^{\dagger}$ & $1.36^{\dagger}$ \\
+INR  & $1.00$ & $1.00$ & $1.00$ & $1.00$ \\
+R    & $0.91^{\dagger}$ & $0.87$ & $0.94^{\dagger}$ & $0.94^{\dagger}$ \\
+MR   & $0.90^{\dagger}$ & $0.87^{\dagger}$ & $0.91$ & $0.91$ \\
+VR   & $1.02$ & $0.94$ & $0.95$ & $0.94$ \\
+IR   & $0.99$ & $1.00$ & $1.00$ & $1.00$ \\
+\hline
+\end{tabular}
+\end{center}
+
+$^{\dagger}$one or more of the seven intervals carries an indefinite differenced Fisher and is
+excluded from that median; for \texttt{NR} at $N_{\mathrm{ch}}=10^{4}$ the three coarsest
+intervals are indefinite and the retained maximum is $1.97$ at $\widetilde{\Delta}=0.1$. The two
+least-squares rows are $4\times4$ over the rates and the amplitude pair the fit estimates; every
+other row is $6\times6$ (Methods).
+
+Three readings. For \texttt{INR} and \texttt{IR} the two constructions coincide within one per
+cent at every channel count, so for the calibrated member and its non-recursive sibling the
+anchor question closes. For \texttt{NR} the two part company as channels are added: re-anchoring
+\texttt{NR}'s distortions on the differenced Fisher divides them by about the median above, so
+its largest reported factors at $10^{4}$ channels narrow by roughly a third without being
+overturned, and at the coarsest intervals the differenced Fisher is not positive at all, which is
+the same ill-conditioned corner the body figure greys. For both least-squares arms the entries
+sit near $0.7$--$0.8$, so re-anchoring would enlarge their distortions by about $1.3$: the
+least-squares verdict in the body is conservative under the anchor. At ten channels the
+differenced construction itself is noisy (single-interval entries for \texttt{IR} range $0.50$
+to $1.38$ around a median of $0.99$), which is finite-difference conditioning at small
+information, not structure.
+
+The earlier battery in data directory \texttt{433ed13}, superseded and quoted nowhere in the
+body, gave the same picture on the four members it carried (medians $1.011$ for \texttt{R},
+$1.020$ for \texttt{MR}, $1.000$ for \texttt{IR}; \texttt{NR} rising $1.26$ to $1.60$ across the
+two largest channel counts at this noise); it lacked both least-squares arms and \texttt{INR}
+entirely, which is what the run above repairs.
+% src: projects/eLife_2025/figures/figure_4_source_data/figure_4_source_data_gaussian_fisher.csv (pool anchor, medians over intervals)
 
 \end{document}

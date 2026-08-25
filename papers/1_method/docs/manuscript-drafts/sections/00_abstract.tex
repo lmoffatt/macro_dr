@@ -1,5 +1,5 @@
 \begin{abstract}
-Some ion channel mechanisms leave a mark in the record; as inferences get finer, the claims leave none. The flip state of P2X$_2$ showed up as a delay before the macroscopic current rose, with no model needed to see it. The asymmetric activation reported from the same recordings two decades later rests on ratios of evidence, and dropping the recursion from the likelihood put the top-ranked non-conformational alternative first. Where likelihood approximations break, and by how much, was never measured. The diagnostics are then classical: for a correctly specified likelihood the score, the log-likelihood's gradient, averages to zero at the true parameters and its covariance equals the Fisher information reported. We tested eight likelihoods, from standard least squares on the mean current, which leaves the correlated gating fluctuation unmodelled, to a filter conditioning each interval average on both ends. The sweep runs over channel number, noise and interval in a two-state scheme, ten thousand exact simulations of the process they approximate at every point measured. Those that leave the correlation unmodelled misreport their information by an order of magnitude wherever the residual retains enough memory, and no rescaling repairs it, because the distortion has directions in parameter space. The filter conditioning on both ends is calibrated over almost the whole plane, with departures growing toward few channels and low noise. No region of the measured plane gives both information about the unitary current and a trustworthy least-squares interval, the two boundaries one to three decades of noise apart.
+Some ion channel mechanisms leave a mark in the record that does not depend on fitting a model: the flip state of P2X$_2$ showed up as a delay before the macroscopic current rose. The asymmetric activation reported from the same recordings two decades later leaves no such mark: it rests on evidence ratios, and a published control without the recursion put a non-conformational alternative first. Where likelihood approximations distort what they report, and by how much, was never measured. The diagnostics are classical: for a correctly specified likelihood the score, the log-likelihood's gradient, averages to zero at the true parameters and its covariance equals the reported Fisher information. We tested eight likelihoods, from least squares on the mean current, which leaves the correlated gating fluctuation unmodelled, to a filter conditioning each interval average on both ends. The sweep runs over channel number, noise and interval in a two-state scheme, ten thousand exact simulations of the process they approximate at every point. Those that leave the correlation unmodelled misreport their information, and with it their error bars, by an order of magnitude wherever the residual retains memory, and no single rescaling repairs it, because the distortion has directions in parameter space. The likelihood without the recursion is among them. Neither partial correction improves on the likelihood it corrects, and a white residual does not certify calibration. The filter conditioning on both ends is calibrated over almost the whole measured range, with departures growing toward few channels and low noise. No measured region gives both information about the unitary current and a trustworthy least-squares error bar, the two boundaries one to three decades of noise apart.
 \end{abstract}
 
 
@@ -10,6 +10,56 @@ Some ion channel mechanisms leave a mark in the record; as inferences get finer,
 % recommendations on deleting them. Two of the three then criticised numbers that appear
 % only inside those comments. Provenance is kept, keyed by sentence, in section 2.
 % =========================================================================================
+%
+% 1n. WHAT THE 2026-08-25 VERSION CHANGES (out of numeric order so it is read first; the
+%     sections below describe earlier versions). 274 words, was 258 by wc. Source: a
+%     four-lens adversarial panel (eLife triage editor, hostile statistical referee,
+%     electrophysiologist, compression surgeon; workflow wf_bf3b034d-0c0, 2026-08-25) run
+%     after the session that settled the conclusion order as assay grammar: sensitivity
+%     control (least squares must fail where memory exists, and does) -> non-monotonicity ->
+%     certification -> map. The deliverable-trio closer (tool + test + R/Python) was
+%     proposed and REJECTED by all four lenses: closing on a product reclassifies the paper
+%     as another filter paper beside Munch 2022 (rules 5, 8; the arc note 1f(iv) already cut
+%     once). The trio lives in the cover letter, the Discussion close, the impact statement
+%     and Code Availability, never here.
+%     (i)   Opener spliced: the "as inferences get finer, the claims leave none" clause is
+%           DISSOLVED (pronoun tangle, category slip: claims do not leave marks); the frame
+%           and the flip-state instance fuse with a colon; "no such mark" moves to sentence
+%           2 where its antecedent is 15 words away. The model-free qualifier is restored
+%           from 01_introduction's own formulation.
+%     (ii)  "dropping the recursion from the likelihood put the top-ranked non-conformational
+%           alternative first" -> "a published control without the recursion put a
+%           non-conformational alternative first". Fixes two referee reads: the agentless
+%           gerund could mean THIS study recomputed evidences (05_discussion disclaims it),
+%           and "top-ranked ... first" was self-contradictory cold. "published" does the
+%           attribution; "top-ranked" dropped.
+%     (iii) "break" -> "distort what they report" (rule 3; echoes the title's verb).
+%     (iv)  NEW: "The likelihood without the recursion is among them." The verdict that
+%           closes the P2X2 loop. OWNERSHIP, corrected 2026-08-25 same day it was misstated
+%           here: Methods ALREADY owns the identification (06_methods.tex:314-316, "INR is
+%           the member published as MacroINR ... where it served as the control", % src
+%           _program/decisions.md sec.2, settled 2026-07-29; the 2025 paper itself publishes
+%           the names MacroIR/MacroINR). The Discussion's verdict sentence was INSTALLED the
+%           same day, between its bridge and its concession (05_discussion.tex:9), with the
+%           regime clause beside it. The A.11 [VERIFY] (av=2/av=1 no-update coincidence)
+%           gated nothing here and RAN anyway, closing byte-identical on the reference
+%           binary (tmp/verify_av2_no_update.macroir, 2026-08-25); the Methods caption now
+%           carries the deposit clause with that run as a % src.
+%     (v)   NEW: "Neither partial correction improves on the likelihood it corrects, and a
+%           white residual does not certify calibration." Both owned by Results prose
+%           (04_results.tex "Neither partial ..." and "The residual a member leaves white is
+%           no certificate").
+%     (vi)  "and with it their error bars" added (the electrophysiologist lens's single
+%           request: translate information to error bars once); "no rescaling" -> "no single
+%           rescaling" (the anisotropy leaves the directional correction open, which is the
+%           sandwich); "least-squares interval" -> "least-squares error bar" (collision with
+%           the acquisition interval); "plane" -> "measured range"/"measured region" (three
+%           axes are swept; "plane" made the electrophysiologist ask which two);
+%           "the Fisher information reported" -> "the reported Fisher information";
+%           "standard" and "at every point measured"'s trailing word dropped.
+%     STILL OPEN AGAINST THIS VERSION: the 93/70/31 recount (04_results.tex:733) is now
+%     abstract-load-bearing through "calibrated over almost the whole measured range"; and
+%     the two-state scope objection remains unanswered here (19 words if it comes back).
 %
 % 1. WHAT THIS VERSION CHANGES, and why (2026-07-29b). 220 words.
 %

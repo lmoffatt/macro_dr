@@ -100,31 +100,13 @@ currently in both.
    there: `figures/paper_both/Figure_2.pdf`, 1.08 MB, rendered 2026-08-03 13:21, which is newer than
    the `paper_1` copy of 2026-07-22. Drop any `PENDING-FIG2` marker that survives in the `.tex`.
 
-   **The real graphics blocker is a different one, and it is not about numbering.** The `.tex` still
-   addresses the PRE-MERGE supplement set. Nine of nineteen referenced graphics are missing from
-   `paper_both`, all of the form `Figure_4_supplement_N`, and the numbered set lives in `paper_1`,
-   the folder from before the 2026-07-23 merge. `paper_both` carries a different set under
-   descriptive names (`_coverage`, `_eigendirections`, `_lag_kappa`, `_mahalanobis_qq`,
-   `_sample_corr`, `_se_kappa`, `_standard_error`) and not one numbered supplement.
-
-   **It runs in both directions, which is the part that matters.** Five `% src:` comments in the body
-   cite `figure_4_supplement_{1,2,3,5,8}.html` for numbers that are printed in Results and Discussion.
-   Those analyses are in `paper_1` too, and supplement 8 is in neither: it is in
-   `figures/in_progress/figure_4_supplements_20260731/`. So the provenance of five quoted numbers
-   currently points at files the merged paper does not contain. The numbers are not in question; the
-   trail to them is broken.
-
-   **Luciano's rule for what to include, 2026-08-04:** a figure supplement goes in the paper if the
-   paper uses data from it, and not otherwise. Applying it against the `% src:` comments: KEEP
-   supplements 1, 2, 3, 5 and 8, plus `_coverage`, which is cited as a source and is not currently
-   included as a figure. DROP the references to 4, 6, 7, 9, 10 and 11, which no number in the text
-   draws on. **Dropping means removing the `\figsupp` line only. The files stay on disk, because they
-   may be used later.**
-
-   What is left to decide for the five that stay: whether each `paper_1` analysis is still valid
-   after the merge, since the body roster changed, or whether its `paper_both` equivalent is one of
-   the descriptively named notebooks. That needs the old and new `.Rmd` compared for what they
-   compute; it cannot be settled from filenames.
+   **The "real graphics blocker" that stood here is CLOSED, stale, verified 2026-08-25.** The
+   supplement set was renumbered per parent figure (`Figure_2_S1`, `Figure_3_S1..S3`,
+   `Figure_4_S1..S4`, `Figure_5_S1..S3`) and every one of the eighteen graphics the `.tex`
+   references exists in `paper_both`, rendered between 2026-08-05 and 2026-08-12 (checked file by
+   file against the `\includegraphics` set). The pre-merge `Figure_4_supplement_N` naming this
+   entry described no longer appears in any section file. If a `% src:` trail to an old
+   `figure_4_supplement_N.html` resurfaces, that single trail is what needs repair, not this set.
 3. ~~**LSE at n_sims 1000** against the likelihood arm at 10⁴.~~ **CLOSED 2026-08-04, the blocker was
    stale.** Checked on disk: `figures/data/0ffbda7/` holds 99 least-squares and `nonlinearsqr` files
    and every one of them is `nsim_10000`. The only `nsim_1000` least-squares cells are eight files in
@@ -134,8 +116,19 @@ currently in both.
    measured anisotropy of `ILSE` is 3.17 to 3.22 across four channel counts, while the low-n_sims
    inflation of that statistic is about 1.15 against an estimation floor of 1.043, so the artifact is
    negligible next to the signal even where it applies.
-4. **Telegraph noise.** The Discussion asserts MacroIR fails there. Theory names the regime, but no
-   simulator capability and no run exists on any freeze commit. Either measure it or demote it to an
-   argument with a citation, and say which.
-5. **`check.sh` tests `N_CAP >= 5`.** The figure set is six. Until that is raised the done-oracle stays
-   green on a manuscript short one body figure.
+4. ~~**Telegraph noise.**~~ **CLOSED as stale, 2026-08-25:** the word and the assertion no longer
+   appear anywhere in `05_discussion.tex` (grep over the non-comment text). The claim was removed
+   rather than measured; if it is ever wanted back, it re-enters as an argument with a citation,
+   never as an assertion, and this entry does not reopen.
+5. ~~**`check.sh` tests `N_CAP >= 5`.**~~ **CLOSED 2026-08-25.** The script already tested `>= 6`
+   when this entry still said 5; the body set is seven (`Figure_1`..`Figure_7`) and the threshold
+   was raised to `>= 7` in the same pass, so the done-oracle no longer stays green one figure short.
+6. **The 2026-08-25 coherence pass, so its load-bearing points are findable from here.** The
+   abstract was regenerated (note 1n in `00_abstract.tex` lists every change and its reason); the
+   Discussion carries the P2X2 verdict sentence and the regime clause; the Introduction's Comm Biol
+   paragraph was rewritten against a full read of the 2025 paper; Results' 93/70/31 sentence moved
+   to the shared sub-grid (97/78/37) and its cell-set defect closed; item (f) closed with the
+   fisher_only run (`figures/data/a202e03`), its table in `supplementary_file_1.tex` S1.5.
+   **Still open after the pass:** the h-step robustness cell for NR's differenced-Fisher number
+   (`jobs_to_be_run.md`, Job 2, aviso 5 — the number is now printed, so the cell is owed), and the
+   abstract's two-state objection (note 1n's closing line).
