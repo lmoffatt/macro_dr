@@ -11,11 +11,23 @@ misma lane. Los dos usan `dispatch_figure_3_fisher_only.sh`, que NO ajusta la nu
 era lo que hacía que estas corridas tardaran días y sólo alimentaba la capstone empírica, que ya
 está medida en la lane gaussiana.
 
+**Estado al 2026-08-25: LOS DOS JOBS CORRIERON y los datos están bajados en
+`figures/data/a202e03/` (stems `figure_3_fim_*`; OJO: los archivos del smoke de VR a nsim 8
+conviven en el mismo directorio, filtrar a `nsim_10000`).** El Job 2 ya fue consumido: la deuda de
+`04_results.tex` ítem (f) se cerró el 2026-08-25 con `tmp/fim_vs_gaussian_table.py` → tabla en
+`supplementary_file_1.tex` S1.5 + una oración en Results (vehículo: tabla suplementaria, decisión
+de Luciano). El cableado del Rmd (`figure_4_gaussian_vs_numeric_fisher.Rmd`) sigue pendiente y es
+opcional: el paper ya no lo necesita. **Queda OWED el aviso 5 del Job 2** (celda de robustez en h
+con `H_RELS="1e-4 1e-5 1e-6"`): el número de NR ya está impreso en S1.5 y Results, así que la
+celda pasó de "conviene" a deuda. El Job 1 bajó con una diferencia contra lo pedido: micro a
+N_ch 10 corrió a nsim **5000**, no 10000 (N_ch 5 sí a 10000); su consumo (figure_6 micro) sigue
+pendiente.
+
 ---
 
 ## Job 1 — micro numeric Fisher (sample distortion anclada en Fisher), N_ch 5 y 10
 
-**Estado:** PENDIENTE (abierto 2026-07-22).
+**Estado:** CORRIDO y BAJADO (2026-08-25, ver el bloque de estado arriba); consumo pendiente. Abierto 2026-07-22.
 
 **Por qué es necesario.**
 En `Figure_6_micro_macro_linear_sample.pdf` (Gaussian sample distortion), micro_IR se dispara en
@@ -75,7 +87,7 @@ celda macro N_ch 5) a la carpeta de esta corrida.
 
 ## Job 2 — Fisher numérico contra Gaussiano, roster completo, una sola lane
 
-**Estado:** PENDIENTE (abierto 2026-08-14).
+**Estado:** CORRIDO, BAJADO y CONSUMIDO (2026-08-25, ver el bloque de estado arriba); queda el aviso 5 como deuda. Abierto 2026-08-14.
 
 **Por qué es necesario.**
 `04_results.tex:35-62`, ítem (f), lo declara deuda y aclara que es resultado, no limpieza. La
@@ -123,16 +135,24 @@ eligiendo una de las tres formas que el archivo lista (oración con números, ta
 figura suplementaria).
 
 **Avisos.**
-1. **De dónde se lee la no positividad.** Del espectro
-   (`Eigenvalue_Spectrum<Likelihood_Gaussian_Fisher_Distortion>`), que trae los autovalores negativos
-   incluidos (`legacy/lapack_headers.h:3047-3057`, vía el fallback lenient de `compute_psd_decomp`).
-   NUNCA del `Min_Eigenvalue<...>`: ese escalar sale de `compute_distortion_scalars`
-   (`src/core/likelihood.cpp:591-595`), que se queda sólo con los autovalores por encima de la
-   tolerancia de retención, así que nunca devuelve un negativo y se lee como un piso cerca de cero
-   justo donde la matriz es indefinida. El comentario de `include/macrodr/cmd/likelihood.h:1012` llama
-   a ese escalar "the key FIM_sim indefinite? readout" y no lo es. La inercia sí es legítima de leer
-   sobre la distorsión: G_b^{-1/2}·F_b·G_b^{-1/2} es una congruencia por una simétrica definida
-   positiva, así que por Sylvester tiene exactamente tantos negativos como F_b.
+1. **De dónde se lee la no positividad. CORREGIDO 2026-08-15 contra los primeros archivos que
+   bajaron; lo que decía acá antes era falso.** No se lee de ningún espectro emitido. Donde F_b no
+   pasa el test estricto de PSD, los helpers de congruencia cortocircuitan y devuelven una matriz de
+   CEROS, así que `Eigenvalue_Spectrum_Likelihood_Gaussian_Fisher_Distortion` sale todo en cero y los
+   escalares en NaN (abierto y verificado en NR N_ch 1e4, Δ/τ=1: las seis filas del espectro en 0.0,
+   con `bootstrap_count` 100). El argumento de Sylvester es correcto y no sirve: la congruencia que se
+   emite no es la de F_b, es la de la matriz retenida. Se lee **eigendescomponiendo la matriz
+   emitida**: `Probit_statistics_Likelihood_Numerical_Fisher_Information` trae F_b entera
+   (`value_row`/`value_col`, `probit=mean`, `statistic=value`). Script: `tmp/eig_fb.py`. Bandera
+   dentro del archivo, cuando no se quiere sacar la matriz:
+   `Effective_Rank_Likelihood_Fisher_Covariance` cae por debajo de p mientras
+   `Effective_Rank_Gaussian_Fisher_Covariance` se queda en p (2 contra 6 en esa celda); no distingue
+   "negativo" de "bajo la tolerancia", por eso la matriz es la fuente honesta. Y sigue valiendo: NUNCA
+   el `Min_Eigenvalue<...>`, que sale de `compute_distortion_scalars`
+   (`src/core/likelihood.cpp:591-595`) y se queda sólo con los autovalores por encima de la tolerancia
+   de retención, así que nunca devuelve un negativo. El comentario de
+   `include/macrodr/cmd/likelihood.h:1012` llama a ese escalar "the key FIM_sim indefinite? readout"
+   y no lo es.
 2. **Por réplica exagera.** λ_min es cóncava, así que E[λ_min(F_i)] ≤ λ_min(E[F_i]). El pipeline ya
    hace lo correcto (`compute_F_b` promedia sobre grabaciones antes de la congruencia), pero no hay
    que reportar nunca "el X% de las réplicas dio indefinida".

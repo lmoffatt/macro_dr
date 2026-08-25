@@ -21,9 +21,13 @@ WHAT IT IS. Two panels over the same plane, five members, one column each, 10 co
 Likelihood_Gaussian_Fisher_Distortion = inv(sqrt(G_b)) * F_b * inv(sqrt(G_b)), with G_b the analytic
 Gaussian Fisher and F_b the finite-difference one:
 
-  A  size    exp(mean(log lambda)), the typical factor by which the analytic formula misses. Below
-             1 it understates the information the differenced likelihood carries, above 1 it
-             overstates it.
+  A  size    exp(mean(log lambda)), the typical factor by which the analytic formula misses.
+             DIRECTION CORRECTED 2026-08-17, it was stated backwards here: F_b sits in the MIDDLE of
+             the congruence (likelihood.cpp:3512-3518), so lambda > 1 means the differenced Fisher
+             carries MORE information than the analytic formula reports, i.e. the analytic
+             UNDERSTATES; below 1 the analytic OVERSTATES. Checked numerically rather than argued:
+             (det F_b / det G_b)^(1/p) reproduces this scalar cell by cell (tmp/check_direction.py).
+             It matters now: least squares is the first member to come out BELOW 1.
   B  shape   exp(sd(log lambda)), whether it misses by the same factor in every direction. At 1 the
              analytic Fisher is the numerical one up to a scalar and could be rescaled; above 1 the
              two matrices differ in a way no rescaling reaches.

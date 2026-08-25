@@ -19,19 +19,27 @@
 # be. What is lost: Cov_emp, the empirical capstone and the Optimum_Fisher_Distortion
 # family. The empirical validation is already measured on the gaussian lane.
 #
-# TRAP 1 — WHERE THE NON-POSITIVITY IS READ. F_b at theta_sim can be indefinite; that
-# is a reported finding, not an accident. It must be read off
-# Eigenvalue_Spectrum<Likelihood_Gaussian_Fisher_Distortion>, which carries the FULL
-# spectrum including negatives (lapack_headers.h:3047-3057, via the lenient fallback
-# in compute_psd_decomp when the strict PSD test fails). It must NOT be read off
-# Min_Eigenvalue<...>: that scalar comes from compute_distortion_scalars
+# TRAP 1 — WHERE THE NON-POSITIVITY IS READ. CORRECTED 2026-08-15 against this lane's
+# first outputs; the note that stood here was wrong, and wrong in the direction that
+# produces a confident zero. F_b at theta_sim IS indefinite over a whole region (NR:
+# Δ/τ = 1 and 0.5 at every N_ch, reaching 0.2 at N_ch 1e4), and NO emitted spectrum
+# shows it. When the strict PSD decomposition of F_b fails, the congruence helpers
+# short-circuit on W.empty and return a ZERO matrix, so
+# Eigenvalue_Spectrum<Likelihood_Gaussian_Fisher_Distortion> reads as all zeros and
+# the scalar suite NaN-fills. The lenient fallback populates the spectrum of the
+# matrix being decomposed, which is not F_b.
+# READ IT FROM THE MATRIX: Probit_statistics_Likelihood_Numerical_Fisher_Information
+# carries F_b itself (value_row/value_col, probit=mean, statistic=value), and
+# eigendecomposing it offline is what gives lambda_min. See tmp/eig_fb.py.
+# IN-FILE FLAG, when the matrix is not at hand: Effective_Rank_Likelihood_Fisher_
+# Covariance drops below p while Effective_Rank_Gaussian_Fisher_Covariance stays at p
+# (2 against 6 for NR at N_ch 1e4, Δ/τ=1). It cannot separate "negative" from "below
+# tolerance", which is why the matrix is the honest source.
+# STILL NEVER Min_Eigenvalue<...>: that scalar comes from compute_distortion_scalars
 # (likelihood.cpp:591-595), which keeps only eigenvalues above the retention
 # tolerance, so it never returns a negative and reads as a floor near zero exactly
 # where the matrix is indefinite. The code comment on Min_Eigenvalue<Optimum_Fisher_
 # Distortion> (cmd/likelihood.h:1012) calls it the indefiniteness readout; it is not.
-# The inertia IS legitimate to read off the distortion: G_b^-1/2 F_b G_b^-1/2 is a
-# congruence by a symmetric positive definite matrix, so by Sylvester it has exactly
-# as many negative eigenvalues as F_b.
 #
 # TRAP 2 — PER-REPLICATE INDEFINITENESS OVERSTATES IT. lambda_min is concave, so
 # E[lambda_min(F_i)] <= lambda_min(E[F_i]). Measured 2026-06-10 (dirac, nsim 1024):

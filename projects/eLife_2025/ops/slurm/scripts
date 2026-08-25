@@ -170,6 +170,7 @@ N_ALGO=nonlinearsqr NCHS=10 N_SIMS=1000 N_NOISE=0.1 \
 GROUP_SIZE="1 100" H_RELS="1e-4 1e-5 1e-6" \
 ./dispatch_figure_3_local.sh
 
+MEM=96G TIME=4-00:00:00 CPUS=32 N_ALGO="micro_IR micro_R" NCHS="5 10" N_SIMS="10000 5000" N_NOISE="0.1 0.1" projects/eLife_2025/ops/slurm/dispatch_figure_3_fisher_only.sh dirac
 
 
 

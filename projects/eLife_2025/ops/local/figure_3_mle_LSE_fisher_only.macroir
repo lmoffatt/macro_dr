@@ -11,10 +11,13 @@
 # configuration is the one the manuscript quotes for the least-squares distortion.
 # Everything else, including the header of the sibling, applies verbatim — read the
 # two traps there before touching either file:
-#   TRAP 1: the non-positivity of F_b at theta_sim is read off
-#           Eigenvalue_Spectrum<Likelihood_Gaussian_Fisher_Distortion> (full spectrum,
-#           negatives included), NEVER off Min_Eigenvalue<...>, which keeps only the
-#           eigenvalues above the retention tolerance and so never returns a negative.
+#   TRAP 1 (CORRECTED 2026-08-15): the non-positivity of F_b at theta_sim is read by
+#           eigendecomposing the emitted matrix
+#           Probit_statistics_Likelihood_Numerical_Fisher_Information offline. NO
+#           emitted spectrum shows it: where F_b fails the strict PSD test the
+#           congruence returns zeros, so the distortion spectrum reads as all zeros
+#           and its scalars NaN-fill. Never off Min_Eigenvalue<...>, which keeps only
+#           the eigenvalues above the retention tolerance.
 #   TRAP 2: per-replicate indefiniteness overstates it (Jensen; lambda_min is concave).
 #           compute_F_b already averages over recordings, so the emitted matrix is the
 #           mean. Never report a fraction of indefinite replicates.

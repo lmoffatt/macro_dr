@@ -422,11 +422,28 @@ Comm Biol source add[s] it gated on `variance` alone: recursion governs the stat
 predicted variance… Always the TOTAL form gvar_i = gsqr_i - gmean_i^2"* — and `legacy/qmodel.h:7525`,
 *"The av=1 arm already matches INR digit for digit."*
 
-**The one open link `[VERIFY]`.** SNR ran at `averaging=2`; INR is `averaging=1`.
+**SCOPE OF THE `[VERIFY]` BELOW, added 2026-08-25 because this question kept being re-opened as
+if it gated the identification. It does not.** What is SETTLED and does not depend on it: the
+identification itself (SNR arm = the published MacroINR control; the 2025 paper publishes the names
+MacroIR/MacroINR in its own text; the 414-file flag tally above shows the two arms differ only in
+`recursive`; the manuscript owns it at `06_methods.tex:314-316` with `% src` to
+`_program/decisions.md` sec.2, settled 2026-07-29). What the `[VERIFY]` guards is only the
+digit-for-digit strength of the deposited av=2 expression against the current av=1 INR (the extra
+`gSg` term below against the no-update marginalization argument at `legacy/qmodel.h` ~4425). No
+claim in the eLife manuscript rests on that digit-for-digit equivalence. Run it if it ever becomes
+load-bearing; do not re-open the identification on its account.
+
+**The one open link — VERIFIED 2026-08-25, closed.** SNR ran at `averaging=2`; INR is `averaging=1`.
 `legacy/qmodel.h:4425-4427` asserts the two coincide when there is no update (*"gmean_ij can only enter
-through its row marginal gmean_i"*), but the deposited code writes different expressions: the av=2 arm
+through its row marginal gmean_i"*), while the deposited code writes different expressions: the av=2 arm
 adds `P_mean·(gtotal_ij ⊙ gmean_ij)·u` to `gSg` (`qmodel.h:3214-3216`) that the av=1 arm does not have
-(`qmodel.h:3247`). One interval on the reference binary settles it.
+(`qmodel.h:3247`). Settled by measurement: `tmp/verify_av2_no_update.macroir` on the reference binary
+(`macrodr-reference-0ffbda7`, sha in its PROVENANCE.md) evaluated the non-recursive member at
+`averaging=1` and `averaging=2` (variance total, same simulation, the figure_1 protocol: 6 intervals,
+500 samples); the two diagnostic dumps are **byte-identical** (`cmp -s tmp/verify_av2_diag_av1.csv
+tmp/verify_av2_diag_av2.csv`). The extra gSg term vanishes without the update, as the qmodel comment
+asserts, so deposited SNR ≡ this family's INR digit for digit. The 06_methods.tex members-table
+caption now carries the identification with this run as one of its `% src` lines.
 
 **Consequence for the paper.** The integrated-measurement treatment at macroscopic scale was already
 published, by us, in Comm Biol 2025, under a name that does not announce it. The Part I claim is a
