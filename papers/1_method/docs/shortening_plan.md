@@ -845,8 +845,27 @@ definitions and must not be mixed with it.
 | 2 | captions and figure-supplement legends | 19 | 30,242 | `f63671a` |
 | 3 | Discussion | 10 | 29,753 | `95d2dd1` |
 | 4 | Results | 22 | 29,356 | `ecd9617` |
-| 5 | the likelihood family, Abstract and Introduction | 26 | see commit | delegated |
-| 6 | Appendices 1 to 3 | 14 | see commit | delegated |
+| 6 | Appendices 1 to 3 | 14 | 27,789 | `9d48a22` |
+| 5 | the likelihood family, Abstract and Introduction | 26 | 27,910 | `769a8a7` |
+
+**Result.** Whole document 33,285 -> 27,910 words by `check.sh`; main text 13,088 -> 11,313 by
+`wordcount.py`, which takes it from 1.14x Munch (the longest comparable article in the 413-article
+survey) to 0.98x, and from 1.44x the p95 to 1.25x. Rendered: **69 pages -> 60**, with zero overfull
+vertical boxes, where the plan projected ~55. The gap to 55 is the two page-saving items that are
+figure work rather than text: merging Figure 3's supplements 1 and 2, and the reflow that follows.
+`check.sh` ends at 9 pass, 2 fail (both pre-existing: LINT-SRC and the index), 1 warn (length,
+pending D-1).
+
+**What passes 5 and 6 owed and paid.** The family section's MOVE of the equal-variance derivation
+had no destination inside that agent's remit and was left preserved-but-commented at the removal
+site; it is now landed in Methods' natural-units passage. Had it stayed commented, Figure 5's ratio
+axis would have lost the equation it is a consequence of.
+
+**A defect the pass created and a check that now catches it.** Compressing prose by commenting it
+out swallowed the opening words of three sentences, which compile silently and print as sentences
+with no subject. The same defect already existed twice in HEAD, once from 2026-08-13 and once from
+the previous day's correction pass, for five in total. `papers/_program/swallowed_sentences.py` finds
+all five signatures and runs as `check.sh` item 12; all five are repaired and the check is green.
 
 **Destinations created by pass 1.** `supplementary_file_1.tex` gains S1.6 (the members as
 dispatched: flags, data keys, cells, and the deposit verification of INR = MacroINR), S1.7 (symbols
