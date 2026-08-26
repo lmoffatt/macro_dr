@@ -97,7 +97,15 @@ error on a confidence interval & $61\%$ & $19\%$ & $8.3\%$ & $3.9\%$ & $1.5\%$ &
 \end{tabular}
 \end{center}
 
-Four properties of that table matter more than the numbers in it. From $f_c\Delta=1$ upward the
+% COMPRESSED 2026-08-26, item "COMPRESS ~60 words, acquisition-kernel subsection" of
+% docs/shortening_plan.md. Two pieces of rhetorical scaffolding are gone, the opening "Four
+% properties of that table matter more than the numbers in it" and the closing "The two concessions
+% are one concession"; all four numeric facts the item protects are untouched, and the surviving
+% statement that the residue lands in the instrumental-noise partition where the Discussion already
+% argues an unmeasured departure of the noise model lives now carries the join by itself. Actual
+% saving ~21 words, not the ~60 the item estimates: the item names only these two sentences as
+% removable and everything else in the paragraph is one of the protected facts.
+From $f_c\Delta=1$ upward the
 deficit is $0.147/(f_c\Delta)$ and $\rho_1$ is $0.075/(f_c\Delta)$, while $\rho_2$ and every longer
 lag are zero to four decimals: the residue is a nearest-neighbour effect of known size. The total is
 conserved, $\mathrm{Var}+2\sum_k\mathrm{Cov}_k=S/\Delta$ to six decimals at every setting, forced by
@@ -118,8 +126,7 @@ because unit gain at zero frequency preserves the integral of an autocovariance 
 block-averaged variance of a short-correlated component depends on that integral alone to leading
 order. At $f_c\Delta=5$ the white term loses $2.94\%$ and a gating term with correlation time
 $\Delta$ loses $0.11\%$, a factor of $27$, so the residue lands in the instrumental-noise partition,
-which is where the Discussion already argues an unmeasured departure of the noise model lives. The
-two concessions are one concession.
+which is where the Discussion already argues an unmeasured departure of the noise model lives.
 
 What does not scale with the group is the interval holding the concentration jump: group delay plus
 rise displace and smear the transient by about $0.69/f_c$ at four poles, a fixed time rather than a
@@ -304,16 +311,25 @@ $\mathbf{F}_2$ are the strictly upper blocks of the exponentials of the augmente
 \end{equation}
 of sizes $2K\times 2K$ and $3K\times 3K$, whose exponentials are block triangular with
 $e^{\mathbf{Q}\Delta}$ on the diagonal \citep{vanloan1978computing}, so that
-$e^{\mathcal{Q}_3\Delta}$ on its own returns the transition matrix and both moments. It
-identifies the two objects with no spectral machinery, and where no reliable eigensolver is
-at hand it is the construction to use. The route taken here is the spectral one, and the
-reason is the derivatives rather than the exponential. This paper propagates the derivative
+$e^{\mathcal{Q}_3\Delta}$ on its own returns the transition matrix and both moments with no
+spectral machinery, and where no reliable eigensolver is at hand it is the construction to
+use. The route taken here is the spectral one because this paper propagates the derivative
 of the log-likelihood with respect to the kinetic parameters through every object the
 filter builds, and the eigenvalues and eigenvectors of $\mathbf{Q}$ move with those
-parameters by a first-order perturbation of the same decomposition, in closed form, while a
-route built on $e^{\mathcal{Q}_3\Delta}$ carries that derivative payload through an object
-of side $3K$ whose nine blocks hold three distinct matrices. Every number reported in this
-paper comes from the spectral route.
+parameters in closed form, by a first-order perturbation of the same decomposition. Every
+number reported in this paper comes from the spectral route.
+% COMPRESSED 2026-08-26, item "COMPRESS ~85 words, Van Loan alternative" of
+% docs/shortening_plan.md. Kept, as the item's residue requires: Eq. augmented with its
+% vanloan1978computing citation, the one sentence that it returns the transition matrix and both
+% moments with no spectral machinery and is the construction to use where no reliable eigensolver
+% is at hand, and the one sentence that the spectral route was chosen for the closed-form parameter
+% derivatives, with every reported number coming from it. Discussion's "the derivative of the
+% spectral reconstruction inside it (Appendix 1)" still lands on that sentence.
+% Cut: the 3K-block derivative-payload tour ("an object of side 3K whose nine blocks hold three
+% distinct matrices") and the "the reason is the derivatives rather than the exponential" preamble.
+% NOTE for whoever reads the caveat comment below: with the payload clause gone the text now makes
+% NO claim about the cost of the augmented route at all, which is a stronger form of what that
+% caveat asks for, so the caveat stands unviolated and is kept for the record.
 % src: theory/macroir/notes/Gmean_ij_gvarij/gmean_ij_gvar_by_blocks.tex (the block derivation and
 % W = 2F_2) ; legacy/parameters_derivative.h:1449-1507 (the analytic eigen derivative the last
 % sentence refers to: dlambda = diag(VL^T dQ VR) and dVR = VR*Omega with Omega_jk = G_jk/(l_k - l_j),
@@ -480,10 +496,15 @@ read on the larger space.
 
 Conditioning on the pair rather than on one end is the same device as static condensation, or as
 the spatial Markov property, applied on the time axis: the filter holds the states at the interval
-boundaries and marginalizes the trajectory between them analytically, and chaining intervals leaves
-a single state variable per junction, since the end state of one interval is the start state of the
-next. It is not a transition state in the mechanistic sense, and the word \emph{transition} is not
-used for it anywhere in this paper.
+boundaries and marginalizes the trajectory between them analytically. It is not a transition state
+in the mechanistic sense, and the word \emph{transition} is not used for it anywhere in this paper.
+% COMPRESSED 2026-08-26, item "COMPRESS ~40 words, static condensation" of docs/shortening_plan.md,
+% which executes duplication (f). Cut: the clause "and chaining intervals leaves a single state
+% variable per junction, since the end state of one interval is the start state of the next".
+% SURVIVING COPY: the body's family section, where the reader first meets the chaining point.
+% Kept deliberately, as the item requires: the static-condensation and spatial-Markov analogy, which
+% appears nowhere else in the paper, and the "not a transition state in the mechanistic sense"
+% disclaimer.
 % MOVED 2026-08-12 from the body's boundary-state paragraph (09_carve_plan.md): both sentences are
 % readings of the construction rather than vocabulary the Results need. What the body keeps is the
 % definition of the pair, the single-variable-per-junction consequence and the cost claim.
@@ -688,11 +709,18 @@ single factor; the mean correction picks it up once and gives it back, leaving n
 
 \subsection*{The start-conditioned members, stated forward}
 
+% COMPRESSED 2026-08-26, item "COMPRESS ~80 words, The start-conditioned members, stated forward"
+% of docs/shortening_plan.md. Cut here: the "usually presented as abbreviations / they are not /
+% the difference matters" framing, which restated the subsection's purpose. Cut at the end of the
+% MR paragraph below: "Neither needs a state larger than K" (said one sentence earlier as "complete
+% without any object larger than the K states") and the "This is worth stating plainly" preamble.
+% Kept, as the item's residue requires: Eq. mr-assumption with everything MR does following from it
+% and needing no object larger than the K states; Eq. mr-objects identified with Eq. gammabar and
+% Eq. macror-w; and the row-sums sentence ending "reached without ever forming a pair". The falsity
+% paragraph below is on the untouched list and is not edited.
 The construction above reaches \texttt{IR} by choosing the boundary pair as the state. The members
-that stop at the interval's start are usually presented as that construction with the collapse
-brought forward, and read that way they look like abbreviations of it. They are not, and the
-difference matters for what is being compared later in this section, so each is stated here from
-its own assumption instead.
+that stop at the interval's start are stated here from their own assumptions rather than as that
+construction with the collapse brought forward.
 
 \texttt{MR} takes the recorded value to depend on the occupancy where the window opens. Formally
 this asserts
@@ -713,12 +741,11 @@ $A_{0\to\Delta}$ given the start alone:
   \label{eq:mr-objects}
 \end{equation}
 the first being Eq.~\ref{eq:gammabar} and the second the per-state variance
-Eq.~\ref{eq:macror-w} then asks for. Neither needs a state larger than $K$. Both come from the same
+Eq.~\ref{eq:macror-w} then asks for. Both come from the same
 tilted semigroup of Eq.~\ref{eq:tilted-derivatives} that any interval member needs, but from its
 derivatives contracted against the vector of ones rather than read entry by entry: what
-\texttt{MR} requires are the row sums, and the row sums are integrals of $K$-vectors. This is worth
-stating plainly because it is what makes \texttt{MR} a construction in its own right, reached
-without ever forming a pair.
+\texttt{MR} requires are the row sums, and the row sums are integrals of $K$-vectors, so
+\texttt{MR} is reached without ever forming a pair.
 
 Eq.~\ref{eq:mr-assumption} is an assumption about the process and can be examined on its own terms.
 It is false for any window of nonzero length: a channel that starts shut and delivers current
@@ -812,18 +839,18 @@ the total slot of Eq.~\ref{eq:mr-vr}. Read with the boundary objects instead, th
 Eq.~\ref{eq:tilde} in the middle and the residual slot in $\mathbf{w}$, the same quantity is
 Eq.~\ref{eq:pred-var} again. \textbf{Both members report the exact
 variance of the recorded value} given $(\bm{\mu}_0,\bm{\Sigma}_0)$, so they agree with each other
-for the reason that each agrees with the truth, and nothing is measured by that agreement. This is
-Eq.~\ref{eq:mr-vr} read from the outside: the same second moment sits in the state term of one
-member and in the noise term of the other, which is why the totals coincide.
-
-The variable conditioned on in Eq.~\ref{eq:ltv} is the count vector and not one channel's state.
-Eq.~\ref{eq:emission} gives
-$\mathrm{Var}[\bar y\mid\mathbf{N}_0]=\epsilon^2_{0\to\Delta}+\sum_s N_{0,s}w_s$ and
-$\mathbb{E}[\bar y\mid\mathbf{N}_0]=\bar{\bm{\gamma}}_0^\top\mathbf{N}_0$, so the second underbrace
-is $\bar{\bm{\gamma}}_0^\top\mathrm{Cov}(\mathbf{N}_0)\bar{\bm{\gamma}}_0$ and the per-channel
-convention supplies the factor of $N_{\mathrm{ch}}$ in both. Conditioning on a single channel's
-$X_0$ returns the same expressions only while $\bm{\Sigma}_0$ is still that channel's own
-covariance, which it stops being at the first update.
+for the reason that each agrees with the truth, and nothing is measured by that agreement.
+% COMPRESSED 2026-08-26, item "COMPRESS ~115 words, The variance: both members are exact" of
+% docs/shortening_plan.md. Cut here: "This is Eq. mr-vr read from the outside: the same second
+% moment sits in the state term of one member and in the noise term of the other, which is why the
+% totals coincide", the third statement of the MR/IR variance identity. SURVIVING ANCHORS: Eq.
+% mr-vr itself, with its two underbraces, and Eq. mr-ir-identity in Appendix 2 as the switch-level
+% algebra; the Methods table caption cites Eq. mr-vr for the state-dependent noise and is unaffected.
+% Cut in the paragraph below: the intermediate algebra reading Eq. emission into the second
+% underbrace and supplying the factor of N_ch, leaving the one-sentence caveat the item requires.
+The variable conditioned on in Eq.~\ref{eq:ltv} is the count vector and not one channel's state:
+conditioning on a single channel's $X_0$ returns the same expressions only while $\bm{\Sigma}_0$ is
+still that channel's own covariance, which it stops being at the first update.
 
 \paragraph{The covariance: one member is exact and the other is short by a named amount.}
 By the law of total covariance, conditioning on the same counts and carried on the per-channel
@@ -855,17 +882,19 @@ average over all the places it might have ended. It has zero row sums,
 $\sum_{j}P_{i\to j}(\Delta)D_{i\to j}=0$, since $(\bar\gamma_0)_{i}$ is that very
 average, and it therefore has zero mean under $\mu_{i\to j}$ as well, so the gap between the
 two forms of Eq.~\ref{eq:mr-vr} is exactly its variance under the law of the pairs.
-Eq.~\ref{eq:cdiff} does not depend on $\bm{\Sigma}_0$ at all.
-
-\paragraph{Why the same quantity is invisible in one block and decisive in the other.}
-$D$ enters the variance squared and the covariance once, and the two blocks answer to its zero row
-sums differently. A second moment can sit in either of the two variance terms without the total
-noticing, which is Eq.~\ref{eq:mr-vr}. A \emph{first} moment cannot: a noise term has no first
-moment, so when $D$ is collapsed against the end index there is nowhere for it to go, and its
-column profile, which is what carries the information about where the channel ended, is lost. That
-asymmetry between $D^2$ and $D$ is the whole of the difference between the two members, and it is a
-consequence of Eq.~\ref{eq:mr-assumption} rather than a defect of the arithmetic that implements
-it.
+Eq.~\ref{eq:cdiff} does not depend on $\bm{\Sigma}_0$ at all. The same deviation is invisible in
+one block and decisive in the other because it enters the variance squared and the covariance
+once: a second moment can sit in either of the two variance terms without the total noticing,
+which is Eq.~\ref{eq:mr-vr}, while a collapsed first moment has nowhere to go, a noise term having
+no first moment. That asymmetry between $D^2$ and $D$ is the whole of the difference between the
+two members, and it is a consequence of Eq.~\ref{eq:mr-assumption} rather than a defect of the
+arithmetic that implements it.
+% COMPRESSED 2026-08-26, item "COMPRESS ~85 words, Why the same quantity is invisible in one block
+% and decisive in the other" of docs/shortening_plan.md. The subsection header is gone and the two
+% sentences the item asks for are folded onto the end of the covariance paragraph above, which is
+% where the deviation D is defined. Nothing else in the paper states the D-squared-versus-D
+% asymmetry, so it is compressed rather than dropped; "column profile", which occurred only in the
+% cut text, is gone with it.
 % VERIFIED 2026-08-09, and these are the checks the tmp/MR_IR_derivation family carried in
 % comments where no reader could see them; the visible statement is in "What was verified" below.
 % Eq. cdiff: identity to 1e-17 in 36 cases, independent of Sigma_0, and against a Monte Carlo of the
@@ -884,10 +913,13 @@ it.
 
 Everything above was Gaussian conditioning: a joint law over (state, recorded value), its three
 blocks, and Bayes. Nothing was borrowed from linear filtering, and the derivation does not need it.
-The correspondence with that literature is nevertheless exact, it is what places this construction
-against forty years of work on the same measurement problem, and a reader arriving from there
-should be able to check the identification rather than take it on faith. The relation is conceded
-in the Discussion; the equations that make it checkable are here.
+The correspondence with that literature is nevertheless exact; the relation is conceded in the
+Discussion, and the equations that make it checkable are here.
+% COMPRESSED 2026-08-26, item "COMPRESS ~45 words, opening of the linear-filtering-frame
+% subsection" of docs/shortening_plan.md. Cut: the "forty years of work on the same measurement
+% problem" and "rather than take it on faith" ornament, which restated the Discussion's concession.
+% SURVIVING COPY: the Discussion, where the concession is made and the specificity case is argued;
+% the sentence kept here holds the pointer to it.
 
 For a state $\mathbf{x}$ and a scalar observation $y$ jointly Gaussian, the filter's update is
 \begin{equation}
@@ -945,19 +977,22 @@ first derivative of the tilted semigroup leaves once the product of the two firs
 out, and the agreement between the two routes is a result rather than an input.
 
 \textbf{The augmented-state filter and the boundary-state filter compute the same three blocks},
-so they perform the same update and return the same posterior over the occupancy. Three things
-about that follow, and they are the reason the derivation above is given in the other order.
+so they perform the same update and return the same posterior over the occupancy.
 
-The augmented state has $K+1$ entries and the boundary state has $K^2$, and they deliver the same
-three blocks. \emph{The pair is a device of the derivation and not information the filter must
-carry}, which is the same conclusion Eqs.~\ref{eq:mu-prop} and~\ref{eq:sig-prop} reached from the
-other side. The per-state variance disappears in the augmented frame: given $(\mathbf{N}_\Delta,
-z_\Delta)$ the recorded value is deterministic, so what Eq.~\ref{eq:pred-var} splits between its
-second and third terms sits entirely inside $\mathrm{Var}(z_\Delta)$, and that is why the cross
-block needs only $\mathbf{F}_1$ while the variance block needs $\mathbf{F}_2$ as well. And the
-equivalence holds per window, with a reset: the augmented filter must discard the posterior on $z$
-and open the next window with $z=0$, because the next window's integral is a fresh one and is
-independent of the old given the occupancy.
+% COMPRESSED 2026-08-26, item "COMPRESS ~90 words, the 'Three things follow' paragraph" of
+% docs/shortening_plan.md. Cut: the "Three things about that follow" announcement and the preamble
+% clause of each of the three, one sentence now carrying each. All three facts are retained as the
+% item requires, the reset caveat verbatim in substance, and the "device not information" point
+% keeps its cross-reference to Eqs. mu-prop and sig-prop.
+The augmented state has $K+1$ entries against the boundary state's $K^2$, so \emph{the pair is a
+device of the derivation and not information the filter must carry}, which is the same conclusion
+Eqs.~\ref{eq:mu-prop} and~\ref{eq:sig-prop} reached from the other side. Given
+$(\mathbf{N}_\Delta, z_\Delta)$ the recorded value is deterministic, so what
+Eq.~\ref{eq:pred-var} splits between its second and third terms sits entirely inside
+$\mathrm{Var}(z_\Delta)$, and that is why the cross block needs only $\mathbf{F}_1$ while the
+variance block needs $\mathbf{F}_2$ as well. The equivalence holds per window, with a reset: the
+augmented filter must discard the posterior on $z$ and open the next window with $z=0$, because
+the next window's integral is a fresh one and is independent of the old given the occupancy.
 
 \texttt{MR} is not the augmented filter under any choice of blocks. It is the filter for a
 misspecified measurement model,
@@ -977,21 +1012,25 @@ all.
 Where the frames genuinely differ is the model rather than the arithmetic. A Kalman derivation
 presumes a linear-Gaussian state process, and the occupancy counts of a channel population are not
 one: they are multinomial, their transition noise depends on the state they leave, and no
-linear-Gaussian system generates them. The derivation above presumes none of that. It computes the
+linear-Gaussian system generates them. The derivation above presumes none of that: it computes the
 exact first two moments of the true process, over the pairs where the recorded average is genuinely
-linear, and replaces the law by a Gaussian at the two places the box above names. The two routes
-arrive at the same equations because the conditioning of a joint Gaussian consumes nothing but the
-first two moments, and both supply the same ones. Two consequences follow. Naming the update a
-Kalman correction imports a measurement equation $\bar y=\mathbf{H}\mathbf{x}+v$ that the
-construction never writes down and that is not available for an interval average without the
-augmentation; and $\bm{\Sigma}$ has a meaning in one frame and a convention in the other, since
-what this section carries is the covariance of one channel's state indicator and not the covariance
-matrix of a linear system. The pair survives as the presentation even though the augmented state
-reaches the same blocks with fewer entries, because on the pair the recorded average is linear in
-the state with no conditional expectation taken, so exactness is structural rather than a separate
-calculation; the collapse hands over the next window's prior at no cost; and the per-state variance
-slot is what makes \texttt{R}, \texttt{MR} and \texttt{IR} one construction with three readings.
-The augmentation gives no comparably natural form to the other two members.
+linear, and replaces the law by a Gaussian only at the two places the box above names, so the two
+routes arrive at the same equations because the conditioning of a joint Gaussian consumes nothing
+but the first two moments. The pair survives as the presentation even though the augmented state
+reaches the same blocks with fewer entries: on the pair the recorded average is linear in
+the state with no conditional expectation taken, the collapse hands over the next window's prior at
+no cost, and the per-state variance slot is what makes \texttt{R}, \texttt{MR} and \texttt{IR} one
+construction with three readings.
+% COMPRESSED 2026-08-26, item "COMPRESS ~180 words, closing paragraph of the linear-filtering-frame
+% subsection" of docs/shortening_plan.md. Cut: the two "consequences" sentences. The
+% imported-measurement-equation point is already carried by Eq. mr-kf and by the DE-KALMANED note
+% above; the Sigma meaning-versus-convention point survives in Methods, at the sentence on the one
+% moment at which Sigma genuinely is a single channel's covariance. Also cut: "The augmentation
+% gives no comparably natural form to the other two members." Kept, as the item requires: the
+% linear-Gaussian presumption and why occupancy counts are not one, the exact-two-moments plus
+% two-closures statement with the reason the routes agree, and the sentence on why the pair remains
+% the presentation. Residue is ~170 words rather than the ~95 the item estimates, because those
+% three retained contents do not compress further without dropping one of them.
 
 \subsection*{What was verified, and to what tolerance}
 

@@ -288,6 +288,24 @@ else
   printf '%s\n' "$FIGORD" | tail -n +2 | while IFS= read -r b; do [ -n "$b" ] && detail "$b"; done
 fi
 
+# --- 12. swallowed sentences ---------------------------------------------------------
+# Added 2026-08-26 after the FIFTH occurrence. A note appended to the end of a prose line, or a
+# comment wrapped onto the line a sentence starts on, deletes the words before the % from the PDF.
+# The compiler is silent about it and the page still looks typeset; what is left reads as a
+# sentence with no subject. Four of the five were found by outside readers reading the rendered
+# PDF, which is an expensive way to find a defect a regex catches. See swallowed_sentences.py for
+# the two signatures it reports.
+if [ -f "$HERE/swallowed_sentences.py" ] && [ -d "$SECTIONS" ]; then
+  SW=$(python3 "$HERE/swallowed_sentences.py" "$SECTIONS" 2>&1)
+  SW_N=$(printf '%s' "$SW" | head -1 | sed -n 's/^\([0-9]*\) swallowed.*/\1/p')
+  if [ "${SW_N:-0}" -eq 0 ]; then
+    green "12. sentences: none swallowed by a % comment"
+  else
+    red "12. sentences: $(printf '%s' "$SW" | head -1) swallowed by a % comment"
+    printf '%s\n' "$SW" | tail -n +2 | while IFS= read -r b; do [ -n "$b" ] && detail "$b"; done
+  fi
+fi
+
 echo
 printf 'pass %d   fail %d   warn %d\n' "$PASS" "$FAIL" "$WARN"
 [ "$VERBOSE" = 0 ] && [ "$FAIL" -gt 0 ] && echo "(re-run with -v to list the offending lines)"

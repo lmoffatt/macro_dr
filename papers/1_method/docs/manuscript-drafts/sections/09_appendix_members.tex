@@ -47,9 +47,17 @@ $\bm{\Sigma}\bm{\gamma}$, evaluated there with the boundary objects substituted.
 bilinear one as the scalar of Eq.~\ref{eq:tilde} and the vector one as the gain
 $\mathbf{g}_{0\to\Delta}=\widetilde{\bm{\gamma}^\top\bm{\Sigma}}$ of Eq.~\ref{eq:vector-tilde}, and both
 collapse to $K\times K$ arithmetic once the boundary covariance Eq.~\ref{eq:sig-bnd} is
-substituted, so the $K^2\times K^2$ object is never built. The matrices $\mathbf{G}$ and
-$\mathbf{H}$ of Eq.~\ref{eq:GH} are what tells the two apart, one power of $\bar{\gamma}$
-against two.
+substituted.
+% COMPRESSED 2026-08-26, item "COMPRESS ~105 words, The tilde operator" of docs/shortening_plan.md,
+% executed under its binding adjustment. Cut: "so the K^2 x K^2 object is never built" (SURVIVING
+% COPIES: Appendix 1, at the sentence where only K-vectors and K x K matrices survive the
+% contraction, and the body's family section) and the closing sentence naming G and H of Eq. GH as
+% what tells the two tildes apart, one power of gammabar against two (SURVIVING COPY: Appendix 1,
+% where G and H are defined inside Eqs. tilde and vector-tilde and the same contrast is drawn).
+% KEPT DELIBERATELY, and the adjustment is explicit about it: the scalar/natural-units parenthetical
+% above. The Methods copy of that disambiguation was cut on 2026-08-26, so this is now its SOLE
+% survivor in the manuscript. Do not cut it in a later pass without restoring one elsewhere first.
+% Eq. GH keeps its label and its definition; G and H are still used by name in switch 1 below.
 % MOVED 2026-08-06. The vector tilde was stated here and only referred to in words in the body,
 % which sent a reader looking for the gain out of the section that introduces it. The equation now
 % lives at 02_theory.tex next to Eq. tilde and keeps the label eq:vector-tilde, so every reference
@@ -194,12 +202,17 @@ Eq.~\ref{eq:pred-var} into the second when the window goes from the start state 
 ends. The
 decompositions differ, the sum does not. What does change between the two members is the
 gain, and at a common prior that is the whole of the \texttt{MR}-to-\texttt{IR} difference.
-It does not follow that the two report the same variance on a recording. The predicted
-variance divides the gain, so a member's variance sets the state the next window opens with:
-the moment the gains differ the priors differ, and every quantity downstream of the prior,
-the predicted variance included, differs with them. The identity above is between the two
-maps from a prior to a predicted variance, and it is tested only where the two members still
-hold the same prior.
+% COMPRESSED 2026-08-26, item "COMPRESS ~165 words, the A37 paragraph and the Results-steps
+% paragraph" of docs/shortening_plan.md. Cut here: the on-a-recording caveat, from "It does not
+% follow that the two report the same variance on a recording" to "tested only where the two
+% members still hold the same prior". SURVIVING COPY: Appendix 1, at "The equality is therefore
+% between two maps from a prior to a predicted variance, and not between two recordings. Once the
+% gains differ the priors differ...", which the plan marks as the single statement of the caveat and
+% forbids any other pass from cutting. What guards this paragraph against the reading the 2026-08-06
+% note below was written about is the surviving "Evaluated at the SAME prior" and "at a common
+% prior" in the text above: the claim is never made unqualified. Kept, as the item requires: Eq.
+% mr-ir-identity, the sentence identifying its two extra pieces with what switch 1 moves out of the
+% third term of Eq. pred-var, "The decompositions differ, the sum does not", and the gain sentence.
 % ADDED 2026-08-06. The paragraph asserted the identity without saying at what it is evaluated,
 % which reads as a claim about a recording. On the figure-1 dumps MR and IR agree to the last
 % printed digit at every interval where they still share a prior and separate at the first update
@@ -212,11 +225,18 @@ hold the same prior.
 Two of the six pairs isolate one algebraic change at the point where it is made, and they are
 the ones the Results use. Stepping \texttt{MR} to \texttt{VR} flips switch~3, and stepping
 \texttt{VR} to \texttt{IR} restores the boundary terms in both the variance and the gain
-while leaving the variance form where it already was. Neither step is confined to what it
-flips, and the reason is the same one as above: the predictive variance divides the gain, so
-flipping switch~3 moves the update as well, and the two steps are separable in the algebra
-without being separable in what a recording does with them. The two together are the
+while leaving the variance form where it already was; neither step is confined to what it
+flips, for the reason given in Appendix~\ref{app:derivation}. The two together are the
 \texttt{R}-to-\texttt{IR} gap.
+% COMPRESSED 2026-08-26, same item as the paragraph above. Cut: the explanation that the predictive
+% variance divides the gain and that the two steps are separable in the algebra without being
+% separable in what a recording does with them. SURVIVING COPY: Appendix 1, at "VR removes that
+% spread from the third term without restoring it in the second, predicts less variance than either
+% from the same state, and its posterior departs from MR's at once", which is the same point made
+% on VR specifically. THE CLAUSE "neither step is confined to what it flips" IS KEPT ON PURPOSE,
+% with a pointer in place of the explanation: without it the sentence reads as the retired slogan
+% the 2026-08-06 note below records, which four repository documents forbid. Nine words is a cheap
+% guard against reinstating an error this file has already made once.
 % CORRECTED 2026-08-06. This paragraph carried the slogan "MR to VR flips switch 3 and touches
 % nothing else", which papers/1_method/figures_build_plan.md:212, papers/_program/program.md:78,
 % papers/1_method/decisions.md:161 and CONTINUE_HERE.md:88 all retire, in those documents' own
@@ -227,11 +247,18 @@ without being separable in what a recording does with them. The two together are
 \subsection*{Least squares, which is off the lattice}
 
 Classical nonlinear least squares has no setting of the three switches. It propagates the
-mean occupancy alone, $\bm{\mu}_\Delta = \mathbf{P}(\Delta)^\top\bm{\mu}_0$, with no
-covariance and no update, predicts $\bar{y}^{\mathrm{pred}}_{0\to\Delta}$ from Eq.~\ref{eq:ypred}, and
-assigns one constant variance to every residual, fitted as the residual sum of squares over
-the number of samples. Neither term of Eq.~\ref{eq:pred-var} that depends on the gating
-survives, and there is no gain, so no occupancy object is ever conditioned on the data. It
-is the anchor of the comparison rather than a member of the family.
+mean occupancy alone, $\bm{\mu}_\Delta = \mathbf{P}(\Delta)^\top\bm{\mu}_0$, predicts
+$\bar{y}^{\mathrm{pred}}_{0\to\Delta}$ from Eq.~\ref{eq:ypred}, and assigns one constant fitted
+variance to every residual. There is no gain, so no occupancy object is ever conditioned on the
+data. It is the anchor of the comparison rather than a member of the family.
+% COMPRESSED 2026-08-26, item "COMPRESS ~45 words, Least squares, which is off the lattice" of
+% docs/shortening_plan.md. Cut: "with no covariance and no update", the gloss that the constant
+% variance is fitted as the residual sum of squares over the number of samples, and "Neither term
+% of Eq. pred-var that depends on the gating survives". SURVIVING COPIES: the body's family
+% section, which establishes that the two least-squares arms sit off the lattice and discard the
+% variance, and the Methods passage on the marginalized scale, which is where the fitted variance
+% is specified. Kept, as the item requires: the no-setting-of-the-switches statement, the mean-only
+% propagation, the Eq. ypred pointer, the constant fitted variance, no gain and nothing conditioned
+% on the data, and the anchor-not-a-member verdict.
 
 \end{appendixbox}
