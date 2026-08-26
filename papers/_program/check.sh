@@ -237,6 +237,57 @@ if [ "$PAPER" = "1_method" ] && [ -f "$HERE/concept_firstuse.py" ]; then
   fi
 fi
 
+# --- 11. figure numbering follows first citation -------------------------------------
+# Added 2026-08-26. Display items are numbered by the order of their FIRST CITATION IN THE TEXT,
+# which makes a forward reference to a higher-numbered figure a production problem and not a style
+# question: it gives the typesetter a reason to renumber, and their renumbering follows citation
+# order rather than the argument's order, so the whole set moves. LaTeX numbers by \label
+# appearance; this walks the \input order of the master file and compares the two sequences.
+# CAPTIONS ARE EXCLUDED: a caption belongs to its display item, not to the running text, and a
+# caption that names a later figure does not set that figure's number. Citing a figure SUPPLEMENT
+# counts, because "Figure N--figure supplement M" invokes the parent's number.
+# Sibling of item 10, which does the same for concepts; unlike that one this is a FAIL, because
+# no editorial judgement is involved: either the order matches or production renumbers.
+FIGORD="$(python3 - "$TEX" <<'PY' 2>/dev/null
+import re, sys, os
+tex = sys.argv[1]; base = os.path.dirname(tex)
+src = open(tex).read()
+files = [os.path.join(base, m.group(1) + '.tex')
+         for m in re.finditer(r'^\s*\\input\{([^}]+)\}', src, re.M)] or [tex]
+labels, first, seq = [], {}, []
+for f in files:
+    if not os.path.exists(f): continue
+    for i, line in enumerate(open(f), 1):
+        s = line.lstrip()
+        if s.startswith('%'): continue
+        line = re.sub(r'(?<!\\)%.*$', '', line)
+        for m in re.finditer(r'\\label\{(fig:[^}]+)\}', line):
+            if m.group(1) not in labels: labels.append(m.group(1))
+        if s.startswith('\\caption') or s.startswith('\\figsupp'): continue
+        for m in re.finditer(r'\\ref\{(fig:[^}]+)\}', line):
+            k = m.group(1)
+            if k not in first:
+                first[k] = (os.path.basename(f), i); seq.append(k)
+num = {k: n + 1 for n, k in enumerate(labels)}
+bad, seen = [], 0
+for k in seq:
+    n = num.get(k)
+    if n is None: continue
+    if n > seen + 1: bad.append((n, seen + 1, k, first[k]))
+    seen = max(seen, n)
+print("%d body figures, %d cited out of order" % (len(labels), len(bad)))
+for n, want, k, (f, i) in bad:
+    print("Figure %d (%s) is cited at %s:%d before Figure %d" % (n, k, f, i, want))
+PY
+)"
+FIG_N=$(printf '%s' "$FIGORD" | head -1 | sed -n 's/.*, \([0-9]*\) cited out of order.*/\1/p')
+if [ "${FIG_N:-0}" -eq 0 ] && [ -n "$FIGORD" ]; then
+  green "11. figure order: $(printf '%s' "$FIGORD" | head -1)"
+else
+  red "11. figure order: $(printf '%s' "$FIGORD" | head -1)"
+  printf '%s\n' "$FIGORD" | tail -n +2 | while IFS= read -r b; do [ -n "$b" ] && detail "$b"; done
+fi
+
 echo
 printf 'pass %d   fail %d   warn %d\n' "$PASS" "$FAIL" "$WARN"
 [ "$VERBOSE" = 0 ] && [ "$FAIL" -gt 0 ] && echo "(re-run with -v to list the offending lines)"

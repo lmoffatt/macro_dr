@@ -568,7 +568,14 @@ the bias vector $b$ are first-order approximations (Appendix~\ref{app:diagnostic
 directly, without leaning on the expansion, against the empirical covariance of the estimates over
 the simulated recordings (Figure~\ref{fig:clouds}).
 
-The distortion splits into two physically distinct parts (Figure~\ref{fig:plane}--figure supplement 1).
+The distortion splits into two physically distinct parts.
+% POINTER DROPPED 2026-08-26. It read "(Figure~\ref{fig:plane}--figure supplement 1)" and was the
+% FIRST citation of Figure 4 anywhere in the running text, two lines after the first citation of
+% Figure 2 and long before Figure 3 is cited, so it made the manuscript cite its display items out
+% of numerical order (citing a supplement invokes its parent's number). Production numbers by first
+% citation, so leaving it invited a renumbering that would follow citation order rather than the
+% argument's. Nothing is lost: the split is defined right here, and Results cites that supplement
+% where the figure exists (04_results.tex, the flat-floor paragraph). Enforced by check.sh item 11.
 The sample distortion $\mathbf{C}_s=\mathbf{H}^{-1/2}\,\mathbf{J}_s\,\mathbf{H}^{-1/2}$, built from
 the within-interval score covariance $\mathbf{J}_s=\sum_t\mathrm{Cov}(s_t)$ with
 $s_t=\nabla_\theta\ell_t$, measures per-sample departure from Gaussianity, to leading order the

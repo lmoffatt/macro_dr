@@ -793,8 +793,12 @@ about three decades of added noise, at every channel count, and \texttt{R} follo
 about three decades lower. % src: projects/eLife_2025/figures/paper_both/figure_4.Rmd (caption-numbers chunk; at N_ch 10, LSE 11.79 at label 0.1, 1.14 at 100, 1.00 at 1000; at N_ch 10^4, 12.97, then 2.54 at 10^4, 1.15 at 10^5, 1.00 at 10^6; R 1.42, 1.03 at 100, 1.00 at 1000 at N_ch 10^4)
 The added variance carries no gating memory, so as it grows it dilutes the temporal structure a
 window-ignoring likelihood fails to model until there is nothing left to fail on, and the channel
-count at which each member's error bar becomes honest rises with it, which is the crossover
-Figure~\ref{fig:usage} draws as a boundary.
+count at which each member's error bar becomes honest rises with it, and the design map turns that
+crossover into one of its boundaries.
+% NUMBER DROPPED 2026-08-26. It read "which is the crossover Figure~\ref{fig:usage} draws as a
+% boundary" and was the first citation of Figure 7 in the running text, ahead of Figures 5 and 6,
+% so it broke citation order (check.sh item 11). The forward pointer survives in words, which costs
+% the numbering nothing, and the map's own section introduces the figure by number.
 
 Over the grid the three members share, counting every parameter at every cell, the reported uncertainty
 is within $\pm15\%$ of the delivered one for $97\%$ of \texttt{IR}'s points, $78\%$ of \texttt{R}'s and
