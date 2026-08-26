@@ -698,7 +698,8 @@ kinetic directions do not (Figure~\ref{fig:time}--figure supplement 3). % src: f
 % roster's largest unitary-current offset (-0.228 in log10 i), so "averaging removes the amplitude
 % bias" was false along the recursive path; it is true in open loop (NR -0.103 -> INR -0.028,
 % LSE/ILSE unbiased). "only" also dropped (rule 4).
-\subsection*{Averaging in open loop centres the estimate, conditioning on both ends calibrates the uncertainty, and conditioning on one end does neither}
+\subsection*{Only the interval members are centred, and only the boundary-conditioned one
+is calibrated, everywhere on the design plane}
 % RETITLED 2026-08-25 (Luciano's call on the four defects of the old title). The old title,
 % "Averaging in open loop removes the amplitude bias, conditioning on both ends removes the
 % distortion, and their combination removes both", failed on: (1) "their combination" is incoherent,
@@ -780,6 +781,65 @@ kinetic directions do not (Figure~\ref{fig:time}--figure supplement 3). % src: f
 \end{figure}
 
 
+Figures~\ref{fig:clouds} and \ref{fig:time} measure one recording condition. Figure~\ref{fig:plane}
+asks what changes over the plane. Ten thousand recordings are simulated at every cell of a grid in
+the sampling interval, the instrumental noise and the channel count, and scored by the same eight
+members, the recursive family in Figure~\ref{fig:plane}--figure supplement 3.
+
+The verdict does not change. Across the plane \texttt{INR} and \texttt{IR} miss the channel number by one and two per
+cent, where the other four macroscopic members miss it by a fifth to a third, and \texttt{IR} is the only
+member whose error bar is honest. They all miss in the same direction: nine in ten of the cells
+outside the band report an error bar too narrow rather than too wide. Where they fail, the four that
+leave the correlation unmodelled report bars two to three times too narrow, and \texttt{R} and \texttt{IR} about a
+tenth. Neither partial correction improves on the member it corrects (Figure~\ref{fig:plane}--figure supplement 3).
+
+What the plane adds is where each verdict breaks. \texttt{IR}'s closing-rate error bar is honest everywhere
+except at the two smallest channel counts with the least noise, and it is the channel count that
+repairs it: its closing-rate distortion converges from 1.37 at ten channels to 1.006 at ten
+thousand, as both the current and the state distribution become Gaussian by the central limit.
+
+Instrumental noise repairs everyone. As it grows the recorded current becomes Gaussian whatever the
+member assumes: the closing-rate distortion of least squares falls from 13 to 1 as the noise rises
+by five decades, and \texttt{R} covers the same ground in two. Colour at the noisy end of each row should not
+be read cell by cell: ten thousand recordings often cannot resolve a ten per cent bias there, and
+the variation between neighbours is sampling noise.
+
+A short sampling interval attenuates the missing average without removing it. The channel-number
+bias of \texttt{NR} falls by a factor of forty from the coarsest sampling to the finest and \texttt{R}'s by sixteen,
+but at the finest they still carry seven and four per cent where \texttt{INR} and \texttt{IR} carry under one. The two
+least-squares arms part only at the coarsest interval, where the arm that does not average picks up
+a rate bias close to twenty times the other's (Figure~\ref{fig:plane}--figure supplement 2); that single flag is why both
+are on the grid.
+
+The cells drawn grey are the corner where \texttt{R} cannot tell the unitary current from the channel
+number: a change that moves the two together costs it almost no likelihood, so the fitted values
+wander far without the fit noticing. The anchor behind every factor was checked numerically and
+holds (Supplementary File~1).
+
+% SUBSECTION REWRITTEN 2026-08-26 (Luciano), 911 words to 460, and reordered onto the question the
+% figure answers rather than onto the mechanisms. The narrative is his: what Figures 2 and 3 found
+% at one cell is unchanged over the plane, and the three design axes each say where a verdict
+% breaks. The superseded prose, and every comment below that annotates IT and not what now stands,
+% is at commit 121c21b.
+% WHAT WENT, and where it lives now: the dilution mechanism and the collapse onto the ratio (both
+% already stated in the Figure 5 subsection, which measures the collapse directly and owns it); the
+% oversampling explanation; the anchor-check detail (Supplementary File 1, section S1.5, in full);
+% the +-15% coverage counts, which Luciano vetoed because they rise if the sweep adds noise levels
+% where every member is calibrated, so they measure the grid as much as the member.
+% FIVE NUMBERS WERE CORRECTED against the source data when this was inserted, having drifted in the
+% drafting: INR misses the channel number by 2 per cent and not under 1; the four displaced members
+% span a fifth to a THIRD (20 to 31 per cent) and not to a quarter; least squares needs five decades
+% of noise and not four to reach 1; the least-squares rate bias at the coarsest interval is close to
+% twenty times the other arm's and not fifteen; and the no-power statement is scoped to "often".
+% src: papers/1_method/decisions/recompute/fig4_narrative_claims.py, section "NUMBERS QUOTED IN THE
+% REWRITTEN SUBSECTION", which emits every figure the printed text asserts, in paragraph order,
+% from figures/figure_4_source_data/{bias,distortion}.csv (distortion read at anchor=pool,
+% comp=total). TRAP recorded there: in bias.csv m is a SIGNED log10 with its null at zero, in
+% distortion.csv it is a variance ratio with its null at one.
+%
+% THE COMMENTS BELOW ANNOTATE THE SUPERSEDED PROSE. They are kept for the facts that live only in
+% them (retired digits, the [OPEN] on oversampling against the anti-alias filter, the greying rule
+% counts) and should be read against 121c21b, not against the text above.
 % OPENING REWRITTEN 2026-08-13 (Luciano). It read "One cell is not a result, and the plane carries
 % one the cell cannot: instrumental noise equalises the members", an aphorism plus a turn on the
 % word "one", and the objection to it was not only the register. The paragraph opened with a RESULT
@@ -803,27 +863,15 @@ kinetic directions do not (Figure~\ref{fig:time}--figure supplement 3). % src: f
 % NOT QUALIFIED HERE, and the caption owns it: "every member ... on two parameters" is loose for
 % the least-squares arms, which hold the rate column alone because their four-parameter
 % configuration fixes the unitary current and the noise level.
-Figure~\ref{fig:plane} maps the bias (A) and the distortion (B) of every member against the
-acquisition interval, the instrumental noise and the channel count, on two parameters,
-$k_{\mathrm{off}}$ and $N_{\mathrm{ch}}$.
 % CUT 2026-08-13 (Luciano): "The two moments are drawn side by side rather than one per figure, so
 % the least-squares arm stays alongside the likelihoods it is being compared with." It fails the
 % test this section applied to the deleted figure roll call, being a claim about the document that
 % the reader cannot check where it stands, and it raises the alternative layout in order to answer
 % it. The reason is kept here because it is recorded nowhere else: the note above the
 % \includegraphics justifies the single file by halved height and a shared scale, not by this.
-Instrumental noise equalises the members. Where it grows past the gating variance every rung reports
-honestly, so the differences
-between them are a property of the regime in which the fluctuations still carry information, not of
-the algorithms in general. Where that crossing sits is worth having in the plane's own coordinates,
-because it moves: at the open probability of one half the instrumental variance overtakes the
-gating variance at $\widetilde{S}/N_{\mathrm{ch}}$ equal to $0.0025$ at the shortest window and
-$0.14$ at the longest.
 % COMPRESSED 2026-08-26 (shortening_plan.md, Results item on the crossing): the two worked examples
 % restated the law given in the same sentence. The crossing law itself survives, which is what the
 % Figure 7 boundary paragraph refers back to. % src: analytic, from the emission model and the run values in Methods; the locus and its three constants are derived in the note at 02_framework.tex beside the units paragraph (h = 0.0024834 / 0.023414 / 0.141917 at Delta_tilde = 0.01 / 0.1 / 1, so 0.0025*10 = 0.025 and 0.1419*1e4 = 1419).
-The cell the two preceding figures use sits a factor of $234$ in variance below it, well inside the
-regime where the gating fluctuations carry the information. % src: same, h(0.1) * N_ch / S_tilde = 0.023414 * 100 / 0.01 = 234; in amplitude sqrt(234) = 15.3.
 % MOVED 2026-08-13 to the head of the subsection: "Figure 4 repeats the two moments over the whole
 % grid, split by moment rather than by member so that the least-squares arm stays alongside the
 % likelihoods it is being compared with." It is the figure's introduction and it stood last.
@@ -838,37 +886,11 @@ regime where the gating fluctuations carry the information. % src: same, h(0.1) 
 % NOT ASSERTED, and deliberately: whether the sweep actually spans the crossing at every channel
 % count. The rows of Figure 4 reach different noise ranges (its own caption says so), so that is a
 % coverage claim about the runs and it has not been checked against the data.
-
-More channels do not repair \texttt{R}. Taking the median over the seven
-intervals at $\widetilde{S} = 0.01$, its $k_{\mathrm{off}}$ distortion (B) sits on a flat floor near $1.4$
-across four decades of channel count while \texttt{IR} converges to one; \texttt{NR} moves the other
-way, from $22$ to $77$, and the least-squares arm holds a floor near $13$. % src: projects/eLife_2025/figures/paper_both/figure_4.Rmd (caption-numbers chunk; R 1.372/1.440/1.439/1.42, IR 1.324/1.099/1.000/1.00, NR 21.92/16.83/31.32/76.52, LSE 11.79/13.06/13.04/12.97 across N_ch 10 to 10^4)
-In the channel-number direction the two recursive members separate in sign as well as in size:
-\texttt{IR} stays conservative throughout, while \texttt{R} crosses from conservative to
-over-confident and keeps rising. % src: same chunk (IR 0.851/0.936/0.987/1.00, R 0.866/1.100/1.230/1.26)
-
-The first moment (A) carries a separate cost, and it separates on the other axis. The median absolute
-bias in the channel number is $0.099$ and $0.110$ in $\log_{10}$ units for the two members that do
-not average the model over the acquisition interval, against $0.003$ and $0.002$ for their
-interval-averaged counterparts, so averaging is what removes the amplitude bias while recursion alone
-does not remove it and slightly worsens it: \texttt{R}'s channel-number bias of about $0.14$ in
-$\log_{10}$, close to a $35$ to $40\%$ error, does not shrink as channels are added, and \texttt{NR}
-carries half of it in the same direction. % src: projects/eLife_2025/figures/paper_both/figure_4.Rmd (caption-numbers chunk; median |bias| in N_ch by member) ; same chunk (R 0.126/0.148/0.138/0.138, NR 0.073-0.084)
-\texttt{IR} is at or near zero everywhere. Least squares has a rate bias of
-essentially zero over the same plane, and that concession is worth making plainly: the classical fit
-recovers the rates, and what it gets wrong is how well it says it recovered them. % src: projects/eLife_2025/figures/paper_both/figure_4.Rmd (caption-numbers chunk)
-
-Modelling the correlation across intervals is what removes the distortion, and recursion is how
-every member of this family that models it does so. A member that takes one axis and not
 % "Recursion is what removes the distortion" SCOPED 2026-08-25 (naive round, CONFIRMED confound):
 % the family contains no open-loop member carrying the full cross-interval covariance (the
 % generalized-least-squares route of celentano2004use and stepanyuk2011efficient, both cited in
 % the Introduction), so recursion-vs-correlation-modelling is not separated by this roster; the
 % Discussion's perimeter now names the missing rung.
-the other repairs one failure and keeps the other, so the family cannot be ordered on a single scale,
-and nothing in that is specific to ion channels: it holds for any state model whose observations are
-averages over a window.
-
 % PARAGRAPH DELETED 2026-08-13, outside-read pass. It read: "Conditioning localises the error as
 % well as shrinking it. Counting the fraction of cells of (B) that depart from one by at least 15%,
 % R departs on a fifth to a half of the plane in four of the five parameter directions, against at
@@ -882,52 +904,21 @@ averages over a window.
 % Figure 6.
 % THE NUMBERS ABOVE ARE NOT LOST and they are the better-behaved half of the pair: they are per
 % member on a common basis, where the three percentages below are on three different cell sets.
-Instrumental noise moves the whole picture continuously, and it moves the window-ignoring members
-furthest. The closing-rate distortion of least squares (B) falls from its floor near $13$ to one over
-about three decades of added noise, at every channel count, and \texttt{R} follows the same pattern
-about three decades lower. % src: projects/eLife_2025/figures/paper_both/figure_4.Rmd (caption-numbers chunk; at N_ch 10, LSE 11.79 at label 0.1, 1.14 at 100, 1.00 at 1000; at N_ch 10^4, 12.97, then 2.54 at 10^4, 1.15 at 10^5, 1.00 at 10^6; R 1.42, 1.03 at 100, 1.00 at 1000 at N_ch 10^4)
-The added variance carries no gating memory, so as it grows it dilutes the temporal structure a
-window-ignoring likelihood fails to model until there is nothing left to fail on, and the channel
-count at which each member's error bar becomes honest rises with it, and the design map turns that
-crossover into one of its boundaries.
 % NUMBER DROPPED 2026-08-26. It read "which is the crossover Figure~\ref{fig:usage} draws as a
 % boundary" and was the first citation of Figure 7 in the running text, ahead of Figures 5 and 6,
 % so it broke citation order (check.sh item 11). The forward pointer survives in words, which costs
 % the numbering nothing, and the map's own section introduces the figure by number.
-
-Over the grid the three members share, counting every parameter at every cell, the reported uncertainty
-is within $\pm15\%$ of the delivered one for $97\%$ of \texttt{IR}'s points, $78\%$ of \texttt{R}'s and
-$37\%$ of \texttt{NR}'s; over its own wider grid \texttt{IR} reads $95\%$, and what it has left is
-concentrated at few channels and low noise. % src: papers/1_method/decisions/recompute/recount_9370_31.py re-run 2026-08-25 over projects/eLife_2025/figures/figure_4_source_data/figure_4_source_data_distortion.csv (anchor pool, comp total, statistic m: 1018 / 818 / 384 of 1050 each, over the 210 cells shared by IR, R and NR; on the CI-collapsed Dconf the same counts read 97/81/38. IR's own grid: 1402 of 1470 over 294 cells; of its 68 misses, 50 sit at N_ch 10 and 50 of 68 at noise labels 0.5 and below, i.e. S_tilde <= 0.05).
 % THE THREE-DIFFERENT-CELL-SETS DEFECT (08_length_plan.md, phase 5 item 4) CLOSED 2026-08-25,
 % Luciano's call this session: the sentence moves to the shared sub-grid. The counts are now taken
 % from the figure's own source data, so the prose and the plane figure count the same object; the
 % previous battery-directory counts (93/70/31 over 560/238/224 cells, figure_4.Rmd) are retired to
 % this note and must not be quoted beside the new ones, since the two grids differ. The abstract's
 % "calibrated over almost the whole measured range" rests on this sentence.
-Least squares carries no entry, because its distortion matrix has four dimensions against the
-likelihood members' six and the two counts are not commensurable (Methods). The coverage is unequal
-and has to be quoted with the number: \texttt{IR} spans eleven channel counts from $5$ to $10^4$
-across the twelve noise levels of the ladder (Methods), not on a full rectangle, and the others cover
-less.
-
-The anchor itself was checked over the full roster against a differenced Fisher information
-(Supplementary File~1). For \texttt{INR} and \texttt{IR} the analytic Gaussian anchor and the
-differenced construction coincide within one per cent at every channel count. For \texttt{NR} the
-two part company as channels are added, so its largest factors at $10^{4}$ channels narrow by about
-a third when re-anchored on the differenced form, without being overturned; at the coarsest
-intervals there the differenced Fisher is not positive at all, the same ill-conditioned corner the
-figure greys. For both least-squares arms re-anchoring would enlarge the reported factors by about
-$1.3$, so their verdict is conservative under the anchor.
 % src: papers/1_method/decisions/recompute/fim_vs_gaussian_table.py 2026-08-25 over projects/eLife_2025/figures/data/a202e03/figure_3_fim_*_nsim_10000_*_battery_sim.csv
 % (medians of geomean(eig C), C = inv(sqrt(G_b)) F_b inv(sqrt(G_b)), src/core/likelihood.cpp:3509:
 % INR 0.995-1.000 and IR 0.994-1.001 across the four decades; NR 1.16 / 1.36 at 1e3 / 1e4 with
 % retained maximum 1.97 at delta 0.1 and the three coarsest intervals indefinite; LSE 0.71-0.78,
 % ILSE 0.71-0.78. Full table and the direction convention: supplementary_file_1.tex S1.5.)
-
-The flat floor comes from the per-sample and correlation split: the two members are equally faithful
-to a single interval and part company on how much temporal dependence they leave in the score, which
-conditioning on both endpoints removes (Figure~\ref{fig:plane}--figure supplement 1).
 % NUMBERS MOVED 2026-08-26 into that supplement's legend, its "Third" reading (shortening_plan.md,
 % Results item on lines 1014-1019, with the captions item adjusted so the landing is not cut): the
 % per-member sweep numbers belong with the figure that draws them, and the legend's "which is the
@@ -935,16 +926,6 @@ conditioning on both endpoints removes (Figure~\ref{fig:plane}--figure supplemen
 % src (travelled with the numbers): projects/eLife_2025/figures/paper_both/figure_4_S1.Rmd,
 % caption-numbers chunk (sample-part and correlation-part medians, k_off at noise 0.1), re-knitted
 % 2026-08-05 on figures/data/{1c2ae6f,87889e6,0ffbda7}, both reproduced to the last digit.
-
-Two features of the plane are easy to misread. Where the acquisition interval is far shorter than the
-channel's correlation time, successive samples carry redundant information and a faithful likelihood
-has to register that redundancy, so a large correlation distortion at the shortest intervals of (B)
-is the correct cost of oversampling rather than a defect. And at $N_{\mathrm{ch}}=10^4$ with
-$\widetilde{\Delta}=1$ the amplitude directions of \texttt{R} are not
-identified: the Gaussian Fisher information is ill-conditioned there, so a displacement that costs
-almost no likelihood is amplified into a large parameter shift. Those cells are drawn grey in both
-halves, $23$ of them in (A) and $73$ in (B); their sign and their existence are real, their
-magnitude is a property of the conditioning. % src: projects/eLife_2025/figures/paper_both/figure_4_common.R:219-231 (the greying rule) ; counts printed on every source() of figure_4_common.R, re-measured 2026-08-12 on the body figure's six-member roster: "greyed (unidentified): bias 23 cells, distortion 73 cells"
 % [BESSEL-BOUND] CLOSED 2026-08-11. The bound is PRINTED, at 08_appendix_derivation.tex (moved there 2026-08-12) in the
 % paragraph beginning "How much of the kernel the uniform window misses". Everything below was
 % written while it was open (2026-08-06) and is kept for its site-specific content only.. Canonical note at 08_appendix_derivation.tex, the acquisition-kernel subsection (moved 2026-08-12).
@@ -964,7 +945,6 @@ magnitude is a property of the conditioning. % src: projects/eLife_2025/figures/
 % the gating". If a fuller version is wanted, the natural place is not here but Methods, where
 % the absence of an analogue stage is already stated; this paragraph exists to pre-empt two
 % misreadings and a third would crowd it.
-
 \subsection*{Deflating the interval count does not repair the error bar, because the distortion differs by direction}
 \begin{figure}[htbp]
 \begin{fullwidth}
