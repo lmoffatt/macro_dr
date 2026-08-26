@@ -437,6 +437,8 @@ harder half and the one the gating variance carries.
 \figsupp[Per-step information against score variance, for the opening rate and the closing rate.]{\textbf{Per-step information against score variance, the opening rate and the closing rate.} Seven members across the columns, the least-squares arm being the interval-averaged \texttt{ILSE}, and two parameters down the page as bands of two rows: $k_{\mathrm{on}}$ (A, B) and $k_{\mathrm{off}}$ (C, D). The upper row of each band carries the per-interval Fisher information and the score variance as magnitudes, which lie on each other where the member is calibrated at that interval; the lower row is $\log_{10}(J_t/F_t)$ with its $95\%$ bootstrap interval, zero when they do. Per-interval calibration is not monotone along the cost ladder: on $k_{\mathrm{off}}$ the median reads $+0.184$ for \texttt{ILSE}, $-0.038$ for \texttt{NR}, $+0.007$ for \texttt{INR}, $-0.145$ for \texttt{R}, $-0.229$ for \texttt{MR}, $-0.135$ for \texttt{VR} and $+0.033$ for \texttt{IR}, so the cheapest member that models the interval average is better calibrated interval by interval than any of the three recursive members that cost more. Curves stop at the information mask, which is also where the upper axis ends. In the two recursive columns the $k_{\mathrm{on}}$ band reaches that floor within six intervals of the agonist being removed while the $k_{\mathrm{off}}$ band does not. The least-squares ratio row is the same curve in every band of both halves, with a median of $0.183889$ in each: with a single constant variance the parameter cancels out of the ratio, which leaves the true residual variance over the assumed one.}{\includegraphics[width=\linewidth]{Figure_3_S1}}
 \figsupp[The same, for the unitary current and the channel number.]{\textbf{Per-step information against score variance, the unitary current and the channel number.} The other half of the preceding supplement, on the same seven members and read the same way: the unitary current (A, B) and $N_{\mathrm{ch}}$ (C, D), the upper row of each band the per-interval Fisher information against the score variance and the lower row $\log_{10}(J_t/F_t)$ with its $95\%$ bootstrap interval. In the two recursive columns the $N_{\mathrm{ch}}$ band reaches the information floor within six intervals of the agonist being removed while the unitary-current band does not, which is the contrast the Discussion draws on how a recording is spent. The channel-number band carries no least-squares panel, which with the gating fluctuations unmodelled cannot separate that parameter from the unitary current.}{\includegraphics[width=\linewidth]{Figure_3_S2}}
 \figsupp[The residual and the score in the three parameters not coloured above.]{\textbf{The checks this figure has no room for.} The seven members of the preceding supplements at the same cell, carrying (A) the mean standardized residual, the one of the three properties of $r_t$ not drawn above; (B) the score bias for the three parameters not coloured above, $k_{\mathrm{on}}$, the unitary current and the instrumental noise level; and (C) their score autocorrelation. The first residual moment separates nobody, which is what makes the other two properties the informative ones. In (B) the ordering repeats the one in figure supplement 2: counting informative intervals whose interval excludes zero against a chance level of $0.05$, \texttt{IR} reads $0.067$, $0.050$ and $0.050$, \texttt{INR} $0.100$, $0.100$ and $0.000$, and the three recursive members between $0.409$ and $0.975$. The noise level is the control direction: it is the only parameter measured before the agonist arrives, and its score is white even in the members whose kinetic directions are not, so the memory that carries the accumulated information error lives in the gating directions and not in the instrumental one. Least squares carries no noise curve because its noise level is a plug-in from the same record rather than a free direction, so its score there vanishes identically, which is the same fact as its mean squared residual being pinned at one.}{\includegraphics[width=\linewidth]{Figure_3_S3}}
+\figdata{The calibration cascade as numbers: per member and coloured parameter, the fraction of informative intervals whose score departs from zero and whose information ratio departs from one, the accumulated ratio $J_T/F_T$ with its interval, the lag-one score autocorrelation with its interval, and the ensemble-mean log-likelihood.}
+% src: papers/1_method/decisions/recompute/fig3_source_data.py (re-serializes the rendered caption-numbers table of figure_3.html) -> projects/eLife_2025/figures/figure_3_source_data/figure_3_source_data_calibration.csv (2026-08-25)
 % SUPPLEMENT ORDER, set 2026-07-31: declaration order must match first-citation order in the text.
 % The residual triptych is cited at 02_framework.tex, the four-parameter widening at
 % 02_framework.tex and twice more; Diagnostics precedes this section. The family widening is
@@ -460,15 +462,22 @@ harder half and the one the gating variance carries.
 
 The miscalibration of Figure~\ref{fig:clouds} is a property of the likelihood and not of the
 optimiser, and Figure~\ref{fig:time} shows what produces it, scoring one common set of one thousand
-recordings at the same cell interval by interval with no fitting. The rows are ordered by what each
-quantity is able to say: how close a member is to the process that generated the data, whether the
-estimate it leads to is displaced, and whether the uncertainty it reports is the one it delivers.
-
-The log-likelihood adds up everything a member gets wrong, so the $118.9$ nats the ladder spans in
-(A) rank the family without saying how far from the truth its top sits. Every other row is read
-against a value a correct likelihood must give, and can therefore test. One entry is not the same
-kind of number, both least-squares arms
-fitting a noise level to each recording they score. % src: projects/eLife_2025/figures/paper_both/figure_3.html (caption-numbers chunk; ensemble-mean total logL over 1000 recordings, -262.30 +- 0.73 for both least-squares arms to -143.45 +- 0.24 for IR) ; tmp/fig3_tc.R (cv of y_var across recordings at fixed sample_index: 0.478 for both least-squares arms at every interval, 0.000 for NR and INR, 0.093 mean for IR, where the variation is conditioning on the past and not a fitted parameter).
+recordings at the same cell, interval by interval, with no fitting. Row (A) already separates the
+families: the recursive members follow the record, their predictive band tracking the current they
+score, while the open-loop members and both least-squares arms predict the ensemble and do not. The
+log-likelihood adds up everything a member gets wrong, and it orders the ladder accordingly: the
+boundary-conditioned member on top with the three other recursive members within eleven nats of it,
+then a sixty-nat gap to the interval mean without recursion, the instant member below that, and the
+two least-squares arms together at the bottom, $119$ nats below the top
+(Figure~\ref{fig:time}--source data 1). The ranking says nothing about how far from the truth its
+top sits; every other row is read against a value a correct likelihood must give, and can therefore
+test. One entry is not the same kind of number, both least-squares arms
+fitting a noise level to each recording they score.
+% REWRITTEN 2026-08-25 (Luciano's facts 1 and 2 of the Figure 3 reduction). The tracking sentence is
+% new; the logL ORDER is new content (the old prose gave only the 118.9-nat span): IR -143.45 > R
+% -147 > VR -149 > MR -154, gap, INR -215.37 > NR -230.15 > LSE = ILSE -262.30 (se 0.73). The old
+% "rows are ordered by what each quantity is able to say" sentence is retired; the caption's row list
+% carries the reading order. % src: projects/eLife_2025/figures/paper_both/figure_3.html (caption-numbers chunk; ensemble-mean total logL over 1000 recordings, -262.30 +- 0.73 for both least-squares arms to -143.45 +- 0.24 for IR) ; tmp/fig3_tc.R (cv of y_var across recordings at fixed sample_index: 0.478 for both least-squares arms at every interval, 0.000 for NR and INR, 0.093 mean for IR, where the variation is conditioning on the past and not a fitted parameter).
 % COMPRESSED 2026-08-13, outside-read pass, 112 words to 57. What went is the entropy-and-divergence
 % reading of row (A): "Averaged over recordings from the exact simulator it estimates minus the
 % entropy of the distribution that generated the data minus the Kullback-Leibler divergence of the
@@ -509,27 +518,39 @@ variance equal to the information (E, F), its memory being the coloured series o
 information is the precision the member claims, drawn alone in (C) and serving as the reference in
 (D), (E) and (F). Only the residual can be computed on a real recording.
 
-The mean of the score is what says whether the estimate will be displaced. Per interval it departs
-from zero at $45\%$ of the informative steps for \texttt{NR} and $10\%$ for \texttt{INR}, at $50\%$
-for \texttt{R} and $4\%$ for \texttt{IR}, so averaging the model over the acquisition window is what
-removes it. What moves
-the estimate is the accumulated score divided by the whole information matrix,
-$b = F^{-1}\,\mathrm{E}[\sum_t s_t]$, and read that way the two interval-averaged members cover zero
-on all four identified parameters and no other member does: \texttt{R} is displaced $1.38$ marginal
-standard errors on the unitary current and $0.82$ on the channel number, and \texttt{MR} $1.96$ and
-$1.14$. It is the same quantity the third marker of Figure~\ref{fig:clouds} carries at this cell and
-Figure~\ref{fig:plane}A maps over the plane. % src: figure_3.Rmd (caption-numbers chunk, accumulated block added 2026-08-12; fractions of informative steps whose interval excludes zero, and z = b_a/sqrt((F^-1)_aa) with its bootstrap interval, four parameters per member). Dividing each parameter's accumulated score by its own Fisher diagonal instead of by the whole matrix reads -0.34 for R on N_ch where the marginal displacement is +0.82, sign included, since the channel number and the unitary current are strongly correlated. Agreement with fig:plane is claimed in order and not to the digit: this cell gives 0.082 NR and 0.146 R against 0.006 for either interval-averaged member, and fig:plane reports plane medians of 0.099 and 0.110 against 0.003 and 0.002.
+The mean of the score is what says whether the estimate will be displaced, and it repeats
+Figure~\ref{fig:clouds}'s split: per interval it sits at the chance level for \texttt{IR}, near it
+for \texttt{INR}, at four times chance for both least-squares arms, and departs from zero at two
+fifths to three quarters of the informative steps for the displaced four, so averaging the model
+over the acquisition window is what removes it. What moves the estimate is the accumulated score
+divided by the whole information matrix, $b = F^{-1}\,\mathrm{E}[\sum_t s_t]$, and read that way the
+two interval-averaged members cover zero on all four identified parameters and no other member
+does. It is the same quantity the third marker of Figure~\ref{fig:clouds} carries at this cell and
+Figure~\ref{fig:plane}A maps over the plane.
+% DIGITS MIGRATED 2026-08-25 to Figure 3--source data 1 (D_score_bias_frac column: IR 0.0375/0.0652
+% against a chance level of 0.05, INR 0.100/0.1125, LSE/ILSE 0.1875, NR 0.45/0.525, R 0.50/0.605,
+% VR 0.425/0.409, MR 0.725/0.652). Retired from prose in the same pass: R displaced 1.38 marginal
+% standard errors on the unitary current and 0.82 on the channel number, MR 1.96 and 1.14 (kept in
+% the src below). % src: figure_3.Rmd (caption-numbers chunk, accumulated block added 2026-08-12; fractions of informative steps whose interval excludes zero, and z = b_a/sqrt((F^-1)_aa) with its bootstrap interval, four parameters per member). Dividing each parameter's accumulated score by its own Fisher diagonal instead of by the whole matrix reads -0.34 for R on N_ch where the marginal displacement is +0.82, sign included, since the channel number and the unitary current are strongly correlated. Agreement with fig:plane is claimed in order and not to the digit: this cell gives 0.082 NR and 0.146 R against 0.006 for either interval-averaged member, and fig:plane reports plane medians of 0.099 and 0.110 against 0.003 and 0.002.
 
-Misreported uncertainty has two independent sources and the figure separates them. The first is per
-sample, and the residual gives it without any parameter at all: the mean squared standardized
-residual is one for the two interval-averaged members, $0.78$ for \texttt{R}, $0.69$ for \texttt{MR}
-and $1.15$ for \texttt{NR}, and the score says the same per parameter. Most of
-\texttt{NR}'s excess sits in one interval of the hundred, the one in which the agonist steps on,
-where its residual variance reads $28.45$ against $0.95$: inside that acquisition window the
-occupancy changes, and a member that evaluates its variance at a point of the window cannot see the
-change. Least squares makes the same point from the other side, its residual variance being one over
-the whole recording by construction while it runs from $0.010$ before the agonist to $1.91$ over the
-pulse. % src: figure_3.html (caption-numbers chunk, B block: mean r^2 1.1526 NR, 0.9995 INR, 0.7816 R, 0.6904 MR, 0.8118 VR, 0.9989 IR, and 1.0000 for both least-squares arms, whose 98% of steps exclude one) ; tmp/fig3_kl.R (worst interval and its cost: 12.05 of NR's 14.81 nats at sample 20) ; tmp/fig3_claims.R (r^2 by segment: for either least-squares arm 0.010 over samples 1-19, 1.91 over the pulse, 0.69 through the washout; r^2 at sample 20 is 28.45 NR, 3.06 VR, 0.95 INR MR and IR, 0.61 R).
+Misreported uncertainty has two independent sources and the figure separates them: the variance of
+the score estimates the dispersion, and per interval it fails within tens of per cent at the median
+for every rung of the ladder, while accumulated it fails by an order of magnitude (E against F).
+The per-sample half the residual gives without any parameter at all: its mean square is one only
+for the two interval-averaged members, below one for \texttt{R}, \texttt{MR} and \texttt{VR}, and
+$1.15$ for \texttt{NR}, most of that excess sitting in the single interval where the agonist steps
+on, inside which the occupancy changes and a member that evaluates its variance at a point of the
+window cannot see it. Both least-squares arms read exactly one over the whole recording by
+construction, the fitted noise absorbing what the model misses, while running from $0.010$ before
+the agonist to $1.91$ over the pulse.
+% REWRITTEN 2026-08-25 (Luciano's facts 3 and 5): the opening now states the per-interval-versus-
+% accumulated contrast (the Discussion's "Milescu, now measured" rests on it; per-interval medians
+% of log10(J_t/F_t) +0.184 ILSE to -0.229 MR, Figure 3--figure supplement 1); "one ONLY for the two
+% interval-averaged members" is the fact the old sentence understated, with the least-squares
+% by-construction caveat kept mandatory (G-ABORT trap: their pinned 1.0000 looks calibrated in the
+% very figure about calibration; 98% of their steps exclude one). Digits retired to the src: r^2
+% NR 1.1526, INR 0.9995, R 0.7816, MR 0.6904, VR 0.8118, IR 0.9989, LS 1.0000; NR's jump interval
+% 28.45 against 0.95. % src: figure_3.html (caption-numbers chunk, B block: mean r^2 1.1526 NR, 0.9995 INR, 0.7816 R, 0.6904 MR, 0.8118 VR, 0.9989 IR, and 1.0000 for both least-squares arms, whose 98% of steps exclude one) ; tmp/fig3_kl.R (worst interval and its cost: 12.05 of NR's 14.81 nats at sample 20) ; tmp/fig3_claims.R (r^2 by segment: for either least-squares arm 0.010 over samples 1-19, 1.91 over the pulse, 0.69 through the washout; r^2 at sample 20 is 28.45 NR, 3.06 VR, 0.95 INR MR and IR, 0.61 R).
 
 The second source is correlation in time, and no per-sample check can see it. \texttt{INR} has the
 calibrated residual variance of \texttt{IR} and reports its accumulated information twenty times
