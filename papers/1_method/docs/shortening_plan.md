@@ -1,5 +1,33 @@
 # Shortening plan for the revised manuscript
 
+> **RECONCILIATION, 2026-08-26, before execution.** The plan was written against the PDF of
+> 2026-08-25 23:12 and does not see the commits of 2026-08-26 (`5491400` figure citation order,
+> `fdb2b9a` caption overflow). Four rulings, decided with the author, override the items below:
+>
+> 1. **Locate every passage by its TEXT, never by the line numbers.** The extraction is stale by two
+>    commits and by every edit this pass lands.
+> 2. **Ruling (m) is now settled the other way, and the Results item is CANCELLED.** The plan rejects
+>    cutting the Figure 2 caption's magnitude/anisotropy decode because the Results item cuts the
+>    prose gloss naming the caption as survivor. The caption decode was already cut on 2026-08-26 to
+>    bring the caption inside its page, which is physical and cannot be reverted. So the PROSE gloss
+>    (Results, "its magnitude, the typical factor by which...") is now the sole survivor and must
+>    NOT be cut. Item "COMPRESS ~47 words, lines 586-594" is void; ~47w come off the total.
+> 3. **Figure 5—figure supplement 3 is DROPPED (author sign-off given).** Beyond the plan's own
+>    reasoning, its page carries the document's worst overfull box (121.9 pt, recorded in
+>    `changes.md`), so dropping it also removes that defect. The fallback is not taken.
+> 4. **The abstract appositive is KEPT; that item is DECLINED.** "the smallest that isolates the
+>    approximation's own error" entered on 2026-08-25 because five independent readers raised the
+>    two-state objection; eight words do not pay for reopening it.
+>
+> Also stale, and harmless: the Figure 3 caption sentence the plan names as the surviving statement
+> of N_ch/i inseparability was cut on 2026-08-26 (survivors: that figure's supplement 2 parenthesis
+> and the Results identifiability sentence); "and the difference is not cosmetic" in Figure 4's
+> caption is already gone, so that item counts zero.
+>
+> **Word counts:** the plan measures with `pdftotext` (main text ~24,300); `papers/_program/wordcount.py`
+> measures ~13,100 by a different definition. The two arithmetics are not comparable. Pages are the
+> comparable unit (69 -> ~55); re-measure with `wordcount.py` against `08_length_plan.md` after the pass.
+
 Target document: `elife_paper.pdf`, revision of 2026-08-25 23:12 (69 pages, about 38,600 words, main text about 24,300 words).
 
 Line numbers below refer to the plain-text extraction produced by `pdftotext -layout elife_paper.pdf elife_paper.txt` on that revision; page numbers refer to the PDF itself and are the stable reference if the text is re-extracted after edits.

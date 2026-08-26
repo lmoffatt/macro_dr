@@ -13,7 +13,10 @@
 \usepackage[margin=1in]{geometry}
 \usepackage{amsmath,amssymb}
 \usepackage{bm}
-\title{Supplementary File 1: the measured grid, the reduction stages, and the production environment}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\title{Supplementary File 1: the measured grid, the reduction stages, the production environment,
+and the members as dispatched}
 \author{}
 \date{}
 \begin{document}
@@ -140,5 +143,204 @@ $1.020$ for \texttt{MR}, $1.000$ for \texttt{IR}; \texttt{NR} rising $1.26$ to $
 two largest channel counts at this noise); it lacked both least-squares arms and \texttt{INR}
 entirely, which is what the run above repairs.
 % src: projects/eLife_2025/figures/figure_4_source_data/figure_4_source_data_gaussian_fisher.csv (pool anchor, medians over intervals)
+
+
+\section*{S1.6\quad The members as dispatched: flags, data keys and cells}
+
+% MOVED HERE 2026-08-26 from Methods by papers/1_method/docs/shortening_plan.md (Methods items 5, 6
+% and 7). It is code-mapping and bookkeeping: flag values, data keys, the cell inventory and the
+% deposit verification. The conceptual content it duplicates stays in the body's family section, in
+% Table 1 and in Appendix 2. Citations and cross-references are written out in words, since this
+% file compiles on its own. The extracted source span is kept at tmp/methods_moved_span.tex.
+
+Least squares runs non-recursive, and the variance flag is accepted and ignored on that branch. The
+averaging flag still applies to it, and it is what separates the two least-squares arms: at $0$ the
+fit predicts the deterministic mean current at one instant, the middle of the acquisition window
+(\texttt{LSE}, data key \texttt{nonlinearsqr\_g}), and at $1$ it predicts that same mean averaged
+over the window (\texttt{ILSE}, data key \texttt{nonlinearsqr}).
+% CORRECTED IN TRANSIT 2026-08-26: the moved Table 2 row for LSE read "at the sampling instant",
+% which the Methods prose had already corrected on 2026-08-06 (av=0 is a midpoint rule: the
+% occupancy is p_start advanced by P_half = expm(Q*Delta/2), legacy/qmodel.h:4489-4505, 4531-4538).
+% The row below carries the corrected wording rather than propagating the retired one.
+Each arm shares its mean model exactly with the macroscopic member carrying the same averaging
+flag, \texttt{LSE} with \texttt{NR} and \texttt{ILSE} with \texttt{INR}, and differs from it only in
+the predictive variance: on the recording of Figure~1 of the manuscript the predicted means of
+\texttt{LSE} and \texttt{NR} agree to $9\times10^{-16}$ interval by interval, and those of
+\texttt{ILSE} and \texttt{INR} to $2\times10^{-16}$, while the two least-squares arms differ from
+each other by $5\times10^{-2}$ on the same intervals. Both arms sit off the lattice of endpoint and
+recursion flags that organises the macroscopic members; the \texttt{I} prefix records the window
+setting and does not place \texttt{ILSE} on that lattice.
+% src: the three mean-model numbers were MEASURED, not taken from a script note, by reading y_mean
+% out of figures/data/figure_1_likelihood_diagnostic_{LSE_av0,NR,LSE,INR}.csv and matching on
+% (sample_index, step_start), 12 intervals: max|LSE-NR| = 8.882e-16, max|ILSE-INR| = 2.220e-16,
+% max|LSE-ILSE| = 5.469e-02. Checked 2026-08-06.
+
+Both least-squares arms are dispatched over the design grid, and over the same cells: the thirty
+combinations of channel number and noise level swept at ten thousand simulations are run with
+\texttt{ILSE} and with \texttt{LSE} alike, from the same script that produces the ensemble the other
+members score. Four further cells exist for \texttt{ILSE} at a thousand simulations, superseded by
+the ten-thousand-simulation run of the same cells, and two at $N_{\mathrm{ch}}=5$, below the range
+the paper reports.
+% src: projects/eLife_2025/figures/data/a202e03 (96 nonlinearsqr_g files); coverage measured
+% 2026-08-12 over every file name's (N_ch, n_sims, noise) triple. No cell carries LSE and not ILSE.
+% PROVENANCE, load-bearing for anyone reproducing the av=0 arm: before 2026-08-05 that branch
+% propagated the threaded occupancy by P_half and evaluated the mean before advancing, so the member
+% fell half a step behind on every interval. Fixed at legacy/qmodel.h:7490; both LSE dumps used here
+% postdate the fix, and any earlier dump of that arm is wrong.
+
+The macroscopic members are one filter run under flags that set how the interval-averaged
+conductance is conditioned. The \emph{recursive} flag sets whether the occupancy covariance is
+propagated between intervals. The \emph{averaging} flag $\mathrm{av}\in\{0,1,2\}$ counts the number
+of interval endpoints the hidden state is conditioned on: $0$ an instant, $1$ the state at the
+window's start, $2$ the states at both of its ends. A third flag, the \emph{variance form},
+distinguishes the two members that condition on the interval start: \texttt{MR} predicts the
+interval variance with the total per-start-state conductance variance, while \texttt{VR} removes the
+between-endpoint part, keeping \texttt{MR}'s mean and gain.
+% src: projects/eLife_2025/ops/slurm/dispatch_figure_3_G.sh:196-201
+
+\begin{center}
+\begin{tabularx}{\linewidth}{@{}llccl>{\raggedright\arraybackslash}X@{}}
+\toprule
+Member & Data key & Recursive & $\mathrm{av}$ & Variance & Conditioning of the conductance \\
+\midrule
+LSE & \texttt{nonlinearsqr\_g} & no & 0 & n/a      & none; the deterministic mean current at one instant, the window's middle \\
+ILSE & \texttt{nonlinearsqr} & no  & 1 & n/a      & none; the deterministic mean current averaged over the interval \\
+NR  & \texttt{macro\_NR}    & no  & 0 & n/a      & instantaneous; the acquisition averaging is ignored \\
+INR & \texttt{macro\_INR}   & no  & 1 & total    & interval mean, without recursion; the endpoints are not separable \\
+R   & \texttt{macro\_R}     & yes & 0 & n/a      & instantaneous; the acquisition averaging is ignored \\
+MR  & \texttt{macro\_MR}    & yes & 1 & total    & interval mean given the start state \\
+VR  & \texttt{macro\_VR}    & yes & 1 & residual & MR's mean and gain, with the between-endpoint variance removed \\
+IR  & \texttt{macro\_IR}    & yes & 2 & residual & interval mean given both boundary states; the endpoints enter the gain \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\noindent\textbf{The members as flags.} Both least-squares arms take \emph{family approximation}
+$= 2$ and every macroscopic member takes $0$. Reading the endpoint flag as a ladder gives no
+endpoints (\texttt{NR}, \texttt{R}), one endpoint (\texttt{MR}, \texttt{VR}), then both boundary
+states (\texttt{IR}); \texttt{INR} sits outside that ordering, because without a recursive update
+the boundary state is unobservable and conditioning on the start state and conditioning on both ends
+describe the same method. The variance column reports the form in force rather than the dispatched
+flag: \texttt{IR} is dispatched with the total flag, but with both endpoints conditioned the
+residual form is used regardless of it, because the between-endpoint spread is already carried by
+the boundary term. % src: legacy/qmodel.h:4557 (averaging==2 || variance_form==residual)
+Even so, taken from the same state \texttt{MR} and \texttt{IR} assign the interval average the same
+total variance, by two decompositions that rearrange into each other (Appendix~2 of the
+manuscript), so what separates them is the gain; because that variance divides the gain, the states
+they carry part company at the first gated update and the variances they report along a recording
+part with them. \texttt{VR} keeps \texttt{MR}'s mean and boundary-free gain and replaces the total
+per-start-state conductance variance with the residual one, which is not the same thing as carrying
+\texttt{IR}'s variance. The least-squares arms and the macroscopic members are written by different
+producers, so their output files carry different prefixes, \texttt{figure\_3\_LSE\_} and
+\texttt{figure\_3\_G\_}.
+
+\noindent\textbf{The identification of \texttt{INR} with the published control.} \texttt{INR} is the
+member published as MacroINR by Moffatt and Pierdominici-Sottile (2025), where it served as the
+control against which MacroIR, the member called \texttt{IR} in the manuscript, was compared. The
+deposited run metadata of that study confirm the identification: its two arms differ in the
+recursion flag alone, every other flag being constant across the 414 deposited run records. The
+deposited endpoint flag coincides with this study's \texttt{INR} exactly, because without a
+recursive update conditioning on one end and conditioning on both describe the same likelihood;
+evaluated on the reference binary, the two settings return byte-identical output.
+% src: docs/bibliography/MacroIR_prior_art_map.md A.11 (deposit metadata; recursive 0<->SNR,
+% 1<->DR one to one; SNR ran averaging=2)
+% src: papers/1_method/decisions/recompute/verify_av2_no_update.macroir on macrodr-reference-0ffbda7,
+% 2026-08-25: non-recursive av=2 against av=1 on the same simulation, outputs byte-identical.
+% NOTE, carried with the caption: the sentence that once ended it ("not separable from NR over the
+% range measured") was removed on 2026-07-31 and stays removed; those numbers were measured on
+% macro_NMR, the build missing the N*ms interval-variance term.
+
+
+\section*{S1.7\quad Symbols against implementation names, and the fixed build flags}
+
+% MOVED HERE 2026-08-26 from Methods (shortening_plan.md, Methods items 9 and 10). The two equation
+% cross-references the table carried in the manuscript are dropped rather than guessed at, since
+% this file compiles on its own and cannot resolve them; each row's description carries the same
+% information. Extracted spans: tmp/methods_symbol_table.tex, tmp/methods_build_flags.tex.
+
+The equations of Appendix~1 of the manuscript are written with the objects the implementation forms,
+and the correspondence is one to one. $\circ$ is the entrywise product and $\mathbf{1}$ the vector of
+ones; $\overline{m}_{i\to j}=\mathbb{E}[\Delta^{-2}A^2_{0\to\Delta}\mid X_0=i,X_\Delta=j]$ is the
+pair-conditioned second moment, so that
+$\bar{v}_{i\to j}=\overline{m}_{i\to j}-\bar{\gamma}^2_{i\to j}$.
+
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+symbol & in the implementation & what it is \\
+\midrule
+$P_{i\to j}(\Delta)$ & \texttt{P} & transition over the window \\
+$\bar{\gamma}_{i\to j}$ & \texttt{gmean\_ij} & conductance averaged over the window, given the pair \\
+$G_{i\to j}=\bar{\gamma}_{i\to j}P_{i\to j}$ & \texttt{gtotal\_ij} & the same, weighted, so that it can be summed \\
+$\overline{m}_{i\to j}$ & \texttt{gsqr\_ij} & its second moment, given the pair \\
+$(\bar\gamma_0)_{i}$ & \texttt{gmean\_i} & $=\texttt{gtotal\_ij}\cdot\mathbf{1}$ \\
+$\overline{m}_{i\to\cdot}$ & \texttt{gsqr\_i} & $=\texttt{gtotal\_sqr\_ij}\cdot\mathbf{1}$ \\
+$H_{i\to j}$, collapsed & \texttt{(gtotal\_ij $\circ$ gmean\_ij)}$\cdot\mathbf{1}$ & the square collapsed, not the collapse squared \\
+$\bar{v}_{i\to j}$ & \texttt{gvar\_ij} & present in the window object, unused by the recursion \\
+$\bm{\mu}_0$, $\bm{\Sigma}_0$ & \texttt{P\_mean}, \texttt{P\_Cov} & the state where the window opens \\
+$\bm{\Sigma}_0-\mathrm{diag}\,\bm{\mu}_0$ & \texttt{SmD} & the prior with its single-channel part removed \\
+$\bm{\gamma}^\top\bm{\Sigma}\bm{\gamma}$ and its tilde & \texttt{gSg} & what the state contributes to the variance \\
+$\bm{\mu}^\top\mathbf{w}$ & \texttt{ms} & the state-dependent noise \\
+$\mathbf{g}_{0\to\Delta}$ & \texttt{gS} & state against current \\
+$\sigma^2_{0\to\Delta}$ & \texttt{y\_var} & the predictive variance \\
+\bottomrule
+\end{tabular}
+\end{center}
+% src, all read first-hand in legacy/qmodel.h: :1746-1774 (the window objects), :4540-4557 (the
+% state), :4574-4611 (gSg and ms), :4641-4643 (gS), :4585-4615 (y_var). The two variance slots are
+% the two lines of the code: gsqr_i - gmean_i o gmean_i for MR, and gsqr_i - (gtotal_ij o
+% gmean_ij).1 for IR (qmodel.h:4605-4611), so the pair-resolved variance gvar_ij is neither
+% consumed nor differentiated by the recursion.
+
+Throughout the reported runs the remaining build flags were held fixed: \emph{taylor variance
+correction} off, \emph{micro approximation} off, and the \emph{variance approximation} on. The V in
+\texttt{VR} names the \emph{variance form} flag, set to $1$, and has no connection to the
+\emph{taylor variance correction} flag, which is off in every run reported here; the
+Taylor-corrected variants MRT and IRT are not part of the study. Because the Taylor variance
+correction is off, the recursive one-endpoint member that runs is MacroMR and not MacroMRT, which is
+what a reader matching deposited filenames needs to know.
+% src: projects/eLife_2025/ops/local/figure_3_mle.macroir:81-89 (taylor=false, micro=false, variance=true)
+% src: projects/eLife_2025/ops/slurm/dispatch_figure_3_G.sh:200,202 (macro_VR: variance_form=1,
+% taylor=false; macro_IRT: taylor=true, not run here)
+
+
+\section*{S1.8\quad Design rationale behind the three numerical safeguards}
+
+% MOVED HERE 2026-08-26 from Methods (shortening_plan.md, Methods item 11). Methods keeps every
+% DISCLOSURE: the pseudo-count equation with its epsilon definition, the smooth trust coefficient
+% with its constants, the binomial-count floor and its fallback, and the reimplementation warning.
+% What is here is why each was built that way, which a reimplementer wants and a referee does not
+% need in the running text.
+
+\paragraph{Why $\varepsilon$ is keyed to the conditioning, and where the prior comes from.} Both
+choices in the pseudo-count are deliberate. Keying $\varepsilon$ to $\kappa_F(\mathbf{V})$ ties the
+regularizer to the conditioning of the decomposition that produced the noise rather than to any
+model constant. Taking the prior means from the conductance vector rather than from the marginals of
+$\mathbf{F}_1$ keeps it clean when $\mathbf{V}$ is ill conditioned, which is exactly when those
+marginals carry the same reconstruction error the pseudo-count exists to absorb and when the prior
+is most needed.
+% src: legacy/qmodel.h:1691-1694 (min_P_prior = eps_mach * kappa_V), 1160-1179 (gmean_ij_prior =
+% (g_i+g_j)/2, gsqr_ij_prior = (g_i^2+g_j^2)/2), 1189-1202 (calc_g_ij_bayes: posterior =
+% (data + prior*eps)/(P + eps)), 1743-1750 (gvar_ij by subtraction, which is why the variance prior
+% is not imposed separately), 1066-1092 (kappa_V = ||V||_F ||W||_F). The prior-from-conductances
+% argument is the code's own at qmodel.h:1154-1159; the rejected alternative it replaced
+% (gtotal_ij / sqrt(P^2+eps^2), a smooth 1/P shrinking towards zero conductance without saying so)
+% is in theory/macroir/notes/Gmean_ij_gvarij/bayesian_prior_regularization_of_Qdt.md, and is history
+% rather than method.
+
+\paragraph{Why the step is damped rather than the state corrected.} The earlier form of this code
+took the undamped step and truncated the occupancy entrywise at zero before renormalising, which is
+not differentiable where it acts and so carries, one level up, the defect the smooth trust
+coefficient exists to avoid. With the step damped instead, no operation produces a negative entry,
+and the renormalisation that follows validates rather than repairs, failing on a real one.
+
+\paragraph{The two trusts, and the size of the smoothing bias.} The covariance is treated separately
+and takes its full step, since the rank-one down-date of the posterior covariance is positive
+semidefinite by construction; the two trusts are not tied to a common factor. In the smooth
+coefficient, $c = 0.9$ is a safety factor applied when the constraint binds, leaving a ten per cent
+margin against the boundary, and $\epsilon = 10^{-4}$ sets the width of the smoothing band, so the
+residual bias of $\alpha$ below the hard minimum is at most $\epsilon/2$, three orders of magnitude
+smaller than that margin. A merely continuous coefficient is not enough and a discontinuous one
+leaves a delta in the score.
 
 \end{document}
