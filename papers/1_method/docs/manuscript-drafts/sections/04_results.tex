@@ -268,13 +268,20 @@ maximum-likelihood fits, where every later figure reads them from the score with
 two constructions agree only to first order (Appendix~\ref{app:diagnostics}).
 
 The truth and the cloud mean coincide only for the two least-squares arms and for \texttt{INR} and
-\texttt{IR}. The other four macroscopic members are displaced, and the displacement has a structure:
-it lives in the amplitude directions, the unitary current a fifth to two fifths low and the channel
-number high by nearly as much, with the product $N_{\mathrm{ch}}\,i$ that the mean current
-determines right to within $0.023$, while no rate is off by more than $0.04$. The noise level is
-biased in \texttt{NR} alone, $0.333$ high in $\log_{10}$, the unmodelled interval variance absorbed
-into it and removed by conditioning on the interval; every other member holds it an order of
-magnitude lower (Figure~\ref{fig:clouds}--source data 1). That the mean current pins the product
+\texttt{IR}; the other four macroscopic members are displaced, within the dispersion of their own
+cloud on the rates and beyond it on the unitary current and the channel number. The noise level is
+biased in \texttt{NR} alone (Figure~\ref{fig:clouds}--source data 1).
+% REDUCED 2026-08-26 (Luciano: the exact numbers are properties of the cell; the structure is what
+% transfers). The within/beyond dichotomy is MEASURED, not impressionistic: in units of each
+% member's own cloud standard deviation the rate biases sit at 0.03-0.64 sd and the amplitude
+% biases at 1.3-7.6 sd (i: NR 1.5, VR 3.3, R 5.7, MR 7.6; N_ch: NR 1.3, VR 1.7, R 3.2, MR 4.2;
+% bias / (CI-halfwidth/1.96 * sqrt(1000)) over source data 1). Retired from prose to source data 1:
+% the bias magnitudes (i a fifth to two fifths low, N_ch high by nearly as much), the product
+% N_ch*i right to within 0.023, the rates within 0.04, NR's noise +0.333 with its mechanism
+% (unmodelled interval variance absorbed, removed by conditioning) and the order-of-magnitude
+% contrast with the rest. The product clause's dependent, "the separation of the two factors" in
+% the least-squares paragraph below, was made self-standing in the same pass.
+% src: projects/eLife_2025/figures/figure_2_source_data/figure_2_source_data_bias.csv That the mean current pins the product
 while only the fluctuations can separate its factors is the identifiability structure known for
 models of this kind \citep{hines2014determination}.
 % REWRITTEN 2026-08-25 (Luciano's three-fact reduction of this subsection, plus the two bias-structure
@@ -379,8 +386,8 @@ to $2.0$.
 
 Least squares does estimate the channel number, to within $0.012$ in $\log_{10}$, but with the unitary
 current pinned at its true value that estimate is the mean current under another name, which is why
-its other two columns are empty. What this figure measures is the separation of the two factors, the
-harder half and the one the gating variance carries.
+its other two columns are empty. What this figure measures is the separation of the channel number
+from the unitary current, the harder half and the one the gating variance carries.
 % TRIMMED 2026-08-12: the caption already states that the four cells are empty by construction and
 % why, and the rule is that the caption describes the display while the prose states the measurement.
 % The measurement here is the 0.012 and the mean-current reading.
