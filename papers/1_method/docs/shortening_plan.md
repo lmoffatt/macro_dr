@@ -830,3 +830,37 @@ Section editor's note: Span = Appendices 1-4 (lines 2205-3138, pp. 39-55), ~9,50
 Re-measure before deciding on more. If 55 pages is still too long, the next tier is structural and riskier: fold what remains of the family section (about 3,700 words after these cuts) to about two pages by pushing the discussion around Eq. 2 into Appendix 1 and the equal-variance derivation into Methods. That would bring the body under 30 pages, at the cost of making Results lean harder on the appendices. Do it only if the journal asks.
 
 Verified total saving after adjustments and rejections: about 7749 words.
+---
+
+## Execution log, 2026-08-26
+
+Passes land one section at a time, each with its own commit and a `check.sh` run, in the order the
+plan proposes. Word counts below are `check.sh`'s whole-document figure, which is the one comparable
+across passes; `wordcount.py`'s main-text figure and the plan's `pdftotext` figure are different
+definitions and must not be mixed with it.
+
+| pass | section | items | document words after | commit |
+|---|---|---|---|---|
+| 1 | Materials and methods, Data availability | 26 | 31,149 (from 33,285) | `8883fbd` |
+| 2 | captions and figure-supplement legends | 19 | 30,242 | `f63671a` |
+| 3 | Discussion | 10 | 29,753 | `95d2dd1` |
+| 4 | Results | 22 | 29,356 | `ecd9617` |
+| 5 | the likelihood family, Abstract and Introduction | 26 | see commit | delegated |
+| 6 | Appendices 1 to 3 | 14 | see commit | delegated |
+
+**Destinations created by pass 1.** `supplementary_file_1.tex` gains S1.6 (the members as
+dispatched: flags, data keys, cells, and the deposit verification of INR = MacroINR), S1.7 (symbols
+against implementation names, and the fixed build flags) and S1.8 (the design rationale behind the
+three numerical safeguards). `projects/eLife_2025/data_note.md` is new and holds what belongs to the
+deposit rather than to the paper: the stale parameter tables, the inert substep argument, the three
+data directories and their search order, the parameter-index dictionaries, the bootstrap internals,
+the run-ledger provenance and the cross-language check tool.
+
+**Deferred, because it is figure work and not text.** Merging Figure 3's supplements 1 and 2 into a
+single four-band page: it needs the producing `.Rmd` rewritten and the page re-rendered, then the
+renumbering the item lists. Nothing else in the plan depends on it.
+
+**Executed against the plan's own body text, with reasons recorded at each site.** The INR =
+MacroINR identification stayed in Methods rather than travelling with the moved table; Methods item 8
+kept the clause the appendix pass depends on; the washout mechanism sentence stayed in the Results;
+the m/a prose gloss was not cut, per reconciliation ruling 2.
