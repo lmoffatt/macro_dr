@@ -108,7 +108,11 @@ exactly from the process every member approximates.
 % Checked in the same pass: no other stretch of seven words or more from 04_results.md appears in
 % this file, so this was the one leak and not a pattern.
 
-Throughout, $k_{\mathrm{on}}$ and $k_{\mathrm{off}}$ are the opening and closing rates, $i$ the unitary current, and $\widetilde{\Delta}$ and $\widetilde{S}$ the acquisition interval and the instrumental noise in the natural units of the model, $\widetilde{\Delta} = \Delta\,k_{\mathrm{off}}$ and $\widetilde{S} = S\,k_{\mathrm{off}}/i^{2}$ with $S$ the instrumental noise power spectral density. The eight members are those of Table~\ref{tab:members}. The two least-squares arms are one flag apart, \texttt{LSE} fitting the conductance at the sample and \texttt{ILSE} fitting it averaged over the acquisition window, and both are run over the whole design plane, on the same cells as each other and as every other member. % COVERAGE CORRECTED 2026-08-12 (Luciano): this read "Their coverage differs: ILSE is run over the whole design plane, and LSE has the clouds of the single-cell comparison at three channel counts and the distortion measurements across the plane", from a check dated 2026-08-06 that predated the run landing. Re-measured 2026-08-12 from figures/figure_4_source_data/*.csv, which is what every plane figure draws: nonlinearsqr_g and nonlinearsqr each carry 210 cells, the same 30 (N_ch, noise) combinations at n_sims 1e4 by the same 7 sampling intervals. ILSE's only extra cells are two at N_ch = 5, off this paper's grid, and four superseded ones at n_sims 1e3. The two do differ in where the single-cell clouds sit, which is a fact about Figure 2 and not about the plane: ILSE has them at N_ch 10, 100 and 1000, LSE at 10, 100 and 10^4. 02_framework.tex and 06_methods.tex were corrected the same day; this was the one site left.
+Throughout, $\widetilde{\Delta}$ and $\widetilde{S}$ are the acquisition interval and the instrumental noise in the natural units defined above, and the eight members are those of Table~\ref{tab:members}.
+% COMPRESSED 2026-08-26 (shortening_plan.md, Results item on the natural-units restatement,
+% duplication (a)): this was the second of three copies of the tilde definition. The framework
+% section's copy survives as the sole full definition; the Methods copy keeps only the
+% engine-to-units mapping. k_on, k_off and i are defined in the family section and used throughout. The two least-squares arms are one flag apart, \texttt{LSE} fitting the conductance at the sample and \texttt{ILSE} fitting it averaged over the acquisition window, and both are run over the whole design plane, on the same cells as each other and as every other member. % COVERAGE CORRECTED 2026-08-12 (Luciano): this read "Their coverage differs: ILSE is run over the whole design plane, and LSE has the clouds of the single-cell comparison at three channel counts and the distortion measurements across the plane", from a check dated 2026-08-06 that predated the run landing. Re-measured 2026-08-12 from figures/figure_4_source_data/*.csv, which is what every plane figure draws: nonlinearsqr_g and nonlinearsqr each carry 210 cells, the same 30 (N_ch, noise) combinations at n_sims 1e4 by the same 7 sampling intervals. ILSE's only extra cells are two at N_ch = 5, off this paper's grid, and four superseded ones at n_sims 1e3. The two do differ in where the single-cell clouds sit, which is a fact about Figure 2 and not about the plane: ILSE has them at N_ch 10, 100 and 1000, LSE at 10, 100 and 10^4. 02_framework.tex and 06_methods.tex were corrected the same day; this was the one site left.
 % TRIMMED 2026-08-12 (10_concept_census.md, defect 3): the two tilde definitions moved up into the
 % framework section, where they are now stated before their first use. What stays here is the
 % reminder and the three symbols this section reads off figures.
@@ -366,10 +370,12 @@ it lifts the coverage of \texttt{IR}'s nominal $95\%$ region from $0.914$ to $0.
 directions at once (Figure~\ref{fig:clouds}--figure supplement 1).
 It fails alike for the two least-squares arms, at a factor of $1.6$ in both, two members that differ
 in every first-moment quantity, which puts the failure in what they share; they are also the two
-arms whose analytic Fisher the differenced check flags (Supplementary File~1), and the sizes are
-consistent: with the analytic form reading $0.71$ to $0.78$ of the differenced one there, a
-sandwich whose bread is the analytic Fisher leaves a residual near the squared reciprocal, $1.6$
-to $2.0$.
+arms whose analytic Fisher the differenced check flags (Supplementary File~1), at a size consistent
+with the residual measured here.
+% COMPRESSED 2026-08-26 (shortening_plan.md, Results item): the arithmetic walk-through shrinks to
+% one clause; the fuller anchor-check disclosure, with the ~1.3 least-squares re-anchoring factor,
+% stands later in this section and in Supplementary File 1. The arithmetic is kept in the note
+% below so the consistency claim stays checkable.
 % MECHANISM CLAUSE ADDED 2026-08-25 (naive round rated it "plausibly explains"; the arithmetic is
 % here so it is checkable): corrected covariance = H^-1 J H^-1 with H the analytic Gaussian
 % Fisher; if the correct bread is the differenced F = C*H with C = 0.71-0.78 (S1.5, LSE/ILSE
@@ -386,8 +392,7 @@ to $2.0$.
 
 Least squares does estimate the channel number, to within $0.012$ in $\log_{10}$, but with the unitary
 current pinned at its true value that estimate is the mean current under another name, which is why
-its other two columns are empty. What this figure measures is the separation of the channel number
-from the unitary current, the harder half and the one the gating variance carries.
+its other two columns are empty.
 % TRIMMED 2026-08-12: the caption already states that the four cells are empty by construction and
 % why, and the rule is that the caption describes the display while the prose states the measurement.
 % The measurement here is the 0.012 and the mean-current reading.
@@ -501,9 +506,8 @@ recordings at the same cell, interval by interval, with no fitting. Row (A) alre
 families: the recursive members follow the record, their predictive band tracking the current they
 score, while the open-loop members and both least-squares arms predict the ensemble and do not. The
 log-likelihood adds up everything a member gets wrong, and it orders the ladder accordingly: the
-boundary-conditioned member on top with the three other recursive members within eleven nats of it,
-then a sixty-nat gap to the interval mean without recursion, the instant member below that, and the
-two least-squares arms together at the bottom, $119$ nats below the top
+boundary-conditioned member on top and the two least-squares arms together at the bottom, $119$
+nats below it
 (Figure~\ref{fig:time}--source data 1). The ranking says nothing about how far from the truth its
 top sits; every other row is read against a value a correct likelihood must give, and can therefore
 test. One entry is not the same kind of number, both least-squares arms
@@ -545,13 +549,13 @@ fitting a noise level to each recording they score.
 % least-squares arms miss the identity by 2.2 nats, which is where the per-recording noise estimate
 % stated above was found. Scripts: tmp/fig3_kl.R and tmp/fig3_tc.R.
 
-What remains is measured from three objects and the figure keeps them apart. The residual is the
-observation against the member's prediction, both drawn in (A), divided by the standard deviation
-the member claimed: its variance is row (B) and its memory the black series of (G). The score is the
-gradient of the log-likelihood, which a correct likelihood leaves with zero mean (D) and with
-variance equal to the information (E, F), its memory being the coloured series of (G). The
-information is the precision the member claims, drawn alone in (C) and serving as the reference in
-(D), (E) and (F). Only the residual can be computed on a real recording.
+The figure keeps the three diagnostics apart: the residual carries its variance in row (B) and its
+memory in the black series of (G); the score its mean in (D), its variance against the information
+in (E) and (F), and its memory in the coloured series of (G); the information, the precision the
+member claims, is drawn alone in (C).
+% COMPRESSED 2026-08-26 (shortening_plan.md, Results item on the three objects): the definitions
+% belong to the framework section, which is protected and keeps them, and "only the residual can be
+% computed on a real recording" is said again below where it does work.
 
 The mean of the score is what says whether the estimate will be displaced, and it repeats
 Figure~\ref{fig:clouds}'s split: per interval it sits at the chance level for \texttt{IR}, near it
@@ -600,13 +604,16 @@ the level of the inference. The same memory shows in the residual, which is the 
 that transfers to a real recording. Figure~\ref{fig:plane}B carries the second moment over the plane;
 these are the two mechanisms behind it. % src: figure_3.html (caption-numbers chunk; accumulated J_T/F_T 13.63 NR, 20.84 INR, 1.074 R, 1.080 IR, and lag-one score ACF on k_off) ; figure_3.Rmd (accumulated block, Ebar and infl, whose product reproduces the accumulated ratio by construction: R 0.724 x 1.483, IR 1.069 x 1.010, MR 0.578 x 2.055, INR on N_ch 1.006 x 11.758) ; tmp/fig3_claims.R (residual ACF at lag one 0.846 either least-squares arm, 0.510 NR, 0.118 R, -0.010 IR, so the score reads 1.6 to 1.7 times the residual where either is large; the score ACF falls below 0.1 at lag 2 for the recursive members and lag 9 to 12 for the rest). TRAP: the drawn ACF does not reconstruct the accumulated ratio arithmetically, 1+2*sum(rho) giving 7.85 for NR against a measured inflation of 16.83, because the score is not stationary.
 
-The information on its own answers a different question, about the recording rather than about the
-algorithms: where each parameter is measured. About the channel number and the opening rate it
-reaches the numerical floor within six intervals of the agonist being removed, while the closing
-rate survives through the mean and the unitary current through the variance of the channels still
-open (Figure~\ref{fig:time}--figure supplements 1 and 2). A member that has conditioned on the past
-already carries the number of channels still open, so once a parameter reaches the recording only
-through that number there is nothing further to learn. The two open-loop members go on reporting
+The information on its own says where each parameter is measured. About the channel number and the
+opening rate it reaches the numerical floor within six intervals of the agonist being removed, while
+the closing rate survives through the mean and the unitary current through the variance of the
+channels still open (Figure~\ref{fig:time}--figure supplements 1 and 2). A member that has
+conditioned on the past already carries the number of channels still open, so once a parameter
+reaches the recording only through that number there is nothing further to learn.
+% COMPRESSED 2026-08-26 to its framing sentence only (shortening_plan.md, Results washout item,
+% binding adjustment): the MECHANISM sentence stays HERE, because the Discussion copy was cut to
+% design advice. The six-interval floor and the 15-16% numbers stay too, since two supplement
+% legends dropped their copies of the six-interval fact in the captions pass. The two open-loop members go on reporting
 information about the channel count through the washout, $15$ to $16\%$ of their pulse total against
 $0.5$ to $0.8\%$, which is the same information counted twice that their accumulated ratio charges
 them for. The noise level, measured before the agonist arrives, keeps a white score where the
@@ -648,7 +655,7 @@ kinetic directions do not (Figure~\ref{fig:time}--figure supplement 3). % src: f
 % moments on one shared scale. 7.4 x 7.3 in, isotropic in the two axes.
 \includegraphics[width=\linewidth]{Figure_4}
 \end{fullwidth}
-\caption{\textbf{The design plane: how wrong each member's report is, in both moments, on one scale.} Ten thousand recordings are simulated at every cell of the grid and scored by each member of the cost ladder. (A) The distortion-induced bias, evaluated at the simulation truth $\theta_{\mathrm{sim}}$: how far the estimate is displaced. (B) The information distortion, evaluated at the pooled optimum $\theta_{\mathrm{pool}}$, where the score vanishes by construction so a displaced gradient cannot contaminate it: how far the uncertainty a member reports is from the one it delivers. Columns nest twice, member and then parameter, $k_{\mathrm{off}}$ and $N_{\mathrm{ch}}$. Both least-squares arms are on the grid and each holds one column per half rather than two, their four-parameter configuration fixing the unitary current and the noise level at the simulated values (Methods). Rows are the channel count, each given a height proportional to the range of instrumental noise the sweep reaches there. Inside a panel the axes are the sampling interval in units of $\tau$ and the dimensionless instrumental noise, one decade the same distance on both. Colour is shared by the two halves: the factor by which the report is wrong, centred on one, pale right and saturated wrong in either direction, blue conservative, clipped at $10^{\pm3}$. What a factor means differs between them: in (A) it is a factor on the parameter, so $2$ means the estimate is out by a factor of two, while in (B) it is a ratio of variances, so $2$ means the reported error bar is $\sqrt{2}$, about $40\%$, too narrow. Lines carry two codes: colour says which quantity, dark hairlines cutting the colour field and white lines on a dark casing cutting the distortion-corrected standard error, which asks whether the parameter can be measured at all rather than whether its error bar is honest; dash says which criterion, solid a factor $1.15$ and dashed a factor $2$, the two thresholds used throughout.}
+\caption{\textbf{The design plane: how wrong each member's report is, in both moments, on one scale.} Ten thousand recordings are simulated at every cell of the grid and scored by each member of the cost ladder. (A) The distortion-induced bias, evaluated at the simulation truth $\theta_{\mathrm{sim}}$: how far the estimate is displaced. (B) The information distortion, evaluated at the pooled optimum $\theta_{\mathrm{pool}}$ (Methods): how far the uncertainty a member reports is from the one it delivers. Columns nest twice, member and then parameter, $k_{\mathrm{off}}$ and $N_{\mathrm{ch}}$. Both least-squares arms are on the grid and each holds one column per half rather than two, their four-parameter configuration fixing the unitary current and the noise level at the simulated values (Methods). Rows are the channel count, each given a height proportional to the range of instrumental noise the sweep reaches there. Inside a panel the axes are the sampling interval in units of $\tau$ and the dimensionless instrumental noise, one decade the same distance on both. Colour is shared by the two halves: the factor by which the report is wrong, centred on one, pale right and saturated wrong in either direction, blue conservative, clipped at $10^{\pm3}$. What a factor means differs between them: in (A) it is a factor on the parameter, so $2$ means the estimate is out by a factor of two, while in (B) it is a ratio of variances, so $2$ means the reported error bar is $\sqrt{2}$, about $40\%$, too narrow. Lines carry two codes: colour says which quantity, dark hairlines cutting the colour field and white lines on a dark casing cutting the distortion-corrected standard error, which asks whether the parameter can be measured at all rather than whether its error bar is honest; dash says which criterion, solid a factor $1.15$ and dashed a factor $2$, the two thresholds used throughout.}
 % CAPTION TRIMMED 2026-08-13, 408 words to 323, against the published band of 150 to 260 with an
 % observed maximum of 447 (_program, caption survey). What went is design justification rather than
 % reading instruction, which is the rule the 2026-08-04 trim of this same caption already applied:
@@ -749,8 +756,10 @@ between them are a property of the regime in which the fluctuations still carry 
 the algorithms in general. Where that crossing sits is worth having in the plane's own coordinates,
 because it moves: at the open probability of one half the instrumental variance overtakes the
 gating variance at $\widetilde{S}/N_{\mathrm{ch}}$ equal to $0.0025$ at the shortest window and
-$0.14$ at the longest, which puts it at $\widetilde{S} = 0.025$ for ten channels sampled fastest
-and near $\widetilde{S} = 1400$ for ten thousand sampled slowest. % src: analytic, from the emission model and the run values in Methods; the locus and its three constants are derived in the note at 02_framework.tex beside the units paragraph (h = 0.0024834 / 0.023414 / 0.141917 at Delta_tilde = 0.01 / 0.1 / 1, so 0.0025*10 = 0.025 and 0.1419*1e4 = 1419).
+$0.14$ at the longest.
+% COMPRESSED 2026-08-26 (shortening_plan.md, Results item on the crossing): the two worked examples
+% restated the law given in the same sentence. The crossing law itself survives, which is what the
+% Figure 7 boundary paragraph refers back to. % src: analytic, from the emission model and the run values in Methods; the locus and its three constants are derived in the note at 02_framework.tex beside the units paragraph (h = 0.0024834 / 0.023414 / 0.141917 at Delta_tilde = 0.01 / 0.1 / 1, so 0.0025*10 = 0.025 and 0.1419*1e4 = 1419).
 The cell the two preceding figures use sits a factor of $234$ in variance below it, well inside the
 regime where the gating fluctuations carry the information. % src: same, h(0.1) * N_ch / S_tilde = 0.023414 * 100 / 0.01 = 234; in amplitude sqrt(234) = 15.3.
 % MOVED 2026-08-13 to the head of the subsection: "Figure 4 repeats the two moments over the whole
@@ -787,8 +796,8 @@ carries half of it in the same direction. % src: projects/eLife_2025/figures/pap
 essentially zero over the same plane, and that concession is worth making plainly: the classical fit
 recovers the rates, and what it gets wrong is how well it says it recovered them. % src: projects/eLife_2025/figures/paper_both/figure_4.Rmd (caption-numbers chunk)
 
-Modelling the correlation across intervals is what removes the distortion, in the amounts above,
-and recursion is how every member of this family that models it does so. A member that takes one axis and not
+Modelling the correlation across intervals is what removes the distortion, and recursion is how
+every member of this family that models it does so. A member that takes one axis and not
 % "Recursion is what removes the distortion" SCOPED 2026-08-25 (naive round, CONFIRMED confound):
 % the family contains no open-loop member carrying the full cross-interval covariance (the
 % generalized-least-squares route of celentano2004use and stepanyuk2011efficient, both cited in
@@ -1034,9 +1043,7 @@ magnitude is a property of the conditioning. % src: projects/eLife_2025/figures/
 % off a file count, because the source data is what the figures actually draw.
 A reader who accepts the distortion will reach for the cheapest repair before changing likelihood:
 declare that the recording holds fewer independent intervals than it appears to, and deflate the
-count. That number is already measured, and Figure~\ref{fig:memory} carries it as an axis. The integrated autocorrelation of the standardized residual,
-which counts how many intervals a likelihood effectively has for every
-interval it believes it has, reads $1.008$ for \texttt{IR}, $1.30$ for \texttt{R}, $3.93$ for
+count. That number is already measured, and Figure~\ref{fig:memory} carries it as an axis. The integrated autocorrelation of the standardized residual reads $1.008$ for \texttt{IR}, $1.30$ for \texttt{R}, $3.93$ for
 \texttt{NR} and $9.26$ for \texttt{ILSE} at $\widetilde{S} = 0.01$. % src: projects/eLife_2025/figures/paper_both/figure_4_supplement_lag_kappa.Rmd (integrated residual autocorrelation over the plane; values at noise label 0.1)
 % ANCHOR MISMATCH, found 2026-08-10 while promoting the figure, and left for Luciano rather than
 % silently edited. Three of these four numbers are identical at both anchors and reproduce exactly
@@ -1128,13 +1135,13 @@ spread falls toward one; at ten channels that spread is $1.25$, above the strict
 the same few-channel corner every other measurement in this section points at. \texttt{MR} is worse
 than \texttt{R} on both axes and at every channel count.
 
-That reading is on the two invariants; the distortion itself, over the same plane and for the four
-rungs of the recursive family, says the same thing and adds the second partial correction
-(Figure~\ref{fig:plane}--figure supplement 3). On the closing rate \texttt{MR} is worse than
-\texttt{R} at every channel count and the gap widens as channels are added, while \texttt{VR} sits
-on \texttt{R} along the rates and above it on the channel number. Neither partial
-correction buys anything on this plane, and the second endpoint is what moves the closing rate to
-$1.01$.
+The same plane over the four rungs of the recursive family adds the second partial correction
+(Figure~\ref{fig:plane}--figure supplement 3): \texttt{VR} sits on \texttt{R} along the rates and
+above it on the channel number. Neither partial correction buys anything on this plane, and the
+second endpoint is what moves the closing rate to $1.01$.
+% COMPRESSED 2026-08-26 (shortening_plan.md, Results item on the two invariants): MR-worse-than-R
+% is stated in the sentences just above, and framing the supplement as "saying the same thing" adds
+% nothing. The VR reading and the 1.01 endpoint result, which are new here, both stay.
 % TRIMMED 2026-08-13: the two four-decade series (MR 1.45 / 1.78 / 1.78 / 1.94 against R 1.42 / 1.49
 % / 1.48 / 1.46, and VR within 5% of R on the rates at three counts of four and 17 to 20% above it on
 % the channel number) go to the % src at the foot of this subsection, which already carries all four
@@ -1152,8 +1159,10 @@ averaged one stays at $0.0009$. So to a fit that does not model the gating varia
 average does one thing only, which is to keep a window comparable to the kinetics from aliasing the
 deterministic mean. To the two members that do model it the same step is worth a factor of $9$ to
 $50$ on that offset at every interval, and a factor of $240$ on the channel number at the coarsest.
-The contrast is the one the recovery cell reports at a single window, and it holds over two decades
-of them. % src: projects/eLife_2025/figures/paper_both/figure_4.Rmd (interval-pairs-along-delta chunk, 2026-08-12 render; medians over the four channel counts at noise label 0.1, read from m and not from Bconf/Dconf; tables A, C and D)
+% DELETED 2026-08-26 (shortening_plan.md, Results item): "The contrast is the one the recovery cell
+% reports at a single window, and it holds over two decades of them" was an ornamental tie-back to
+% Figure 2; the paragraph's own numbers (121.0 against 121.9, a factor 9 to 50, a factor 240) state
+% the contrast. % src: projects/eLife_2025/figures/paper_both/figure_4.Rmd (interval-pairs-along-delta chunk, 2026-08-12 render; medians over the four channel counts at noise label 0.1, read from m and not from Bconf/Dconf; tables A, C and D)
 
 The interval axis carries one reading of its own. The distortion of every member that does not
 recurse scales as the inverse of the window, each halving of the window
@@ -1274,9 +1283,10 @@ Its boundaries are level sets of continuous diagnostics, so a looser criterion m
 \end{figure}
 
 
-Figure~\ref{fig:usage} collects the measurements into one plane, the channel number against the
-instrumental noise at a single acquisition interval $\widetilde{\Delta}=0.1$, in which the measured
-cells are the input and the four boundaries are the output.
+Figure~\ref{fig:usage} collects the measurements into one plane in which the measured cells are the
+input and the four boundaries are the output.
+% COMPRESSED 2026-08-26 (shortening_plan.md, Results item): the axes and the acquisition interval
+% are restated in the caption, which keeps the numbers.
 
 Read upward at a fixed channel count the recording loses capabilities in a fixed order, which gives
 five regions, numbered from the bottom. % src: papers/_program/nomenclature.md (regions of the usage map; 0 at the bottom, 4 at the top)
@@ -1285,12 +1295,14 @@ recording is not a macroscopic problem, the microscopic regime seen on this plan
 interval while least squares reports an interval several times too narrow; in region~2 the amplitude
 pair stops being separable and the rates alone survive; in region~3 least squares is calibrated too
 and buys the same answer more cheaply; in region~4 nothing useful is left.
-The two boundaries that say a parameter has stopped being measurable are level sets of one
-continuous field, the standard error each member actually delivers, which is the square root of
-the diagonal of its distortion-corrected covariance rather than of the one it reports; that field
-is drawn over the whole plane, for every member and all five parameters, in
-Figure~\ref{fig:plane}--figure supplement 4, so a reader who wants a criterion other than the
-factor of two drawn here can take it off that map. % src: projects/eLife_2025/figures/paper_both/figure_7.Rmd:129 (the solid boundary is q = "se", threshold 0.3 in log10 = a factor 2, on k_on, k_off, i and N_ch) and figure_4_supplement_standard_error.Rmd (the field itself, five parameters, six members)
+The two boundaries that say a parameter has stopped being measurable are level sets of the
+delivered standard error introduced above, drawn over the whole plane for every member and all five
+parameters in Figure~\ref{fig:plane}--figure supplement 4, so a reader who wants a criterion other
+than the factor of two drawn here can take it off that map.
+% COMPRESSED 2026-08-26 (shortening_plan.md, Results item, binding adjustment: cut only the repeated
+% delivered-SE definition). Its first statement, "the square root of the diagonal of the
+% distortion-corrected covariance", stands earlier in this section and is untouched; the level-set
+% claim, the supplement pointer and the reader-criterion sentence all stay. % src: projects/eLife_2025/figures/paper_both/figure_7.Rmd:129 (the solid boundary is q = "se", threshold 0.3 in log10 = a factor 2, on k_on, k_off, i and N_ch) and figure_4_supplement_standard_error.Rmd (the field itself, five parameters, six members)
 The lowest boundary is the
 one with a negative slope, $-0.56$ in
 $\mathrm{d}\log_{10}\mathrm{noise}/\mathrm{d}\log_{10}N_{\mathrm{ch}}$, because instrumental noise
@@ -1310,10 +1322,10 @@ not a region of this plane; it is reached along the interval axis of Figure~\ref
 % circular before: this paragraph pointed at the caption for the region names and the caption
 % pointed back here. The names are now here, which is what the caption claims.
 
-The boundary at which the classical error bar becomes honest is one the mechanism predicts: the
-gating variance grows with the channel count while the instrumental variance does not, so the ratio
-of the two decides whether a window-ignoring fit is honest. Fitted in logarithms over four measured
-crossings in each of two parameter directions, it runs as instrumental noise proportional to channel
+The boundary at which the classical error bar becomes honest is the one the mechanism above
+predicts. Fitted in logarithms over four measured crossings
+% COMPRESSED 2026-08-26 (shortening_plan.md, Results item): third statement of the
+% gating-versus-instrumental mechanism; the clear statement earlier in this section survives. in each of two parameter directions, it runs as instrumental noise proportional to channel
 number, with slopes of $1.01$ and $1.03$, a measured slope rather than an assumed scaling. % src: projects/eLife_2025/figures/paper_both/figure_7.html (crossings at noise label 164 and 130 at N_ch 10, 1.28e3 and 1.53e3 at 100, 1.54e4 and 1.51e4 at 1000, 1.62e5 and 1.59e5 at 10^4, channel-number and closing-rate directions)
 
 The ordering of the boundaries is the result the map exists to state: there is no region of the

@@ -185,18 +185,15 @@ $\mathbb{E}[\mathbf{N}]=N_{\mathrm{ch}}\bm{\mu}$ and
 $\mathrm{Cov}(\mathbf{N})=N_{\mathrm{ch}}\bm{\Sigma}$, which is where every factor of
 $N_{\mathrm{ch}}$ in Eq.~\ref{eq:macror} comes from.
 
-The interval average is not a function of the occupancy at any one time, so no conductance vector
-on the $K$ states delivers its mean. On the $K^2$ pairs of states a channel occupies at the two
-ends of the window one does, and the construction of every interval member is that substitution
-carried out in three steps. Run the update on the pairs, with the pair-conditioned mean interval
-conductance $\bar\gamma_{i\to j}$ in place of $\bm{\gamma}$. Charge what the conductance still
-varies by once the pair is fixed, its variance $\bar v_{i\to j}$, to the noise term of the update,
-where it enters as a variance carried per state. That is legitimate rather than convenient: given
-the counts the extra fluctuation has mean zero, so
-$\mathrm{Cov}(\mathbf{N},\bar y)=\mathrm{Cov}(\mathbf{N},\mathbb{E}[\bar y\mid\mathbf{N}])$ and it
-touches $\sigma^2$ alone, entering neither the predicted mean nor the gain. Then marginalize the
-start index, which the next window has no use for. Of the three steps the first two are exact, and
-the Gaussian replacement is where the approximation enters.
+% DELETED 2026-08-26, item "DELETE ~170 words, the three-step preview" of docs/shortening_plan.md
+% (appendices span), which executes duplication (b). What stood here was a full preview of the
+% three-step construction, opening "The interval average is not a function of the occupancy at any
+% one time" and closing "the Gaussian replacement is where the approximation enters". SURVIVING
+% COPIES: the body's family section, and the subsection "The three steps that build the interval
+% update" below, which carries the same three steps, the same legitimate-rather-than-convenient
+% justification and the same exactness statement. Checked before cutting: nothing between here and
+% that subsection refers back to "the three steps", and the subsection immediately below redefines
+% gammabar_{i->j} and vbar_{i->j} in its own words, so no symbol is orphaned by the deletion.
 
 % The tilted-semigroup paragraph that travelled with this block is NOT reproduced here: the
 % subsection immediately below opens by defining exactly that object, and printing both would say it
