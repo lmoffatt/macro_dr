@@ -741,6 +741,27 @@ one recorded point rises as $1/\Delta_t$ and the noise per unit bandwidth is unc
 In the natural units defined above, $\widetilde{\Delta} = \Delta\,k_{\mathrm{off}}$ and
 $\widetilde{S} = S\,k_{\mathrm{off}}/i^2$; at the run values $k_{\mathrm{off}} =
 100\;\mathrm{s}^{-1}$ and $i = 1$ the reference cell used throughout is $\widetilde{S} = 0.01$.
+Both $\widetilde{S}$ and the gating fluctuation are per-sample variances, which is what makes them
+comparable. The instrumental variance of one recorded sample is
+$i^{2}\widetilde{S}/\widetilde{\Delta}$, so $\widetilde{S}=1$ is a sample one channel time constant
+long whose noise carries a standard deviation of exactly one single-channel current, and a decade of
+that axis is half a decade of current. The gating variance of the same sample rises as the window
+shortens only until the window is shorter than the channel's own correlation time, after which it
+saturates, while the instrumental variance keeps rising as $1/\widetilde{\Delta}$; at the open
+probability of one half the two are equal along
+\[
+  \frac{\widetilde{S}}{N_{\mathrm{ch}}} \;=\;
+  \frac{2\widetilde{\Delta}-1+e^{-2\widetilde{\Delta}}}{8\,\widetilde{\Delta}},
+\]
+which is $\widetilde{\Delta}/4$ for windows short against that correlation time and a quarter for
+long ones.
+% LANDED 2026-08-26, discharging the "LANDING OWED" debt raised at the removal site in
+% 02_framework.tex (shortening_plan.md, family item 7: MOVE the equal-variance derivation to the
+% natural-units passage of Methods). The body keeps the ratio-collapse sentence the item requires;
+% this is the derivation Figure 5's ratio axis is the consequence of, so it had to come back into the
+% manuscript rather than stay in a comment. The S-tilde = 1 half dissolves against the noise ladder's
+% own gloss below, exactly as the item predicted, so it is stated once here and once there and the
+% two do not repeat each other.
 % COMPRESSED 2026-08-26 (shortening_plan.md, Methods item 18, duplication (a)): this section keeps
 % the engine-to-units mapping only. The re-derivation and the "only dimensionless combination"
 % justification go, the body's definition being the surviving full one; the S-tilde = 1 gloss
