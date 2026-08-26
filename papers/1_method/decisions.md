@@ -250,6 +250,17 @@ the predictive variance divides it. See `figures_build_plan.md` §F1-2 for the m
 
 - Head manuscript is `docs/manuscript-drafts/elife_paper.tex`; it is the vessel, every claim owned
   upstream. Superseded drafts stay as history.
+- **Article type: Research Article. Settled long before 2026-08-26 and recorded here that day,
+  because it was settled nowhere.** It lived only in the first line of `cover_letter.md` ("for
+  consideration as a Research Article") and in the author's memory, so `check.sh` item 8 and
+  `01_writing_plan.md` §3 both kept reporting it as the open decision `D-1`, and it resurfaced in
+  review at least twice. This is rule 3 of `../_program/00_index.md` doing exactly what it exists to
+  prevent. Tools and Resources was the alternative and is dead: it obliges benchmarking against
+  existing methods as new science and it buys nothing here. What the choice binds: eLife sets **no
+  hard word limit** for a Research Article (the 5,000-word main-text figure is an advisory that 55%
+  of published articles exceed, `../_program/elife_main_text_length_survey.md`), and the abstract
+  norm is the research-article one, median 204 words, not the shorter Tools and Resources median of
+  157 (`../_program/elife_abstract_length_survey.md`). Both surveys already assumed this answer.
 
 ## The figure set (2026-07-22, revised same day)
 

@@ -188,13 +188,15 @@ if [ -z "$MISSING_MATTER" ]; then green "7. front/back matter complete"; else
 fi
 
 # --- 8. word count ------------------------------------------------------------------
-# Methods are excluded from eLife's count. The limit depends on D-1 (Research Article vs
-# Tools & Resources); until D-1 is answered this reports, it does not judge.
+# Methods are excluded from eLife's count. ARTICLE TYPE SETTLED: Research Article
+# (1_method/decisions.md, "Manuscript"), for which eLife sets no hard limit, so this reports
+# and does not judge. $W is the WHOLE body by detex and is NOT comparable to the main-text
+# figure from wordcount.py; the two definitions must never be mixed (08_length_plan.md).
 # Count over the concatenated body (BODY_TMP is file:num:content, so strip that prefix and
 # comment lines first). Running detex on $TEX cannot follow \input once T-1 has split it.
 BODY_TEXT=$(sed 's/^[^:]*:[0-9]*://' "$BODY_TMP" | grep -v '^[[:space:]]*%')
 if command -v detex >/dev/null 2>&1; then W=$(printf '%s' "$BODY_TEXT" | detex 2>/dev/null | wc -w); else W=$(printf '%s' "$BODY_TEXT" | sed 's/%.*//' | wc -w); fi
-warn "8. word count ~$W (limit pending D-1: Research Article vs Tools & Resources)"
+warn "8. word count ~$W whole body (Research Article: no hard limit; main text via wordcount.py)"
 
 # --- 9. index completeness (00_index.md §2 covers _program PLUS this paper) -----------
 # Enforces the "completeness guarantee": if a working .md is NOT registered in 00_index.md,

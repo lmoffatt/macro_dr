@@ -42,7 +42,7 @@ its argument; run it from the repo root, or `./check.sh 1_method` from `papers/_
    caption's numbers passing LINT-SRC. (The old six-figure gate is retired: the set is five body figures
    plus supplements, `decisions.md` "The figure set"; eLife imposes no limit.)
 7. Data availability, Author contributions, Competing interests, Funding are non-empty.
-8. Word count is under the limit for the article type chosen in **D-1**.
+8. Word count is reported, not judged: the article type is Research Article (`decisions.md`), for which eLife sets no hard limit.
 
 Green plus the seven section ACCEPTs of §3 = submittable. Nothing else counts as progress.
 The previous version of this plan aimed at *a draft with two holes*, which is not the objective.
@@ -93,7 +93,7 @@ pick, or correct a prefilled artifact.
 | # | Decision | What he receives | His action | Min |
 |---|---|---|---|---|
 | **D-0** | ~~Freeze commit and re-run scope (§4).~~ **DECIDED 2026-07-15**: `decisions/D-0_freeze_and_rerun_scope.md`, logged at `../_program/decisions.md` §4. Do not restate the verdict here. | — | done | 0 |
-| **D-1** | Research Article or Tools & Resources? T&R obliges benchmarking against existing methods (new science) and public deposition. | One page: what T&R obliges, what it buys, the word limits. | Pick one | 5 |
+| **D-1** | ~~Research Article or Tools & Resources?~~ **SETTLED: Research Article**, long before 2026-08-26 and recorded that day in `decisions.md` ("Manuscript") because it had been settled nowhere and kept resurfacing. Do not restate the reasoning here. | — | done | 0 |
 | **D-2** | The units of the six parameters. Written nowhere in the repo: not in the model header, not in a `.macroir`, not in a dispatcher. **Only Luciano knows.** | A six-row table **prefilled** with the agent's inference from the code and priors, one evidence line per row. | Correct the wrong cells | 15 |
 | **D-3** | The novelty sentence. `docs/manuscript-drafts/sections/01_introduction.md` still claims "no published likelihood integrates the observable over the acquisition window"; the prior-art map retracts it (single-channel HMMs do exactly that). The novelty is the **scaling to channel populations**, the exact CTMC realization, and the validation. | A drafted replacement paragraph from `docs/bibliography/MacroIR_prior_art_map.md`. | Approve or edit | 10 |
 | **D-4** | The ranking verdict. The table exists in four copies and two cells disagree with the data: MR's variance direction, and IR's corner bound (≤1.3 stated, ~0.5 observed) — probably a category error between predicted *observable* variance and reported *parameter* covariance. | The table recomputed from the CSVs, the two contested cells resolved, the diff against each of the four copies. | Yes/no | 10 |
