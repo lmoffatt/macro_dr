@@ -240,6 +240,10 @@ Throughout, $k_{\mathrm{on}}$ and $k_{\mathrm{off}}$ are the opening and closing
 % sentence is in this subsection, it runs on one cell of the cloud files, and it uses no part of
 % figure_4_layout.R. Parentage follows the claim.
 \figsupp[The sandwich prediction against the empirical multivariate distribution of the estimates, as a Mahalanobis quantile-quantile plot.]{\textbf{The reported covariance against the empirical one, in all six directions at once.} The squared Mahalanobis distance of each estimate from the cloud mean, sorted and drawn against the quantiles of a $\chi^2$ with six degrees of freedom, under the covariance the member reports and under the distortion-corrected sandwich. A calibrated covariance lies on the identity; above it the reported region is too small and under-covers. The reported Fisher covariance under-covers the nominal $95\%$ region and the sandwich covers it, $0.914$ against $0.947$ to $0.949$. Centring on the cloud mean rather than on the simulation truth tests the second moment alone, which is what the correction claims to repair; the first moment is the separate question the body figure's markers carry. Two things differ from the body figure and both are forced by the sample: the member is \texttt{IR} alone, and the cell is $N_{\mathrm{ch}}=10$ at $\widetilde{S}=0.005$ with group size $100$, which is the one cloud in the set carrying a thousand fits of that size, every other cell being simulated at ten thousand recordings and so giving a hundred. The $\chi^2$ reference is exact at either count, so what the smaller cells lose is resolution and not validity.}{\includegraphics[width=\linewidth]{Figure_2_S1}}
+\figdata{First-moment bias per member and parameter in $\log_{10}$, with $95\%$ bootstrap intervals and the score-predicted displacement beside each measured one.}
+% src: papers/1_method/decisions/recompute/fig2_first_moment.R -> projects/eLife_2025/figures/figure_2_source_data/figure_2_source_data_bias.csv (2026-08-25)
+\figdata{Distortion magnitude, anisotropy and corrected ratio per member and parameter pair, with the eigendirections of each pair's distortion.}
+% src: papers/1_method/decisions/recompute/fig2_shape_and_floor.R -> projects/eLife_2025/figures/figure_2_source_data/figure_2_source_data_distortion.csv (2026-08-25)
 \end{figure}
 
 
@@ -255,12 +259,12 @@ two constructions agree only to first order (Appendix~\ref{app:diagnostics}).
 
 The truth and the cloud mean coincide only for the two least-squares arms and for \texttt{INR} and
 \texttt{IR}. The other four macroscopic members are displaced, and the displacement has a structure:
-it lives in the amplitude directions, the unitary current a fifth to two fifths low ($0.103$ to
-$0.228$ in $\log_{10}$) and the channel number high by nearly as much ($0.115$ to $0.243$), with the
-product $N_{\mathrm{ch}}\,i$ that the mean current determines right to within $0.023$, while no rate
-is off by more than $0.04$. The noise level is biased in \texttt{NR} alone, $0.333$ high in
-$\log_{10}$, the unmodelled interval variance absorbed into it and returned to $0.005$ by
-conditioning on the interval; every other member holds it at or under $0.036$.
+it lives in the amplitude directions, the unitary current a fifth to two fifths low and the channel
+number high by nearly as much, with the product $N_{\mathrm{ch}}\,i$ that the mean current
+determines right to within $0.023$, while no rate is off by more than $0.04$. The noise level is
+biased in \texttt{NR} alone, $0.333$ high in $\log_{10}$, the unmodelled interval variance absorbed
+into it and removed by conditioning on the interval; every other member holds it an order of
+magnitude lower (Figure~\ref{fig:clouds}--source data 1).
 % REWRITTEN 2026-08-25 (Luciano's three-fact reduction of this subsection, plus the two bias-structure
 % facts he specified). THE SENTENCE THAT STOOD HERE ("Only the macroscopic members that model the
 % instant rather than the interval are seriously displaced ... in exactly the members whose interval
@@ -277,8 +281,8 @@ conditioning on the interval; every other member holds it at or under $0.036$.
 % INR -0.0045, IR -0.0054, R -0.0234, VR -0.0309, MR -0.0363.)
 The third marker of each panel is where the score and the information alone put that displacement,
 with no fitting, and it lands on the same side as the cloud and close to it: on the unitary current
-$-0.287$ against a measured $-0.228$ for \texttt{MR}, and $+0.001$ for \texttt{IR} where the cloud
-resolves no displacement at all. Figure~\ref{fig:time} shows the score that produces it. % src: the marker is truth + the program's Probit_statistics_Likelihood_Distortion_Induced_Bias from _battery_sim, read at Num_ch = 100, interval_in_tau = 0.1, noise_in_conductance_tau = 0.1 (which is S_tilde = 0.01), the same cell as the cloud; drawn by figure_2.Rmd:232-259 (dib_vector and centers_for_pair). THE OTHER TWO PAIRS OF THE SERIES, retired to this note 2026-08-13 and stated NOWHERE else, so they come from here if they are wanted back: predicted against measured on the unitary current, -0.181 against -0.156 for R and -0.089 against -0.103 for NR. The measured column is the empirical cloud mean of papers/1_method/decisions/recompute/fig2_first_moment.R, quoted two sentences above. The channel-number half of the same marker reads +0.324 MR, +0.226 R, +0.103 NR and -0.004 IR. NOT RECONCILED: an independent first-order computation from the Figure 3 digests, b = F^-1 E[sum s] at the truth, gives the same signs and structure with magnitudes 25 to 40 per cent smaller (R -0.131 on the unitary current against the marker's -0.181, MR -0.178 against -0.287). Two computations of the same first-order object over different batteries; the gap is recorded in the guion and nothing in the body depends on which one is right. % src: papers/1_method/decisions/recompute/fig2_first_moment.R (amplitude-split table: bias in log10 i, in log10 N_ch and in their sum, per member; log10 i bias MR -0.228, R -0.156, VR -0.117, NR -0.103, INR -0.028, IR unresolved)
+$-0.287$ against a measured $-0.228$ for \texttt{MR}, and nothing for \texttt{IR}, where the cloud
+resolves none. Figure~\ref{fig:time} shows the score that produces it. % src: the marker is truth + the program's Probit_statistics_Likelihood_Distortion_Induced_Bias from _battery_sim, read at Num_ch = 100, interval_in_tau = 0.1, noise_in_conductance_tau = 0.1 (which is S_tilde = 0.01), the same cell as the cloud; drawn by figure_2.Rmd:232-259 (dib_vector and centers_for_pair). THE OTHER TWO PAIRS OF THE SERIES, retired to this note 2026-08-13 and stated NOWHERE else, so they come from here if they are wanted back: predicted against measured on the unitary current, -0.181 against -0.156 for R and -0.089 against -0.103 for NR. The measured column is the empirical cloud mean of papers/1_method/decisions/recompute/fig2_first_moment.R, quoted two sentences above. The channel-number half of the same marker reads +0.324 MR, +0.226 R, +0.103 NR and -0.004 IR. NOT RECONCILED: an independent first-order computation from the Figure 3 digests, b = F^-1 E[sum s] at the truth, gives the same signs and structure with magnitudes 25 to 40 per cent smaller (R -0.131 on the unitary current against the marker's -0.181, MR -0.178 against -0.287). Two computations of the same first-order object over different batteries; the gap is recorded in the guion and nothing in the body depends on which one is right. % src: papers/1_method/decisions/recompute/fig2_first_moment.R (amplitude-split table: bias in log10 i, in log10 N_ch and in their sum, per member; log10 i bias MR -0.228, R -0.156, VR -0.117, NR -0.103, INR -0.028, IR unresolved)
 On the rates no member is off by more than a tenth, the two least-squares arms least of all, and the
 plane is where their rate bias is established (Figure~\ref{fig:plane}A). The interval average is what
 removes the displacement, in all three families that carry both arms, and recursion on its own does
@@ -299,14 +303,12 @@ unitary current than the open-loop member it is built from. % src: same script (
 % directions: the prediction is systematically short and the bootstrap interval of the measured
 % displacement excludes it. It holds on k_off only.
 
-The distortion orders the ladder the other way, and not monotonically. \texttt{IR} reads $0.99$ to
-$1.02$ over the three pairs and \texttt{R} $1.06$ to $1.32$; the two one-endpoint corrections built
-on \texttt{R} fall behind it in every pair, \texttt{MR} at $1.29$ to $1.97$ and \texttt{VR} at
-$1.43$ to $2.18$, and what recovers the calibration is the second endpoint entering the gain
-(Appendix~\ref{app:members}). The members that leave the correlation unmodelled sit an order of
-magnitude above, and evenly: \texttt{NR} at $8.8$ to $14.8$, \texttt{INR} at $9.0$ to $12.6$ except
-in the noise pair, the one direction its interval variance repairs ($3.3$), and both least-squares
-arms at $14.7$ on the rates.
+The distortion orders the ladder the other way, and not monotonically: the orange numbers read one
+for \texttt{IR} on every pair, within a third of it for \texttt{R}, behind \texttt{R} in every pair
+for the two one-endpoint corrections built on it, and an order of magnitude higher, evenly, for the
+members that leave the correlation unmodelled, \texttt{INR} excepted in the noise pair, the one
+direction its interval variance repairs. What recovers the calibration is the second endpoint
+entering the gain (Appendix~\ref{app:members}).
 % src: papers/1_method/decisions/recompute/fig2_shape_and_floor.R, re-run 2026-08-25 (per-pair
 % magnitude by member: NR 14.83/10.04/8.84, INR 12.59/9.00/3.28, R 1.32/1.09/1.06, MR 1.97/1.53/1.29,
 % VR 2.18/1.77/1.43, IR 1.02/1.00/0.99; LSE 14.73 against ILSE 14.77; MR/VR spreads 1.25/1.35/1.24
@@ -326,9 +328,9 @@ arms at $14.7$ on the rates.
 % recording does with them (program.md:78, decisions.md:161, Appendix 1).
 
 The factor is not even one number per member: \texttt{INR}'s noise-pair distortion factors into
-$10.5$ along the channel-number direction and $1.03$ along the noise axis, the member that repairs
-the noise estimate reporting the noise uncertainty exactly right and the channel number with a
-standard error $3.2$ times too small, so no single rescaling serves. % src: same script (per-pair eigendirections; in the same pair MR and VR read 1.04 and 1.02 along the noise axis against 1.59 and 2.02 across it)
+more than ten along the channel-number direction and one along the noise axis, the member that
+repairs the noise estimate reporting the noise uncertainty exactly right and the channel number
+with a standard error more than three times too small, so no single rescaling serves. % src: same script (per-pair eigendirections; in the same pair MR and VR read 1.04 and 1.02 along the noise axis against 1.59 and 2.02 across it)
 % RETIRED 2026-08-25, the three-fact reduction: "The anisotropy reaches 3.20 against a floor of 1.08
 % from finite sampling alone, and it cannot be guessed from the magnitude, the most distorted panel
 % being among the most isotropic (14.83 with 1.15) and one calibrated in magnitude anisotropic (1.09
@@ -340,12 +342,12 @@ What does serve is a matrix. The distortion is measured as one, and the same mat
 covariance it measures (the sandwich, Appendix~\ref{app:diagnostics}), which the rest of
 the paper reports. Whether that correction is right is what this figure settles, dividing the
 empirical ellipse of each panel by the corrected one: at one, the correction has recovered the
-covariance the estimator actually has. It does for every gating-aware member ($0.88$ to $1.09$ over
-the pairs drawn), and at a second cell it lifts the coverage of \texttt{IR}'s nominal $95\%$ region
-from $0.914$ to $0.947$ in all six directions at once (Figure~\ref{fig:clouds}--figure supplement 1).
-It fails alike for the two least-squares arms, $1.65$ and $1.63$, in two members that differ in every
-first-moment quantity, which puts the failure in what they share; they are also the two arms whose
-analytic Fisher the differenced check flags (Supplementary File~1). % src: papers/1_method/decisions/recompute/fig2_shape_and_floor.R (corrected column over the eight members and the three drawn pairs: LSE 1.65, ILSE 1.63, NR 1.07/1.05/0.94, INR 1.05/1.09/1.03, R 0.96/0.94/0.96, MR 0.93/0.88/0.91, VR 0.97/0.94/0.95, IR 1.01/1.07/1.05) ; papers/1_method/decisions/D-4_ranking_verdict.md §1a (0.87-1.07 over four members and six pairs, a different set and not a correction of this one) ; the coverage pair is 0.914 against 0.947-0.949 over a thousand fits in six parameters at group size 100, N_ch 10 and S_tilde 0.005
+covariance the estimator actually has. It does for every gating-aware member, and at a second cell
+it lifts the coverage of \texttt{IR}'s nominal $95\%$ region from $0.914$ to $0.947$ in all six
+directions at once (Figure~\ref{fig:clouds}--figure supplement 1).
+It fails alike for the two least-squares arms, at a factor of $1.6$ in both, two members that differ
+in every first-moment quantity, which puts the failure in what they share; they are also the two
+arms whose analytic Fisher the differenced check flags (Supplementary File~1). % src: papers/1_method/decisions/recompute/fig2_shape_and_floor.R (corrected column over the eight members and the three drawn pairs: LSE 1.65, ILSE 1.63, NR 1.07/1.05/0.94, INR 1.05/1.09/1.03, R 0.96/0.94/0.96, MR 0.93/0.88/0.91, VR 0.97/0.94/0.95, IR 1.01/1.07/1.05) ; papers/1_method/decisions/D-4_ranking_verdict.md §1a (0.87-1.07 over four members and six pairs, a different set and not a correction of this one) ; the coverage pair is 0.914 against 0.947-0.949 over a thousand fits in six parameters at group size 100, N_ch 10 and S_tilde 0.005
 
 % OPEN 2026-08-06, and the two-arm agreement narrows it: no mechanism is given for the 1.6. The
 % candidate is that they are the two members that are not likelihoods, the reported information of

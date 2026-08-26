@@ -99,3 +99,12 @@ cmp <- res %>% select(algo, param_name, bias, lo, hi) %>%
          covered = ifelse(is.na(predicted), "", ifelse(predicted >= lo & predicted <= hi, "yes", "NO")))
 print(cmp %>% arrange(param_name, algo) %>%
         mutate(across(where(is.numeric), ~round(.x, 4))) %>% as.data.frame(), row.names = FALSE)
+
+# Figure 2--source data 1 (added 2026-08-25: the digit-migration pass moves the first-moment
+# numbers out of the Results prose; their reviewer-visible home is this CSV).
+sd_dir <- "projects/eLife_2025/figures/figure_2_source_data"
+dir.create(sd_dir, showWarnings = FALSE, recursive = TRUE)
+write.csv(cmp %>% arrange(param_name, algo) %>%
+            mutate(across(where(is.numeric), ~round(.x, 4))),
+          file.path(sd_dir, "figure_2_source_data_bias.csv"), row.names = FALSE)
+cat("\nwrote ", file.path(sd_dir, "figure_2_source_data_bias.csv"), "\n", sep = "")

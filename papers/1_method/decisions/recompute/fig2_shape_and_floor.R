@@ -66,6 +66,9 @@ PAIRS <- list(kinetic = c("on", "off"),
               amplitude = c("Num_ch_mean", "unitary_current"),
               noise = c("Current_Noise", "Num_ch_mean"))
 
+# Rows accumulated for Figure 2--source data 2 (added 2026-08-25: the digit-migration pass moves
+# the per-pair numbers out of the Results prose; their reviewer-visible home is this CSV).
+sd_rows <- list()
 for (pn in names(PAIRS)) {
   px <- PAIRS[[pn]][1]; py <- PAIRS[[pn]][2]
   cat("\n===== ", pn, " pair (", px, ", ", py, ") =====\n", sep = "")
@@ -76,16 +79,26 @@ for (pn in names(PAIRS)) {
     E   <- eigen(solve(SF, cov(as.matrix(cl))))
     lam <- Re(E$values); V <- Re(E$vectors)
     o <- order(lam, decreasing = TRUE); lam <- lam[o]; V <- V[, o, drop = FALSE]
-    ang <- function(v) { v <- v / sqrt(sum(v^2))
-                         sprintf("%5.1f deg off the %s axis", 180 / pi * atan2(abs(v[2]), abs(v[1])), px) }
+    deg <- function(v) { v <- v / sqrt(sum(v^2)); 180 / pi * atan2(abs(v[2]), abs(v[1])) }
+    ang <- function(v) sprintf("%5.1f deg off the %s axis", deg(v), px)
     SC  <- cov_pair(paste0(COMP_PRE, "Distortion_Corrected_Covariance"), a, IDX[px], IDX[py])
     aC  <- if (is.null(SC)) NA_real_ else
              sqrt(det(cov(as.matrix(cl)))) / sqrt(det(SC))   # the panel's BLUE number
     cat(sprintf("%-4s area %5.2f  shape %5.2f  corrected %5.2f | worst var-ratio %6.2f (%s) | best %6.2f (%s)\n",
                 LAB[a], sqrt(prod(lam)), sqrt(max(lam) / min(lam)), aC,
                 lam[1], ang(V[, 1]), lam[2], ang(V[, 2])))
+    sd_rows[[length(sd_rows) + 1]] <- data.frame(
+      pair = pn, axis_1 = px, axis_2 = py, member = unname(LAB[a]),
+      magnitude = sqrt(prod(lam)), anisotropy = sqrt(max(lam) / min(lam)), corrected = aC,
+      worst_var_ratio = lam[1], worst_deg_off_axis_1 = deg(V[, 1]),
+      best_var_ratio = lam[2], best_deg_off_axis_1 = deg(V[, 2]))
   }
 }
+sd_dir <- "projects/eLife_2025/figures/figure_2_source_data"
+dir.create(sd_dir, showWarnings = FALSE, recursive = TRUE)
+write.csv(dplyr::bind_rows(sd_rows) %>% mutate(across(where(is.numeric), ~round(.x, 4))),
+          file.path(sd_dir, "figure_2_source_data_distortion.csv"), row.names = FALSE)
+cat("\nwrote ", file.path(sd_dir, "figure_2_source_data_distortion.csv"), "\n", sep = "")
 
 cat("\n===== finite-sample floor of the shape statistic (S_F exact, cloud of n in p dims) =====\n")
 set.seed(1)
