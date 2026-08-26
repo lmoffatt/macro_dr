@@ -27,6 +27,30 @@ def strip_comments(text: str) -> str:
         kept.append(re.sub(r'(?<!\\)%.*$', '', line))
     return '\n'.join(kept)
 
+def swallowed_whole(path: str):
+    """Prose commented out entire, which leaves no lowercase signature.
+
+    Found on 2026-08-26, when four sentences of the Discussion, the P2X2 verdict among them, turned
+    out to have been invisible since the day they were written. The manuscript writes one paragraph
+    per line, so a multi-line comment inserted before a paragraph appends the whole rest of that
+    paragraph to its last line. The signature is a comment line far longer than the file's own
+    comment style that still carries prose markup.
+    """
+    hits = []
+    comment_lengths = [len(l) for l in open(path).read().split('\n') if l.lstrip().startswith('%')]
+    if not comment_lengths:
+        return hits
+    typical = sorted(comment_lengths)[len(comment_lengths) // 2]
+    limit = max(3 * typical, 250)
+    for n, line in enumerate(open(path).read().split('\n'), 1):
+        if not line.lstrip().startswith('%') or len(line) <= limit:
+            continue
+        if not re.search(r'\\(cite[a-z]*|ref|texttt|emph|citep|citet)\{', line):
+            continue
+        hits.append((n, len(line), line[:70]))
+    return hits
+
+
 def scan(path: str):
     text = strip_comments(open(path).read())
     hits = []
@@ -45,6 +69,10 @@ def main() -> int:
     for f in sorted(glob.glob(os.path.join(root, '*.tex'))):
         for word, ctx in scan(f):
             lines.append("%s: sentence starts '%s' ... %s" % (os.path.basename(f), word, ctx))
+            total += 1
+        for n, length, head in swallowed_whole(f):
+            lines.append("%s:%d: %d-char comment line carries prose markup ... %s"
+                         % (os.path.basename(f), n, length, head))
             total += 1
     print('%d swallowed sentence(s)' % total)
     for line in lines:
