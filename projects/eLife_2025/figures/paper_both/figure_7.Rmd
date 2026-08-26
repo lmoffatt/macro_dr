@@ -113,6 +113,29 @@ IR  <- read_algo("^figure_3_G_nch_[0-9]+_nsim_10000_macro_IR_noise_[0-9.eE+]+_ba
 ILSE <- read_algo("^figure_3_LSE_nch_[0-9]+_nsim_10000_nonlinearsqr_noise_[0-9.eE+]+_battery_pool_G\\.csv$",
                  "ILSE", c(kon = 0, koff = 1, Nch = 3))
 
+# THE SECOND CLASSICAL ARM, added 2026-08-26. Until now the record said nothing about why this map
+# uses ILSE rather than the un-averaged arm, and "the boundaries would not move" was asserted
+# nowhere and established nowhere (04_results.tex, note retracted 2026-08-12). It is now measured.
+# The un-averaged arm is `nonlinearsqr_g` (averaging = 0, the mean is the bare conductance half an
+# interval in, NR's mean model) and it landed in ../data/a202e03 after this map was built: 30 cells
+# on the Gaussian lane, N_ch 10 to 10^4 and noise 0.1 to 1e7, the same coverage the map needs, with
+# the same param_index layout. It is read from its own directory list so that the DRAWN map keeps
+# reading exactly the three frozen directories and cannot move: a202e03 holds zero files matching
+# either pattern above, checked, so this is additive by construction.
+DATA_DIRS_XARM <- c(DATA_DIRS, "../data/a202e03")
+LSE <- local({
+  fs <- list.files(DATA_DIRS_XARM,
+        pattern = "^figure_3_LSE_nch_[0-9]+_nsim_10000_nonlinearsqr_g_noise_[0-9.eE+]+_battery_pool_G\\.csv$",
+        full.names = TRUE)
+  if (!length(fs)) NULL else map_dfr(fs, function(p) read.csv(p, skip = 1, stringsAsFactors = FALSE) %>%
+    filter(component_path %in% c(DIST, SEC), statistic == "value", probit == "mean",
+           param_index == param_col, param_index %in% c(kon = 0, koff = 1, Nch = 3)) %>%
+    transmute(algo = "LSE", nch = Num_ch, noise = noise_in_conductance_tau, D = interval_in_tau,
+              what = ifelse(component_path == DIST, "dist", "var"),
+              par = c("kon", "koff", NA, "Nch")[param_index + 1], v = value)) %>%
+    filter(!is.na(par)) %>% distinct()
+})
+
 cat("figure_7: noise levels on disk, per algorithm and N_ch\n")
 print(as.data.frame(bind_rows(IR, ILSE) %>% distinct(algo, nch, noise) %>% count(algo, nch) %>%
       pivot_wider(names_from = algo, values_from = n, values_fill = 0)), row.names = FALSE)
@@ -180,6 +203,37 @@ print(as.data.frame(NEVER %>% mutate(nch_min = round(nch_min))), row.names = FAL
 cat("\nfigure_7: how far the loose criterion moves each boundary (median factor in noise)\n")
 print(as.data.frame(CR %>% filter(D == DREF, is.finite(c1), is.finite(c2)) %>% group_by(q, par) %>%
       summarise(factor = round(median(10^(c2 - c1)), 2), n = n(), .groups = "drop")), row.names = FALSE)
+
+# DOES THE CLASSICAL BOUNDARY MOVE IF THE OTHER LEAST-SQUARES ARM IS USED? Measured, not drawn.
+# The dotted boundary is recomputed on the un-averaged arm with the same threshold and the same
+# interpolation, and the two are reported side by side. It is deliberately NOT added to the plot:
+# at the reference interval the two land within a factor of 1.4 of each other on a boundary that
+# sweeps five decades, so a second dotted line would sit on top of the first and the figure would
+# carry a fourth line code for no information. The number belongs in the text instead.
+if (!is.null(LSE)) {
+  XA <- LSE %>% filter(what == "dist", par %in% c("koff", "Nch")) %>%
+        transmute(algo = "LSE", par, nch, D, noise, m = abs(log(v))) %>%
+    bind_rows(ILSE %>% filter(what == "dist", par %in% c("koff", "Nch")) %>%
+              transmute(algo = "ILSE", par, nch, D, noise, m = abs(log(v)))) %>%
+    group_by(algo, par, nch, D) %>%
+    summarise(c1 = cross1(log10(noise), m, log(1.15), FALSE), .groups = "drop")
+  cat("\nfigure_7: the honesty boundary on BOTH least-squares arms (noise), Delta.k_off =", DREF, "\n")
+  print(as.data.frame(XA %>% filter(D == DREF) %>%
+        transmute(algo, par, nch, noise = signif(10^c1, 3)) %>%
+        pivot_wider(names_from = nch, values_from = noise, names_prefix = "N=")), row.names = FALSE)
+  cat("\nfigure_7: LSE / ILSE ratio of that boundary, and the fitted slopes\n")
+  print(as.data.frame(XA %>% filter(D == DREF, is.finite(c1)) %>%
+        pivot_wider(names_from = algo, values_from = c1) %>%
+        mutate(ratio = signif(10^(LSE - ILSE), 3)) %>% select(par, nch, ratio)), row.names = FALSE)
+  print(as.data.frame(XA %>% filter(D == DREF, is.finite(c1)) %>% mutate(lx = log10(nch)) %>%
+        group_by(algo, par) %>% filter(n() >= 3) %>%
+        summarise(slope = round(coef(lm(c1 ~ lx))[2], 3), n = n(), .groups = "drop")), row.names = FALSE)
+  cat("\nfigure_7: the same over the ribbon range of Delta (", DRNG[1], "to", DRNG[2], "), in noise\n")
+  print(as.data.frame(XA %>% filter(D >= DRNG[1], D <= DRNG[2], is.finite(c1)) %>%
+        group_by(algo, par, nch) %>%
+        summarise(lo = signif(10^min(c1), 3), hi = signif(10^max(c1), 3), .groups = "drop")),
+        row.names = FALSE)
+} else cat("\nfigure_7: the un-averaged least-squares arm is not on disk in", DATA_DIRS_XARM, "\n")
 ```
 
 ```{r geometry}
