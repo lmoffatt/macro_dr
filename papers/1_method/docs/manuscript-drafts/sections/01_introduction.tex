@@ -419,8 +419,13 @@ acquisition interval in units of the relaxation time, and the instrumental noise
 gating noise. The rate constants are held fixed because those coordinates are dimensionless, the
 closing rate folding into the interval. The scheme is two states at an open probability of one half,
 driven by a single concentration jump, which isolates the error the approximation itself commits and
-is the most favourable case for a Gaussian treatment of the occupancy, so what is reported is a
-lower bound for anything richer. Ten thousand recordings were simulated at every cell and scored by
+is the most favourable case for a Gaussian treatment of the occupancy; that what is reported
+bounds anything richer from below is the natural conjecture, and it is a conjecture, not a
+result of this paper. Ten thousand recordings were simulated at every cell and scored by
+% "so what is reported is a lower bound for anything richer" DEMOTED 2026-08-25 (naive round,
+% CONFIRMED three times): asserted, never derived, and the paper's own few-channel departure,
+% whose mechanism the Discussion admits is not understood, undercuts the premise that the
+% K=2, p=1/2 case minorizes richer schemes.
 the eight members of the cost ladder, from least squares to the filter conditioning each interval
 average on both ends. An implementation error shows up as a departure like any other, so the same
 test checks the code.

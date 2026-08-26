@@ -343,20 +343,31 @@ paper comes from the spectral route.
 
 Both expressions are $0/0$ where a transition is unreachable, which is not a numerical edge case
 here: at zero agonist $k_{\mathrm{on}}[A]$ vanishes identically, so $P_{C\to O}(\Delta)=0$ exactly
-over the whole pre-pulse segment. Conditioning on a transit that occupies a vanishing fraction of
-the window leaves the chain at its two endpoint states for essentially equal times, so the limit is
-the endpoint average,
+over the whole pre-pulse segment. Conditioning on a single transit whose time, in the short-window limit, is uniform over the
+window makes the average $\gamma_{j} + (\gamma_{i}-\gamma_{j})\,U$ with $U$ uniform on $(0,1)$,
+so the limit is the midpoint in the mean and the uniform-split variance,
 \begin{equation}
   \bar{\gamma}_{i\to j}\to\tfrac12(\gamma_{i}+\gamma_{j}),
   \qquad
-  \bar{v}_{i\to j}\to\Bigl(\tfrac{\gamma_{i}-\gamma_{j}}{2}\Bigr)^{2},
+  \bar{v}_{i\to j}\to\tfrac{(\gamma_{i}-\gamma_{j})^{2}}{12},
   \label{eq:endpoint-limit}
 \end{equation}
 which depends on the conductance vector alone. The implementation does not branch on the
 singular case: it reads the two quotients of Eq.~\ref{eq:gammabar-vbar} as posterior means
-and shrinks them towards this limit with a pseudo-count whose weight is the floating-point
-noise of the spectral reconstruction, so the limit is approached smoothly and no fitted
-constant enters (Methods).
+and shrinks them towards an endpoint prior with the same midpoint mean and the second moment
+$\tfrac12(\gamma_{i}^{2}+\gamma_{j}^{2})$ (Methods), whose implied variance
+$((\gamma_{i}-\gamma_{j})/2)^{2}$ is three times the limit above, a deliberately conservative
+floor, with a pseudo-count whose weight is the floating-point noise of the spectral
+reconstruction, so the limit is approached smoothly and no fitted constant enters (Methods).
+% VARIANCE CONSTANT CORRECTED 2026-08-25 (naive full-read round, CONFIRMED by their independent
+% Van Loan rederivation and by rederivation here): the old text called ((gamma_i-gamma_j)/2)^2
+% "the limit"; that is the Bernoulli endpoint variance, which is what the IMPLEMENTATION's prior
+% uses (Methods Eq. pseudocount: second moment (gi^2+gj^2)/2 about the midpoint mean, the code's
+% "Poisson endpoint" prior, legacy/qmodel.h:1104,1146-1147), not the limit of the conditional
+% moments, which is (gamma_i-gamma_j)^2/12 (Var of U uniform = 1/12). The text now states the
+% exact limit AND the prior, faithful to both the math and the code. Their check also shows the
+% midpoint mean holds only as the short-window limit (at k_off*Delta = 1 the conditional mean
+% reads 0.418, not 0.5); the epsilon weight makes both departures immaterial to any fit.
 % MOVED TO METHODS 2026-08-06 (Luciano). The pseudo-count itself, its two prior means, the weight
 % eps_mach*kappa_F(V) and the two design choices behind them are now the first of the numerical
 % safeguards at 06_methods.tex, beside the trust coefficient and the binomial floor, which is where

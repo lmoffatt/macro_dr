@@ -80,6 +80,9 @@ the identity,
 \begin{equation}
   D_{\mathrm{AI}} \;=\; \Bigl(\textstyle\sum_i \log^2\lambda_i\Bigr)^{1/2}
    \;=\; \sqrt{d\,(\bar e^{\,2}+s^2)},
+   % s^2 is the population variance (divisor d, matching the emitter, likelihood.cpp
+   % compute_distortion_scalars: var_log = sum_sqr_dev/d); with the sample divisor the identity
+   % fails by sqrt(d/(d-1)) on s. Convention stated 2026-08-25 (naive round, CONFIRMED).
   \label{eq:dai}
 \end{equation}
 so that a member sits at $m=a=1$ if and only if $D_{\mathrm{AI}}=0$, and the two coordinates say

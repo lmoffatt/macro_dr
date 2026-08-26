@@ -213,7 +213,7 @@ cost this paper walks, and it is the anchor against which every member above it 
 measured, because it is the method most readers are using.
 
 The methods differ along two axes. One is the window: how much of the acquisition interval the
-predicted current is conditioned on. The other is recursion: a recursive (prequential) member
+predicted current is conditioned on. The other is recursion: a recursive (prequential) member \citep{dawid1984present}
 factorizes the likelihood as $\prod_t q_t(\bar{y}_t \mid \bar{y}_{1:t-1})$, so the occupancy
 distribution carried into each window is the posterior left by the previous ones, while a
 non-recursive (open-loop) member factorizes as $\prod_t m_t(\bar{y}_t)$, each window propagated
@@ -494,7 +494,7 @@ if the one-step predictive distribution is correct \emph{at the parameters it is
 the only one of the three an experimentalist can run on a real recording, needing no ensemble and no
 known truth, and it does need a fitted point. A fit with the baseline and the noise level free
 absorbs most of the first two properties; the temporal structure is what no fit absorbs. That
-structure is summarised by the integrated autocorrelation of the residual,
+structure is summarised by the integrated autocorrelation \citep{sokal1997monte} of the residual,
 $\tau_{\mathrm{int}}=1+2\sum_{k\ge1}\rho_k$ with $\rho_k$ its lag-$k$ correlation, summed to the
 maximum lag stated in Methods: it reads one for a white residual, and above one it counts how many
 intervals a fit effectively has for every interval it believes it has.
@@ -594,7 +594,8 @@ any factor and the full matrix is needed.
 
 A matrix is not a number, and two scalars summarise it without pretending to replace it. With
 $\lambda_i$ the eigenvalues of $\mathbf{C}$ on the retained subspace (Methods),
-$\bar e = d^{-1}\sum_i \log\lambda_i$ and $s^2 = \mathrm{Var}_i(\log\lambda_i)$, the two reported
+$\bar e = d^{-1}\sum_i \log\lambda_i$ and $s^2 = \mathrm{Var}_i(\log\lambda_i)$, the population
+variance with divisor $d$, the two reported
 throughout are the exponentials
 \begin{equation}
   m \;=\; e^{\bar e} \;=\; \Bigl(\textstyle\prod_i \lambda_i\Bigr)^{1/d},

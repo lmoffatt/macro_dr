@@ -264,7 +264,9 @@ number high by nearly as much, with the product $N_{\mathrm{ch}}\,i$ that the me
 determines right to within $0.023$, while no rate is off by more than $0.04$. The noise level is
 biased in \texttt{NR} alone, $0.333$ high in $\log_{10}$, the unmodelled interval variance absorbed
 into it and removed by conditioning on the interval; every other member holds it an order of
-magnitude lower (Figure~\ref{fig:clouds}--source data 1).
+magnitude lower (Figure~\ref{fig:clouds}--source data 1). That the mean current pins the product
+while only the fluctuations can separate its factors is the identifiability structure known for
+models of this kind \citep{hines2014determination}.
 % REWRITTEN 2026-08-25 (Luciano's three-fact reduction of this subsection, plus the two bias-structure
 % facts he specified). THE SENTENCE THAT STOOD HERE ("Only the macroscopic members that model the
 % instant rather than the interval are seriously displaced ... in exactly the members whose interval
@@ -347,7 +349,16 @@ it lifts the coverage of \texttt{IR}'s nominal $95\%$ region from $0.914$ to $0.
 directions at once (Figure~\ref{fig:clouds}--figure supplement 1).
 It fails alike for the two least-squares arms, at a factor of $1.6$ in both, two members that differ
 in every first-moment quantity, which puts the failure in what they share; they are also the two
-arms whose analytic Fisher the differenced check flags (Supplementary File~1). % src: papers/1_method/decisions/recompute/fig2_shape_and_floor.R (corrected column over the eight members and the three drawn pairs: LSE 1.65, ILSE 1.63, NR 1.07/1.05/0.94, INR 1.05/1.09/1.03, R 0.96/0.94/0.96, MR 0.93/0.88/0.91, VR 0.97/0.94/0.95, IR 1.01/1.07/1.05) ; papers/1_method/decisions/D-4_ranking_verdict.md §1a (0.87-1.07 over four members and six pairs, a different set and not a correction of this one) ; the coverage pair is 0.914 against 0.947-0.949 over a thousand fits in six parameters at group size 100, N_ch 10 and S_tilde 0.005
+arms whose analytic Fisher the differenced check flags (Supplementary File~1), and the sizes are
+consistent: with the analytic form reading $0.71$ to $0.78$ of the differenced one there, a
+sandwich whose bread is the analytic Fisher leaves a residual near the squared reciprocal, $1.6$
+to $2.0$.
+% MECHANISM CLAUSE ADDED 2026-08-25 (naive round rated it "plausibly explains"; the arithmetic is
+% here so it is checkable): corrected covariance = H^-1 J H^-1 with H the analytic Gaussian
+% Fisher; if the correct bread is the differenced F = C*H with C = 0.71-0.78 (S1.5, LSE/ILSE
+% rows), the scalar residual empirical/corrected is 1/C^2 = 1.64-1.98, and the measured value is
+% 1.65/1.63. Stated as consistency, not identity: the matrices need not commute and C is a
+% geometric mean over directions. % src: papers/1_method/decisions/recompute/fig2_shape_and_floor.R (corrected column over the eight members and the three drawn pairs: LSE 1.65, ILSE 1.63, NR 1.07/1.05/0.94, INR 1.05/1.09/1.03, R 0.96/0.94/0.96, MR 0.93/0.88/0.91, VR 0.97/0.94/0.95, IR 1.01/1.07/1.05) ; papers/1_method/decisions/D-4_ranking_verdict.md §1a (0.87-1.07 over four members and six pairs, a different set and not a correction of this one) ; the coverage pair is 0.914 against 0.947-0.949 over a thousand fits in six parameters at group size 100, N_ch 10 and S_tilde 0.005
 
 % OPEN 2026-08-06, and the two-arm agreement narrows it: no mechanism is given for the 1.6. The
 % candidate is that they are the two members that are not likelihoods, the reported information of
@@ -742,7 +753,13 @@ carries half of it in the same direction. % src: projects/eLife_2025/figures/pap
 essentially zero over the same plane, and that concession is worth making plainly: the classical fit
 recovers the rates, and what it gets wrong is how well it says it recovered them. % src: projects/eLife_2025/figures/paper_both/figure_4.Rmd (caption-numbers chunk)
 
-Recursion is what removes the distortion, in the amounts above. A member that takes one axis and not
+Modelling the correlation across intervals is what removes the distortion, in the amounts above,
+and recursion is how every member of this family that models it does so. A member that takes one axis and not
+% "Recursion is what removes the distortion" SCOPED 2026-08-25 (naive round, CONFIRMED confound):
+% the family contains no open-loop member carrying the full cross-interval covariance (the
+% generalized-least-squares route of celentano2004use and stepanyuk2011efficient, both cited in
+% the Introduction), so recursion-vs-correlation-modelling is not separated by this roster; the
+% Discussion's perimeter now names the missing rung.
 the other repairs one failure and keeps the other, so the family cannot be ordered on a single scale,
 and nothing in that is specific to ion channels: it holds for any state model whose observations are
 averages over a window.
