@@ -253,12 +253,28 @@ each panel). Both are one when the member is calibrated, and both are read here 
 maximum-likelihood fits, where every later figure reads them from the score with no fitting and the
 two constructions agree only to first order (Appendix~\ref{app:diagnostics}).
 
-Only the macroscopic members that model the instant rather than the interval are seriously displaced,
-and they are displaced in the amplitude directions rather than in the rates. Their unitary current
-comes out a fifth to two fifths low ($0.103$ to $0.228$ in $\log_{10}$) and their channel number high
-by nearly as much, the product $N_{\mathrm{ch}}\,i$ that the mean current determines staying right to
-within $0.023$: what fails is the split of that product into its two factors, and it fails in exactly
-the members whose interval variance is wrong.
+The truth and the cloud mean coincide only for the two least-squares arms and for \texttt{INR} and
+\texttt{IR}. The other four macroscopic members are displaced, and the displacement has a structure:
+it lives in the amplitude directions, the unitary current a fifth to two fifths low ($0.103$ to
+$0.228$ in $\log_{10}$) and the channel number high by nearly as much ($0.115$ to $0.243$), with the
+product $N_{\mathrm{ch}}\,i$ that the mean current determines right to within $0.023$, while no rate
+is off by more than $0.04$. The noise level is biased in \texttt{NR} alone, $0.333$ high in
+$\log_{10}$, the unmodelled interval variance absorbed into it and returned to $0.005$ by
+conditioning on the interval; every other member holds it at or under $0.036$.
+% REWRITTEN 2026-08-25 (Luciano's three-fact reduction of this subsection, plus the two bias-structure
+% facts he specified). THE SENTENCE THAT STOOD HERE ("Only the macroscopic members that model the
+% instant rather than the interval are seriously displaced ... in exactly the members whose interval
+% variance is wrong") WAS FALSE AGAINST ITS OWN % src: MR (-0.228 in i, +0.243 in N_ch) and VR
+% (-0.117) model the interval and are displaced, MR the worst of the roster; the quoted range "0.103
+% to 0.228" itself spans NR to MR. Fossil of the four-member roster (LSE/NR/R/IR), where it was true.
+% Its mechanism tail could not carry MR either: from the same state MR's total variance is IR's
+% (Methods caption); the gain is what separates them.
+% src: papers/1_method/decisions/recompute/fig2_first_moment.R, re-run 2026-08-25 (bias in log10 with
+% 2000-resample percentile bootstrap, type 6, n=1000 per member. unitary_current: MR -0.2275, R
+% -0.1556, VR -0.1171, NR -0.1026, INR -0.0280, IR -0.0013 unresolved. Num_ch_mean: MR 0.2425, R
+% 0.1788, NR 0.1217, VR 0.1149, INR 0.0341, LSE 0.0122, ILSE 0.0075, IR 0.0020 unresolved. rates:
+% |on| <= 0.0401 (R), |off| <= 0.0123 (VR). Current_Noise (truth -4): NR +0.3333 [0.3260, 0.3405];
+% INR -0.0045, IR -0.0054, R -0.0234, VR -0.0309, MR -0.0363.)
 The third marker of each panel is where the score and the information alone put that displacement,
 with no fitting, and it lands on the same side as the cloud and close to it: on the unitary current
 $-0.287$ against a measured $-0.228$ for \texttt{MR}, and $+0.001$ for \texttt{IR} where the cloud
@@ -268,8 +284,10 @@ plane is where their rate bias is established (Figure~\ref{fig:plane}A). The int
 removes the displacement, in all three families that carry both arms, and recursion on its own does
 not: it leaves \texttt{R} the least centred member of the eight in the rates and further out in the
 unitary current than the open-loop member it is built from. % src: same script (per-parameter table; 1000 estimates, 2000-resample percentile bootstrap, type 6. log10 k_on: LSE -0.0148, ILSE -0.0069, NR -0.0210, INR -0.0077, R -0.0401, MR -0.0310, VR -0.0021 unresolved, IR +0.0015 unresolved. k_off: MR -0.0090, VR -0.0123, NR +0.0104, the rest at or under 0.003)
-\texttt{NR}, modelling no interval-mean conductance variance at all, absorbs what is missing in the
-noise level instead ($0.333$ in $\log_{10}$ high); conditioning on the interval returns it to $0.005$.
+% RETIRED 2026-08-25: "NR, modelling no interval-mean conductance variance at all, absorbs what is
+% missing in the noise level instead (0.333 in log10 high); conditioning on the interval returns it
+% to 0.005." Absorbed verbatim into the displacement paragraph above (Luciano's fact: the noise is
+% biased in NR alone).
 % CUT 2026-08-12, following the guion, and it is the only measurement the guion leaves out: "The open
 % marker is the truth displaced by the predicted bias, which diagnoses rather than reproduces (right on
 % k_off, 71 to 85% of the size in amplitude)." % src was fig2_first_moment.R, predicted-against-measured
@@ -281,33 +299,42 @@ noise level instead ($0.333$ in $\log_{10}$ high); conditioning on the interval 
 % directions: the prediction is systematically short and the bootstrap interval of the measured
 % displacement excludes it. It holds on k_off only.
 
-Every member but the boundary-conditioned one misreports its uncertainty, and repairing that requires
-recursion and interval averaging. Recursion buys the factor of ten and the
-interval average closes what is left ($11.41$ to $1.17$ to $1.01$ averaged over the six pairs the four
-informative parameters form: a standard error $3.4$ times too small at the foot of the ladder and
-correct at its top). The average without the recursion buys almost nothing on the rates or in
-amplitude, and inside the least-squares family nothing at all. % src: papers/1_method/decisions/recompute/fig2_shape_and_floor.R, re-run 2026-08-12 (per-pair magnitude by member: NR 14.83/10.04/8.84, R 1.32/1.09/1.06, IR 1.02/1.00/0.99; NR to INR 14.83 to 12.59 on the rates, 10.04 to 9.00 in amplitude, 8.84 to 3.28 in the noise pair, whose eigenvalues go 11.64/6.71 to 10.48/1.03 with the calibrated one 0.1 deg off the noise axis; LSE 14.73 against ILSE 14.77)
-
-Averaging over the interval from one end only is worse than not averaging at all: \texttt{MR} and
-\texttt{VR} fall behind the member they are built from in every pair and in both numbers, the
-magnitude on the rates reading $1.32$, $1.97$ and $2.18$ before \texttt{IR} returns to $1.02$, and
-\texttt{MR} carries the largest unitary-current offset in the roster.% src: same script (amplitude pair R 1.09, MR 1.53, VR 1.77, IR 1.00; noise pair R 1.06, MR 1.29, VR 1.43, IR 0.99; spreads MR 1.25/1.35/1.24 and VR 1.61/1.47/1.41 against R 1.04/1.20/1.07)
-What recovers the calibration is the second endpoint entering the gain
-(Appendix~\ref{app:members}).
+The distortion orders the ladder the other way, and not monotonically. \texttt{IR} reads $0.99$ to
+$1.02$ over the three pairs and \texttt{R} $1.06$ to $1.32$; the two one-endpoint corrections built
+on \texttt{R} fall behind it in every pair, \texttt{MR} at $1.29$ to $1.97$ and \texttt{VR} at
+$1.43$ to $2.18$, and what recovers the calibration is the second endpoint entering the gain
+(Appendix~\ref{app:members}). The members that leave the correlation unmodelled sit an order of
+magnitude above, and evenly: \texttt{NR} at $8.8$ to $14.8$, \texttt{INR} at $9.0$ to $12.6$ except
+in the noise pair, the one direction its interval variance repairs ($3.3$), and both least-squares
+arms at $14.7$ on the rates.
+% src: papers/1_method/decisions/recompute/fig2_shape_and_floor.R, re-run 2026-08-25 (per-pair
+% magnitude by member: NR 14.83/10.04/8.84, INR 12.59/9.00/3.28, R 1.32/1.09/1.06, MR 1.97/1.53/1.29,
+% VR 2.18/1.77/1.43, IR 1.02/1.00/0.99; LSE 14.73 against ILSE 14.77; MR/VR spreads 1.25/1.35/1.24
+% and 1.61/1.47/1.41 against R 1.04/1.20/1.07)
+% RETIRED 2026-08-25, the three-fact reduction. What stood here, with every number preserved in the
+% src above or in this note: (i) "Recursion buys the factor of ten and the interval average closes
+% what is left (11.41 to 1.17 to 1.01 averaged over the six pairs the four informative parameters
+% form: a standard error 3.4 times too small at the foot of the ladder and correct at its top)" —
+% the plane-level version is owned by Figure 4-S1 (INR->IR correlation part 22.1 -> 1.000) and the
+% accumulated one by Figure 3F. (ii) "The average without the recursion buys almost nothing on the
+% rates or in amplitude, and inside the least-squares family nothing at all" (NR->INR 14.83->12.59
+% rates, 10.04->9.00 amplitude). (iii) "Averaging over the interval from one end only is worse than
+% not averaging at all" — kept above in measured form; "MR carries the largest unitary-current
+% offset in the roster" moved to the displacement paragraph's src.
 % "only" removed 2026-08-06: the predictive variance divides the gain, so the variance half moves the
 % update too and the two halves are algebraically separable without being separable in what a
 % recording does with them (program.md:78, decisions.md:161, Appendix 1).
 
-The factor by which a member misreports its uncertainty is not the same in every direction, and the
-boundary-conditioned member is again the only exception. The anisotropy reaches $3.20$ against a floor
-of $1.08$ from finite sampling alone, and it cannot be guessed from the magnitude, the most distorted
-panel of the figure being among the most isotropic ($14.83$ with $1.15$) and one that is calibrated in
-magnitude anisotropic ($1.09$ with $1.20$).
-% src: same script (per-pair size and spread, all eight members; floor from 20,000 null draws, median 1.038, 95th percentile 1.081 and 99th 1.102 at p=2, n=1000, and a lower bound because the reported covariance is itself estimated; the converse case, calibrated in magnitude and anisotropic, is R in the amplitude pair, 1.09 with 1.20 against a null 99th percentile of 1.102)
-What that forecloses is visible in \texttt{INR} in the noise pair, whose distortion factors into
-$10.5$ along the channel-number direction and $1.03$ along the noise axis: the member that repairs the
-noise estimate reports the noise uncertainty exactly right and the channel number with a standard
-error $3.2$ times too small, so no one factor serves. % src: same script (per-pair eigendirections; in the same pair MR and VR read 1.04 and 1.02 along the noise axis against 1.59 and 2.02 across it)
+The factor is not even one number per member: \texttt{INR}'s noise-pair distortion factors into
+$10.5$ along the channel-number direction and $1.03$ along the noise axis, the member that repairs
+the noise estimate reporting the noise uncertainty exactly right and the channel number with a
+standard error $3.2$ times too small, so no single rescaling serves. % src: same script (per-pair eigendirections; in the same pair MR and VR read 1.04 and 1.02 along the noise axis against 1.59 and 2.02 across it)
+% RETIRED 2026-08-25, the three-fact reduction: "The anisotropy reaches 3.20 against a floor of 1.08
+% from finite sampling alone, and it cannot be guessed from the magnitude, the most distorted panel
+% being among the most isotropic (14.83 with 1.15) and one calibrated in magnitude anisotropic (1.09
+% with 1.20)." Floor provenance: 20,000 null draws, median 1.038, 95th 1.081, 99th 1.102 at p=2,
+% n=1000; the calibrated-but-anisotropic case is R in the amplitude pair. The plane-level anisotropy
+% is owned by Figure 4-S2.
 
 What does serve is a matrix. The distortion is measured as one, and the same matrix corrects the
 covariance it measures (the sandwich, Appendix~\ref{app:diagnostics}), which the rest of
@@ -317,7 +344,8 @@ covariance the estimator actually has. It does for every gating-aware member ($0
 the pairs drawn), and at a second cell it lifts the coverage of \texttt{IR}'s nominal $95\%$ region
 from $0.914$ to $0.947$ in all six directions at once (Figure~\ref{fig:clouds}--figure supplement 1).
 It fails alike for the two least-squares arms, $1.65$ and $1.63$, in two members that differ in every
-first-moment quantity, which puts the failure in what they share. % src: papers/1_method/decisions/recompute/fig2_shape_and_floor.R (corrected column over the eight members and the three drawn pairs: LSE 1.65, ILSE 1.63, NR 1.07/1.05/0.94, INR 1.05/1.09/1.03, R 0.96/0.94/0.96, MR 0.93/0.88/0.91, VR 0.97/0.94/0.95, IR 1.01/1.07/1.05) ; papers/1_method/decisions/D-4_ranking_verdict.md §1a (0.87-1.07 over four members and six pairs, a different set and not a correction of this one) ; the coverage pair is 0.914 against 0.947-0.949 over a thousand fits in six parameters at group size 100, N_ch 10 and S_tilde 0.005
+first-moment quantity, which puts the failure in what they share; they are also the two arms whose
+analytic Fisher the differenced check flags (Supplementary File~1). % src: papers/1_method/decisions/recompute/fig2_shape_and_floor.R (corrected column over the eight members and the three drawn pairs: LSE 1.65, ILSE 1.63, NR 1.07/1.05/0.94, INR 1.05/1.09/1.03, R 0.96/0.94/0.96, MR 0.93/0.88/0.91, VR 0.97/0.94/0.95, IR 1.01/1.07/1.05) ; papers/1_method/decisions/D-4_ranking_verdict.md §1a (0.87-1.07 over four members and six pairs, a different set and not a correction of this one) ; the coverage pair is 0.914 against 0.947-0.949 over a thousand fits in six parameters at group size 100, N_ch 10 and S_tilde 0.005
 
 % OPEN 2026-08-06, and the two-arm agreement narrows it: no mechanism is given for the 1.6. The
 % candidate is that they are the two members that are not likelihoods, the reported information of
