@@ -35,8 +35,11 @@ def load(fn, null, **filt):
         except ValueError: continue
         if not math.isfinite(m): continue
         if null == 1 and m <= 0: continue          # greyed / non-positive cells
+        # lab is the RAW noise column and S is the dimensionless noise, S = 0.1 * lab. Both are
+        # carried because the roster split is on the label (IR alone was swept at 0.05, 0.2, 0.5)
+        # while everything printed in the paper is in S.
         rows.append(dict(mem=NAME[r["algo"]], param=r["param"], m=m, lo=lo, hi=hi,
-                         sig=(lo > null or hi < null),
+                         sig=(lo > null or hi < null), lab=float(r["noise"]),
                          S=0.1*float(r["noise"]), N=float(r["Num_ch"]),
                          d=float(r["interval_in_tau"])))
     return rows
@@ -172,71 +175,141 @@ for p in PARAMS:
         print("      %-5s %s %s" % (m, "AVG " if m in AVG else "    ", "  ".join(out)))
 
 
-# ============================================================================================
-# THE NUMBERS QUOTED IN THE BODY. Added 2026-08-26 when the subsection was rewritten: everything
-# the printed text asserts about Figure 4 is emitted here, in the order the paragraphs use it.
-# ============================================================================================
-print("\n\n######## NUMBERS QUOTED IN THE REWRITTEN SUBSECTION")
 
-print("\n[verdict] median |bias| on the channel number, over the plane, log10 then per cent")
-for m in ORDER:
-    rs = [lg(r["m"]) for r in B if r["mem"]==m and r["param"]=="Num_ch_mean"]
-    if rs: print("   %-5s %.3f  (%.0f%%)" % (m, med(rs), 100*(10**med(rs)-1)))
 
-print("\n[verdict] direction of the distortion, both drawn parameters, all cells")
-o = u = 0
+# ============================================================================================
+# THE NUMBERS QUOTED IN THE BODY. Added 2026-08-26 when the subsection was rewritten; the block was
+# rebuilt the same day, when a review of the printed text against this file found six defects. What
+# changed and why:
+#   * THE BASIS. The interval paragraph used to be computed on S/N_ch <= 1, a sub-grid the printed
+#     text never declared, and on that sub-grid NR falls 43x and R 16x where the FULL grid gives 28x
+#     and 8.5x. Everything below now runs on the full grid, and the paragraph was rewritten to quote
+#     the bias as a FACTOR ON THE PARAMETER rather than as a ratio of |log10| values: NR going from
+#     1.054 to 0.038 in log10 is a fall from a factor of 11.3 to 9 per cent, not "a factor of forty".
+#   * THE ROSTER AND THE CELL SET. IR was swept at three noise labels nobody else was (0.05, 0.2,
+#     0.5), so it carries 294 cells against everyone else's 210 and 17 of its 28 closing-rate
+#     failures sit on ground no other member covers. Every head-to-head calibration count below is
+#     therefore taken on the SHARED noise labels; the bias medians are quoted on the full grid
+#     because they are identical on both (IR 1 per cent either way) and the others only have one.
+#   * THE PARTIAL CORRECTIONS. "Neither partial correction improves on the member it corrects" was
+#     false in the first moment: VR beats R on the channel number at all four channel counts and MR
+#     at three. The true statement, emitted below, is that both shave the bias and pay for it in the
+#     second moment as channels are added.
+# ============================================================================================
+SHARED_LABELS = {0.1, 1.0, 10.0, 100.0, 1000.0, 10000.0, 100000.0, 1000000.0, 10000000.0}
+BODY = ["LSE", "ILSE", "NR", "INR", "R", "IR"]
+shared = lambda rs: [r for r in rs if r["lab"] in SHARED_LABELS]
+pc = lambda l10: 100 * (10 ** l10 - 1)          # |log10 bias| -> per cent on the parameter
+
+print("\n\n######## NUMBERS QUOTED IN THE SUBSECTION, paragraph by paragraph")
+
+print("\n[verdict] median |bias| on the channel number, full grid then shared noise labels")
 for m in ORDER:
-    c = [r["m"] for r in D if r["mem"]==m and r["param"] in PARAMS]
-    o += sum(1 for x in c if x>1.15); u += sum(1 for x in c if x<1/1.15)
-print("   too narrow %d, too wide %d, i.e. %.2f of the misses are too narrow" % (o,u,o/(o+u)))
-print("   median miss among the failures, as the factor the error BAR is too narrow by:")
-for m in ORDER:
-    bad = [r["m"] for r in D if r["mem"]==m and r["param"] in PARAMS and (r["m"]>1.15 or r["m"]<1/1.15)]
-    if bad: print("   %-5s variance %.2f -> bar %.2f" % (m, med(bad), med(bad)**0.5))
+    a = [lg(r["m"]) for r in B if r["mem"] == m and r["param"] == "Num_ch_mean"]
+    s = [lg(r["m"]) for r in shared(B) if r["mem"] == m and r["param"] == "Num_ch_mean"]
+    if a: print("   %-5s full %.4f (%2.0f%%) n=%-4d | shared %.4f (%2.0f%%) n=%d"
+                % (m, med(a), pc(med(a)), len(a), med(s), pc(med(s)), len(s)))
+
+print("\n[verdict] the honesty count, SHARED noise labels, both drawn parameters")
+print("   the printed 'five per cent against R's twenty-nine and about seventy' is this column")
+for m in BODY:
+    rs = [r for r in shared(D) if r["mem"] == m and r["param"] in PARAMS]
+    bad = [r["m"] for r in rs if r["m"] > 1.15 or r["m"] < 1 / 1.15]
+    print("   %-5s outside the 15%% band %3d/%3d = %2.0f%%   median miss, as the factor the BAR is off by %.2f"
+          % (m, len(bad), len(rs), 100 * len(bad) / len(rs), med(bad) ** 0.5))
+
+print("\n[verdict] direction of the miss, shared labels, body roster")
+rs = [r for r in shared(D) if r["mem"] in BODY and r["param"] in PARAMS]
+o = sum(1 for r in rs if r["m"] > 1.15); u = sum(1 for r in rs if r["m"] < 1 / 1.15)
+print("   too narrow %d, too wide %d, i.e. %.2f of the misses are too narrow" % (o, u, o / (o + u)))
+
+print("\n[verdict] the two partial corrections against R, by channel count")
+for p in PARAMS:
+    print("   parameter %s" % p)
+    for src, lab in ((B, "bias |log10|"), (D, "distortion  ")):
+        for m in ("R", "MR", "VR", "IR"):
+            rows = [r for r in src if r["mem"] == m and r["param"] == p]
+            if not rows: continue
+            print("      %-12s %-3s %s" % (lab, m, "  ".join(
+                "N=%-6d %.4f" % (N, med([r["m"] if src is D else lg(r["m"])
+                                         for r in rows if r["N"] == N]))
+                for N in sorted({r["N"] for r in rows}))))
 
 print("\n[channels] closing-rate distortion at S=0.01, ten channels to ten thousand")
 for m in ORDER:
-    rs = [r for r in D if r["mem"]==m and r["param"]=="off" and abs(r["S"]-0.01)<1e-9]
-    if rs: print("   %-5s %s" % (m, "  ".join("%.3f"%med([r["m"] for r in rs if r["N"]==N])
+    rs = [r for r in D if r["mem"] == m and r["param"] == "off" and abs(r["S"] - 0.01) < 1e-9]
+    if rs: print("   %-5s %s" % (m, "  ".join("%.3f" % med([r["m"] for r in rs if r["N"] == N])
                                               for N in sorted({r["N"] for r in rs}))))
 
-print("\n[channels] where IR's error bar fails, by channel count and by noise")
+print("\n[channels] where IR's error bar fails, and how much of that corner is IR-only ground")
 for p in PARAMS:
-    bad = [r for r in D if r["mem"]=="IR" and r["param"]==p and (r["m"]>1.15 or r["m"]<1/1.15)]
-    byN = defaultdict(int); byS = defaultdict(int)
-    for r in bad: byN[int(r["N"])] += 1; byS[r["S"]] += 1
-    print("   %-13s %d cells | N_ch %s | S %s" % (p, len(bad), dict(sorted(byN.items())),
-                                                  {k: byS[k] for k in sorted(byS)}))
+    bad = [r for r in D if r["mem"] == "IR" and r["param"] == p and (r["m"] > 1.15 or r["m"] < 1/1.15)]
+    byN = defaultdict(int)
+    for r in bad: byN[int(r["N"])] += 1
+    only = [r for r in bad if r["lab"] not in SHARED_LABELS]
+    print("   %-13s %d fail | by N_ch %s | %d of them at the IR-only labels %s"
+          % (p, len(bad), dict(sorted(byN.items())), len(only),
+             sorted({r["lab"] for r in only})))
 
 print("\n[noise] median closing-rate distortion against the noise level")
-for m in ("LSE","R","IR"):
-    rs = [r for r in D if r["mem"]==m and r["param"]=="off"]
-    print("   %-5s %s" % (m, " ".join("%.3g:%.2f" % (S, med([r["m"] for r in rs if r["S"]==S]))
+print("   the printed 'from 13 to 1 over five decades' and 'R starts at 1.5, inside after two'")
+for m in ("LSE", "R", "IR"):
+    rs = [r for r in D if r["mem"] == m and r["param"] == "off"]
+    print("   %-5s %s" % (m, " ".join("%.3g:%.2f" % (S, med([r["m"] for r in rs if r["S"] == S]))
                                       for S in sorted({r["S"] for r in rs}))))
 
-print("\n[noise] cells whose bias half-width exceeds 0.05 in log10, i.e. blind to a 12% bias")
-BODY = {"LSE","ILSE","NR","INR","R","IR"}
-g = defaultdict(lambda: [0,0])
-tot = bad = 0
+print("\n[noise] cells whose bias half-width exceeds 0.05 in log10, i.e. blind to a bias of an eighth")
+g = defaultdict(lambda: [0, 0]); tot = bad = 0
 for r in B:
     if r["mem"] not in BODY or r["param"] not in PARAMS: continue
-    wide = (r["hi"]-r["lo"])/2 > 0.05
+    wide = (r["hi"] - r["lo"]) / 2 > 0.05
     tot += 1; bad += wide
-    k = round(math.log10(r["S"]/r["N"]))
-    g[k][0] += 1; g[k][1] += wide
-print("   %d of %d body-roster cells (%.0f%%)" % (bad, tot, 100*bad/tot))
-print("   by S/N_ch: " + " ".join("1e%d:%.0f%%" % (k, 100*g[k][1]/g[k][0]) for k in sorted(g)))
+    k = round(math.log10(r["S"] / r["N"])); g[k][0] += 1; g[k][1] += wide
+print("   %d of %d body-roster cells (%.0f%%); 0.05 in log10 IS 12.2 per cent, hence 'an eighth'"
+      % (bad, tot, 100 * bad / tot))
+print("   by S/N_ch: " + " ".join("1e%d:%.0f%%" % (k, 100 * g[k][1] / g[k][0]) for k in sorted(g)))
 
-print("\n[interval] median |bias| on the channel number, coarsest against finest, S/N_ch <= 1")
-for m in ORDER:
-    for d in (1.0, 0.01):
-        rs = [lg(r["m"]) for r in B if r["mem"]==m and r["param"]=="Num_ch_mean"
-              and r["d"]==d and r["S"]/r["N"] <= 1]
-        if rs: print("   %-5s d=%-5g %.3f  (%.1f%%)" % (m, d, med(rs), 100*(10**med(rs)-1)), end="")
-    print()
+print("\n[interval] median |bias| on the channel number, FULL grid, as a factor on the parameter")
+for m in ("NR", "INR", "R", "IR"):
+    rows = [r for r in B if r["mem"] == m and r["param"] == "Num_ch_mean"]
+    per_d = {d: med([lg(r["m"]) for r in rows if r["d"] == d]) for d in sorted({r["d"] for r in rows})}
+    print("   %-5s coarsest %.4f (x%.2f on the parameter) | finest %.4f (%.1f%%) | worst interval %.1f%%"
+          % (m, per_d[1.0], 10 ** per_d[1.0], per_d[0.01], pc(per_d[0.01]), pc(max(per_d.values()))))
 
 print("\n[interval] median |bias| on the closing rate by interval, the two least-squares arms")
-for m in ("LSE","ILSE"):
-    rs = [r for r in B if r["mem"]==m and r["param"]=="off"]
-    print("   %-5s %s" % (m, "  ".join("d=%-5g %.4f" % (d, med([lg(r["m"]) for r in rs if r["d"]==d]))
+for m in ("LSE", "ILSE"):
+    rs = [r for r in B if r["mem"] == m and r["param"] == "off"]
+    print("   %-5s %s" % (m, "  ".join("d=%-5g %.4f" % (d, med([lg(r["m"]) for r in rs if r["d"] == d]))
                                        for d in sorted({r["d"] for r in rs}))))
+d1 = {m: med([lg(r["m"]) for r in B if r["mem"] == m and r["param"] == "off" and r["d"] == 1.0])
+      for m in ("LSE", "ILSE")}
+print("   ratio at the coarsest interval: %.1f  (in per cent on the parameter, %.2f%% against %.2f%%)"
+      % (d1["LSE"] / d1["ILSE"], pc(d1["LSE"]), pc(d1["ILSE"])))
+
+print("\n[qualifications] R at N_ch = 1e4, Delta = 1: the amplitude trade-off the body quotes")
+for p in ("unitary_current", "Num_ch_mean"):
+    v = [r["m"] for r in B if r["mem"] == "R" and r["param"] == p and r["N"] == 1e4 and r["d"] == 1.0]
+    print("   %-16s median %+.3f in log10 over the noise sweep (n=%d)" % (p, med(v), len(v)))
+print("   they cancel: the product i * N_ch moves by %+.3f in log10"
+      % (med([r["m"] for r in B if r["mem"] == "R" and r["param"] == "unitary_current"
+              and r["N"] == 1e4 and r["d"] == 1.0])
+         + med([r["m"] for r in B if r["mem"] == "R" and r["param"] == "Num_ch_mean"
+                and r["N"] == 1e4 and r["d"] == 1.0])))
+print("\n[qualifications] WHAT IS ACTUALLY GREY IN THE BODY FIGURE. figure_4.Rmd renders through")
+print("   figure_4_layout.R::blk(), which has NO unident tile layer and does not set grey_offscale;")
+print("   every value is clamped to the ends of the scale. The kappa > 3e4 machinery lives in")
+print("   figure_4_common.R::mapblock(), the superseded producer. So grey is (a) the grey85 panel")
+print("   background below the shared noise floor, IR alone being swept at label 0.05, and (b) cells")
+print("   with no finite value. On the two drawn parameters that is NR alone:")
+for r in D:
+    pass
+raw = [r for r in csv.DictReader(open(SD + "figure_4_source_data_distortion.csv").read()
+                                 .split("\n", 1)[1].splitlines())
+       if r["anchor"] == "pool" and r["comp"] == "total" and r["param"] in PARAMS]
+def nonpos(v):
+    try: return float(v) <= 0
+    except ValueError: return True
+blank = [r for r in raw if nonpos(r.get("Dconf", ""))]
+for r in blank:
+    print("      %-14s %-13s N_ch=%-6s noise=%-8s delta=%-5s Dconf=%s"
+          % (r["algo"], r["param"], r["Num_ch"], r["noise"], r["interval_in_tau"], r["Dconf"]))

@@ -773,7 +773,7 @@ is calibrated, everywhere on the design plane}
 % MR stays and VR is still out: sixteen columns is not measured and puts the cell under 1.4 mm.
 % Note this parent's supplement 3 is the same plane for the recursive family, so between the two
 % every member of the ladder appears on this plane except VR's invariants.
-\figsupp[The same plane for the four rungs of the recursive family, in both moments.]{\textbf{The same plane for the recursive family: R, MR, VR and IR.} Figure~\ref{fig:plane} unchanged in every respect but the roster, the same two moments on the same shared factor scale with the same two line families and the same nesting, over the four rungs inside the recursive family, \texttt{R}, \texttt{MR}, \texttt{VR} and \texttt{IR} (Table~\ref{tab:members}). Sixteen columns rather than the body's twenty, since no least-squares arm appears and every member carries the channel number. The reading is in the text: neither partial correction improves on the member it corrects, at any channel count, on either parameter.}{\includegraphics[width=\linewidth]{Figure_4_S3}}
+\figsupp[The same plane for the four rungs of the recursive family, in both moments.]{\textbf{The same plane for the recursive family: R, MR, VR and IR.} Figure~\ref{fig:plane} unchanged in every respect but the roster, the same two moments on the same shared factor scale with the same two line families and the same nesting, over the four rungs inside the recursive family, \texttt{R}, \texttt{MR}, \texttt{VR} and \texttt{IR} (Table~\ref{tab:members}). Sixteen columns rather than the body's twenty, since no least-squares arm appears and every member carries the channel number. The reading is in the text: each partial correction buys part of the first moment and gives it back in the second as channels are added, and neither approaches either interval member on either moment.}{\includegraphics[width=\linewidth]{Figure_4_S3}}
 % SUPPLEMENT ADDED 2026-08-12 (Luciano). It spent one day declared on Figure~\ref{fig:usage}, which
 % was the wrong parent: that map only consumes this field as a level set, while what the figure
 % itself carries is what each axis of the design buys, and the design plane is here.
@@ -782,39 +782,51 @@ is calibrated, everywhere on the design plane}
 
 
 Figures~\ref{fig:clouds} and \ref{fig:time} measure one recording condition. Figure~\ref{fig:plane}
-asks what changes over the plane. Ten thousand recordings are simulated at every cell of a grid in
-the sampling interval, the instrumental noise and the channel count, and scored by the same eight
-members, the recursive family in Figure~\ref{fig:plane}--figure supplement 3.
+asks what changes over the plane: the same two measurements at every cell of a grid in the sampling
+interval, the instrumental noise and the channel count, scored by the same eight members, six here
+and \texttt{MR} and \texttt{VR} in Figure~\ref{fig:plane}--figure supplement 3.
 
-The verdict does not change. Across the plane \texttt{INR} and \texttt{IR} miss the channel number by one and two per
-cent, where the other four macroscopic members miss it by a fifth to a third, and \texttt{IR} is the only
-member whose error bar is honest. They all miss in the same direction: nine in ten of the cells
-outside the band report an error bar too narrow rather than too wide. Where they fail, the four that
-leave the correlation unmodelled report bars two to three times too narrow, and \texttt{R} and \texttt{IR} about a
-tenth. Neither partial correction improves on the member it corrects (Figure~\ref{fig:plane}--figure supplement 3).
+The verdict does not change. Across the plane \texttt{INR} misses the channel number by two per cent
+and \texttt{IR} by one, where the other four macroscopic members miss it by a fifth to a third, and
+\texttt{IR} is the only member whose error bar is honest, leaving the $15\%$ band on five per cent
+of the cells every member shares against \texttt{R}'s twenty-nine and seventy for the other four.
+They all miss in the same direction: nine in ten of the cells outside the band report an error bar
+too narrow rather than too wide. Where they fail, the four that leave the correlation unmodelled are
+off by a factor of about two to three on the error bar, and \texttt{R} and \texttt{IR} by about a
+tenth. Both partial corrections shave the first moment and lose the second
+(Figure~\ref{fig:plane}--figure supplement 3): \texttt{VR} cuts \texttt{R}'s channel-number bias by
+about a third and \texttt{MR} by a sixth, while on that parameter their distortion climbs with the
+channel count, to $1.10$ and $1.16$ at ten thousand channels where \texttt{R} stays at $1.01$.
+Neither reaches either interval member.
 
-What the plane adds is where each verdict breaks. \texttt{IR}'s closing-rate error bar is honest everywhere
-except at the two smallest channel counts with the least noise, and it is the channel count that
-repairs it: its closing-rate distortion converges from 1.37 at ten channels to 1.006 at ten
+What the plane adds is where each verdict breaks. \texttt{IR}'s closing-rate error bar is honest
+everywhere except at the two smallest channel counts with the least noise, most of that corner being
+ground only \texttt{IR} was swept on, below the noise floor the rest share. It is the channel count
+that repairs it: its closing-rate distortion converges from 1.37 at ten channels to 1.006 at ten
 thousand, as both the current and the state distribution become Gaussian by the central limit.
 
 Instrumental noise repairs everyone. As it grows the recorded current becomes Gaussian whatever the
 member assumes: the closing-rate distortion of least squares falls from 13 to 1 as the noise rises
-by five decades, and \texttt{R} covers the same ground in two. Colour at the noisy end of each row should not
-be read cell by cell: ten thousand recordings often cannot resolve a ten per cent bias there, and
-the variation between neighbours is sampling noise.
+by five decades, and \texttt{R}, which starts at 1.5, is inside the same band after two. Colour at
+the noisy end of each row should not be read cell by cell: ten thousand recordings often cannot
+resolve a bias of an eighth there, and the variation between neighbours is sampling noise.
 
 A short sampling interval attenuates the missing average without removing it. The channel-number
-bias of \texttt{NR} falls by a factor of forty from the coarsest sampling to the finest and \texttt{R}'s by sixteen,
-but at the finest they still carry seven and four per cent where \texttt{INR} and \texttt{IR} carry under one. The two
+bias of \texttt{NR} runs from a factor of eleven at the coarsest sampling to nine per cent at the
+finest, and \texttt{R}'s from four fifths of the parameter to seven per cent, while \texttt{INR}
+stays under two and a half per cent and \texttt{IR} under one at every interval. The two
 least-squares arms part only at the coarsest interval, where the arm that does not average picks up
-a rate bias close to twenty times the other's (Figure~\ref{fig:plane}--figure supplement 2); that single flag is why both
-are on the grid.
+a rate bias close to twenty times the other's and understates its own information thirteenfold
+(Figure~\ref{fig:plane}--figure supplement 2); that single flag is why both are on the grid.
 
-The cells drawn grey are the corner where \texttt{R} cannot tell the unitary current from the channel
-number: a change that moves the two together costs it almost no likelihood, so the fitted values
-wander far without the fit noticing. The anchor behind every factor was checked numerically and
-holds (Supplementary File~1).
+Three qualifications. The deep blue block in \texttt{R}'s channel number at ten thousand channels
+and the coarsest interval is where it cannot tell the unitary current from the channel number:
+moving the two together costs it almost no likelihood, so both wander, $-2.79$ in $\log_{10}$ here
+against $+2.87$ on the current the figure does not draw. Grey is absence and not a result: the strip
+along the bottom of each row is noise that member was not swept at, and the blank patch in
+\texttt{NR}'s second moment at the same corner is where its distortion is not positive at all. And
+the anchor behind every factor was checked against a differenced Fisher information and overturns no
+verdict, least squares being the one it would make more conservative (Supplementary File~1).
 
 % SUBSECTION REWRITTEN 2026-08-26 (Luciano), 911 words to 460, and reordered onto the question the
 % figure answers rather than onto the mechanisms. The narrative is his: what Figures 2 and 3 found
@@ -831,11 +843,61 @@ holds (Supplementary File~1).
 % span a fifth to a THIRD (20 to 31 per cent) and not to a quarter; least squares needs five decades
 % of noise and not four to reach 1; the least-squares rate bias at the coarsest interval is close to
 % twenty times the other arm's and not fifteen; and the no-power statement is scoped to "often".
+%
+% RE-AUDITED 2026-08-26, same day, against the source data and the PRODUCERS. Six more defects, all
+% repaired above and all re-emitted by the src script, whose "NUMBERS QUOTED" block was rebuilt in
+% the same pass:
+%   (1) INR and IR were SWAPPED. "by one and two per cent" pairs in order and INR is the 2 per cent
+%       one; the earlier correction fixed the value and not the ordering of the sentence.
+%   (2) THE GREY CELLS SENTENCE DESCRIBED SOMETHING THE FIGURE DOES NOT DRAW. figure_4.Rmd renders
+%       through figure_4_layout.R::blk(), which carries no `unident` tile layer and does not set
+%       grey_offscale: every value is clamped to the ends of the scale. The kappa > 3e4 machinery is
+%       in figure_4_common.R::mapblock(), the SUPERSEDED producer that figure_4_bias.Rmd and
+%       figure_4_distortion.Rmd used before they were merged. And even under that rule R's
+%       ill-conditioned cell runs off scale only on k_on, which this figure does not draw
+%       (figure_4_layout.R:321, PARS = off, Num_ch_mean). What is grey is (a) the grey85 panel
+%       background below the shared noise floor, IR alone having been swept at label 0.05, and
+%       (b) four NR cells at N_ch = 1e4, Delta = 1 whose Dconf is not positive. The identifiability
+%       fact itself SURVIVES and is now stated as what the figure paints, a deep blue block: at that
+%       cell R's medians are -2.79 on the channel number and +2.87 on the unitary current, which
+%       cancel to +0.077 in the product. Sister repair in Figure 5's supplement 2 caption, which
+%       said the same wrong thing ("that Figure 4 greys out and this figure does not").
+%   (3) "NEITHER PARTIAL CORRECTION IMPROVES ON THE MEMBER IT CORRECTS" IS FALSE in the first moment.
+%       On the channel number VR beats R at all four channel counts (0.059/0.070/0.081/0.082 in
+%       log10 against 0.095/0.083/0.100/0.120) and MR at three; on the closing rate both beat R at
+%       all four. What is true is the trade, printed above: they shave the bias and lose the second
+%       moment as channels are added. Supplement 3's caption asserted the stronger version still
+%       ("at any channel count, on either parameter") and is repaired in the same pass.
+%   (4) "THE ANCHOR HOLDS" said more than S1.5 sustains. The table gives INR and IR within 1 per
+%       cent, NR 0.91 to 1.36, R 0.87 to 0.94 and both least-squares arms at 0.71 to 0.78, which
+%       reanchored would ENLARGE their distortions by about 1.3. The claim S1.5 supports is that no
+%       verdict is overturned, which is what the December draft said and what is restored.
+%   (5) THE INTERVAL PARAGRAPH WAS COMPUTED ON A SUB-GRID, S/N_ch <= 1, that the printed text never
+%       declared: on the full grid NR falls 28x and R 8.5x, not 40x and 16x, and at the finest
+%       interval they carry 9 and 7 per cent, not 7 and 4, with INR at 1.0 so "under one" failed.
+%       Worse, a "factor of forty" was a ratio of |log10| VALUES, not of biases: NR's channel-number
+%       bias goes from 1033 per cent to 9, a factor near 250. The paragraph now runs on the full
+%       grid and quotes the bias as a factor on the PARAMETER (x11.3 coarsest, 9 per cent finest;
+%       R x1.79 to 7 per cent; INR under 2.5 per cent and IR under 1 at every interval).
+%   (6) THREE LOOSE READINGS. "two to three times too narrow" excluded both least-squares arms,
+%       whose median bar factor is 1.8 (NR 2.81, INR 2.18), so it now says "about two to three" and
+%       "off by", the direction being carried by the sentence before it; IR's own median miss is
+%       0.93, i.e. conservative, which "too narrow" would have got backwards. "R covers the same
+%       ground in two" was a false parallel, R's ground being 1.5 to 1 and not 13 to 1. And the
+%       resolution floor is a half-width of 0.05 in log10, which is 12.2 per cent, an eighth.
+% THE UNEQUAL CELL SETS, stated in the text for the first time: IR was swept at three noise labels
+% no other member has (0.05, 0.2, 0.5), so it carries 294 cells against everyone else's 210, and 17
+% of its 28 closing-rate failures sit on ground nobody else covers. Every head-to-head calibration
+% count is therefore taken on the SHARED labels, where IR leaves the 15 per cent band on 5 per cent
+% of cells, R on 29 and the other four on about 70. The bias medians are quoted on the full grid
+% because they are identical on both (IR reads 1 per cent either way).
 % src: papers/1_method/decisions/recompute/fig4_narrative_claims.py, section "NUMBERS QUOTED IN THE
-% REWRITTEN SUBSECTION", which emits every figure the printed text asserts, in paragraph order,
+% SUBSECTION", which emits every figure the printed text asserts, in paragraph order,
 % from figures/figure_4_source_data/{bias,distortion}.csv (distortion read at anchor=pool,
-% comp=total). TRAP recorded there: in bias.csv m is a SIGNED log10 with its null at zero, in
-% distortion.csv it is a variance ratio with its null at one.
+% comp=total). TRAPS recorded there: in bias.csv m is a SIGNED log10 with its null at zero, in
+% distortion.csv it is a variance ratio with its null at one; the noise column is a LABEL and the
+% dimensionless noise is 0.1 times it; and the maps are drawn from Bconf/Dconf, the CI edge, while
+% every number in the prose is the estimate m.
 %
 % THE COMMENTS BELOW ANNOTATE THE SUPERSEDED PROSE. They are kept for the facts that live only in
 % them (retired digits, the [OPEN] on oversampling against the anti-alias filter, the greying rule
@@ -1018,7 +1080,7 @@ holds (Supplementary File~1).
 % from 6.7 to 99, so the statistic points the wrong way along that axis for the worst-calibrated
 % member. The caption states the implication one-directionally for that reason. Do not write
 % "the residual autocorrelation indicates the distortion in the non-recursive members" without it.
-\figsupp[The instrumental noise and the channel count act only through their ratio.]{\textbf{The instrumental noise and the channel count act only through their ratio.} The same cells as the body figure, drawn twice. Each line is one channel count at one acquisition interval swept over the instrumental noise, twenty-eight per panel, and the two columns differ in nothing but the horizontal coordinate: on the left the instrumental noise $\widetilde{S}$, on the right the noise per channel $r = \widetilde{S}/N_{\mathrm{ch}}$. On the left the four channel counts are four separate curves per colour, a decade apart; on the right they merge, so seven of the twenty-eight are visible. Nothing is fitted, rescaled or normalized between the columns. The top row is the horizontal axis of the body figure itself, $\tau_{\mathrm{int}}$ of the least-squares residual, and it collapses with the rest: a reader who measures $\tau_{\mathrm{int}}$ on their own record has measured $r$ without knowing it. The vertical bars are the bootstrap quantiles of each cell, absent on the top row alone: each point is known to about $3\%$ and the four channel counts land within $1\%$ of one another. The number in each right-hand panel is the residual disagreement between cells that share $r$ exactly at the same interval, with no interpolation. The $5\%$ of \texttt{ILSE} and the $8\%$ of \texttt{IR} are within that scatter; the one large value, \texttt{R}'s, is the single ill-conditioned cell at $N_{\mathrm{ch}} = 10^4$ and $\widetilde{\Delta} = 1$ that Figure~\ref{fig:plane} greys out and this figure does not, without which \texttt{R} agrees to $23\%$. In the bottom row \texttt{IR}'s departures from unity are the width of its own error bar and not structure.}{\includegraphics[width=\linewidth]{Figure_5_S2}}
+\figsupp[The instrumental noise and the channel count act only through their ratio.]{\textbf{The instrumental noise and the channel count act only through their ratio.} The same cells as the body figure, drawn twice. Each line is one channel count at one acquisition interval swept over the instrumental noise, twenty-eight per panel, and the two columns differ in nothing but the horizontal coordinate: on the left the instrumental noise $\widetilde{S}$, on the right the noise per channel $r = \widetilde{S}/N_{\mathrm{ch}}$. On the left the four channel counts are four separate curves per colour, a decade apart; on the right they merge, so seven of the twenty-eight are visible. Nothing is fitted, rescaled or normalized between the columns. The top row is the horizontal axis of the body figure itself, $\tau_{\mathrm{int}}$ of the least-squares residual, and it collapses with the rest: a reader who measures $\tau_{\mathrm{int}}$ on their own record has measured $r$ without knowing it. The vertical bars are the bootstrap quantiles of each cell, absent on the top row alone: each point is known to about $3\%$ and the four channel counts land within $1\%$ of one another. The number in each right-hand panel is the residual disagreement between cells that share $r$ exactly at the same interval, with no interpolation. The $5\%$ of \texttt{ILSE} and the $8\%$ of \texttt{IR} are within that scatter; the one large value, \texttt{R}'s, is the single ill-conditioned cell at $N_{\mathrm{ch}} = 10^4$ and $\widetilde{\Delta} = 1$ that Figure~\ref{fig:plane} paints at the deep end of its scale, without which \texttt{R} agrees to $23\%$. In the bottom row \texttt{IR}'s departures from unity are the width of its own error bar and not structure.}{\includegraphics[width=\linewidth]{Figure_5_S2}}
 % TRIMMED 2026-08-13, 376 words to 294, against the 150-260 published band; it was the longest
 % caption of the Figure 5 set and remains over the band, which is a deliberate stop. Nothing
 % measured was dropped, and that is why it stops there: the
