@@ -86,7 +86,10 @@ $\mathbf{G}$ the analytic Gaussian Fisher information that anchors every distort
 $\mathbf{C}$ at the identity means the cheap analytic form carries the member's true curvature,
 and an entry of the table is the geometric mean of $\mathbf{C}$'s eigenvalues, the median over
 the seven acquisition intervals, at $\widetilde{S}=0.01$ and $n_{\mathrm{sim}}=10^{4}$ exact
-simulations per cell.
+simulations per cell, under one explicit injected seed for the whole sweep, which also pairs the
+ensemble across members within a cell.
+% src: projects/eLife_2025/ops/slurm/dispatch_figure_3_fisher_only.sh:27-29 (SIM_SEED injected,
+% never the seed=0 sentinel; one seed pairs the ensemble across algorithms)
 % src: projects/eLife_2025/NOISE_AXIS_UNITS.md (display S_tilde = 0.1 x the noise label; the run's label is 0.1)
 % src: src/core/likelihood.cpp:3509 (Likelihood_Gaussian_Fisher_Distortion = inv(sqrt(G_b)) F_b inv(sqrt(G_b)))
 % src: tmp/fim_vs_gaussian_table.py over projects/eLife_2025/figures/data/a202e03/figure_3_fim_*_nsim_10000_*_battery_sim.csv

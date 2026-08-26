@@ -42,6 +42,13 @@ independent resampling destroys the correlation that is the problem; a parametri
 the model one was checking; a block bootstrap needs a block length well above a correlation time that
 has to be measured first. Simulating from the fitted model and forming the sandwich answers the same
 question the diagnostic does, at a cost set by the precision needed on a covariance, and still
-simulates from the model one wanted to verify.
+simulates from the model one wanted to verify. None of these, the sandwich included, reaches the
+Bayesian evidence: every repair here corrects the covariance a likelihood reports, while the
+evidence is an integral of the likelihood itself, which no covariance correction touches, so a
+comparison built on evidences is repaired only by changing the likelihood.
+% ADDED 2026-08-25 (GPT full-read round, point 7; grep-verified absent from every section): the
+% motivating example is model selection, and without this sentence a reader can leave believing
+% that measuring C fixes the evidence. It does not, and the Discussion's concession (the P2X2
+% evidences are not recomputed) depends on the reader knowing that.
 
 \end{appendixbox}
