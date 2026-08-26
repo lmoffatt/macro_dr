@@ -11,7 +11,7 @@ postergada, no descartada; lo que hay que saber para reabrirla está al final.
 
 ## La escalera de logL se descompone en las otras dos filas (2026-08-12, sin escribir todavía)
 
-Material nuevo, medido pero NO incorporado a la prosa. Script: `tmp/fig3_kl.R`.
+Material nuevo, medido pero NO incorporado a la prosa. Script: `papers/1_method/decisions/recompute/fig3_kl.R`.
 
 Tres identidades encadenadas. (1) E_p[log q] = −H(p) − KL(p‖q), y como el promedio es sobre
 grabaciones del simulador exacto, las DIFERENCIAS de la escalera son diferencias de KL al proceso
@@ -48,7 +48,7 @@ ve los dos defectos y no los separa, que es para lo que sirve el resto de la fig
 costo marginal es el cociente de varianzas del RESIDUO (fila B), no el J/F por parámetro (fila E):
 R lee 0,782 en B y 0,724 en E, LSE lee 1,000 en B y 1,486 en E.
 
-EL PISO, VERIFICADO CONTRA EL DATO y no ya inferido por resta (`tmp/fig3_tc.R`). La forma testeable
+EL PISO, VERIFICADO CONTRA EL DATO y no ya inferido por resta (`papers/1_method/decisions/recompute/fig3_tc.R`). La forma testeable
 no necesita H(p), que se cancela: **−logL_m = Σ_t H(p_t) + Σ_t KL(p_t‖q_t)** para todo miembro de
 independencia. El primer sumando sale del dato crudo (cien marginales de la corriente observada,
 mil muestras cada uno), el segundo de los momentos del residuo del miembro. Son caminos
@@ -202,7 +202,7 @@ Var(Σ s_t)/Σ F_t = Ē × (1 + 2 Σ_{t<u} cov / Σ Var).
 tres mediciones independientes, son dos factores y su producto, y la figura muestra los tres para
 que el lector cierre la cuenta.
 
-**MEDIDO 2026-08-12** (`tmp/fig3_check.R`, reproduciendo el prep, la máscara y el bootstrap de la
+**MEDIDO 2026-08-12** (`papers/1_method/decisions/recompute/fig3_check.R`, reproduciendo el prep, la máscara y el bootstrap de la
 notebook; el producto reproduce el acumulado a todos los dígitos, que es la identidad y sirve de
 chequeo del código). k_off salvo donde dice N_ch:
 

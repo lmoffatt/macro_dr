@@ -459,7 +459,8 @@ Span: pp. 11-23, lines 571-1430. Section size about 8494 words. Items: 22.
 - [ ] **COMPRESS**, about 42 words, lines 719-726, p.13
   - Passage: The log-likelihood adds up everything a member gets wrong, and it orders the ladder accordingly ...
   - Why: The intermediate nat deltas (eleven nats, sixty-nat gap, instant member below that) are printed on Figure 3 panel A and in Figure 3-source data 1; text and figure should carry the numbers once.
-  - Do: Residue must retain: the ladder ordering with the 119-nat top-to-bottom span (pointing to panel A / source data 1); 'the ranking says nothing about how far from the truth its top sits; every other row is read against a value a correct likelihood must give'; the qualification that both least-squares arms fit a noise level to each recording they score.
+  - Do: Residue must retain: the ladder ordering with the 119-nat top-to-bottom span (pointing to panel A / source data 1); one sentence saying that differences in the ladder are differences in Kullback-Leibler divergence from the truth, so it orders the family by distance to it; 'every other row is read against a value a correct likelihood must give'; the qualification that both least-squares arms fit a noise level to each recording they score.
+  - AMENDED 2026-08-26: the residue as first written kept only the consequence ('the ranking says nothing about how far from the truth its top sits') and dropped the premise, and the orphaned clause read as a denial that the ladder means anything. The premise is now the sentence that must survive; the 'says nothing about how far' clause is gone from the body.
   - Cross-references: Figure 3 panel A annotations and Figure 3-source data 1 must keep the per-member logL values (they do).
 
 - [ ] **COMPRESS**, about 88 words, lines 727-731 and 835-837, pp.13-15
@@ -468,10 +469,11 @@ Span: pp. 11-23, lines 571-1430. Section size about 8494 words. Items: 22.
   - Do: Residue must retain: one sentence pointing to the three diagnostics defined in the family section and mapping them to rows (residual: variance (B), memory the black series of (G); score: mean (D), variance against the information (E, F), memory the coloured series of (G); information: (C)).
   - Cross-references: Figure 3 caption's per-row decode (lines 817-826) must survive intact; keep exactly one 'transfers to a real recording' statement in this subsection (line 864's is kept).
 
-- [ ] **DELETE**, about 12 words, lines 841-842, p.15
+- [x] **DELETE**, about 12 words, lines 841-842, p.15 - DONE 2026-08-26, inside the rewrite of the score-mean paragraph
   - Passage: so averaging the model over the acquisition window is what removes it
   - Why: Third statement of averaging-removes-displacement: the one-cell statement (lines 684-687) and the plane-wide one with numbers (lines 979-982) are both kept.
   - Cross-references: NONE; the sentence remains grammatical ending at '...for the displaced four.'
+  - A SECOND reason found on execution: at this site the clause is not only a repeat, it is contradicted by the least-squares pair, LSE and ILSE reading the same per-interval fraction 0.1875 with and without the window average. The two kept statements are made on the pairs that do show it.
 
 - [ ] **COMPRESS**, about 50 words, lines 866-876, p.15
   - Passage: The information on its own answers a different question, about the recording rather than about the algorithms ...

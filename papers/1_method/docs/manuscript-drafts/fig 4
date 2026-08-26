@@ -1,0 +1,14 @@
+Only the interval members are centred, and only the boundary-conditioned one is calibrated, everywhere on the design plane
+
+Figures 2 and 3 measure one recording condition. Figure 4 asks whether what they found there holds more generally. Ten thousand recordings are simulated at every cell of a grid in three variables: the sampling interval, the instrumental noise and the channel count. Panel (A) shows how far each member displaces the estimate; panel (B) how far the uncertainty it reports is from the one it delivers, at the pooled optimum, a single joint fit by Gauss-Newton with Levenberg damping (Methods). The rest of the recursive family is in figure supplement 3.
+
+It holds. Across the plane INR and IR miss the channel number by under one per cent, where the other four macroscopic members miss it by a fifth to a quarter. And counting an error bar as honest when it falls within 15% of the spread the member actually delivers, IR's is honest at 97% of the cells all three cover, R's at 78% and NR's at 37%.
+
+Instrumental noise repairs almost everything. As it grows the recorded current becomes Gaussian whatever the member assumes, and every error bar becomes honest: the closing-rate distortion of least squares falls from 13 to 1 over four decades of added noise, and R covers the same ground in two. The "almost" is a limit on what can be checked rather than on what happens, because in that same corner the displacement stops being measurable, its confidence interval running two to three times its own value.
+
+As channels are added both the current and the state distribution become Gaussian by the central limit, and IR's closing-rate distortion converges from 1.37 at ten channels to 1.006 at ten thousand.
+On the other hand NR and R misplace the channel number as badly with ten thousand channels as with ten.
+
+A short sampling interval hides the missing average. The channel-number bias of NR runs from 0.038 in log10 at the finest sampling to 1.05 at the coarsest, and R's from 0.030 to 0.25, while INR and IR stay under 0.01 throughout. The two least-squares differ only at the coarsest interval, where the arm that does not average picks up a rate bias fifteen times the other's (figure supplement 2).
+
+Two qualifications. The anchor was checked against a differenced Fisher information and overturns no verdict, least squares being the one it would make more conservative (Supplementary File 1). And at the highest channel count with the coarsest interval the amplitude directions of R are not identified; those cells are drawn grey.

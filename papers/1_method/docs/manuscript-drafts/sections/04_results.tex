@@ -108,7 +108,14 @@ exactly from the process every member approximates.
 % Checked in the same pass: no other stretch of seven words or more from 04_results.md appears in
 % this file, so this was the one leak and not a pattern.
 
-Throughout, $\widetilde{\Delta}$ and $\widetilde{S}$ are the acquisition interval and the instrumental noise in the natural units defined above, and the eight members are those of Table~\ref{tab:members}.
+Throughout, $\widetilde{\Delta}$ and $\widetilde{S}$ are the acquisition interval and the instrumental noise in the natural units defined above, a cell is one combination of channel count, instrumental noise and acquisition interval at which recordings are simulated, and the eight members are those of Table~\ref{tab:members}.
+% CELL DEFINED HERE 2026-08-26 (Luciano). The word carries 51 printed occurrences, 23 in Results and 18 in
+% Methods, and for an ion-channel readership it competes with the biological cell on first encounter. It
+% never means that here: the preparation is the PATCH (02_framework, "the number of channels in the
+% patch"), so there is no internal collision and one definition settles it. Renaming was the alternative
+% and costs 51 edits; of the candidates only "design point" was clean, since "condition" collides with
+% the verb this paper turns on and "regime" is already reserved for a REGION of the plane. The abstract's
+% earlier use needs nothing, naming the three axes in the same clause.
 % COMPRESSED 2026-08-26 (shortening_plan.md, Results item on the natural-units restatement,
 % duplication (a)): this was the second of three copies of the tilde definition. The framework
 % section's copy survives as the sole full definition; the Methods copy keeps only the
@@ -514,15 +521,30 @@ score, while the open-loop members and both least-squares arms predict the ensem
 log-likelihood adds up everything a member gets wrong, and it orders the ladder accordingly: the
 boundary-conditioned member on top and the two least-squares arms together at the bottom, $119$
 nats below it
-(Figure~\ref{fig:time}--source data 1). The ranking says nothing about how far from the truth its
-top sits; every other row is read against a value a correct likelihood must give, and can therefore
-test. One entry is not the same kind of number, both least-squares arms
-fitting a noise level to each recording they score.
+(Figure~\ref{fig:time}--source data 1). Differences along the ladder are differences in
+Kullback-Leibler divergence from the distribution that generated the recordings, so the ordering is
+by distance to the truth. Every other row is read against a value a correct likelihood must give,
+and can therefore test. One entry is not the same kind of number, both least-squares arms fitting a
+noise level to each recording they score.
 % REWRITTEN 2026-08-25 (Luciano's facts 1 and 2 of the Figure 3 reduction). The tracking sentence is
 % new; the logL ORDER is new content (the old prose gave only the 118.9-nat span): IR -143.45 > R
 % -147 > VR -149 > MR -154, gap, INR -215.37 > NR -230.15 > LSE = ILSE -262.30 (se 0.73). The old
 % "rows are ordered by what each quantity is able to say" sentence is retired; the caption's row list
-% carries the reading order. % src: projects/eLife_2025/figures/paper_both/figure_3.html (caption-numbers chunk; ensemble-mean total logL over 1000 recordings, -262.30 +- 0.73 for both least-squares arms to -143.45 +- 0.24 for IR) ; tmp/fig3_tc.R (cv of y_var across recordings at fixed sample_index: 0.478 for both least-squares arms at every interval, 0.000 for NR and INR, 0.093 mean for IR, where the variation is conditioning on the past and not a fitted parameter).
+% carries the reading order. % src: projects/eLife_2025/figures/paper_both/figure_3.html (caption-numbers chunk; ensemble-mean total logL over 1000 recordings, -262.30 +- 0.73 for both least-squares arms to -143.45 +- 0.24 for IR) ; papers/1_method/decisions/recompute/fig3_tc.R (cv of y_var across recordings at fixed sample_index: 0.478 for both least-squares arms at every interval, 0.000 for NR and INR, 0.093 mean for IR, where the variation is conditioning on the past and not a fitted parameter).
+% RESTORED 2026-08-26, the premise the 2026-08-13 compression cut. That pass kept the consequence
+% ("The ranking says nothing about how far from the truth its top sits") and dropped the sentence it
+% followed from, so the surviving clause read as a denial that the ladder means anything, which is
+% the opposite of the claim: every member scores the SAME recordings, so the entropy of whatever
+% distribution generated them cancels in a difference and differences in mean logL ARE differences
+% in Kullback-Leibler divergence, the ordering being an ordering by distance to the truth.
+% The restored sentence is deliberately shorter than the 2026-08-13 original and does NOT name the
+% exact simulator (Luciano, 2026-08-26): the identity needs only a common sample from a single
+% distribution, and the paragraph's first sentence already says the set of recordings is common.
+% What the simulator buys is only that the distribution in question IS the truth.
+% NOT restored is the old second half (the entropy is shared and unknown, so the ladder does not
+% locate its top). The paragraph uses the ordering, and the contrast with the rows below survives
+% as ordering against reference-value.
+% src: papers/1_method/decisions/recompute/fig3_kl.R, header item (i), which states and checks the identity on these digests.
 % COMPRESSED 2026-08-13, outside-read pass, 112 words to 57. What went is the entropy-and-divergence
 % reading of row (A): "Averaged over recordings from the exact simulator it estimates minus the
 % entropy of the distribution that generated the data minus the Kullback-Leibler divergence of the
@@ -530,11 +552,13 @@ fitting a noise level to each recording they score.
 % those things is wrong, and the entropy is shared and unknown". The identity is
 % E_p[log q] = -H(p) - KL(p||q), which holds because the ensemble is drawn from the exact simulator
 % and every member reports a proper Gaussian density, verified as -0.5*log(2*pi*y_var) - 0.5*r_std^2
-% to 1e-13; it is kept here and in the guion and is nowhere in the printed text.
+% to 1e-13. Its FIRST clause is back in the printed text since 2026-08-26, see the note above; the
+% rest is kept here and in the guion only.
 % WHY IT GOES, and this is the SAME call Luciano made on 2026-08-12 on the block immediately below
 % ("interesting, diverts from the objective"), which cut the exact two-term split of that divergence.
 % The section's claim is calibration, not a Kullback-Leibler ranking, and what survives above is the
 % only part the row ordering needs: the ladder ranks and the other rows test.
+% SUPERSEDED IN PART 2026-08-26: the ranking clause needed its premise to be readable at all.
 % WHAT IS KEPT DELIBERATELY: the least-squares qualification. It is on the untouchable list of the
 % 2026-08-10 pass and it is what stops a reader comparing that column's logL with the others.
 %
@@ -553,7 +577,7 @@ fitting a noise level to each recording they score.
 % pays 71.9 nats for treating them as independent. The three open-loop members agree on that floor
 % to 3% (69.76, 71.89, 71.90), as the identity requires since it belongs to the data. Both
 % least-squares arms miss the identity by 2.2 nats, which is where the per-recording noise estimate
-% stated above was found. Scripts: tmp/fig3_kl.R and tmp/fig3_tc.R.
+% stated above was found. Scripts: papers/1_method/decisions/recompute/fig3_kl.R and papers/1_method/decisions/recompute/fig3_tc.R.
 
 The figure keeps the three diagnostics apart: the residual carries its variance in row (B) and its
 memory in the black series of (G); the score its mean in (D), its variance against the information
@@ -563,15 +587,39 @@ member claims, is drawn alone in (C).
 % belong to the framework section, which is protected and keeps them, and "only the residual can be
 % computed on a real recording" is said again below where it does work.
 
-The mean of the score is what says whether the estimate will be displaced, and it repeats
-Figure~\ref{fig:clouds}'s split: per interval it sits at the chance level for \texttt{IR}, near it
-for \texttt{INR}, at four times chance for both least-squares arms, and departs from zero at two
-fifths to three quarters of the informative steps for the displaced four, so averaging the model
-over the acquisition window is what removes it. What moves the estimate is the accumulated score
-divided by the whole information matrix, $b = F^{-1}\,\mathrm{E}[\sum_t s_t]$, and read that way the
-two interval-averaged members cover zero on all four identified parameters and no other member
-does. It is the same quantity the third marker of Figure~\ref{fig:clouds} carries at this cell and
-Figure~\ref{fig:plane}A maps over the plane.
+The mean of the score is what says whether the estimate will be displaced, and per interval only
+\texttt{IR} sits at the chance level: \texttt{INR} departs from zero at twice chance and both
+least-squares arms at four times it, the displaced four at two fifths to three quarters of the
+informative steps. That count is not the displacement, since departures of opposite sign cancel in
+the sum, and what the estimate follows is the accumulated score against the whole information
+matrix, $b = F^{-1}\,\mathrm{E}[\sum_t s_t]$, in units of the marginal standard error. Read that way
+it reproduces Figure~\ref{fig:clouds}'s split: the four members centred there sit within a quarter
+of a standard error of zero, and the displaced four miss it on the unitary current and the channel
+number by half a standard error to two. Figure~\ref{fig:plane}A maps it over the plane.
+% REWRITTEN 2026-08-26 (Luciano: the paragraph has to say two things and no more, that only IR is
+% at chance per interval and that the SUM's bias agrees with Figure 2). What the old version left
+% unsaid is why a member can exceed chance interval by interval and still be centred: the estimator
+% follows the sum, in which departures of opposite sign cancel. The reader had the two facts and not
+% the bridge, which is exactly the question this rewrite answers.
+% THE SPLIT. % src: papers/1_method/decisions/recompute/fig3_score_bias.R and the table it writes
+% beside it, fig3_score_bias.csv (promoted 2026-08-26 from tmp/, which is gitignored; the CSV is the
+% 2026-08-12 run, seed 20260812, and the script reproduces it from the digests). It is the same
+% computation the figure's caption chunk does: b = F^-1 E[sum s] over all identified parameters at
+% once, z = b_a/sqrt((F^-1)_aa), 400-resample bootstrap over recordings, N_ch excluded for the
+% least-squares arms as degenerate with i. Reading: centred four, max |z| = IR 0.036, INR 0.084, LSE 0.215 and ILSE 0.219, all four on
+% k_off; displaced four on i and N_ch, VR 0.565 to MR 1.956. Hence "within a quarter of a standard
+% error" and not "cover zero": LSE and ILSE EXCLUDE zero on k_off, at 0.215 (0.014, 0.379) and
+% 0.219 (0.032, 0.423), which is below what the cloud of Figure 2 resolves but is not nothing.
+% "Reproduces the split" is deliberate and is NOT a claim of numerical agreement: the Figure 2 src
+% records this b against that figure's marker with the same signs and magnitudes 25 to 40 per cent
+% smaller, unreconciled.
+% DROPPED with the rewrite: "so averaging the model over the acquisition window is what removes it".
+% It is made where it belongs, in the Figure 2 paragraph ("The interval average is what removes the
+% displacement, in all three families that carry both arms"), and HERE the least-squares pair
+% contradicts it, LSE and ILSE reading the same 0.1875 with and without the window average.
+% ALSO DROPPED: "It is the same quantity the third marker of Figure 2 carries at this cell". The
+% link survives from the other side, that paragraph closing with "Figure 3 shows the score that
+% produces it".
 % DIGITS MIGRATED 2026-08-25 to Figure 3--source data 1 (D_score_bias_frac column: IR 0.0375/0.0652
 % against a chance level of 0.05, INR 0.100/0.1125, LSE/ILSE 0.1875, NR 0.45/0.525, R 0.50/0.605,
 % VR 0.425/0.409, MR 0.725/0.652). Retired from prose in the same pass: R displaced 1.38 marginal
@@ -595,7 +643,7 @@ the agonist to $1.91$ over the pulse.
 % by-construction caveat kept mandatory (G-ABORT trap: their pinned 1.0000 looks calibrated in the
 % very figure about calibration; 98% of their steps exclude one). Digits retired to the src: r^2
 % NR 1.1526, INR 0.9995, R 0.7816, MR 0.6904, VR 0.8118, IR 0.9989, LS 1.0000; NR's jump interval
-% 28.45 against 0.95. % src: figure_3.html (caption-numbers chunk, B block: mean r^2 1.1526 NR, 0.9995 INR, 0.7816 R, 0.6904 MR, 0.8118 VR, 0.9989 IR, and 1.0000 for both least-squares arms, whose 98% of steps exclude one) ; tmp/fig3_kl.R (worst interval and its cost: 12.05 of NR's 14.81 nats at sample 20) ; tmp/fig3_claims.R (r^2 by segment: for either least-squares arm 0.010 over samples 1-19, 1.91 over the pulse, 0.69 through the washout; r^2 at sample 20 is 28.45 NR, 3.06 VR, 0.95 INR MR and IR, 0.61 R).
+% 28.45 against 0.95. % src: figure_3.html (caption-numbers chunk, B block: mean r^2 1.1526 NR, 0.9995 INR, 0.7816 R, 0.6904 MR, 0.8118 VR, 0.9989 IR, and 1.0000 for both least-squares arms, whose 98% of steps exclude one) ; papers/1_method/decisions/recompute/fig3_kl.R (worst interval and its cost: 12.05 of NR's 14.81 nats at sample 20) ; papers/1_method/decisions/recompute/fig3_claims.R (r^2 by segment: for either least-squares arm 0.010 over samples 1-19, 1.91 over the pulse, 0.69 through the washout; r^2 at sample 20 is 28.45 NR, 3.06 VR, 0.95 INR MR and IR, 0.61 R).
 
 The second source is correlation in time, and no per-sample check can see it. \texttt{INR} has the
 calibrated residual variance of \texttt{IR} and reports its accumulated information twenty times
@@ -608,14 +656,21 @@ autocorrelation on $k_{\mathrm{off}}$ is $-0.004 \pm 0.004$ for \texttt{IR} agai
 \citet{milescu2005maximum} named as the dominant error of independent-interval fitting, measured at
 the level of the inference. The same memory shows in the residual, which is the half of this row
 that transfers to a real recording. Figure~\ref{fig:plane}B carries the second moment over the plane;
-these are the two mechanisms behind it. % src: figure_3.html (caption-numbers chunk; accumulated J_T/F_T 13.63 NR, 20.84 INR, 1.074 R, 1.080 IR, and lag-one score ACF on k_off) ; figure_3.Rmd (accumulated block, Ebar and infl, whose product reproduces the accumulated ratio by construction: R 0.724 x 1.483, IR 1.069 x 1.010, MR 0.578 x 2.055, INR on N_ch 1.006 x 11.758) ; tmp/fig3_claims.R (residual ACF at lag one 0.846 either least-squares arm, 0.510 NR, 0.118 R, -0.010 IR, so the score reads 1.6 to 1.7 times the residual where either is large; the score ACF falls below 0.1 at lag 2 for the recursive members and lag 9 to 12 for the rest). TRAP: the drawn ACF does not reconstruct the accumulated ratio arithmetically, 1+2*sum(rho) giving 7.85 for NR against a measured inflation of 16.83, because the score is not stationary.
+these are the two mechanisms behind it. % src: figure_3.html (caption-numbers chunk; accumulated J_T/F_T 13.63 NR, 20.84 INR, 1.074 R, 1.080 IR, and lag-one score ACF on k_off) ; figure_3.Rmd (accumulated block, Ebar and infl, whose product reproduces the accumulated ratio by construction: R 0.724 x 1.483, IR 1.069 x 1.010, MR 0.578 x 2.055, INR on N_ch 1.006 x 11.758) ; papers/1_method/decisions/recompute/fig3_claims.R (residual ACF at lag one 0.846 either least-squares arm, 0.510 NR, 0.118 R, -0.010 IR, so the score reads 1.6 to 1.7 times the residual where either is large; the score ACF falls below 0.1 at lag 2 for the recursive members and lag 9 to 12 for the rest). TRAP: the drawn ACF does not reconstruct the accumulated ratio arithmetically, 1+2*sum(rho) giving 7.85 for NR against a measured inflation of 16.83, because the score is not stationary.
 
-The information on its own says where each parameter is measured. About the channel number and the
-opening rate it reaches the numerical floor within six intervals of the agonist being removed, while
-the closing rate survives through the mean and the unitary current through the variance of the
-channels still open (Figure~\ref{fig:time}--figure supplements 1 and 2). A member that has
-conditioned on the past already carries the number of channels still open, so once a parameter
-reaches the recording only through that number there is nothing further to learn.
+The per-interval information $F_t$ of row (C) says on its own where each parameter is measured.
+About the channel number and the opening rate it reaches the numerical floor within six intervals of
+the agonist being removed, while the closing rate survives through the mean and the unitary current
+through the variance of the channels still open (Figure~\ref{fig:time}--figure supplements 1 and 2).
+A member that has conditioned on the past already carries the number of channels still open, so once
+a parameter reaches the recording only through that number there is nothing further to learn.
+% NAMED 2026-08-26 (Luciano). The opening read "The information on its own", four paragraphs after
+% (C) was assigned in the three-diagnostics sentence, so the row had to be inferred. Not "the Fisher
+% information", which would be a THIRD name: 02_framework.tex defines $F_t$ as the Gaussian Fisher
+% information of interval t alone, the caption of (C) says per-interval Fisher information, and the
+% body's short form for the three objects is residual, score, information. The symbol carries it.
+% (C) is the ROW pointer only: it draws the closing rate and the channel number, and the sentence
+% that follows is about the opening rate too, which is why that one points at the supplements.
 % COMPRESSED 2026-08-26 to its framing sentence only (shortening_plan.md, Results washout item,
 % binding adjustment): the MECHANISM sentence stays HERE, because the Discussion copy was cut to
 % design advice. The six-interval floor and the 15-16% numbers stay too, since two supplement
@@ -843,7 +898,7 @@ crossover into one of its boundaries.
 Over the grid the three members share, counting every parameter at every cell, the reported uncertainty
 is within $\pm15\%$ of the delivered one for $97\%$ of \texttt{IR}'s points, $78\%$ of \texttt{R}'s and
 $37\%$ of \texttt{NR}'s; over its own wider grid \texttt{IR} reads $95\%$, and what it has left is
-concentrated at few channels and low noise. % src: tmp/recount_9370_31.py re-run 2026-08-25 over projects/eLife_2025/figures/figure_4_source_data/figure_4_source_data_distortion.csv (anchor pool, comp total, statistic m: 1018 / 818 / 384 of 1050 each, over the 210 cells shared by IR, R and NR; on the CI-collapsed Dconf the same counts read 97/81/38. IR's own grid: 1402 of 1470 over 294 cells; of its 68 misses, 50 sit at N_ch 10 and 50 of 68 at noise labels 0.5 and below, i.e. S_tilde <= 0.05).
+concentrated at few channels and low noise. % src: papers/1_method/decisions/recompute/recount_9370_31.py re-run 2026-08-25 over projects/eLife_2025/figures/figure_4_source_data/figure_4_source_data_distortion.csv (anchor pool, comp total, statistic m: 1018 / 818 / 384 of 1050 each, over the 210 cells shared by IR, R and NR; on the CI-collapsed Dconf the same counts read 97/81/38. IR's own grid: 1402 of 1470 over 294 cells; of its 68 misses, 50 sit at N_ch 10 and 50 of 68 at noise labels 0.5 and below, i.e. S_tilde <= 0.05).
 % THE THREE-DIFFERENT-CELL-SETS DEFECT (08_length_plan.md, phase 5 item 4) CLOSED 2026-08-25,
 % Luciano's call this session: the sentence moves to the shared sub-grid. The counts are now taken
 % from the figure's own source data, so the prose and the plane figure count the same object; the
@@ -864,7 +919,7 @@ a third when re-anchored on the differenced form, without being overturned; at t
 intervals there the differenced Fisher is not positive at all, the same ill-conditioned corner the
 figure greys. For both least-squares arms re-anchoring would enlarge the reported factors by about
 $1.3$, so their verdict is conservative under the anchor.
-% src: tmp/fim_vs_gaussian_table.py 2026-08-25 over projects/eLife_2025/figures/data/a202e03/figure_3_fim_*_nsim_10000_*_battery_sim.csv
+% src: papers/1_method/decisions/recompute/fim_vs_gaussian_table.py 2026-08-25 over projects/eLife_2025/figures/data/a202e03/figure_3_fim_*_nsim_10000_*_battery_sim.csv
 % (medians of geomean(eig C), C = inv(sqrt(G_b)) F_b inv(sqrt(G_b)), src/core/likelihood.cpp:3509:
 % INR 0.995-1.000 and IR 0.994-1.001 across the four decades; NR 1.16 / 1.36 at 1e3 / 1e4 with
 % retained maximum 1.97 at delta 0.1 and the three coarsest intervals indefinite; LSE 0.71-0.78,

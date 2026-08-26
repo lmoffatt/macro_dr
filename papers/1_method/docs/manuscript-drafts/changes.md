@@ -1,25 +1,16 @@
-figuras 2 (3 lineas), 3 (1 linea), 4 (0.5 linea)  caption surpassed limit: encogé la figura o reduci el texto.
+Averaging in open loop centres the estimate and conditioning on both ends calibrates the uncertainty, at every point of the design plane
+% no esta bien: tiene que ser los Interval (INR e IR, MR es averaging y no esta incluido en el titulo)
 
-HECHO 2026-08-26. Las tres entran, medido en el PDF (compilado a `tmp/capfit/`, paginas 12, 14 y 16),
-no estimado. Se redujo el texto, NO se encogieron las figuras: estan dibujadas a ancho completo con
-tipografia base de 7 pt, que es el piso de eLife, asi que escalarlas hubiera puesto sus rotulos por
-debajo del limite.
 
-De donde salieron las lineas, y por que cada corte es seguro:
-- Figura 2: las glosas de magnitud y anisotropia (la prosa de esa misma subseccion las da textuales,
-  al lado de la ecuacion que las define); "free in every likelihood member and simulated at 1e-4"
-  (material de Methods, y ese 1e-4 sin unidades ya venia marcado de la ronda del 2026-08-25);
-  "scaled by the reciprocal of the group size" -> "divided by the group size"; y el titulo de source
-  data 1, que pasa a una linea.
-- Figura 3: la oracion "The channel number is not drawn for either least-squares arm, which cannot
-  separate it from the unitary current", que sigue dicha en la caption del suplemento 2 de esa misma
-  figura y en la prosa de Results (con la cita de identifiabilidad).
-- Figura 4: "and the difference is not cosmetic" (editorializa, no mide) y el titulo del suplemento 4,
-  que pasa a una linea.
-Ningun numero medido se perdio.
+Figures 2 and 3 measure one recording condition. Figure 4 asks whether what they found there is true of the method in more general conditions. Ten thousand recordings are simulated at every cell of a grid in the sampling interval, the instrumental noise and the channel count. Panel (A) shows how far each member displaces the estimate, computed from the score and the information at the true parameters. Panel (B) shows how far the uncertainty it reports is from the one it delivers, computed at the pooled optimum, which is a single joint fit over all ten thousand recordings by Gauss-Newton with Levenberg damping (Methods). The rest of the recursive family is in figure supplement 3.
 
-QUEDA ABIERTO, del mismo tipo y NO tocado porque no estaba en la lista: dos paginas de suplementos se
-pasan de la caja segun el log de LaTeX, `Figure 5--figure supplement 3` por 121.9 pt (unas diez lineas,
-grande) y `Figure 5--figure supplement 2` por 6.7 pt (media linea). Son previas a esta pasada. La
-supplement 3 es la de celda mas grande del set (2.7 mm, ocho columnas), asi que ahi la salida puede ser
-la figura y no la caption; hay que medirla antes de decidir.
+What they found is true in general. Predicting the current averaged over the sampling interval centers the estimate, Across the plane NR and R miss the channel number by about a quarter (0.099 and 0.110 in log₁₀ units at the median cell), where the two members that do average (INR and IR) miss it by under one per cent. What makes the error bar honest is conditioning on the channel state at both ends of that interval. Counting a bar as honest when it falls within 15% of the spread the member actually delivers, IR's is honest at 97% of the cells all three cover, R's at 78% and NR's at 37%.
+
+Noise and channel count pull the error bar in opposite directions. The instrumental noise is white and every member models it correctly; the gating variance is the part that carries the interval average and the memory, and the part a member can get wrong. Adding noise dilutes the part that is wrong, and the closing-rate distortion of least squares falls from 13 to 1 over four decades of added noise. Adding channels concentrates it, and NR's channel-number distortion rises from 17 to 564 as the channel count rises by four decades. The two axes enter only through their ratio, which Figure 5 measures directly. Where the noise swamps the gating variance every member's error bar is honest, and the intervals there are tight enough to say so; the displacement, in that same corner, cannot be measured at all, its confidence interval running two to three times the displacement itself.
+
+Dilution cannot reach the shape of the observation. Every member assumes the current is Gaussian, and the observation approaches a Gaussian along both axes by two separate routes: adding channels by the central limit, adding noise by convolving the discrete gating distribution with a Gaussian one. For a member that has already modelled the interval average and the memory, this is the only defect left, and only the channel count repairs it. IR's closing-rate distortion converges from 1.37 at ten channels to 1.006 at ten thousand, while R stays on a flat floor near 1.45 and the two one-endpoint corrections get worse. The same mechanism holds the one place on the plane where IR is not centred: at ten channels seven of the eight members are measurably off on the closing rate, NR by +13%, MR by −11% and IR by +5%, and the bias is gone by a hundred channels. INR alone carries none, and it is the member whose single interval departs furthest from the Gaussian there (figure supplement 1).
+
+The sampling interval moves the two failures in opposite directions. Not averaging costs more as the interval grows: the median channel-number bias of NR runs from 0.038 to 1.05 in log₁₀ across the seven intervals, and R's from 0.030 to 0.25, while the two interval-averaged members stay under 0.01 throughout. The error bar moves the other way. The distortion of the four members that ignore the correlation falls from about 3 at the finest sampling to near 1 at the coarsest, and that is the correct cost of oversampling rather than a defect: where the interval is far shorter than the channel's correlation time, successive samples carry redundant information, and a faithful likelihood has to register the redundancy. LSE and ILSE are indistinguishable wherever the recording is finely sampled, and part only at the coarsest interval. There the arm that does not average picks up a rate bias fifteen times the other's, and at the highest channel count it understates its own information thirteenfold (figure supplement 2).
+
+Three qualifications. The anchor was checked over the full roster against a differenced Fisher information (Supplementary File 1): the two agree within one per cent for INR and IR, they narrow NR's largest factors by about a third without overturning them, and they would enlarge both least-squares arms by about 1.3, which makes the verdict on least squares a conservative one. Least squares has no entry in the 15% count because its distortion matrix has four dimensions where the likelihood members' have six, and the two counts are not comparable (Methods). And at N_ch = 10⁴ with Δ̃ = 1 the amplitude directions of R are not identified, so a displacement that costs almost no likelihood is amplified into a large shift in the parameter; those cells are drawn grey, 23 in (A) and 73 in (B).
+

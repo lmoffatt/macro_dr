@@ -53,6 +53,10 @@ projects/*/scheme_*.csv
 temp_script_file.txt
 
 !tests/data/*.csv   # test fixtures must be committed (else CI can't load them)
+# recompute tables the manuscript's src notes cite must be committed.
+# NOTE the comment goes on its own line: git does not treat a mid-line # as a comment, so a
+# trailing one becomes part of the pattern and the negation silently never matches.
+!papers/1_method/decisions/recompute/*.csv
 *.ogg
 
 # gz files
