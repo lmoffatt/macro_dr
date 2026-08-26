@@ -1,5 +1,5 @@
 \begin{abstract}
-Some ion channel mechanisms leave a mark in the record that does not depend on fitting a model: the flip state of P2X$_2$ showed up as a delay before the macroscopic current rose. The asymmetric activation reported from the same recordings two decades later leaves no such mark: it rests on evidence ratios under a recursive likelihood, and a published control without the recursion put a non-conformational alternative first. Where likelihood approximations distort what they report, and by how much, was never measured for macroscopic currents. The diagnostics are classical: for a correctly specified likelihood the score, the log-likelihood's gradient, averages to zero at the true parameters and its covariance equals the reported Fisher information. We tested eight likelihoods, from least squares on the mean current, which leaves the correlated gating fluctuation unmodelled, to a filter conditioning each interval average on both ends. The sweep runs over channel number, noise and interval in a two-state scheme, the smallest that isolates the approximation's own error, ten thousand exact simulations of the process they approximate at every point. Those that leave the correlation unmodelled misreport their information, and with it their error bars, by an order of magnitude wherever the residual retains memory, and no single rescaling repairs it, because the distortion has directions in parameter space. The published control's likelihood is among them. Neither partial correction improves on the likelihood it corrects, and a white residual does not certify calibration. The filter conditioning on both ends is calibrated over almost the whole measured range, with departures growing toward few channels and low noise. The noise at which the least-squares error bar becomes honest lies one to three decades above the noise at which the fluctuations stop carrying the unitary current: no measured region gives both.
+Some ion channel mechanisms leave a mark in the record that does not depend on fitting a model: the flip state of P2X$_2$ showed up as a delay before the macroscopic current rose. The asymmetric activation reported from the same recordings two decades later leaves no such mark: it rests on evidence ratios under a recursive likelihood, and a published control without the recursion put a non-conformational alternative first. How much likelihood approximations distort what they report, and in which directions, was never measured for macroscopic currents. The diagnostics are classical: for a correctly specified likelihood the score, the log-likelihood's gradient, averages to zero at the true parameters and its covariance equals the reported Fisher information. We tested eight likelihoods, from least squares on the mean current, which leaves the correlated gating fluctuation unmodelled, to a filter conditioning each interval average on both ends. The sweep runs over channel number, noise and interval in a two-state scheme, the smallest that isolates the approximation's own error, ten thousand exact simulations of the process they approximate at every point. Those that leave the correlation unmodelled misreport their information by up to an order of magnitude, threefold on the error bar, wherever the residual retains memory, and no single rescaling repairs it, because the distortion has directions in parameter space. The published control's likelihood is among them. Neither partial correction improves on the likelihood it corrects, and a white residual does not certify calibration. The filter conditioning on both ends is calibrated over almost the whole measured range, with departures growing toward few channels and low noise. The noise at which the least-squares error bar becomes honest lies one to three decades above the noise at which the fluctuations stop carrying the unitary current: no measured region gives both.
 \end{abstract}
 
 
@@ -10,6 +10,25 @@ Some ion channel mechanisms leave a mark in the record that does not depend on f
 % recommendations on deleting them. Two of the three then criticised numbers that appear
 % only inside those comments. Provenance is kept, keyed by sentence, in section 2.
 % =========================================================================================
+%
+% 1p. THE NAIVE FULL-READ ROUND (2026-08-25, after 1o). A clean-context Claude fleet (7 critics +
+%     adversarial verifiers) reviewed the compiled PDF end to end; two abstract findings CONFIRMED
+%     and taken, 294 -> 298 words:
+%     (i)  "and with it their error bars, by an order of magnitude" conflated a variance ratio
+%          with its square root (x10 information is ~x3 on the error bar, the paper's own
+%          conversion). Now: "by up to an order of magnitude, threefold on the error bar". The
+%          "up to" also repairs the second confirmed defect: "wherever the residual retains
+%          memory" paired with a flat order-of-magnitude claim was contradicted by Figure 5's own
+%          reading (distortion 1.6 at tau_int 2.9).
+%     (ii) "was never measured", even scoped to macroscopic currents, contradicted the paper's own
+%          Discussion, which concedes Munch 2022 asked this question and answered it by counting
+%          coverage. Now: "How much ... and in which directions, was never measured" — the
+%          distortion itself (magnitude and geometry) is what no one measured; coverage counting
+%          is not that measurement. Rule 6's own logic, finally applied to this sentence.
+%     The round's body-level findings (three comment-swallowed sentence fragments, the N_ch floor
+%     contradiction, the MR-vs-heading contradiction, the Lei 2020 miscitation, the missing NSFA
+%     and flip-confirmation cites, the per-interval overstatement in the Discussion) were fixed in
+%     the same pass in their own files, each with a dated note at the site.
 %
 % 1o. THE OUTSIDE-AI ROUND (2026-08-25, later the same day; read after 1n). Two abstract-only
 %     reads (DeepSeek, ChatGPT) were triaged against the manuscript; four edits taken, 274 -> 294

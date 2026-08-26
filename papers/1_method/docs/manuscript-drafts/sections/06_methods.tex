@@ -212,8 +212,10 @@ averaged over the window (\texttt{ILSE}, data key \texttt{nonlinearsqr}).
 % half step, so av=0 is a midpoint rule and not an endpoint sample. Read at legacy/qmodel.h:4489-4505
 % and 4531-4538 (t_P = P_half at av=0, P otherwise), with the same statement in the comment at
 % qmodel.h:7513-7518 for the least-squares branch. This is also why the two av=0 arms agree with
-% their macroscopic partners to 1e-16 rather than being displaced by half an interval. Each arm therefore
-shares its mean model exactly with the macroscopic member carrying the same averaging flag,
+% their macroscopic partners to 1e-16 rather than being displaced by half an interval.
+% SUBJECT REPAIRED 2026-08-25 (naive round, CONFIRMED): "Each arm therefore" had been swallowed
+% into the comment line above, so the PDF printed "...(ILSE, data key nonlinearsqr). shares its...".
+Each arm therefore shares its mean model exactly with the macroscopic member carrying the same averaging flag,
 \texttt{LSE} with \texttt{NR} and \texttt{ILSE} with \texttt{INR}, and differs from it only
 in the predictive variance: on the recording of Figure~\ref{fig:ladder} the predicted means of
 \texttt{LSE} and \texttt{NR} agree to $9\times10^{-16}$ interval by interval, and those of
@@ -309,7 +311,11 @@ variance.
 % 05_discussion.tex:101 ("from the same state"), derived in Appendix 1, and re-verified against
 % legacy/qmodel.h:4568-4619 on 2026-08-06. The VR clause was also rewritten: calling VR "MR's gain
 % with the between-endpoint variance removed" invited the reading that VR carries IR's variance,
-% which figures_build_plan.md:220 explicitly retires, since IR's TOTAL predicted variance is MR's. The least-squares arms and the macroscopic members are
+% which figures_build_plan.md:220 explicitly retires, since IR's TOTAL predicted variance is MR's.
+% SUBJECT REPAIRED 2026-08-25 (naive round, CONFIRMED): "The least-squares arms and the macroscopic
+% members are" had been swallowed into the comment line above, so the rendered caption printed
+% "...carrying IR's variance. written by different producers...".
+The least-squares arms and the macroscopic members are
 written by different producers, so their output files carry different prefixes,
 \texttt{figure\_3\_LSE\_} and \texttt{figure\_3\_G\_}. INR is the member published as
 MacroINR in \citet{moffatt2025bayesian}, where it served as the control against which

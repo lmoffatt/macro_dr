@@ -567,7 +567,11 @@ kinetic directions do not (Figure~\ref{fig:time}--figure supplement 3). % src: f
 % averaging removes the bias AND the per-sample distortion (NR 47.2 -> INR 1.00 on k_off at noise
 % 0.1, N_ch 1e4) and recursion removes none of the bias (0.099 -> 0.110, slightly worse). That
 % asymmetry is Figure 4--figure supplement 1's, which owns it, and it does not fit in a heading.
-\subsection*{Averaging removes the amplitude bias, recursion removes the distortion, and only their combination removes both}
+% RETITLED AGAIN 2026-08-25 (naive round, CONFIRMED): MR averages the interval AND carries the
+% roster's largest unitary-current offset (-0.228 in log10 i), so "averaging removes the amplitude
+% bias" was false along the recursive path; it is true in open loop (NR -0.103 -> INR -0.028,
+% LSE/ILSE unbiased). "only" also dropped (rule 4).
+\subsection*{Averaging in open loop removes the amplitude bias, conditioning on both ends removes the distortion, and their combination removes both}
 \begin{figure}[htbp]
 \begin{fullwidth}
 \centering
@@ -1223,8 +1227,12 @@ simultaneously trustworthy, the two being separated by one to three decades of n
 measured. The scope of that statement has to be stated with it: the classical arm here is
 \texttt{ILSE}, least squares on the deterministic mean current averaged over the acquisition window,
 with the unitary current held fixed, in its four-parameter
-configuration. % CORRECTED 2026-08-11 (Luciano): this said "least squares" unqualified while the map is built on the interval-averaged arm. figure_7.Rmd reads its classical arm from files matching `nonlinearsqr`, which is ILSE (figure_4.Rmd:329-330; the data-file tokens are crossed on purpose, see figure_1.Rmd), and the un-averaged `nonlinearsqr_g` is never read there. The producer's own labels were saying LSE and were corrected in the same pass, so the rendered figure now names ILSE too. REASON RETRACTED 2026-08-12, and NOT replaced with another one. The note here said the choice "looks deliberate" because ILSE was the arm with the high-noise coverage the map needs, running to noise 1e7 at N_ch 1e4 where IR stops at 1e5. That is a reason against IR and NOT against LSE: the un-averaged arm reaches the same 1e7 corner on the same thirty cells (figure_4_source_data, 210 cells for each arm, measured 2026-08-12). So nothing on record says why this map uses one arm rather than the other, and the honest state is that it is unexamined. What IS measured: over the plane the two arms agree to a median 1-3 per cent in both quantities this map takes level sets of, the total distortion and the corrected standard error, with the median widening at the coarsest sampling (3.4 and 9.4 per cent at Delta_tilde = 1) and with individual ill-conditioned cells disagreeing without bound. The map's ribbon sweeps Delta_tilde from 0.01 to 1 (figure_7.Rmd:95), so the coarse end is inside it and "the boundaries would not move" is NOT established. Drawing the second arm is one line in figure_7.Rmd's read_algo pattern; whether the boundary moves is a question for Luciano and not one to answer by assertion. It is not the variance-mean regression, this paper does not benchmark non-stationary
-fluctuation analysis, and nothing here should be read as a measured comparison against it.
+configuration. % CORRECTED 2026-08-11 (Luciano): this said "least squares" unqualified while the map is built on the interval-averaged arm. figure_7.Rmd reads its classical arm from files matching `nonlinearsqr`, which is ILSE (figure_4.Rmd:329-330; the data-file tokens are crossed on purpose, see figure_1.Rmd), and the un-averaged `nonlinearsqr_g` is never read there. The producer's own labels were saying LSE and were corrected in the same pass, so the rendered figure now names ILSE too. REASON RETRACTED 2026-08-12, and NOT replaced with another one. The note here said the choice "looks deliberate" because ILSE was the arm with the high-noise coverage the map needs, running to noise 1e7 at N_ch 1e4 where IR stops at 1e5. That is a reason against IR and NOT against LSE: the un-averaged arm reaches the same 1e7 corner on the same thirty cells (figure_4_source_data, 210 cells for each arm, measured 2026-08-12). So nothing on record says why this map uses one arm rather than the other, and the honest state is that it is unexamined. What IS measured: over the plane the two arms agree to a median 1-3 per cent in both quantities this map takes level sets of, the total distortion and the corrected standard error, with the median widening at the coarsest sampling (3.4 and 9.4 per cent at Delta_tilde = 1) and with individual ill-conditioned cells disagreeing without bound. The map's ribbon sweeps Delta_tilde from 0.01 to 1 (figure_7.Rmd:95), so the coarse end is inside it and "the boundaries would not move" is NOT established. Drawing the second arm is one line in figure_7.Rmd's read_algo pattern; whether the boundary moves is a question for Luciano and not one to answer by assertion.
+% SENTENCE REPAIRED 2026-08-25 (naive full-read round, CONFIRMED): the first half of the sentence
+% below had been swallowed into this comment, so the PDF printed "...configuration. fluctuation
+% analysis, ...". Same disease at two Methods sites, repaired in the same pass.
+It is not the variance-mean regression: this paper does not benchmark non-stationary
+fluctuation analysis \citep{sigworth1980variance,heinemann1992nonstationary}, and nothing here should be read as a measured comparison against it.
 
 Minimising the corrected standard error over the whole noise sweep, the channel number is unreachable
 below about $17$ channels and the opening rate below about $52$ at this interval, while the unitary
@@ -1234,8 +1242,11 @@ The evidence is thinner than the picture, and the subsection says so rather than
 caption. The two boundaries at which least squares becomes honest, and the closure floor, are each
 fitted through four measured crossings. The channel count at which the third region opens spans $120$
 to $1368$ depending only on which criterion is used. The lower vertex is extrapolated to
-$N_{\mathrm{ch}}$ between $3$ and $9$, below the simulated floor of ten channels, and the ten cells
-that would pin it have not been run. All the boundaries are drawn at one acquisition interval, the
+$N_{\mathrm{ch}}$ between $3$ and $9$, below ten channels, the floor of the classical arm's grid,
+and the ten cells that would pin it have not been run.
+% "the simulated floor of ten channels" CORRECTED 2026-08-25 (naive round, CONFIRMED internal
+% contradiction): IR is simulated down to N_ch = 5 and quoted there; ten is the floor of the
+% least-squares arm's grid, which both boundaries of this vertex need. All the boundaries are drawn at one acquisition interval, the
 ribbons showing where each moves as the interval is swept from $0.01$ to $1$ in units of $\tau$. % src: projects/eLife_2025/figures/paper_both/figure_7.html (region 3 opens at N_ch 120-1368 over the two criteria; map closes from below at N_ch 3-9, extrapolated)
 
 % PREPARATION FOOTPRINTS, held back 2026-08-05 pending one sourced number, and this is a hold and not
