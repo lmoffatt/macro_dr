@@ -605,7 +605,17 @@ kinetic directions do not (Figure~\ref{fig:time}--figure supplement 3). % src: f
 % roster's largest unitary-current offset (-0.228 in log10 i), so "averaging removes the amplitude
 % bias" was false along the recursive path; it is true in open loop (NR -0.103 -> INR -0.028,
 % LSE/ILSE unbiased). "only" also dropped (rule 4).
-\subsection*{Averaging in open loop removes the amplitude bias, conditioning on both ends removes the distortion, and their combination removes both}
+\subsection*{Averaging in open loop centres the estimate, conditioning on both ends calibrates the uncertainty, and conditioning on one end does neither}
+% RETITLED 2026-08-25 (Luciano's call on the four defects of the old title). The old title,
+% "Averaging in open loop removes the amplitude bias, conditioning on both ends removes the
+% distortion, and their combination removes both", failed on: (1) "their combination" is incoherent,
+% open-loop averaging and boundary conditioning being mutually exclusive as named; (2) it asserted
+% the factorial composability the non-monotonicity result refutes (MR and VR average AND condition
+% on one end and get neither repair); (3) "removes" is binary against rule 3 and against IR's
+% measured few-channel corner; (4) "amplitude bias" omitted the noise bias averaging also repairs
+% (NR +0.333 -> INR 0.005). The "in open loop" scope of clause 1 was deliberate and correct (MR
+% averages and is displaced) and is kept. The new clause 3 states the one-endpoint failure, which
+% is the surprise the figure carries.
 \begin{figure}[htbp]
 \begin{fullwidth}
 \centering
