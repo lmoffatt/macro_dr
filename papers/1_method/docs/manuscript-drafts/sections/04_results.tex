@@ -205,7 +205,14 @@ The two least-squares arms are one flag apart, \texttt{LSE} fitting the conducta
 % THE HEADING no longer leads with 150, which was the four-parameter volume of the OPEN-LOOP member
 % (not of least squares, which has no four-parameter ellipse at this cell) and which the abstract
 % states as an order of magnitude.
-\subsection*{Only the boundary-conditioned member is centred and reports its uncertainty correctly in every direction}
+% TITLE REPLACED 2026-08-27. The old one, "Only the boundary-conditioned member is centred and
+% reports its uncertainty correctly in every direction", is false in its first half against this
+% figure's own source data 1: LSE 0.012, ILSE 0.008 and INR 0.034/-0.028 in log10 are centred, and
+% the paragraph below says so in its own first sentence. The accurate version of that claim is
+% already the Figure 4 heading, over the plane, so repeating it here would also duplicate a heading.
+% What replaces it takes the two things only this figure owns: the cross of the two axes against the
+% two moments, and the check of the correction against the fits rather than against the expansion.
+\subsection*{The window and the recursion repair different moments, and the correction is checked against the fits themselves}
 \begin{figure}[htbp]
 \begin{fullwidth}
 \centering
@@ -280,8 +287,25 @@ empirical one is the distortion, and it takes two numbers rather than one: its m
 which the reported uncertainty is wrong, and its anisotropy, how much that factor changes from one
 direction to another ($m$ and $a$ of Eq.~\eqref{eq:magnitude-anisotropy}, the two orange numbers of
 each panel). Both are one when the member is calibrated, and both are read here from a cloud of a thousand
-maximum-likelihood fits, where every later figure reads them from the score with no fitting and the
-two constructions agree only to first order (Appendix~\ref{app:diagnostics}).
+maximum-likelihood fits, each taken on ten simulated recordings at once, where every later figure
+reads them from the score at one anchor and never from the estimates, and the two constructions
+agree only to first order (Appendix~\ref{app:diagnostics}).
+% GROUPING ADDED 2026-08-27, and it is load-bearing rather than decorative: without it the cloud
+% reads as the spread of a fit to ONE recording and every ellipse in the figure is off by sqrt(10) in
+% the reader's head. Verified in the data and not taken from the caption: figure_2.Rmd:70 and :148
+% set REP_GROUP = 10 and filter group_size == 10, :101 scales the reported covariance by 1/10 (only
+% right if a fit consumes ten recordings), and in
+% figures/data/1c2ae6f/figure_3_G_nch_100_nsim_10000_macro_IR_noise_0.1_mle_cloud_runs.csv the
+% group_size = 10 block holds 1000 distinct sample_index against 100 in the group_size = 100 block,
+% the same 10,000 recordings grouped two ways. Methods:548-552 and :568-569 own the convention.
+% "WITH NO FITTING" CORRECTED IN THE SAME SENTENCE 2026-08-27, and it was false. Every plane figure
+% is anchored at the pooled optimum, which 02_framework.tex:572 defines as "the fit of the member
+% under test to all the recordings of one cell at once" and 06_methods.tex:554 obtains with
+% Gauss-Newton under Levenberg damping. Only Figure 3 is fit-free, scoring at the truth (:700 says
+% so). What the later figures do not do is analyse the fitted parameters: one fit places the anchor
+% and the diagnostics come from the score and the information there, never from the spread of the
+% estimates. The other two "with no fitting" clauses in this section are correct and stay: the
+% predicted-bias marker below, read at the truth, and the Figure 3 paragraph.
 
 The truth and the cloud mean coincide only for the two least-squares arms and for \texttt{INR} and
 \texttt{IR}; the other four macroscopic members are displaced, within the dispersion of their own
@@ -298,9 +322,13 @@ biased in \texttt{NR} alone (Figure~\ref{fig:clouds}--source data 1).
 % contrast with the rest. The product clause's dependent, "the separation of the two factors" in
 % the least-squares paragraph below, was made self-standing in the same pass.
 % src: projects/eLife_2025/figures/figure_2_source_data/figure_2_source_data_bias.csv
-That the mean current pins the product
-while only the fluctuations can separate its factors is the identifiability structure known for
+That the mean current pins the product of the channel number and the unitary current,
+while only the fluctuations can separate the two, is the identifiability structure known for
 models of this kind \citep{hines2014determination}.
+% REFERENT RESTORED 2026-08-27. The sentence explained that the product is right and the factors are
+% not, and the product clause was retired to source data on 2026-08-26 (the note above records it),
+% leaving this one pointing at nothing. Same slot, same job, now self-standing; the last paragraph of
+% the subsection, which uses the same fact for least squares, gets its antecedent back.
 % REWRITTEN 2026-08-25 (Luciano's three-fact reduction of this subsection, plus the two bias-structure
 % facts he specified). THE SENTENCE THAT STOOD HERE ("Only the macroscopic members that model the
 % instant rather than the interval are seriously displaced ... in exactly the members whose interval
@@ -315,12 +343,33 @@ models of this kind \citep{hines2014determination}.
 % 0.1788, NR 0.1217, VR 0.1149, INR 0.0341, LSE 0.0122, ILSE 0.0075, IR 0.0020 unresolved. rates:
 % |on| <= 0.0401 (R), |off| <= 0.0123 (VR). Current_Noise (truth -4): NR +0.3333 [0.3260, 0.3405];
 % INR -0.0045, IR -0.0054, R -0.0234, VR -0.0309, MR -0.0363.)
-The third marker of each panel is where the score and the information alone put that displacement,
+% MARKER RENAMED 2026-08-27: "the third marker" lost its antecedent when the caption was shortened
+% on 2026-08-26. The long caption named the three markers and the current one does not; they are in
+% the figure's own key (figure_2.Rmd:352, "truth" = shape 3, "empirical mean" = 19, "predicted
+% (truth + bias)" = 1), so the fix is prose and no re-render is needed. NOT restored: the retired
+% caption sentence "the open circle sitting on the filled circle means the theory predicts that
+% bias", measured false at this cell in the amplitude and noise directions.
+The open circle of each panel is where the score and the information alone put that displacement,
 with no fitting, and it lands on the same side as the cloud and close to it: on the unitary current
 $-0.287$ against a measured $-0.228$ for \texttt{MR}, and nothing for \texttt{IR}, where the cloud
 resolves none. Figure~\ref{fig:time} shows the score that produces it. % src: the marker is truth + the program's Probit_statistics_Likelihood_Distortion_Induced_Bias from _battery_sim, read at Num_ch = 100, interval_in_tau = 0.1, noise_in_conductance_tau = 0.1 (which is S_tilde = 0.01), the same cell as the cloud; drawn by figure_2.Rmd:232-259 (dib_vector and centers_for_pair). THE OTHER TWO PAIRS OF THE SERIES, retired to this note 2026-08-13 and stated NOWHERE else, so they come from here if they are wanted back: predicted against measured on the unitary current, -0.181 against -0.156 for R and -0.089 against -0.103 for NR. The measured column is the empirical cloud mean of papers/1_method/decisions/recompute/fig2_first_moment.R, quoted two sentences above. The channel-number half of the same marker reads +0.324 MR, +0.226 R, +0.103 NR and -0.004 IR. NOT RECONCILED: an independent first-order computation from the Figure 3 digests, b = F^-1 E[sum s] at the truth, gives the same signs and structure with magnitudes 25 to 40 per cent smaller (R -0.131 on the unitary current against the marker's -0.181, MR -0.178 against -0.287). Two computations of the same first-order object over different batteries; the gap is recorded in the guion and nothing in the body depends on which one is right. % src: papers/1_method/decisions/recompute/fig2_first_moment.R (amplitude-split table: bias in log10 i, in log10 N_ch and in their sum, per member; log10 i bias MR -0.228, R -0.156, VR -0.117, NR -0.103, INR -0.028, IR unresolved)
-On the rates no member is off by more than a tenth, the two least-squares arms least of all, and the
-plane is where their rate bias is established (Figure~\ref{fig:plane}A). The interval average is what
+On the rates no member is off by more than a tenth and the order there is not the ladder's,
+\texttt{R} sitting last of the eight and the rate bias of \texttt{IR} and \texttt{VR} not resolving
+at all; the plane is where the least-squares arms' rate bias is established
+(Figure~\ref{fig:plane}A).
+% CLAIM CORRECTED 2026-08-27, and this one was false rather than stale. It read "the two
+% least-squares arms least of all". Read out of
+% projects/eLife_2025/figures/figure_2_source_data/figure_2_source_data_bias.csv, bias in log10 with
+% its bootstrap interval, sorted by absolute size:
+%   k_on   IR +0.0015 [-0.0023,+0.0055] UNRESOLVED | VR -0.0021 [-0.0064,+0.0023] UNRESOLVED |
+%          ILSE -0.0069 | INR -0.0077 | LSE -0.0148 | NR -0.0210 | MR -0.0310 | R -0.0401
+%   k_off  INR +0.0005 UNRESOLVED | IR +0.0005 UNRESOLVED | R -0.0011 UNRESOLVED |
+%          ILSE +0.0027 | LSE +0.0030 | MR -0.0090 | NR +0.0104 | VR -0.0123
+% LSE is sixth of eight on the opening rate and fifth on the closing one, and on both rates there are
+% members whose bias does not resolve at all where the arms' does. The clause also carried the
+% antecedent for "their rate bias" in the same sentence, so it is replaced and not cut. The ceiling
+% stays true: R's 0.0401 in log10 is a factor of 1.10.
+The interval average is what
 removes the displacement, in all three families that carry both arms, and recursion on its own does
 not: it leaves \texttt{R} the least centred member of the eight in the rates and further out in the
 unitary current than the open-loop member it is built from. % src: same script (per-parameter table; 1000 estimates, 2000-resample percentile bootstrap, type 6. log10 k_on: LSE -0.0148, ILSE -0.0069, NR -0.0210, INR -0.0077, R -0.0401, MR -0.0310, VR -0.0021 unresolved, IR +0.0015 unresolved. k_off: MR -0.0090, VR -0.0123, NR +0.0104, the rest at or under 0.003)
@@ -378,9 +427,13 @@ What does serve is a matrix. The distortion is measured as one, and the same mat
 covariance it measures (the sandwich, Appendix~\ref{app:diagnostics}), which the rest of
 the paper reports. Whether that correction is right is what this figure settles, dividing the
 empirical ellipse of each panel by the corrected one: at one, the correction has recovered the
-covariance the estimator actually has. It does for every gating-aware member, and at a second cell
-it lifts the coverage of \texttt{IR}'s nominal $95\%$ region from $0.914$ to $0.947$ in all six
+covariance the estimator actually has. It does for every gating-aware member, and at a second cell,
+where each fit is taken on a hundred recordings, it lifts the coverage of \texttt{IR}'s nominal
+$95\%$ region from $0.914$ to $0.947$ in all six
 directions at once (Figure~\ref{fig:clouds}--figure supplement 1).
+% SECOND GROUPING NAMED 2026-08-27, six words. The supplement is not only a second cell: it runs at a
+% hundred recordings per fit, at N_ch = 10 and S_tilde = 0.005 (figure_2_S1.Rmd:80-82), the only
+% cloud on disk carrying a thousand fits of that size.
 It fails alike for the two least-squares arms, at a factor of $1.6$ in both, two members that differ
 in every first-moment quantity, which puts the failure in what they share; they are also the two
 arms whose analytic Fisher the differenced check flags (Supplementary File~1), at a size consistent
