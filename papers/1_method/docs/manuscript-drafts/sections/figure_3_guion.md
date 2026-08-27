@@ -15,6 +15,52 @@ No es una reescritura de eje: el eje de la tercera pasada (qué tipo de informac
 variable) se queda. Lo que se reparó son defectos de contenido que las pasadas del 2026-08-25/26
 dejaron al arreglar premisas sueltas sin releer el párrafo entero contra la tabla de la figura.
 
+**PRESUPUESTO, CERRADO.** El pase de reparaciones había llevado el bloque de 864 a 1.084 palabras.
+Instrucción de Luciano: tiene que quedar por DEBAJO de lo que había, no por encima. Pase de
+compresión con las ocho reparaciones intactas: **861 palabras**, por párrafo 162 / 76 / 124 / 141 /
+217 / 141 contra 176 / 60 / 143 / 153 / 171 / 161. Ningún número salió del bloque. Lo que salió es
+tejido conectivo: las instrucciones de lectura que ya carga la leyenda, las oraciones que repetían
+en el párrafo siguiente lo que la anterior había afirmado, y las segundas mitades de oración cuya
+primera mitad ya hacía el trabajo. Los dos párrafos que crecen son el 2 (los nulos, que eran el plan
+de la tercera reescritura y la pasada del 08-25 había perdido) y el 5 (el ancla y los signos
+opuestos de la cancelación, que son resultado nuevo). TRAMPA que me comí y dejo anotada: re-plegar
+con `textwrap` corta en los guiones, y como en LaTeX un salto de línea es un espacio, eso convierte
+`least-squares` en "least- squares" y parte `\ref{eq:lse-marginal}` en una referencia rota. Plegar
+con `break_on_hyphens=False` y verificar que ninguna línea viva termine en guion.
+
+**ERROR PROPIO, corregido el mismo día, y vale anotarlo porque el defecto era anterior a mí.**
+Escribí en P1 que los dos brazos de mínimos cuadrados "fit a noise level to each recording", que su
+entrada es un **perfil**, que "can only sit above the density" y que por eso los 119 nats son cota
+inferior, con 2,2 nats de desvío. Las cuatro cosas están mal. La escala residual NO se ajusta: se
+**marginaliza** con prior invariante de escala (Jeffreys), `06_methods.tex` Eq. `eq:lse-marginal`,
+verificado en `legacy/qmodel.h:7410` y en el finalize de 7621:
+
+    logL = lgamma(n/2) − (n/2)·log(π) − (n/2)·log(SSE),   σ̂² = SSE/n sólo como prefactor Gauss-Newton
+
+Un marginal es un promedio, no un supremo: no hay cota de un lado en ninguna dirección. Lo que sí
+es cierto, y es lo que dice ahora la oración: bajo prior impropio el marginal es una likelihood en
+θ pero **no** una densidad normalizada en y (∫SSE^(−n/2) dy diverge log en los dos extremos), así
+que su NIVEL en la escalera es convencional, corrido por log c ante cualquier reescalado c/σ² del
+prior. Por eso la escalera no lo puede rankear contra los seis, y es la misma razón por la que el
+factor de Bayes LSE-contra-macro está PARKED.
+
+Retirado también el "2,2 nats": el número es real pero mide otra cosa. La identidad
+−logL = Σ H(p_t) + Σ KL(p_t‖q_t) vale para un miembro que sea PRODUCTO de densidades por intervalo,
+y el marginal de LSE no lo es (SSE acopla las n muestras). Lo que emite el programa por intervalo es
+y_var ≡ σ̂² con derivada idénticamente cero (pass 2 del finalize), que es también por qué r̄² da 1
+exacto. O sea que 2,21 es el hueco entre el marginal y su representación gaussiana por intervalo.
+
+**El defecto venía de antes.** El texto previo decía "both least-squares arms fitting a noise level
+to each recording they score": el verbo YA estaba mal, y mi edición convirtió una vaguedad cierta en
+una afirmación específica falsa. El mismo verbo estaba en la tabla de miembros de `02_framework.tex`
+("fitted as the residual sum of squares"), corregido también. Methods ya cargaba un comentario del
+2026-08-04 diciendo que un intento de replicación se frenó exactamente ahí, porque el paper no decía
+que la escala se marginaliza; ahora lo dice el cuerpo y la tabla, no sólo Methods.
+
+**Regla que esto deja:** antes de escribir en el cuerpo qué ES un miembro, abrir la fórmula. Estaba
+a un grep de distancia en Methods y en el código, y la nota del guion sobre el r̄² = 1,0000 ya
+avisaba que esa lectura estaba INFERIDA del número y no leída de la definición.
+
 **HALLAZGO NUEVO, y cierra el ítem que este guion tenía abierto de otra forma: EL ANCLA.**
 El 0,724 de la fila E (Ē al ancla `sim`) y el "1.09 to 0.998 for R" de la leyenda de
 `fig:plane`--supp 1 (ancla `pool`) son el MISMO objeto en dos puntos de evaluación, y los dos

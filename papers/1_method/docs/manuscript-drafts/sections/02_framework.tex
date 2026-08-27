@@ -516,8 +516,13 @@ Member & The states are conditioned on & Predicted mean & Predicted variance bey
 \midrule
 \multicolumn{5}{@{}l}{\emph{Open loop}: no update; every window is propagated from the initial condition} \\
 \addlinespace[2pt]
-\texttt{LSE} & nothing: there are no states & the deterministic mean current at the middle of the window & none: one constant over the whole record, fitted as the residual sum of squares & the classical fit, un-averaged arm \\
+\texttt{LSE} & nothing: there are no states & the deterministic mean current at the middle of the window & none: one scale over the whole record, marginalised rather than fitted (Methods) & the classical fit, un-averaged arm \\
 \texttt{ILSE} & nothing: there are no states & the same mean current averaged over the window & the same constant & the classical fit, or the least-squares arm \\
+% CORRECTED 2026-08-27 with 04_results.tex, same defect in both: the cell said the constant was
+% "fitted as the residual sum of squares". Methods Eq. eq:lse-marginal and the code
+% (legacy/qmodel.h:7410, finalize at 7621) say it is integrated out under a scale-invariant prior
+% and never given a value; SSE/n appears only as the Gauss-Newton prefactor of the reported
+% information. The table is where a reader meets the member first, so the verb matters here.
 \texttt{NR} & an instant, the middle of the window & the current at that instant & the spread of the instantaneous conductance across the states the channels occupy & the open-loop member \\
 \texttt{INR} & the state at the start of the window & the interval-mean current given that state & the spread of that interval mean across the occupied states, and the variance of one channel's interval mean given its start state & the open-loop interval member \\
 \midrule
