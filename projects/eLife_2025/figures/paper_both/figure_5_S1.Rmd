@@ -15,6 +15,10 @@ because that is the number a reader has in hand before choosing a method. A mark
 there does not say that IR left memory 17 in anything; it says that in a cell where the classical fit
 left memory 17, IR's distortion is 1.00.
 
+AXIS FLIPPED 2026-08-27, when the body figure moved to 1 / tau_9: this panel now plots the
+INVERSE of each member's own tau, so the two figures run the same way and the comparison the note
+below asks for reads left to right in both. Nothing else changed.
+
 THIS FILE plots each member at the tau_int of ITS OWN residual. That is no longer a decision panel,
 since a reader cannot compute a member's residual without running it. It is a mechanism panel: it
 asks whether the memory a member fails to remove predicts the information it then misreports. A
@@ -69,7 +73,7 @@ cat(sprintf("figure_5_S1: %d marks; per member: %s\n", nrow(dat),
 ```
 
 ```{r render, fig.width = 7.0, fig.height = 4.8}
-g <- ggplot(dat, aes(tau_int, mag, colour = d)) +
+g <- ggplot(dat, aes(1 / tau_int, mag, colour = d)) +
   geom_hline(yintercept = 1, linewidth = 0.35, colour = "grey45") +
   geom_vline(xintercept = 1, linewidth = 0.35, colour = "grey45", linetype = "22") +
   geom_linerange(aes(ymin = lo, ymax = hi), linewidth = 0.4, alpha = 0.75) +
@@ -78,7 +82,7 @@ g <- ggplot(dat, aes(tau_int, mag, colour = d)) +
   scale_x_log10() +
   scale_y_log10() +
   scale_colour_viridis_d(name = expression(Delta*t %.% k[off]), option = "D", end = 0.92) +
-  labs(x = expression("memory left in the member's own residual,  "*tau[int]),
+  labs(x = expression("effective fraction of independent intervals in the member's own residual,  "*1/tau[9]),
        y = "distortion of the reported information\n(point = size, bar = across directions)") +
   theme_bw(base_size = 8, base_family = "Helvetica") +
   theme(panel.grid.minor = element_blank(),

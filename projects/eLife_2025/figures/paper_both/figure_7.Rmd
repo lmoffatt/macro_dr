@@ -881,7 +881,17 @@ coverage holds uniformly over a class of parameters, a stronger and different pr
      HATCH_BAD writes the sibling in which the region where the likelihood's interval is not
      calibrated is hatched OVER the yield colour instead of replaced, so that corner keeps saying
      that the amplitude is recoverable there and only the interval is wrong. The purple override is
-     the figure, decided 2026-07-31; the sibling is kept because the choice is still live. -->
+     the figure, decided 2026-07-31; the sibling is kept because the choice is still live.
+     CHOICE CLOSED 2026-08-26: the manuscript's Figure 7 float now includes Figure_7_hatch, so THE
+     SIBLING IS THE BODY FIGURE and the purple one is the alternative. Both are still written on
+     every knit and nothing here changes. Why: the key's own row already says "use MacroIR, but not
+     its reported interval", which is the hatch's claim and not the purple one's; Figure 6 resolves
+     that same corner at about a factor of 1.5, correctable, while the purple fill erases what is
+     recoverable there; and the corner is where the recursion buys the most precision on the rates
+     (median ratio 1.64), so a fill that reads as "nothing to see here" is backwards. The two
+     textures do not collide: the veil is white, wide and on the right-hand columns, the hatch is
+     black, tight and in the left-hand corner, and no cell carries both. Reverting is one token in
+     the manuscript's includegraphics plus "violet" in the caption. -->
 
 ```{r map, fig.width = 7, fig.height = 5.9}
 PT <- function(pt) pt * 0.3527
@@ -1310,7 +1320,7 @@ gq <- ggplot() +
         axis.title = element_text(size = 9.5), axis.text = element_text(size = 8),
         plot.margin = margin(4, 5, 2, 4))
 
-# the purple override is the figure; the hatch sibling is kept because the choice is still live
+# the hatch sibling is the BODY FIGURE since 2026-08-26; the purple override is the alternative
 f <- if (HATCH_BAD) "Figure_7_hatch" else "Figure_7"
 ggsave(paste0(f, ".pdf"), gq, width = 7.0, height = 5.9, device = cairo_pdf)
 ggsave(paste0(f, ".png"), gq, width = 7.0, height = 5.9, dpi = 140)
