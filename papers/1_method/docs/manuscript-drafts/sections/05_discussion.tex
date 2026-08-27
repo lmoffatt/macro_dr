@@ -99,7 +99,7 @@ the design, since the recursion is linear in the groups it is given.
 % (experiment.h:392). number_of_samples is a double, so a group need not be a whole number of raw
 % samples either. An uneven schedule is an input, not an extension.
 
-The ordering of the boundaries is what an experimenter can act on: everywhere on the measured plane, one to three decades of noise separate the point at which the fluctuations stop carrying the unitary current or the channel number from the point at which the classical error bar becomes honest (Figure~\ref{fig:usage}). A reader can run the two identities on their own scheme, at their own open probability, from one call in R or Python (Data and code availability).
+The ordering of the boundaries is what an experimenter can act on: everywhere on the measured plane, one to three decades of noise separate the point at which the fluctuations stop carrying the unitary current or the channel number from the point at which the classical error bar becomes calibrated (Figure~\ref{fig:usage}). A reader can run the two identities on their own scheme, at their own open probability, from one call in R or Python (Data and code availability).
 % THE LIBRARY SENTENCE IS SCOPED EXACTLY TO 07_backmatter.tex:5. Claiming a reader can reproduce the
 % ladder would be false; the guard stands: only the calibrated member is in it.
 % UPGRADE EXECUTED 2026-08-25, verified first-hand against the sister repository (Code/macroir):
@@ -171,6 +171,12 @@ The device is conceded; what is specific here is the realization for an exact co
 % place to be caught. The published figure is offered as a scale, never as a benchmark.
 
 Where exchangeable sweeps are plentiful, the classical route is strong and should be said to be. Non-stationary fluctuation analysis \citep{sigworth1980variance,heinemann1992nonstationary} returns the channel number and the unitary current with no likelihood at all and a sweep-level bootstrap returns honest intervals with no model, and whether that suffices depends on how many sweeps a preparation tolerates and whether they are exchangeable; how it composes into a complete workflow is not addressed here. The case for a filter is strongest where that route is weakest: few sweeps, rundown, conditions that are not exchangeable, a single precious recording, and an experiment that wants kinetics and amplitudes jointly from the same record. What the alternatives that repair an interval without changing likelihood answer instead is in Appendix~\ref{app:repairs}.
+% "honest" KEPT HERE 2026-08-26, and it is one of the two live survivors of the sweep that put
+% "calibrated" everywhere else (the other is 08_appendix_derivation.tex). The sense is different:
+% this is a resampled interval from a route this paper does not measure, not a reported Fisher
+% covariance against its own sampling covariance, which is what calibration names throughout.
+% If it should go too, the replacement is "returns intervals with no model", which costs the
+% concession nothing.
 
 \subsection*{The perimeter of the measurement}
 % RETITLED 2026-08-26. The heading read "What this paper does not settle", which is scannable as a

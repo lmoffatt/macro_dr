@@ -583,9 +583,11 @@ the only one of the three an experimentalist can run on a real recording, needin
 known truth, and it does need a fitted point. A fit with the baseline and the noise level free
 absorbs most of the first two properties; the temporal structure is what no fit absorbs. That
 structure is summarised by the integrated autocorrelation \citep{sokal1997monte} of the residual,
-$\tau_{\mathrm{int}}=1+2\sum_{k\ge1}\rho_k$ with $\rho_k$ its lag-$k$ correlation, summed to the
-maximum lag stated in Methods: it reads one for a white residual, and above one it counts how many
-intervals a fit effectively has for every interval it believes it has.
+$\tau_{9}=1+2\sum_{k=1}^{9}\rho_k$ with $\rho_k$ its lag-$k$ correlation: it reads one for a white
+residual, and above one it counts how many intervals a fit effectively has for every interval it
+believes it has. Nine positive lags is what the bootstrap's memory allows. The window is in the
+symbol because it bounds the statistic at $19$ and blunts it wherever the sampling is fine enough
+for the residual to stay correlated past it.
 % ADDED 2026-08-12 (10_concept_census.md, defect 2). tau_int is the one quantity this paper offers
 % an experimentalist to compute on their own recording, and it had no definition anywhere in the
 % body: the Introduction used it, the symbol first appeared in the Figure 5 caption and the gloss

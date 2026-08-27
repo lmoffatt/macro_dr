@@ -9,6 +9,81 @@ postergada, no descartada; lo que hay que saber para reabrirla está al final.
 
 ---
 
+# CUARTA PASADA, 2026-08-27. Auditoría de la narrativa y ocho reparaciones
+
+No es una reescritura de eje: el eje de la tercera pasada (qué tipo de información da cada
+variable) se queda. Lo que se reparó son defectos de contenido que las pasadas del 2026-08-25/26
+dejaron al arreglar premisas sueltas sin releer el párrafo entero contra la tabla de la figura.
+
+**HALLAZGO NUEVO, y cierra el ítem que este guion tenía abierto de otra forma: EL ANCLA.**
+El 0,724 de la fila E (Ē al ancla `sim`) y el "1.09 to 0.998 for R" de la leyenda de
+`fig:plane`--supp 1 (ancla `pool`) son el MISMO objeto en dos puntos de evaluación, y los dos
+están bien. Medido de `figure_4_source_data_distortion.csv` (columna `m`, no `Dconf`), celda
+Num_ch 100 / noise 0,1 / interval 0,1 / param_index 1, `sample x corr = total`:
+
+| miembro | @ theta_sim | @ theta_pool |
+|---|---|---|
+| R | 0,757 x 1,462 = 1,108 | **1,087 x 1,397 = 1,513** |
+| MR | 0,572 x 2,007 = 1,149 | 1,002 x 1,827 = 1,816 |
+| VR | 0,767 x 1,620 = 1,240 | 1,041 x 1,498 = 1,559 |
+| NR | 1,445 x 19,64 = 14,61 | 1,019 x 19,47 = 17,32 |
+| INR | 1,140 x 20,72 = 23,67 | 1,151 x 20,71 = 23,91 |
+| IR | 1,115 x 1,011 = 1,130 | 1,113 x 1,010 = 1,127 |
+| LSE | 0,961 x 13,75 = 13,35 | 0,967 x 13,70 = 13,38 |
+
+**El patrón ES el hallazgo:** los dos centrados leen igual en las dos anclas a la tercera cifra;
+todos los desplazados no, y su factor por intervalo pasa de abajo de uno en la verdad a uno o más
+en su propio óptimo. O sea: **la cancelación de R es una propiedad del punto de evaluación, no del
+miembro.** En theta_pool, que es donde caen las estimaciones y donde lee la Figura 4B, R no cancela
+nada: 1,51 con los dos factores arriba de uno. Refuerza el "sólo IR" en vez de debilitarlo, y es el
+único lugar del paper donde la calibración aparente de R queda acotada. Escrito en el cuerpo y en
+la leyenda de `fig:plane`--supp 1, con la tabla entera en un bloque `%` de `04_results.tex`.
+
+**Las otras siete.**
+
+1. **Universal falso, párrafo 4.** "per interval ... for every rung of the ladder, while accumulated
+   it fails by an order of magnitude": el orden de magnitud es de LSE/ILSE, NR e INR y de nadie más
+   (R 1,074/0,946, MR 1,188, VR 1,198/1,427, IR 1,080/0,971 en la source data 1). Es la misma falla
+   que la auditoría del 2026-08-13, con el signo cambiado. El cuantificador ahora va con su roster.
+2. **Dirección invertida, párrafo 5.** "a per-sample variance it under-reports by 28%": Ē = 0,724
+   es CONSERVADOR por intervalo (barra 18% demasiado ancha), y como los dos factores se enunciaban
+   como errores del mismo signo, la cancelación no se veía. Reescrito con los signos opuestos.
+3. **La disociación central, que estaba medida y no dicha.** INR quinto en logL, 15 nats arriba de
+   NR, y el peor de los ocho en J_T/F_T (20,84 contra 13,63). Es la respuesta a "¿para qué las filas
+   B a G si ya tengo la logL?". Una oración al cierre del párrafo 1.
+4. **La cláusula de LSE, dimensionada.** Declaraba el problema y no su tamaño: ahora dice que el
+   perfil sólo puede quedar ARRIBA de la densidad, así que los 119 nats son cota inferior, y que el
+   desvío medido es 2,2 nats (`fig3_tc.R`). La reserva pasó de reserva a argumento. La identidad KL
+   queda acotada a los seis miembros de parámetros fijos.
+5. **Tres escalas en una oración, párrafo 3.** "chance level" / "twice chance" / "four times it" /
+   fracciones. Todas las fracciones ahora, con el 0,05 dicho una vez.
+6. **`informative` se usaba y no se definía** en ningún lado del manuscrito (grep sobre las
+   secciones y sobre Methods). Definido en el cuerpo al primer uso y en la leyenda, donde además
+   "the information reaches zero" pasó a "reaches the numerical floor".
+7. **`-0,004 ± 0,004` era el SE bootstrap** donde todo el resto del paper usa IC de 95%. Con ± SE el
+   lector calcula [-0,0086, 0] y ve el cero excluido, que es lo contrario de lo que afirma la
+   oración. Puesto el IC (-0,013 a +0,004).
+
+**Además, sin agregar palabras:** el párrafo 2 recupera los NULOS de cada objeto y la línea de qué
+filas están disponibles en un registro real (era el plan de la tercera pasada, la pasada del 08-25
+lo había dejado en lista de filas); la ACF del residuo entra con sus números (0,85 / 0,51 / 0,12 /
+-0,01), que vivían sólo en un comentario; y el párrafo 7 se reordenó para cerrar en el doble conteo
+y no en un puntero a suplemento.
+
+**Título, cuarta versión:** "The error bar fails for two reasons, one within a sample and one across
+them, and they can cancel". El anterior decía "two independent reasons" y las dos fuentes no son
+independientes: la figura las mide como los dos FACTORES de un producto y el hallazgo es que en R
+tienen signos opuestos.
+
+**PRESUPUESTO, y queda abierto.** 834 -> 1.041 palabras. El plan de la tercera pasada eran 892. Los
+~200 son los tres resultados nuevos (la cota de LSE con su tamaño, la disociación logL/calibración,
+el ancla) más los nulos del párrafo 2. El beat 7 ya no tiene la grasa que este guion le suponía (el
+conteo de pasos informativos salió en una pasada anterior). Si hay que cerrar contra 892, los
+candidatos son el ancla (~55, pero es el hallazgo), la cota de LSE (~30) o el mecanismo del washout
+en el párrafo 7 (~33). Decisión de Luciano, no tomada.
+
+---
+
 ## La escalera de logL se descompone en las otras dos filas (2026-08-12, sin escribir todavía)
 
 Material nuevo, medido pero NO incorporado a la prosa. Script: `papers/1_method/decisions/recompute/fig3_kl.R`.
