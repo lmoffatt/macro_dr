@@ -209,6 +209,17 @@ $N_{\mathrm{ch}}$ in Eq.~\ref{eq:macror} comes from.
 
 \subsection*{The boundary-conditioned moments, and how they are evaluated}
 
+% RECIBIDO 2026-08-27 desde 02_framework.tex (T9). La definicion y la convencion de la flecha vivian
+% en el cuerpo, donde el bloque de ecuaciones que las seguia (Ec. macror) no usaba una sola flecha:
+% la notacion trabaja unicamente aqui. Se trajo tambien la oracion del encadenamiento, que no estaba
+% dicha en ningun apendice ("junction" no aparecia en ninguno).
+A \emph{boundary state} is the pair $(i\to j)$ of a channel's states at the two ends of an
+acquisition interval; throughout this appendix an arrow marks an object that spans the window, so
+$P_{i\to j}(\Delta)$ is a transition across it and $\bar\gamma_{i\to j}$ an average over it.
+Chaining intervals leaves a single state variable per junction, since the end state of one
+interval is the start state of the next, and the moments over the $K^2$ pairs are built from
+objects of side $K$, with no explicit $K^2$ object formed anywhere.
+
 The ladder needs two conductance objects, both built from the boundary-conditioned
 single-channel moments $\bar{\gamma}_{i\to j}$ (the mean interval-averaged
 conductance of a channel that starts in $i$ and ends in $j$) and

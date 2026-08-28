@@ -86,9 +86,13 @@ samples, so the averaging window is fixed at acquisition.
 The averaging is uniform over the window and no analogue filter stage is simulated,
 so a recorded value is a boxcar average of the trajectory, which is the observable
 every likelihood in the family is written for (Eq.~\ref{eq:obs-avg}). Recordings from a real
-amplifier are Bessel filtered instead. That kernel is not simulated here, and how much of it the
-uniform window misses is bounded in Theory, as a condition on the acquisition window against the
-filter's response time rather than as an open size.
+amplifier are Bessel filtered instead. % CORREGIDO 2026-08-27: decia "bounded in Theory", que apunta a un nombre de seccion que no existe
+% (la seccion se llama "The likelihood family and its diagnostics") Y al parrafo del cuerpo que la
+% misma pasada borro por duplicar el apendice. El bound esta en el Apendice 1, subseccion "The
+% acquisition kernel, and what the uniform window misses", con su tabla de f_c*Delta.
+That kernel is not simulated here, and how much of it the
+uniform window misses is bounded in Appendix~\ref{app:derivation}, as a condition on the
+acquisition window against the filter's response time rather than as an open size.
 % [BESSEL-BOUND] CLOSED 2026-08-11. The bound is PRINTED, at 08_appendix_derivation.tex (moved there 2026-08-12) in the
 % paragraph beginning "How much of the kernel the uniform window misses". Everything below was
 % written while it was open (2026-08-06) and is kept for its site-specific content only.. Canonical note at 08_appendix_derivation.tex, the acquisition-kernel subsection (moved 2026-08-12);
@@ -616,7 +620,16 @@ is the anchor written $\mathbf{H}$ above, and the expectation is not
 decoration: for the recursive members the predictive moments of interval $t$ depend on the
 data already seen, so $\sum_t \mathrm{GFI}_t$ is itself a random matrix and the object the
 score covariance is compared against is its ensemble mean, taken over the same recordings
-that supply that covariance. Its per-interval term is
+that supply that covariance. Its per-interval term is the summand of
+% RECIBIDO 2026-08-27 desde 02_framework.tex (T16). El display estaba en el cuerpo y Methods lo
+% citaba sin mostrarlo, que es justo lo que la nota del carve del 2026-08-12 decia que ya se habia
+% hecho. Ahora la etiqueta vive donde estan sus dos unicas citas.
+\begin{equation}
+  \mathbf{H}=\sum_t\mathbb{E}\!\left[
+    \frac{(\nabla\mu_t)(\nabla\mu_t)^\top}{\sigma_t^2}
+    +\frac{(\nabla\sigma_t^2)(\nabla\sigma_t^2)^\top}{2\sigma_t^4}\right],
+  \label{eq:gaussian-fisher}
+\end{equation}
 % CORRECTED 2026-08-10 in the length pass. The sentence read "$\bar G = \sum_t \mathrm{GFI}_t$,
 % summed over intervals", with no expectation, while 02_framework.tex defines the same object with
 % one. For the non-recursive members the two readings coincide and the discrepancy is invisible; for
@@ -625,13 +638,12 @@ that supply that covariance. Its per-interval term is
 % G_b = mean<Sum<Gaussian_Fisher_Information>>, the ensemble mean of the per-recording sum, against
 % J = covariance<Sum<dlogL>> on the same ensemble. So Diagnostics was right and this was the
 % incomplete statement of the two.
-the summand of Eq.~\ref{eq:gaussian-fisher},
-% DISPLAY REMOVED 2026-08-12 (10_concept_census.md, defect 4). The same formula was printed twice,
-% here and in the body, in the same form; the census asked which site owns it and the answer is the
-% body, where the reader first meets the anchor and where the equation is now numbered. What stays
-% here is the computational statement rather than the definition: that the anchor is the ENSEMBLE
-% MEAN of the per-recording sum, which for the recursive members is a different object from the sum
-% itself, and that it costs no extra pass.
+% DISPLAY REMOVED 2026-08-12 (10_concept_census.md, defect 4) AND DEVUELTO AQUI 2026-08-27 (T16).
+% El censo del 12-08 decidio que el duenno era el cuerpo y dejo a Methods citando sin mostrar, pero
+% el rastreo de citas dice lo contrario: eq:gaussian-fisher se cita DOS veces y las dos son de este
+% archivo, cero desde Resultados y cero desde la Discusion. La etiqueta vive donde estan sus usuarios.
+% Lo que ya era de aca y sigue siendolo: que el ancla es la MEDIA DE ENSEMBLE de la suma por
+% grabacion, que para los miembros recursivos es un objeto distinto de la suma misma.
 which follows from the analytic derivative alone and needs no extra likelihood
 passes. It is positive semidefinite by construction, so no anchor used here can be
 indefinite.

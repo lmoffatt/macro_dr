@@ -1558,7 +1558,8 @@ The two parts of the decomposition answer to the acquisition interval in opposit
 correlation part of the closing rate falls as the interval coarsens while the per-sample part rises,
 so sampling more coarsely buys back the memory and pays for it in the per-sample non-Gaussianity. % src: as the figure. The four values were in the line until 2026-08-13: correlation 1.52 to 1.27 and per-sample 1.06 to 1.19, across the interval axis at ten channels and S_tilde = 0.005, the same cell as the sentence above.
 Both parts vanish by $\widetilde{S} = 1$,
-where the instrumental noise has made the emission Gaussian enough that neither closure is strained. % src: as the figure
+where the instrumental noise has made the emission Gaussian enough that neither closure is strained
+and the recording is outside both regimes. % src: as the figure
 
 Two limits travel with the figure. The family applies both of its Gaussian approximations at every
 step and the score sees only their product, so a departure measured here cannot be assigned to one of
@@ -1703,10 +1704,15 @@ it is a ratio of amplitudes, constant along $\widetilde{S} \propto N_{\mathrm{ch
 line in the figure is one, the other, or a combination, and its slope says which: $1.01$ and
 $1.03$ where the classical fit becomes calibrated and $1.11$ where the unitary current stops being
 measurable, all three fluctuation-limited; $2.09$ and $2.20$ for the two rates, which live in the
-transient; and $1.47$ for the channel number, which is read from both. The one line that falls,
-$-0.50$, is not a signal-to-noise condition at all: it is where the interval average becomes
-Gaussian enough for the closure \texttt{IR} assumes, and both more channels and more instrumental
-noise help it.
+transient; and $1.47$ for the channel number, which is read from both. % NOMBRADA 2026-08-27: era la unica linea del mapa sin nombre, en un parrafo cuyo argumento es que
+% la pendiente dice de que es cada una, y se la definia en negativo ("is not a signal-to-noise
+% condition at all"). Es el borde del regimen telegrafico, que la seccion de la familia define. Las
+% tres cosas que la mueven (ventana, canales, ruido) son las tres de esa definicion, que se corrigio
+% en la misma pasada: antes nombraba la ventana sola y no admitia que esta linea tuviera pendiente.
+The one line that falls,
+$-0.50$, is not a signal-to-noise condition at all: it is the edge of the telegraphic regime, where
+the interval average stops being the switching signal and becomes Gaussian enough for the closure
+\texttt{IR} assumes, and both more channels and more instrumental noise help it.
 % src: figure_7.html (fitted slopes: SE i +1.11, SE N_ch +1.47, SE k_off +2.09, SE k_on +2.20, BL +1.01 and +1.03, BH -0.50) ; figure_5_S2.Rmd and Figure 5-figure supplement 2 (the collapse on r = S_tilde/N_ch, which is what makes the calibration boundary a constant-ratio line)
 % STANDING OF THE 1-AGAINST-2 ARITHMETIC, flagged 2026-08-27 and NOT settled: that a mean-carried
 % parameter gives a boundary of slope 2 (signal N.i against noise sigma, so S_tilde ~ N^2) and a
