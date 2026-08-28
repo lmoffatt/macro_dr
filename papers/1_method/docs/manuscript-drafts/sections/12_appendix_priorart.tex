@@ -38,6 +38,16 @@
 \label{app:priorart}
 \section*{The construction and its prior art}
 
+% ORACION DE ORDEN ANADIDA 2026-08-27. El apendice abria directo en su primera comparacion, sin
+% ninguna oracion viva que dijera que hace ni en que orden, contra la practica de los apendices 1, 2
+% y 3, que abren los tres con un parrafo que orienta. La lista es el orden del archivo TAL COMO ESTA
+% y hay que mantenerla verdadera si algun parrafo se mueve; en particular el peldano faltante esta
+% entre los dos estudios recientes.
+This appendix sets the construction against the work around it: the linear-Gaussian filter it
+coincides with and what that correspondence leaves to be supplied, what exists already and where,
+the derivatives the diagnostic runs on, an earlier calibration of a filter of this kind, the rung
+the ladder is missing, and a recent cost argument against filtering.
+
 The same conditioning has a name in the linear-Gaussian world. Carrying the interval integral alongside the state there is what conditioning the interval average on the states at both ends of the window is here, which is why the two constructions agree to about $10^{-8}$. % src: docs/bibliography/MacroIR_prior_art_map.md (correspondence verified at 1e-8)
 
 Neither framework hands the construction over. The augmentation says what form the filter takes and not what goes into it. The form needs the probability of crossing the window from one state to another, and the mean and variance of the interval-averaged conductance given that pair; those are classical for a single chain, and carrying them to an ensemble of channels at a cost that does not grow with the channel count is what this family does (Appendix~\ref{app:derivation}). The exact Bayesian update is not available either, since the occupancy and the interval average are not jointly Gaussian, so the emission is closed by a Gaussian and the posterior is carried forward as a second closure, and what those two closures cost is what the body of this paper measures. % src: 02_framework.tex, the sufficiency paragraph after Eq.~\ref{eq:macror} (heteroscedastic emission treated as homoscedastic; carrying the pair forward is itself a closure)

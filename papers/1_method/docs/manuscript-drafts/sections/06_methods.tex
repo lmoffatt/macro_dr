@@ -201,7 +201,9 @@ stable; the Monte-Carlo standard here is statistical equivalence, not bit identi
 
 \subsection*{The likelihood family and its members}
 
-The members are the two axes of the preceding section crossed: whether the gating
+% PUNTERO REPARADO 2026-08-27: decia "the two axes of the preceding section", y la seccion que
+% precede a esta subseccion no contiene ningun eje, bajo ninguna lectura de "section".
+The members cross the two axes the body sets out: whether the gating
 fluctuations are modelled at all, and how much of the acquisition interval the
 interval-averaged conductance is conditioned on. This subsection gives the flags each
 setting is dispatched under and nothing else.
@@ -607,10 +609,16 @@ it uses.
 
 \subsection*{Diagnostics and the Gaussian-Fisher anchor}
 
-Faithfulness is measured with the three diagnostics introduced above: standardized residuals,
+Faithfulness is measured with % PUNTEROS REPARADOS 2026-08-27. El segundo era circular: remitia a "where they are introduced" sin
+% decir donde es eso. NOTA SOBRE LA FORMA ELEGIDA: el auditor proponia nombrar la seccion del cuerpo
+% por su titulo en cursiva, y NO se toma, porque este archivo tiene su propia
+% \subsection*{The likelihood family and its members}, que difiere del titulo del cuerpo en la
+% ultima palabra sola, y un lector que retrocediera buscando el nombre daria con el encabezado
+% equivocado. Se usa "the body", que es la forma que ya toma el puntero reparado mas arriba.
+the three diagnostics the body introduces: standardized residuals,
 the score, and the information-distortion matrix comparing the covariance $J$ of the score
 across replicates with the model's own Fisher information. Their definitions, sign conventions
-and thresholds are given where they are introduced; this section gives only the computation.
+and thresholds are given there; this section gives only the computation.
 % src: papers/1_method/archive/03_metrics_diagnostics.md (diagnostic definitions owned there)
 
 Every diagnostic reported in this paper is anchored on the analytic Gaussian Fisher
@@ -671,7 +679,7 @@ deposit; no number reported in this paper is taken from it.
 One edge case governs how a cell is summarised, and it is by design rather than by accident. The anchor can be near-singular where a parameter is unidentifiable, which happens once the open population relaxes (Figure~\ref{fig:time}--figure supplements 1 and 2); there we diagonalize $\mathbf{H}$ and retain the eigenmodes whose eigenvalue exceeds a tolerance set relative to the largest, $\lambda_i > \lambda_{\max}\cdot 10^{-10}$, evaluate every inverse power on that retained subspace alone, and leave the quantity undefined, not finite, when the retained subspace is empty. The dimension $d$ of Eq.~\ref{eq:magnitude-anisotropy} is the dimension of that subspace, so a cell where a direction has been dropped is summarised over fewer directions than one where none has. Undefined is not zero, and the maps render those cells in grey to keep the two apart.
 
 The comparison of $J$ against $\bar G$ is defined, with its sign convention and its two
-scalar summaries, in the section that introduces it; on the least-squares branch it
+scalar summaries (Eq.~\ref{eq:magnitude-anisotropy}), in the body; on the least-squares branch it
 carries a further premise, that the residuals are homoscedastic, and the Results state
 that premise where the ratio is quoted.
 % COMPRESSED 2026-08-12 (09_carve_plan.md). The sentence restated the white1982

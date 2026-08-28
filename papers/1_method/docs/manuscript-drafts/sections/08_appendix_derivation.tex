@@ -209,17 +209,14 @@ $N_{\mathrm{ch}}$ in Eq.~\ref{eq:macror} comes from.
 
 \subsection*{The boundary-conditioned moments, and how they are evaluated}
 
-% RECIBIDO 2026-08-27 desde 02_framework.tex (T9). La definicion y la convencion de la flecha vivian
-% en el cuerpo, donde el bloque de ecuaciones que las seguia (Ec. macror) no usaba una sola flecha:
-% la notacion trabaja unicamente aqui. Se trajo tambien la oracion del encadenamiento, que no estaba
-% dicha en ningun apendice ("junction" no aparecia en ninguno).
-A \emph{boundary state} is the pair $(i\to j)$ of a channel's states at the two ends of an
-acquisition interval; throughout this appendix an arrow marks an object that spans the window, so
-$P_{i\to j}(\Delta)$ is a transition across it and $\bar\gamma_{i\to j}$ an average over it.
-Chaining intervals leaves a single state variable per junction, since the end state of one
-interval is the start state of the next, and the moments over the $K^2$ pairs are built from
-objects of side $K$, with no explicit $K^2$ object formed anywhere.
-
+% RECIBIDO 2026-08-27 desde 02_framework.tex (T9) Y RETIRADO EL MISMO DIA, cuando la opcion B
+% devolvio al cuerpo una ecuacion de frontera (Ec. macroir) y con ella la definicion. Lo que se
+% habia aterrizado aqui quedaba dicho TRES veces: la convencion de la flecha ya esta en el recuadro
+% "Three marks, and each one says one thing" al abrir este apendice; el "no explicit K^2 object" ya
+% esta en el parrafo de abajo ("with no object larger than K x K formed anywhere"); y la definicion
+% mas el encadenamiento pasaron al cuerpo con Ec. macroir. El diagnostico de T9 seguia siendo
+% correcto (la notacion estaba varada en el cuerpo porque ninguna ecuacion la usaba); lo que cambio
+% es cual de las dos reparaciones opuestas se tomo.
 The ladder needs two conductance objects, both built from the boundary-conditioned
 single-channel moments $\bar{\gamma}_{i\to j}$ (the mean interval-averaged
 conductance of a channel that starts in $i$ and ends in $j$) and
@@ -491,12 +488,16 @@ unexplained, so naming the state names it.
 
 \subsection*{The three steps that build the interval update}
 
-What stops Eq.~\ref{eq:macror} from being used on the interval average is that the average is
-not a function of the occupancy at any one time, so no conductance vector on the $K$ states
-delivers its mean. On the $K^2$ boundary pairs one does: a channel that starts in $i$ and
-ends in $j$ contributes $\bar{\gamma}_{i\to j}$ on average, so the interval average
-is linear in the boundary counts again. That is the whole of the move, and three steps finish
-it, and they are Eq.~\ref{eq:macroir} of the body carried out.
+% RECORTADO 2026-08-27, segunda pasada. La apertura repetia casi palabra por palabra las dos
+% oraciones que el cuerpo adquirio ESE MISMO DIA alrededor de Ec. macroir, y despues apuntaba a esa
+% ecuacion igual. Verificado sobre texto vivo: el cuerpo dice "no conductance vector on the K states
+% delivers its mean" y "A channel that starts in i and ends in j contributes gammabar_{i->j} on
+% average, so the interval average is linear in the boundary counts", y abre con la misma expresion
+% "On the K^2 pairs ... one does". Queda la premisa una vez, el puntero, y los tres pasos intactos,
+% que es lo que la nota del 2026-08-26 exige que esta subseccion conserve.
+No conductance vector on the $K$ states delivers the mean of an interval average, and on the
+$K^2$ boundary pairs one does. That substitution is Eq.~\ref{eq:macroir} of the body, and three
+steps carry it out here.
 % PUNTERO ANADIDO 2026-08-27: el cuerpo ahora MUESTRA la sustitucion (Ec. macroir), asi que esta
 % subseccion pasa a ser su desarrollo y no su unica sede. Sin el puntero las dos se leen como dos
 % enunciados independientes de lo mismo.
@@ -929,7 +930,11 @@ arithmetic that implements it.
 Everything above was Gaussian conditioning: a joint law over (state, recorded value), its three
 blocks, and Bayes. Nothing was borrowed from linear filtering, and the derivation does not need it.
 The correspondence with that literature is nevertheless exact; the relation is conceded in the
-Discussion, and the equations that make it checkable are here.
+Discussion and placed against the prior art in Appendix~\ref{app:priorart}, and the equations that
+% PUNTERO ANADIDO 2026-08-27: el unico destino que daba era "the Discussion", y la oracion viva de
+% la Discusion se redujo ese mismo dia a un reenvio al Apendice 5, asi que el lector hacia dos
+% saltos para llegar a donde esta la posicion contra la literatura.
+make it checkable are here.
 % COMPRESSED 2026-08-26, item "COMPRESS ~45 words, opening of the linear-filtering-frame
 % subsection" of docs/shortening_plan.md. Cut: the "forty years of work on the same measurement
 % problem" and "rather than take it on faith" ornament, which restated the Discussion's concession.

@@ -882,7 +882,15 @@ throughout are the exponentials
 \end{equation}
 so that $m$ is the typical factor by which the reported information is wrong, the geometric mean of
 the per-direction factors, and $a$ is their multiplicative spread from direction to direction, both
-one at correct specification. In error-bar units take the square root of any of these, since the
+one at correct specification.
+% ANADIDO 2026-08-27: el cuerpo definia a y afirmaba que vale uno bajo especificacion correcta, y los
+% Resultados dicen "Both are one when the member is calibrated", sin que ninguna oracion viva fuera
+% del Apendice 3 dijera que una a ESTIMADA queda por encima de uno por construccion. Sin eso el
+% lector no tiene con que distinguir una forma medida del piso de muestreo (mediana 1.038, percentil
+% 95 en 1.081 con mil estimaciones en dos dimensiones, Apendice 3).
+An estimated $a$ exceeds one even where the truth is isotropic,
+so a measured spread is evidence of a real one only above the floor that finite sampling sets
+(Appendix~\ref{app:diagnostics}). In error-bar units take the square root of any of these, since the
 distortion is a ratio of informations: $1.15$ is a $7\%$ error on a confidence interval, $2$ is
 $41\%$, and $4$ turns a nominal $95\%$ interval into about $68\%$.
 % src: src/core/likelihood.cpp:560-563 (the emitter's own header: e-bar, s^2 and D_AI) and
