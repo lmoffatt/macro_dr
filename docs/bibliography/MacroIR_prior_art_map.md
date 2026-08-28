@@ -31,9 +31,12 @@ before it enters a manuscript.
 
 # PART 0 — ERRATA
 
-Fourteen corrections. E1 through E5 are citation hygiene (embarrassing, cheap to fix). E6 through E9
+Eighteen corrections. E1 through E5 are citation hygiene (embarrassing, cheap to fix). E6 through E9
 are mischaracterizations that would have made us look like we had not read the papers we were
-distinguishing ourselves from. **E10 through E14 change what the paper can claim.**
+distinguishing ourselves from. **E10 through E14 change what the paper can claim.** **E15 through E18
+were added 2026-08-27, the day Zadrozny 1988 was finally obtained and read first-hand and the
+near-miss column was verified paper by paper; E15 changes what the paper can claim, and in our
+favour, while E18 takes seven years off a date we were about to print.**
 
 ## Citation hygiene
 
@@ -104,7 +107,8 @@ the useful part. But their contribution is a **parallel-in-time** formulation, a
 augmenting the state (that is what their construction is for). Cite them for the *name and the
 subfield*, not as an instance of the augmentation device. The augmentation instances we actually have are
 **Zadrozny 1988**, **Harvey 1989** (cumulator), **Folia & Rattray 2018**, **Calderazzo 2019**, and
-**Rubenzahl 2026** (the only one with van Loan explicit).
+**Rubenzahl 2026** (the only one with van Loan explicit). **[Corrected by E15, 2026-08-27: that
+parenthetical is false. Zadrozny 1988, p. 115, uses Van Loan by name, 38 years earlier.]**
 
 **E10. Section D's blanket "never coupled to the end state" is false.**
 The old map wrote of the CTMC reward-moment literature: *"Marginal reward moments, never coupled to the
@@ -171,6 +175,65 @@ argument, which is a genuinely good distinction and makes us look like we read t
 an import from matrix-analytic queueing theory. (The "false friend" observation from the old map still
 stands and is still worth a footnote: the stochastic-automata-networks literature uses the same `⊕` to
 compose **independent** subsystems, the opposite of our correlated two-time joint of a **single** chain.)
+
+## Added 2026-08-27, after Zadrozny 1988 was obtained and read
+
+**E15. Van Loan on the augmented integral is in Zadrozny 1988, not first in Rubenzahl 2026.**
+Old map, in E9: *"**Rubenzahl 2026** (the only one with van Loan explicit)"*, and in the Part I summary
+table: *"| van-Loan-on-augmented-integral pattern | CONCEDE | Rubenzahl 2026 |"*. Both are wrong.
+**Zadrozny (1988), p. 115** computes the augmented transition and the noise blocks with **Van Loan's
+method, cited by name** (his ref [32] is Van Loan, *IEEE TAC* 23:395-404, 1978, pointed to him by Melino
+[19]): the block matrix `C = [[A*, I, 0, 0], [0, -A*', Q, 0], [0, 0, A*, I], [0, 0, 0, 0]]`, from whose
+exponential he reads `Phi(delta) = F3`, `Phibar(delta) = G3` and the covariance blocks
+(`Sigma_eta_etabar = F3' H2`, and so on), with Pade approximation and scaling-and-squaring, and a scheme
+for reusing `exp(C 2^-a)` across irregular intervals. He also gives the eigendecomposition route,
+`Phibar(delta) = Z (Lambda delta)^-1 [exp(Lambda delta) - I] Z^-1`, with the series that stays well
+conditioned at a zero eigenvalue: the same device `qmodel.h` uses on Q.
+**Consequence for the paper.** The van-Loan-on-the-augmented-integral pattern is conceded to 1988, in a
+paper the manuscript already cites, and Rubenzahl 2026 is the closest *recent* instance rather than the
+first. This is better for us than the old map thought: the concession is older, cleaner, and carried by
+one citation we have now read, instead of resting on a 2026 astronomy paper.
+
+**E16. Fatehi & Huang 2017: the `[VERIFY venue, volume, pages]` is resolved, and the bib entry points at
+the wrong paper.**
+The IMKF root is **A. Fatehi & B. Huang, "State estimation and fusion in the presence of integrated
+measurement," *IEEE Trans. Instrum. Meas.* 66(9):2490-2499, 2017**, verified as reference [1] of the
+Yaghoobi & Sarkka PDF we hold. The entry `fatehi2017kalman` in `biblio_full.bib` instead carries
+*"Kalman filtering approach to multi-rate information fusion in the presence of irregular sampling rate
+and variable measurement delay", J. Process Control 53:15-25*, which is a **different** Fatehi & Huang
+2017 paper, about irregular sampling and variable delay, not about integrated measurement. Fix the entry
+before it is ever cited. The paper itself is **paywalled with no open copy anywhere** (checked against
+OpenAlex 2026-08-27: `oa_status: closed`, no repository fulltext), so cite it for the name of the
+subfield, on the authority of Yaghoobi & Sarkka, and do not paraphrase its contents. It is not in
+`biblio.bib`, so nothing published is affected.
+
+**E17. "Control and target tracking" does not describe Zadrozny.**
+The Discussion read: *"a device long known in control and target tracking \cite{zadrozny1988gaussian}"*,
+and the new prior-art appendix repeated it as *"standard in control and target tracking"*. Zadrozny is
+econometrics, written at the U.S. Bureau of the Census, on quarterly and annual stock and flow data;
+there is no control and no tracking in it, and its only control citations are textbooks (Astrom;
+Kwakernaak & Sivan) plus Morf & Kailath for the square-root algorithm. **No target-tracking instance of
+this construction was found** in the searches of 2026-08-27. Both sentences were changed the same day,
+the body to "time-series econometrics" and the appendix to "time-series econometrics and in process
+control". The control half of the field claim belongs to Fatehi & Huang 2017 and Yaghoobi & Sarkka 2024
+(process control, laboratory assays collected over a period), neither of which is in `biblio.bib`.
+
+**E18. "Since 1992" rests on Fredkin & Rice 1992, and that paper is not about the filter.**
+Old map, E11 headline: *"The anti-alias filter has been inside the likelihood since 1992 - in the
+single-channel branch"*, with the first bullet *"**Fredkin & Rice (1992)** - filtered single-channel
+likelihood"* carrying a `[VERIFY exact title/venue]`. The entry that was created from it,
+`fredkin1992bayesian`, is *Bayesian Restoration of Single-Channel Patch Clamp Recordings*, **Biometrics**
+48(2):427-448, and its abstract (read 2026-08-27 through Europe PMC and OpenAlex) is about **restoring
+the quantal signal from noisy measurements using a Markov chain prior**. It says nothing about the
+anti-aliasing filter. The paper is paywalled with no open copy, so the full text has not been read.
+**The earliest instance actually verified is Michalek et al. (1999)**, *European Biophysics Journal*
+28(7):605-609, whose abstract names the filter and the damage it does: the anti-aliasing low-pass filter
+misleads parameter estimation, the standard hidden Markov model identifies the wrong number of closed
+and open states, and the moving-average filtered hidden Markov model recovers the gating scheme.
+**Consequence for the paper.** Say **"since the late 1990s"**, not "for three decades" and not "since
+1992". The prior-art appendix was changed accordingly the same day. The concession is seven years
+younger than the map thought, which costs us nothing: the scaling argument of E11 is untouched. If
+someone reads Fredkin & Rice in full and finds the filter there, this reverts.
 
 ---
 ---
@@ -495,15 +558,49 @@ observed integral via `Cov(x_end, s)`. **None of this is ours.**
 ### B2. Integrated / averaged / flow observation handled by augmentation (the exact pattern)
 
 - **Zadrozny, P. (1988).** Gaussian likelihood of continuous-time ARMAX models when data are stocks and
-  flows at different frequencies. *Econometric Theory* 4(1):108-124. **Paywalled.** The cleanest
-  econometric statement: **flow** variables (integrals over the period) handled by augmenting the state
-  with the integral coordinate and running a Kalman filter on the exact-discretized SDE. Linear-Gaussian,
-  decades old.
+  flows at different frequencies. *Econometric Theory* 4(1):108-124. PDF, obtained and **read first-hand
+  2026-08-27**: `Zadrozny_1988_Gaussian_Likelihood_CT_ARMAX_Stocks_Flows_EconometricTheory.pdf`. The old
+  entry said **"Paywalled"**; it no longer is. What is in it, with pages, because this is the citation
+  the Discussion's concession rests on:
+    - p. 109: *"We solve this problem by **including integrals of flows in the state vector**, a device
+      which also leads to clearer derivations than those given by Harvey and Stock."* The concession is
+      literal, and he calls it a device himself.
+    - Section 2: the discrete state is `x_u(t_i) = [u*(t_i); ubar_2(t_i); lags]` with
+      `ubar_2(t_i) = int_0^delta u_2(t_{i-1} + tau) dtau`; the transition carries `Phi(delta) =
+      exp(A* delta)` and `Phibar(delta) = int_0^delta exp(A* s) ds`, and the noise covariance
+      `Sigma_u(delta)` (his Eq. 9) is **three blocks**: `Var(eta)`, `Cov(eta, etabar)`, `Var(etabar)`.
+      That is the linear-Gaussian counterpart of our `E[ybar]`, `Var(ybar)`, `Cov(N_Delta, ybar)`.
+    - p. 115: those blocks computed **by Van Loan's method, cited by name** - see **E15**, which corrects
+      the map's claim that Rubenzahl 2026 was the only one.
+    - Section 3: the likelihood by prediction-error decomposition; Cholesky of `M(t_i)`, or square-root
+      propagation (Morf & Kailath).
+    - Field: econometrics, U.S. Bureau of the Census, quarterly and annual data. **No control, no target
+      tracking** - see **E17**.
+    - His own antecedents for the averaging problem, none of them in this map before and none downloaded:
+      **Phillips (1978)**, the treatment of flow data in continuous-time systems; **Harvey & Stock
+      (1985)**, *Econometric Theory* 1:97-112, stocks and flows at the same frequency (this is the paper
+      Zadrozny extends, and it is not the Harvey 1989 book already listed below); **Melino (1985)**,
+      "Estimation of **unit-averaged** diffusion processes", Toronto DP 8507.
 - **Harvey, A. C. (1989).** *Forecasting, Structural Time Series Models and the Kalman Filter.* CUP, §6.3
   (**"cumulator variable"**). **Book.** With Phillips (1959/1978), Bergstrom (1984), Chambers: the
   flow-vs-stock temporal-aggregation lineage. Cite to credit the method's age.
-- **Fatehi, A. & Huang, B. (2017).** The root of the **"integrated measurement Kalman filter"** name and
-  the slow-rate integrated (sample-and-accumulate) sensor construction. `[VERIFY venue, volume, pages]`
+- **Chambers, M. J. & Thornton, M. A. (2012).** Discrete time representation of continuous time ARMA
+  processes. *Econometric Theory* 28(1):219-238. PDF (open submitted version, White Rose eprint 64525):
+  `Chambers_Thornton_2012_Discrete_Time_Representation_CT_ARMA_EconometricTheory.pdf`. Builds its
+  state-space form **on Zadrozny (1988)** and derives the exact discrete representation for stocks, flows
+  and mixtures. Downloaded 2026-08-27 as the open route into Zadrozny's construction, before the paper
+  itself turned up. Keep it: it is the citable open reading of that state-space form.
+- **Thornton, M. A. & Chambers, M. J. (2017).** Continuous time ARMA processes: discrete time
+  representation and likelihood evaluation. *J. Economic Dynamics and Control* 79:48-65. PDF (open York
+  Discussion Paper 16/10): `Thornton_Chambers_2016_CT_ARMA_StockFlow_Likelihood_YorkDP.pdf`. Flow data
+  are the window average `h^-1 int_{th-h}^{th} x(r) dr`, handled in state space with the Kalman-Bucy
+  filter; they position themselves as extending "beyond that in Zadrozny (1988)". Downloaded 2026-08-27.
+- **Fatehi, A. & Huang, B. (2017).** State estimation and fusion in the presence of integrated
+  measurement. *IEEE Trans. Instrum. Meas.* 66(9):2490-2499. **Paywalled, not read** (no open copy;
+  OpenAlex `closed`, 2026-08-27). The root of the **"integrated measurement Kalman filter"** name and of
+  the slow-rate integrated (sample-and-accumulate) sensor construction. Venue, volume and pages resolved
+  2026-08-27 from reference [1] of Yaghoobi & Sarkka: the `[VERIFY]` is closed, and `biblio_full.bib`
+  points at the wrong Fatehi & Huang 2017 paper - see **E16**.
   **This is the citation that E3's phantom was standing in for.**
 - **Yaghoobi, F. & Särkkä, S. (2024).** Parallel state estimation for systems with integrated
   measurements. arXiv:2410.00627. PDF: `Yaghoobi_Sarkka_2024_Parallel_Integrated_Measurement_IMKF.pdf`.
@@ -545,7 +642,9 @@ Ordered by how much they hurt. **C.2 (Kilic) is the one to worry about.**
 
 ### C.1 Blackwell 2018/2019 — integrated continuous-time HMMs
 - **Blackwell, P. G.** *Integrated continuous-time hidden Markov models.* arXiv:1807.11907 (stat.ME).
-  **Not downloaded.**
+  **Not downloaded.** **[CLOSED 2026-08-27: downloaded, version 3 of 30 September 2019, still a
+  preprint with no journal version in OpenAlex. Abstract confirmed word for word. `biblio.bib` entry
+  `blackwell2018integrated`.]**
 - Makes **the same conceptual move as MacroIR**, and says so in its abstract: *"a new class of integrated
   continuous-time hidden Markov models in which each observation depends on the underlying state of the
   process over the whole interval since the previous observation, not only on its current state ... under
@@ -560,7 +659,12 @@ Ordered by how much they hurt. **C.2 (Kilic) is the one to worry about.**
 
 ### C.2 Kilic, Sgouralis, Pressé et al. 2021 — the strongest near-miss (ADDED 2026-07-14; see E12)
 - **Cell Rep. Phys. Sci.** 2:100409, with a companion in **Biophys. J.** 120:409. `[VERIFY exact author
-  list and both DOIs; PDFs not in repo]`
+  list and both DOIs; PDFs not in repo]` **[CLOSED 2026-08-27, except the PDFs. Author list: Kilic,
+  Sgouralis, Heo, Ishii, Tahara, Presse (Cell Rep. Phys. Sci., doi 10.1016/j.xcrp.2021.100409, vol. 2
+  issue 5, art. 100409); Kilic, Sgouralis, Presse (Biophys. J. 120(3):409-423, doi
+  10.1016/j.bpj.2020.12.022). The observation model, the Gibbs sampling of the trajectory and the
+  single-molecule scope were read in the full text at PMC8208598. NO PDFs: Cell Press, ScienceDirect
+  and PMC all refuse automated download. Entries `kilic2021extraction` and `kilic2021generalizing`.]**
 - **The observation is an exact within-window integral of the state-dependent rate**, for an **arbitrary
   number of states**:
   `w_n ~ Poisson( μ_back · τ + ∫ μ_{T(t)} dt )`,
@@ -616,14 +720,41 @@ Ordered by how much they hurt. **C.2 (Kilic) is the one to worry about.**
 branch has put the recording filter **inside the likelihood** for thirty years.
 
 - **Fredkin, D. R. & Rice, J. A. (1992).** Filtered single-channel likelihood. `[VERIFY exact title/venue]`
-- **Michalek, S., Lerche, H., Wagner, M. & Timmer, J. (1999).** *"Moving-average filtered hidden Markov
-  models"* for single-channel currents. `[VERIFY venue]` The name says it.
+- **Michalek, S., Lerche, H., Wagner, M., Mitrovic, N., Schiebe, M., Lehmann-Horn, F. & Timmer, J.
+  (1999).** *"On identification of Na+ channel gating schemes using moving-average filtered hidden
+  Markov models"*, **European Biophysics Journal 28(7):605-609**, doi 10.1007/s002490050243.
+  `[VERIFY venue]` **[CLOSED 2026-08-27: venue, volume, pages, DOI and the full author list confirmed
+  in Crossref and Europe PMC; abstract read. This is now the EARLIEST VERIFIED instance in this column,
+  and the anchor of the "late 1990s" wording - see E18. Entry `michalek1999identification`.]**
 - **Venkataramanan, L. & Sigworth, F. J. (1998-2002).** The **metastate / vector-HMM** formulation:
   expand the hidden state over the filter's memory so that the filtered observation is again Markov.
+  **[PINNED 2026-08-27: the filter is in PART III, Venkataramanan, Kuc & Sigworth, "Identification of
+  hidden Markov models for ion channel currents. III. Bandlimited, sampled data", IEEE Trans. Signal
+  Processing 48(2):376-385, 2000, doi 10.1109/78.823965, whose abstract states that the effects of the
+  antialiasing filter and of the correlated background noise are considered in a metastate or vector
+  HMM framework. Parts I (46:1901-1915, 1998) and II (46:1916-1929, 1998) are colored background noise
+  and state-dependent excess noise, NOT the filter; the 2002 Biophysical Journal paper INVERSE-filters
+  the data rather than modeling the filter inside the likelihood. Cite Part III. Entry
+  `venkataramanan2000identification`.]**
 - **Qin, F., Auerbach, A. & Sachs, F. (2000).** *"The filtering is modeled using a finite impulse response
   (FIR) filter"* **and** *"Extension of the algorithm to data containing multiple channels is described."*
   **The most dangerous sentence in the prior art.** Read this paper. `[VERIFY the multi-channel section:
-  how many channels, at what cost]`
+  how many channels, at what cost]` **[STILL OPEN 2026-08-27, and it is the one that matters. Both
+  quoted sentences were confirmed on the article page at PMC1301084, but the cost was not: the full
+  text is not obtainable (Cell Press and PMC refuse automated download) and THE REPOSITORY HOLDS THE
+  OTHER Qin 2000 - `Qin_Auerbach_Sachs_2000_Direct_Optimization_HMM_SingleChannel_BiophysJ.pdf` is the
+  companion, "A Direct Optimization Approach", Biophys. J. 79:1915-1927, doi
+  10.1016/S0006-3495(00)76441-1, which contains NEITHER the filtering NOR the multiple-channel section.
+  Do not write a channel count or a cost for Qin from what we have. Entries `qin2000hidden` and
+  `qin2000direct`.]**
+- **NEW, and it is not about the filter: Qin, Auerbach & Sachs (2000), the direct-optimization paper,
+  derives the ANALYTICAL DERIVATIVES of a single-channel HMM likelihood** with respect to the rate
+  constants, through the forward and backward variables and through the derivative of the matrix
+  exponential, for a quasi-Newton search. Read first-hand in the local PDF 2026-08-27. **This is prior
+  art for the differentiation claim, not only for the filter claim.** Differentiating a recursion that
+  runs the length of the record is not by itself new; the ensemble and the integrated observation are
+  what is ours. The prior-art appendix contrasts the derivatives only with Milescu 2005, whose
+  likelihood is over independent intervals, and that contrast is now known to be incomplete.
 - Adjacent: **Schröder & Hansen (2005)**; **Almanjahie et al. (2015/2019)**; the beta-distribution family
   for filtered single-channel amplitude distributions.
 
@@ -689,7 +820,7 @@ true, and interesting thing to say in an Introduction.
 | The integrated member itself, at macroscopic scale, on real data — **already published by us** | **SELF-PRIOR-ART, disclose** (added 2026-08-10) | Moffatt & Pierdominici-Sottile 2025 Comm Biol: the deposited runs are INR, verified from the run metadata; see A.11 |
 | The recording filter modeled inside the likelihood | **CONCEDE — since 1992** | Fredkin & Rice 1992; Michalek 1999; Venkataramanan & Sigworth; **Qin, Auerbach & Sachs 2000** |
 | Integrated-/averaged-measurement Kalman filter as a **device** | CONCEDE | Kalman 1960; Van Loan 1978; Zadrozny 1988; Harvey 1989; **Fatehi & Huang 2017**; Yaghoobi & Särkkä 2024; **Folia & Rattray 2018**; Calderazzo 2019; Rubenzahl 2026 |
-| van-Loan-on-augmented-integral pattern | CONCEDE | Rubenzahl 2026 |
+| van-Loan-on-augmented-integral pattern | **CONCEDE - since 1988** | **Zadrozny 1988 p. 115** (the block `C`, Pade with scaling and squaring); Rubenzahl 2026 as the closest recent instance; see E15 |
 | Kronecker/product structure in channel modeling | **CONCEDE — already in the field** | **Albertsen & Hansen 1994** |
 | `exp(A⊕B) = exp(A)⊗exp(B)` | CONCEDE as classical | **Horn & Johnson 1991 §4.4** (not Zhou-Lange, not Higham) |
 | "Exact CTMC" as accuracy over LNA (for channels) | **DO NOT CLAIM** (they coincide; verified 1e-8) | `claude/scripts/verify_IR_vs_augmentation.py` |

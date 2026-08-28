@@ -23,7 +23,8 @@ MAIN = ["01_introduction.tex", "02_framework.tex",
         "04_results.tex", "05_discussion.tex"]
 EXCLUDED = ["00_abstract.tex", "06_methods.tex", "07_backmatter.tex",
             "08_appendix_derivation.tex", "09_appendix_members.tex",
-            "10_appendix_diagnostics.tex", "11_appendix_repairs.tex"]
+            "10_appendix_diagnostics.tex", "11_appendix_repairs.tex",
+            "12_appendix_priorart.tex"]
 
 BENCH = [("median", 5209), ("p75", 6543), ("p90", 8017), ("p95", 9066),
          ("Munch e62714", 11515), ("longest of 413", 13300)]

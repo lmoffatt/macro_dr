@@ -1674,10 +1674,159 @@ so the figure locates the onset and not the far side. % src: as the figure
 % figure supports are about what each axis of the DESIGN buys, which is that parent's subject.
 \end{figure}
 
-Figure~\ref{fig:usage} turns the measured cells into a map of what a recording can be asked for at
-one acquisition interval, $\Delta\!\cdot\!k_{\mathrm{off}}=0.1$: six fitted boundaries, four where
-a parameter stops being measurable and two where a method's reported error bar becomes calibrated.
+What a recording can be asked for is set by two properties of the preparation: how many channels
+the patch holds, and how much noise the rig adds. Those are the axes of Figure~\ref{fig:usage},
+which they cut into five regions, each with its own answer to which parameters can be recovered
+and with which method. Of the eight methods on the ladder only two are ever the right answer here,
+\texttt{IR}, the boundary-conditioned member, and the classical fit; the rest are biased or
+miscalibrated wherever they are cheap (Figure~\ref{fig:plane}). Read upward at a fixed channel
+count, which is a noisier rig or a smaller unitary current, the regions come in a fixed order.
+While the gating fluctuation dominates, use \texttt{IR}: it recovers the amplitude and the rates,
+all four parameters in five cells of every six, with a calibrated interval. The unitary current is
+the first thing to go, because the fluctuation stops separating it from the channel number and the
+mean current pins only their product. Its loss opens the band this map exists to show, $1.7$
+decades of noise tall: there the fluctuation is already too small to give the current, and still
+large enough to make the least-squares interval several times too narrow, so the rates survive but
+\texttt{IR} is still the only one that can report them. Above the band the classical fit is
+calibrated too and is then the one to use, being the cheaper; higher still the rates go as well
+and nothing is measurable. A recording with few channels begins below all of this, in the hatched
+corner, where \texttt{IR} recovers the parameters but its own reported interval has to be
+corrected first (Figure~\ref{fig:limit}). No measured cell offers the amplitude and a calibrated
+classical interval at once.
+% src: figure_7.html (subset counts: 52 of the 63 cells that recover the conductance carry all four parameters, the "five cells of every six"; BH fitted over N_ch 5-100 and falling to the right, which is why the hatched corner is a few-channel starting point and not a station on every vertical) ; the Figure 4 subsection of this file ("Across the plane INR misses the channel number by two per cent and IR by one ... and IR is the only member whose error bar is calibrated"), where the two-names claim is measured ; Table~\ref{tab:members}, last column, for the Results names (ILSE "the classical fit, or the least-squares arm"; IR "the boundary-conditioned member")
 
+Two ratios put those boundaries where they are, because the record carries two observables that
+scale differently with the channel count. Whether the gating fluctuation stands above the
+instrument is a ratio of variances, constant along $\widetilde{S} \propto N_{\mathrm{ch}}$
+(Figure~\ref{fig:memory}--figure supplement 2); whether the deterministic transient stands above
+it is a ratio of amplitudes, constant along $\widetilde{S} \propto N_{\mathrm{ch}}^{2}$. Every
+line in the figure is one, the other, or a combination, and its slope says which: $1.01$ and
+$1.03$ where the classical fit becomes calibrated and $1.11$ where the unitary current stops being
+measurable, all three fluctuation-limited; $2.09$ and $2.20$ for the two rates, which live in the
+transient; and $1.47$ for the channel number, which is read from both. The one line that falls,
+$-0.50$, is not a signal-to-noise condition at all: it is where the interval average becomes
+Gaussian enough for the closure \texttt{IR} assumes, and both more channels and more instrumental
+noise help it.
+% src: figure_7.html (fitted slopes: SE i +1.11, SE N_ch +1.47, SE k_off +2.09, SE k_on +2.20, BL +1.01 and +1.03, BH -0.50) ; figure_5_S2.Rmd and Figure 5-figure supplement 2 (the collapse on r = S_tilde/N_ch, which is what makes the calibration boundary a constant-ratio line)
+% STANDING OF THE 1-AGAINST-2 ARITHMETIC, flagged 2026-08-27 and NOT settled: that a mean-carried
+% parameter gives a boundary of slope 2 (signal N.i against noise sigma, so S_tilde ~ N^2) and a
+% fluctuation-carried one a boundary of slope 1 (variance N.i^2 against sigma^2, so S_tilde ~ N) is
+% a READING of the seven measured slopes and not a derivation taken from Appendix 1. It fits all
+% seven, including the intermediate 1.47 of the channel number, which is the hardest to get by
+% chance since N_ch is read from the mean and the fluctuation together. But k_off's slope rests on
+% three crossings. Before this stands as mechanism it should be checked against the derivation, or
+% said as a reading of the slopes.
+
+Three recording configurations are drawn on the same plane, placed by the channel counts each can
+hold (Methods). An excised outside-out patch and a whole-cell recording fall in \texttt{IR}'s
+territory over most of their range, each crossing one boundary at one corner, so these lines run
+through the conditions people record in and not around them. Two floors matter at the bench: under
+about $17$ channels the channel number cannot be recovered at any noise, and under $52$ the
+opening rate. The oocyte, above $10^5$ channels, sits past the simulated grid; what carries out
+there is the ordering and not the positions, since the two lines converge by only $0.09$ decades
+per decade of channels, leaving $1.4$ at ten million.
+% src: figure_7.html (footprint table: N_ch 10-300, 20-1e4 and 1e5-5e7, the channel ranges derived from each configuration's smallest and largest resolvable current; reachability floors N_ch 17 and k_on 52; last simulated column 1e4). The corner crossings are read off the fitted lines at the box edges: at N_ch 20 the i boundary sits at 0.374 in displayed noise against the whole-cell box top at 2, and the patch's floor runs below the panel into the hatched corner at N_ch 10-20.
+
+% ============================================================================================
+% SUBSECTION REWRITTEN 2026-08-27, on Luciano's guion, agreed in the session of that date. Three
+% paragraphs doing three jobs: where a preparation sits and what it can be asked for; why the
+% boundaries fall where they do; what that means for three real configurations. 746 words to about
+% 480. EVERY COMMENT BELOW THIS BLOCK DOCUMENTS THE PREVIOUS VERSION; its sentences are no longer in
+% the live text, and the notes are kept because they record why the numbers are what they are.
+%
+% What the rewrite changes, beyond length:
+%  1. It opens on the reader's own two coordinates, the channel count and the noise, not on a derived
+%     quantity. An earlier draft opened with "one number orders this map", the gating-to-instrumental
+%     ratio; the objection that killed it is worth keeping: if that were the variable, the figure
+%     would be drawn against it. It is not one number in any case, since a single ordering scalar
+%     cannot produce boundaries of slope -0.50, +1.01, +1.11, +1.47, +2.09 and +2.20, and where the
+%     ratio IS the point the paper already draws it, in Figure 5-figure supplement 2.
+%  2. The regions are named by what to use, in the key's own verbs, so panel and text say the same
+%     thing. Colour names stay in the caption; only the hatched corner is named by its texture,
+%     which is the one label that survives greyscale.
+%  3. "the likelihood" is gone as a name for IR. All eight rungs are likelihoods, ILSE included
+%     (Table 1: its variance is "one scale over the whole record, marginalised rather than fitted"),
+%     so that name would hand back the likelihood-against-least-squares reading that Figures 2 to 4
+%     spend their length dismantling. The names come from Table 1's own last column.
+%  4. The hatched corner is where a few-channel recording STARTS, not a station on every vertical:
+%     its boundary is fitted over N_ch 5-100 and falls to the right, so a thousand-channel recording
+%     never crosses it. The previous version read it as an aside in the middle of the walk.
+%
+% PARKED, NOT MOVED. The material below left the live text in this pass and has NOT been placed
+% anywhere else yet. Nothing is dropped on purpose; each entry names where it should go. Until those
+% moves are made this subsection is thinner in defence than the version it replaces.
+%  [to METHODS, which already holds the full statement] the scope of the comparator: ILSE, least squares on the interval-averaged mean current in its four-parameter configuration, the unitary current held fixed because with it free the least-squares information is singular and no maximum-likelihood covariance exists, fixed at the value the recordings were simulated from so that the classical arm is helped rather than handicapped, two of six parameters supplied exactly right. It was ECHOED into Results on 2026-08-26 precisely because an outside reader met the claim thirty pages before its defence, so sending it back needs a decision and not a default.
+%  [to the DISCUSSION's NSFA paragraph] the disclaimer that this is not the variance-mean regression and that nothing here is a measured comparison against non-stationary fluctuation analysis. The shortening plan named the RESULTS copy the survivor, so this move overrides a ruling.
+%  [to the CAPTION] the robustness to which least-squares arm carries the map (a factor 0.77 to 1.39 in noise, exponent unchanged at 0.94 to 1.03); the nesting check (six subsets in 80 cells, 78 of 80 agreeing with the fitted lines); the precision comparison over the 32 cells where both were run (median ratio 1.04 on k_off and 1.01 on k_on), which is what earns the key's word 'cheaper'; and the pointer to Figure 4-figure supplement 4 as the map a reader takes another criterion off.
+%  [to the CAPTION or to LIMITATIONS] the review-demanded disclosures: 56 per cent of the panel's width carries no simulated cell and is veiled, the two calibration boundaries rest on four crossings each and the closure boundary on five over one decade of channel count while drawn across seven, the region where the cheaper method is the recommendation rests on three cells and opens only above 120 to 1368 channels, and the lower vertex is extrapolated to N_ch between 3 and 9 with the ten cells that would pin it never run.
+%
+% VERBATIM TEXT OF THE RETIRED PARAGRAPHS, in the order they stood:
+% | Figure~\ref{fig:usage} turns the measured cells into a map of what a recording can be asked for
+% | at one acquisition interval, $\Delta\!\cdot\!k_{\mathrm{off}}=0.1$: six fitted boundaries, four
+% | where a parameter stops being measurable and two where a method's reported error bar becomes
+% | calibrated.
+%
+% | Read upward at a fixed channel count the recording loses capabilities in a fixed order, the
+% | amplitude before the rates, which is what gives the five fills the key names; two of them need
+% | more than the key can say. The lowest, hatched over the dark green rather than given a fill of
+% | its own, is about the method, not the data: there the closure is strained enough that even the
+% | boundary-conditioned member misreports its own interval, though the parameters are still
+% | recovered, so what needs correcting is the report (Figure~\ref{fig:limit}). And in the pale
+% | green, where the rates survive alone, the interval least squares reports is several times too
+% | narrow. The fills nest by measurement and not by construction: six subsets of the four
+% | parameters occur in the $80$ cells, and $78$ of them fall on the same side of the fitted lines
+% | as their own measurements.
+%
+% | The measurability boundaries are level sets of the delivered standard error, drawn for every
+% | member and all five parameters in Figure~\ref{fig:plane}--figure supplement 4, so another
+% | criterion can be read off that map.
+%
+% | The lowest boundary is the one with a negative slope, $-0.50$ in
+% | $\mathrm{d}\log_{10}\mathrm{noise}/\mathrm{d}\log_{10}N_{\mathrm{ch}}$, because instrumental
+% | noise makes the emission more Gaussian and so relaxes the occupancy closure while hurting
+% | everything else.
+%
+% | The boundary at which the classical error bar becomes calibrated is the one the gating-against-
+% | instrumental balance predicts: over four crossings in each of two parameter directions it runs
+% | as noise proportional to channel number, slopes $1.01$ and $1.03$, measured rather than assumed.
+%
+% | The three configurations are placed by their channel counts. An excised outside-out patch, at
+% | $10$ to $300$ channels, and whole cell, at $20$ to $10^4$, fall inside the simulated grid, and
+% | the patch's small end is already past a floor: over the whole noise sweep the channel number is
+% | unreachable below about $17$ channels and the opening rate below about $52$, while the current
+% | and the closing rate have none. The oocyte under two-electrode clamp, at $10^5$ to
+% | $5\times10^7$, lies beyond the last simulated column, in the veiled half: the map places it and
+% | measures nothing about it.
+%
+% | The ordering of the boundaries is the result the map exists to state: no region of the measured
+% | plane has the amplitude still carrying information and the classical error bar simultaneously
+% | calibrated, the two separated by one to three decades of noise everywhere measured. Its scope:
+% | the classical arm is \texttt{ILSE}, least squares on the interval-averaged mean current in its
+% | four-parameter configuration, with the unitary current held fixed at the value the recordings
+% | were simulated from. Fixing it is forced, since with it free the least-squares information is
+% | singular and no covariance exists at all, and it helps that arm rather than handicapping it: two
+% | of six parameters supplied exactly right while every likelihood member estimates all six
+% | (Methods). The error bar in question is the one it reports on the rates, since with the current
+% | fixed it reports nothing about the amplitude; where the two do compete, over the $32$ cells in
+% | which both were run, its corrected standard error there is no wider, at a median ratio of $1.04$
+% | on $k_{\mathrm{off}}$ and $1.01$ on $k_{\mathrm{on}}$.
+%
+% | It is not the variance-mean regression: this paper does not benchmark non-stationary fluctuation
+% | analysis \citep{sigworth1980variance,heinemann1992nonstationary}. Nor does the map turn on which
+% | least-squares arm carries it: the same boundary on the arm that fits the instantaneous mean
+% | moves by a factor between $0.77$ and $1.39$ in noise, with the fitted exponent unchanged.
+%
+% | The evidence is thinner than the picture. Fifty-six per cent of the panel's width carries no
+% | simulated cell and is veiled. The two least-squares calibration boundaries are fitted through
+% | four crossings each and the closure boundary through five, all between $5$ and $100$ channels
+% | but drawn across seven decades; that line misplaces one of the two cells where the map and the
+% | measurements disagree. The region in which the cheaper method is the recommendation rests on
+% | three cells, and the channel count at which it opens spans $120$ to $1368$ over the two
+% | criteria. The lower vertex is extrapolated to $N_{\mathrm{ch}}$ between $3$ and $9$, below the
+% | classical arm's grid, and the ten cells that would pin it have not been run.
+%
+% ============================================================================================
+% RECORD OF THE PREVIOUS VERSION (comments as they stood before the 2026-08-27 rewrite):
 % NUMBERING DROPPED 2026-08-27, and this was a live defect rather than a compression. The paragraph
 % called the fills "Region 0" to "region 4" and those numbers are printed nowhere the reader can
 % see: the panel's key was rewritten as five recommendations without numbers, and pdftotext on the
@@ -1690,24 +1839,12 @@ a parameter stops being measurable and two where a method's reported error bar b
 % and re-render, and this paragraph goes back to what it was. That is the better figure and it needs
 % a render, which is why the text was made to match the figure that exists rather than the other way.
 % The colour names are the handle the reader actually has, and the caption names the same five.
-Read upward at a fixed channel count the recording loses capabilities in a fixed order, the
-amplitude before the rates, which is what gives the five fills the key names; two of them need
-more than the key can say. The lowest, hatched over the dark green rather than given a fill of its
-own, is about the method, not the data: there the closure is strained enough that even the
-boundary-conditioned member misreports its own interval, though the parameters are still
-recovered, so what needs correcting is the report (Figure~\ref{fig:limit}). And in the pale green,
-where the rates survive alone, the interval least squares reports is several times too narrow. The
-fills nest by measurement and not by construction: six subsets of the four parameters occur in the
-$80$ cells, and $78$ of them fall on the same side of the fitted lines as their own measurements.
 % src: papers/_program/nomenclature.md (regions of the usage map; 0 at the bottom, 4 at the top, the numbering this paragraph used until 2026-08-27)
 % src: figure_7.html (subset counts: 51 of the 80 cells carry all four, 11 carry k_off and i alone, which is why region 1 is "usually" and not "always"; the two thin lines inside it are where k_on and N_ch drop out)
 % PARTITION CHECK MOVED HERE 2026-08-27 out of the Figure 7 caption, which was its only site. It is
 % the check that says the five fills are a reading of the data and not a drawing convention, so it
 % belongs beside the fills; and the limitations paragraph below already spoke of "the two cells
 % where the fitted map and the measurements disagree" with nothing in the body to give it the 78.
-The measurability boundaries are level sets of the delivered standard error, drawn for every
-member and all five parameters in Figure~\ref{fig:plane}--figure supplement 4, so another
-criterion can be read off that map.
 % COMPRESSED 2026-08-26 (shortening_plan.md, Results item, binding adjustment: cut only the repeated
 % delivered-SE definition). Its first statement, "the square root of the diagonal of the
 % distortion-corrected covariance", stands earlier in this section and is untouched.
@@ -1729,10 +1866,6 @@ criterion can be read off that map.
 % maximum 3.87 in its favour), so it is the region where the likelihood is most needed, not the
 % region where the recording stops being macroscopic. % src: figure_7.html and Figure_7_caption.md
 % (the violet/hatched corner's precision ratios) ; Figure 6 caption, this section
-
-The lowest boundary is the one with a negative slope, $-0.50$ in
-$\mathrm{d}\log_{10}\mathrm{noise}/\mathrm{d}\log_{10}N_{\mathrm{ch}}$, because instrumental noise
-makes the emission more Gaussian and so relaxes the occupancy closure while hurting everything else. % src: projects/eLife_2025/figures/paper_both/figure_7.html ("BH slope -0.50, 5 crossings, N_ch 5-100"), which is the fit on `irbad` that the map actually draws
 % NUMBER CORRECTED 2026-08-26, closing the TODO(Luciano) of 2026-08-11. It read -0.56, which is
 % exactly the midpoint of the two candidates and matches neither: figure_7.html reports -0.50 for
 % BH, the boundary this sentence is about and the one drawn, and -0.62 for `floor`/k_off in the
@@ -1741,11 +1874,6 @@ makes the emission more Gaussian and so relaxes the occupancy closure while hurt
 % -0.56 was cited in Figure_6_caption.md and was corrected there in the same pass; with -0.50 that
 % caption's own arithmetic works better, since one decade of channels is then worth half a decade of
 % noise and the sampling it defends is 0.65 decades against 0.3.
-
-The boundary at which the classical error bar becomes calibrated is the one the
-gating-against-instrumental balance predicts: over four crossings in each of two parameter
-directions it runs as noise proportional to channel number, slopes $1.01$ and $1.03$, measured
-rather than assumed.
 % src: projects/eLife_2025/figures/paper_both/figure_7.html (crossings at noise label 164 and 130 at N_ch 10, 1.28e3 and 1.53e3 at 100, 1.54e4 and 1.51e4 at 1000, 1.62e5 and 1.59e5 at 10^4, channel-number and closing-rate directions; fitted slopes 1.006 and 1.026)
 % SENTENCE REPAIRED 2026-08-26, third occurrence of the same disease in this subsection and the one
 % that was live in the compiled PDF: a comment inserted mid-sentence on 2026-08-26 swallowed the
@@ -1757,14 +1885,6 @@ rather than assumed.
 % its own line, after the whole sentence, never inline; nothing live may follow a % on the same line.
 % The compressed clause it replaced was the third statement of the gating-against-instrumental
 % mechanism, so it is named here in four words and stated in full earlier in this section.
-
-The three configurations are placed by their channel counts. An excised outside-out patch, at $10$
-to $300$ channels, and whole cell, at $20$ to $10^4$, fall inside the simulated grid, and the
-patch's small end is already past a floor: over the whole noise sweep the channel number is
-unreachable below about $17$ channels and the opening rate below about $52$, while the current and
-the closing rate have none. The oocyte under two-electrode clamp, at $10^5$ to $5\times10^7$, lies
-beyond the last simulated column, in the veiled half: the map places it and measures nothing about
-it.
 % src: projects/eLife_2025/figures/paper_both/figure_7.html (footprint table: N_ch 10-300, 20-1e4 and 1e5-5e7, with the channel ranges derived from each configuration's smallest and largest resolvable current; reachability floors N_ch 17 and k_on 52; last simulated column 1e4 and veil edge 3.16e4)
 % PREPARATION FOOTPRINTS RELEASED 2026-08-26, by the second of the two routes the hold itself named:
 % the argument is made on the channel-count axis alone, which is the half of each footprint that IS
@@ -1776,19 +1896,6 @@ it.
 % above. What the release fixes is that three heavy labelled boxes were the most legible thing on
 % the panel and the body said nothing about them at all. The reachability floors, which used to be a
 % free-standing sentence, moved here because this is where they mean something to a reader.
-
-The ordering of the boundaries is the result the map exists to state: no region of the measured
-plane has the amplitude still carrying information and the classical error bar simultaneously
-calibrated, the two separated by one to three decades of noise everywhere measured. Its scope: the
-classical arm is \texttt{ILSE}, least squares on the interval-averaged mean current in its
-four-parameter configuration, with the unitary current held fixed at the value the recordings were
-simulated from. Fixing it is forced, since with it free the least-squares information is singular
-and no covariance exists at all, and it helps that arm rather than handicapping it: two of six
-parameters supplied exactly right while every likelihood member estimates all six (Methods). The
-error bar in question is the one it reports on the rates, since with the current fixed it reports
-nothing about the amplitude; where the two do compete, over the $32$ cells in which both were run,
-its corrected standard error there is no wider, at a median ratio of $1.04$ on $k_{\mathrm{off}}$
-and $1.01$ on $k_{\mathrm{on}}$.
 % CONCESSION MOVED HERE 2026-08-27 out of the Figure 7 caption, which was its only site. It belongs
 % to the paragraph that fixes the scope of the ordering claim and it is in a protected category, a
 % concession to the method this paper measures against, so the caption split relocated it rather
@@ -1803,10 +1910,6 @@ and $1.01$ on $k_{\mathrm{on}}$.
 % calling the comparator a strawman; the ECHO of 2026-08-26 answered half of that (the defence of
 % the fixed current, which existed only in Methods, thirty pages after the claim) and this clause
 % answers the other half, which is what the sentence is actually about.
-It is not the variance-mean regression: this paper does not benchmark non-stationary fluctuation
-analysis \citep{sigworth1980variance,heinemann1992nonstationary}. Nor does the map turn on which
-least-squares arm carries it: the same boundary on the arm that fits the instantaneous mean moves
-by a factor between $0.77$ and $1.39$ in noise, with the fitted exponent unchanged.
 % src: projects/eLife_2025/figures/paper_both/figure_7.html ("the honesty boundary on BOTH least-squares arms", and the ratio and slope tables beneath it)
 % CLOSED 2026-08-26 BY MEASUREMENT. The un-averaged arm landed in figures/data/a202e03 after this map
 % was built (30 cells on the Gaussian lane, N_ch 10 to 10^4 and noise 0.1 to 1e7, the same coverage
@@ -1820,15 +1923,6 @@ by a factor between $0.77$ and $1.39$ in noise, with the fitted exponent unchang
 % decades of margin. NOTE 2026-08-26: this argument used to be stated as "inside the ribbon", which
 % no longer exists on the panel -- the interval sweep is computed and printed by the knit but the
 % canonical `map` chunk draws no ribbon, so the argument is stated from the printed range instead.
-
-The evidence is thinner than the picture. Fifty-six per cent of the panel's width carries no
-simulated cell and is veiled. The two least-squares calibration boundaries are fitted through four
-crossings each and the closure boundary through five, all between $5$ and $100$ channels but drawn
-across seven decades; that line misplaces one of the two cells where the map and the measurements
-disagree. The region in which the cheaper method is the recommendation rests on three cells, and
-the channel count at which it opens spans $120$ to $1368$ over the two criteria. The lower vertex
-is extrapolated to $N_{\mathrm{ch}}$ between $3$ and $9$, below the classical arm's grid, and the
-ten cells that would pin it have not been run.
 % src: projects/eLife_2025/figures/paper_both/figure_7.html (56% of the width extrapolated; BL 4 crossings in each direction, BH 5 crossings over N_ch 5-100; the confusion table, 78 of 80, with the N_ch = 200 disagreement charged to BH; 3 cells in the amber region; region 3 opens at N_ch 120-1368 over the two criteria; map closes from below at N_ch 3-9, extrapolated)
 % DISCLOSURE PARAGRAPH CORRECTED AND EXTENDED 2026-08-26. It claimed that the closure floor is
 % "fitted through four measured crossings" like the other two; it has five, and the number that
@@ -1837,7 +1931,6 @@ ten cells that would pin it have not been run.
 % the two misclassified cells. Added, because both were in the figure and in neither the caption nor
 % the text: the veiled 56 per cent, and that the amber region rests on three cells. "the third
 % region" was renamed to what it recommends, since the numbering is not printed on the panel.
-
 % COMPRESSED 2026-08-26, in three passes, against the shortening plan. The rewrite of this subsection
 % had taken the prose from 692 words to 1113, a 60 per cent growth inside a pass whose target is
 % 24,300 main-text words down to about 17,000, which is backwards however good the additions were.

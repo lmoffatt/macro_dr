@@ -460,3 +460,154 @@
   year      = {1997},
   doi       = {10.1007/978-1-4899-0319-8_6}
 }
+
+% =====================================================================
+% Integrated-observation near-misses, and the single-channel filtered
+% likelihood. Appendix "The construction and its prior art".
+% Added 2026-08-27. Every DOI in this block re-checked against Crossref
+% or OpenAlex the same day; the annote of each says what was verified
+% first-hand and what was not.
+% =====================================================================
+
+@article{bauerle2015exact,
+  author  = {B{\"a}uerle, Nicole and Gilitschenski, Igor and Hanebeck, Uwe D.},
+  title   = {Exact and Approximate Hidden Markov Chain Filters Based on Discrete Observations},
+  journal = {Statistics \& Risk Modeling},
+  year    = {2015},
+  volume  = {32},
+  number  = {3--4},
+  pages   = {159--176},
+  doi     = {10.1515/strm-2015-0004},
+  annote  = {PDF: Bauerle\_Gilitschenski\_Hanebeck\_2015\_Exact\_Approximate\_HMM\_Filters\_StochModels.pdf,
+             which is the arXiv version 1411.0849v2 of 18 December 2014, not the journal
+             typesetting. Abstract read first-hand 2026-08-27: the integrated continuous-time
+             Markov chain observed at discrete times perturbed by a Brownian motion, exact
+             densities for a two-element state space by way of the asymmetric telegraph process,
+             three approximations (continuous filter, a PDE solved numerically, discretization)
+             when the state space is larger. A SINGLE chain, applied to finance, never to
+             channels}
+}
+
+@article{blackwell2018integrated,
+  author  = {Blackwell, Paul G.},
+  title   = {Integrated Continuous-Time Hidden Markov Models},
+  journal = {arXiv preprint arXiv:1807.11907},
+  year    = {2018},
+  doi     = {10.48550/arXiv.1807.11907},
+  url     = {https://arxiv.org/abs/1807.11907},
+  annote  = {Downloaded 2026-08-27, version 3 of 30 September 2019; still a preprint, no journal
+             version found in OpenAlex. His own abstract: each observation depends on the state
+             of the process over the whole interval since the previous observation, and under
+             appropriate conditioning the model is a conventional hidden Markov model, so the
+             forward algorithm evaluates its likelihood. Same conceptual move as ours, in
+             movement ecology, for a SINGLE chain}
+}
+
+@article{kilic2021extraction,
+  author  = {Kilic, Zeliha and Sgouralis, Ioannis and Heo, Wooseok and Ishii, Kunihiko and Tahara, Tahei and Press{\'e}, Steve},
+  title   = {Extraction of Rapid Kinetics from {smFRET} Measurements Using Integrative Detectors},
+  journal = {Cell Reports Physical Science},
+  year    = {2021},
+  volume  = {2},
+  number  = {5},
+  pages   = {100409},
+  doi     = {10.1016/j.xcrp.2021.100409},
+  annote  = {NO LOCAL PDF: Cell Press and ScienceDirect refuse automated download, and the PMC
+             copy is served behind a challenge. Content verified 2026-08-27 against the full
+             text at PMC8208598, which is where the author list, the affiliations and the
+             observation model below were read. The measurement is a photon count,
+             w ~ Poisson(mu\_back tau + integral of mu\_T(t) over the exposure window), so the
+             observation is an exact within-window integral of the state-dependent rate for any
+             number of states. The trajectory is sampled by Gibbs, not marginalized in closed
+             form, and the object is one molecule}
+}
+
+@article{kilic2021generalizing,
+  author  = {Kilic, Zeliha and Sgouralis, Ioannis and Press{\'e}, Steve},
+  title   = {Generalizing {HMMs} to Continuous Time for Fast Kinetics: Hidden Markov Jump Processes},
+  journal = {Biophysical Journal},
+  year    = {2021},
+  volume  = {120},
+  number  = {3},
+  pages   = {409--423},
+  doi     = {10.1016/j.bpj.2020.12.022},
+  annote  = {NO LOCAL PDF, same refusal as its companion. Abstract read 2026-08-27 through
+             Europe PMC (PMID 33421415): the hidden Markov jump process, which is the HMM
+             generalized so that transitions happen in continuous time rather than at the end of
+             each acquisition period, with the limit in which it reduces to the HMM shown
+             explicitly}
+}
+
+@article{michalek1999identification,
+  author  = {Michalek, S. and Lerche, H. and Wagner, M. and Mitrovi{\'c}, N. and Schiebe, M. and Lehmann-Horn, F. and Timmer, J.},
+  title   = {On Identification of {Na}$^+$ Channel Gating Schemes Using Moving-Average Filtered Hidden Markov Models},
+  journal = {European Biophysics Journal},
+  year    = {1999},
+  volume  = {28},
+  number  = {7},
+  pages   = {605--609},
+  doi     = {10.1007/s002490050243},
+  annote  = {NO LOCAL PDF (paywalled). Abstract read 2026-08-27 through Europe PMC (PMID
+             10541799) and the record confirmed in Crossref. THIS IS THE EARLIEST VERIFIED
+             instance of the anti-aliasing filter inside a single-channel likelihood, and the
+             reason the manuscript says the late 1990s and not 1992: their words are that the
+             anti-aliasing low-pass filter misleads parameter estimation, that the standard
+             hidden Markov model then identifies the wrong number of closed and open states,
+             and that a modified model considering the anti-aliasing filter, the moving-average
+             filtered hidden Markov model, recovers the gating scheme}
+}
+
+@article{venkataramanan2000identification,
+  author  = {Venkataramanan, Lalitha and Kuc, Roman and Sigworth, Frederick J.},
+  title   = {Identification of Hidden {M}arkov Models for Ion Channel Currents. {III}. Bandlimited, Sampled Data},
+  journal = {IEEE Transactions on Signal Processing},
+  year    = {2000},
+  volume  = {48},
+  number  = {2},
+  pages   = {376--385},
+  doi     = {10.1109/78.823965},
+  annote  = {NO LOCAL PDF (paywalled). Abstract read 2026-08-27 from OpenAlex, record confirmed
+             in Crossref. This is the metastate paper, and its abstract is the one that names the
+             mechanism our scaling argument is against: the effects of the antialiasing filter and
+             of the correlated background noise are considered in a metastate or vector hidden
+             Markov model framework, with the correlated emission probability redefined over
+             successive filtered, sampled points. Parts I and II are 10.1109/78.700963 (colored
+             background noise, 1998) and 10.1109/78.700964 (state-dependent excess noise, 1998)}
+}
+
+@article{qin2000hidden,
+  author  = {Qin, Feng and Auerbach, Anthony and Sachs, Frederick},
+  title   = {Hidden {M}arkov Modeling for Single Channel Kinetics with Filtering and Correlated Noise},
+  journal = {Biophysical Journal},
+  year    = {2000},
+  volume  = {79},
+  number  = {4},
+  pages   = {1928--1944},
+  doi     = {10.1016/S0006-3495(00)76442-3},
+  annote  = {NO LOCAL PDF: what the repository holds is the companion paper, qin2000direct.
+             The two sentences this citation carries were read 2026-08-27 on the article page at
+             PMC1301084: the filtering is modeled using a finite impulse response filter, and the
+             extension of the algorithm to data containing multiple channels is described. STILL
+             UNVERIFIED, and it is the one that matters for our scaling claim: how many channels
+             they demonstrate and at what cost. Do not write a number for it}
+}
+
+@article{qin2000direct,
+  author  = {Qin, Feng and Auerbach, Anthony and Sachs, Frederick},
+  title   = {A Direct Optimization Approach to Hidden {M}arkov Modeling for Single Channel Kinetics},
+  journal = {Biophysical Journal},
+  year    = {2000},
+  volume  = {79},
+  number  = {4},
+  pages   = {1915--1927},
+  doi     = {10.1016/S0006-3495(00)76441-1},
+  annote  = {PDF: Qin\_Auerbach\_Sachs\_2000\_Direct\_Optimization\_HMM\_SingleChannel\_BiophysJ.pdf,
+             read first-hand 2026-08-27. RELEVANT TO THE DERIVATIVE CLAIM, not only to the
+             filter one: they derive the analytical derivatives of a single-channel hidden Markov
+             likelihood with respect to the rate constants, through the forward and backward
+             variables and through the derivative of the matrix exponential, for a quasi-Newton
+             search. Differentiating a recursion that runs the length of the record is therefore
+             not by itself new; what is ours is the ensemble and the integrated observation.
+             The filtering and the multiple-channel extension are NOT in this paper, they are in
+             qin2000hidden}
+}

@@ -275,7 +275,11 @@
   volume  = {4},
   number  = {1},
   pages   = {108--124},
-  doi     = {10.1017/S0266466600011890}
+  doi     = {10.1017/S0266466600011890},
+  note    = {Read first-hand 2026-08-27. PDF:
+             Zadrozny_1988_Gaussian_Likelihood_CT_ARMAX_Stocks_Flows_EconometricTheory.pdf.
+             p.109 integrals of flows carried in the state vector, his word for it is a device;
+             p.115 the same blocks computed with Van Loan's method, cited by name}
 }
 
 @article{fatehi2017kalman,
@@ -1472,4 +1476,31 @@
   doi     = {10.1093/biomet/65.2.297},
   note    = {The portmanteau whiteness test. Same job as our diagnostic (i), but on residual
              autocorrelations rather than on the filter's standardized innovations}
+}
+
+@article{chambers2012discrete,
+  author  = {Chambers, Marcus J. and Thornton, Michael A.},
+  title   = {Discrete Time Representation of Continuous Time {ARMA} Processes},
+  journal = {Econometric Theory},
+  year    = {2012},
+  volume  = {28},
+  number  = {1},
+  pages   = {219--238},
+  doi     = {10.1017/S0266466611000181},
+  note    = {Open submitted version, White Rose eprint 64525; builds the discrete-time
+             representation on the state-space form of Zadrozny (1988), for stocks, flows
+             and mixtures. PDF: Chambers_Thornton_2012_Discrete_Time_Representation_CT_ARMA_EconometricTheory.pdf}
+}
+
+@article{thornton2017continuous,
+  author  = {Thornton, Michael A. and Chambers, Marcus J.},
+  title   = {Continuous Time {ARMA} Processes: Discrete Time Representation and Likelihood Evaluation},
+  journal = {Journal of Economic Dynamics and Control},
+  year    = {2017},
+  volume  = {79},
+  pages   = {48--65},
+  doi     = {10.1016/j.jedc.2017.03.008},
+  note    = {Cited from the open York Discussion Paper 16/10. Flow data are the window average
+             $h^{-1}\int_{th-h}^{th} x(r)\,dr$, handled in state space with the Kalman-Bucy filter;
+             extends Zadrozny (1988). PDF: Thornton_Chambers_2016_CT_ARMA_StockFlow_Likelihood_YorkDP.pdf}
 }
