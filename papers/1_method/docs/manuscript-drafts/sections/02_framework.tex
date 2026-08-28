@@ -251,8 +251,8 @@ measurable at all follow a second ratio and do not (Results).
 % S-tilde = 1 gloss, the gating-variance saturation argument and the equal-variance display. It is
 % design-plane machinery rather than family definition, the display is cited from nowhere in the
 % paper, and half of it already exists in Methods. The paragraph's closing ratio-collapse sentence is
-% kept above, fused onto the definition, because the Results and Figure 5-figure supplement 2 rest
-% on it.
+% kept above, fused onto the definition, because the Results and Figure 5-figure supplement 1 rest
+% on it (that supplement was numbered 2 until the 2026-08-27 renumber).
 % *** LANDING DISCHARGED 2026-08-26: the text below is now in Methods, in the natural-units
 % passage, immediately before the noise ladder. It is kept here as the record of what moved and
 % must NOT be un-commented, or the manuscript will carry it twice. Original note follows. ***
@@ -573,9 +573,54 @@ functions of $(\bm{\mu},\bm{\Sigma})$, but $\mathrm{Var}[\bar y\mid\mathbf{N}]$ 
 $\mathbf{N}$, so $(\mathbf{N},\bar y)$ is not jointly Gaussian and Eq.~\ref{eq:macror} is not the
 exact Bayesian update, a heteroscedastic emission treated as if it were homoscedastic. Nor can it
 be used on the interval average, which is not a function of the occupancy at any one time, so no
-conductance vector on the $K$ states delivers its mean. On the $K^2$ pairs of states a channel
-occupies at the two ends of the window one does, and every interval member is that substitution
-closed by a Gaussian (Appendix~\ref{app:derivation}).
+conductance vector on the $K$ states delivers its mean.
+
+% ANADIDO 2026-08-27 (Luciano, opcion B). LA DIRECTIVA DEL 2026-08-11 PROTEGIA LA ECUACION
+% EQUIVOCADA, y esto es lo que la resuelve. Eq. macror es la actualizacion de moffatt2007estimation,
+% o sea el miembro R: MacroR, el ancestro. MacroIR no estaba en el cuerpo en ninguna forma. Conteo
+% sobre el texto vivo antes de este cambio: gamma_bar_{i->j}, v_bar_{i->j}, la covarianza de frontera
+% y la contraccion con tilde tenian 0 apariciones en 02_framework y 21 en los Apendices 1 y 2. El
+% cuerpo gastaba su unica ecuacion de actualizacion en el metodo que el paper viene a superar, y el
+% titulo de esta subseccion anunciaba una sustitucion que el cuerpo no hacia.
+% LA NOTACION DE FRONTERA VUELVE CON LA ECUACION. Habia salido en la misma pasada (T9) porque ningun
+% display del cuerpo la usaba; ese diagnostico admitia las dos soluciones opuestas y esta es la otra.
+% Ahora se gana el lugar. La version que viajo al Apendice 1 se queda alla: alla abre la subseccion
+% de los momentos y aqui abre la sustitucion, y no dicen lo mismo.
+% EL PARRAFO DEL COSTO NO ES DECORACION: sin el, un lector que ve un objeto de lado K^2 supone que la
+% cuenta cuesta K^2, que es exactamente lo que el Apendice 5 declara como la parte no trivial ("the
+% augmentation says what form the filter takes and not what goes into it").
+On the $K^2$ pairs of states a channel occupies at the two ends of the window one does. A
+\emph{boundary state} is the pair $(i\to j)$ of those two states; an arrow marks an object that
+spans the window, so $P_{i\to j}(\Delta)$ is a transition across it, $\bar{\gamma}_{i\to j}$ the
+conductance averaged over it given that pair, and $\bar{v}_{i\to j}$ the variance that average
+still has once the pair is fixed. A channel that starts in $i$ and ends in $j$ contributes
+$\bar{\gamma}_{i\to j}$ on average, so the interval average is linear in the boundary counts and
+Eq.~\ref{eq:macror} applies to them with nothing added to it,
+\begin{equation}
+  \bm{\mu} \to \bm{\mu}_{0\to\Delta},
+  \qquad
+  \bm{\Sigma} \to \bm{\Sigma}_{0\to\Delta},
+  \qquad
+  \bm{\gamma} \to \bar{\gamma}_{i\to j},
+  \qquad
+  \epsilon^2 \to \epsilon^2 + N_{\mathrm{ch}}\,\bm{\mu}_{0\to\Delta}^\top\bar{\bm{v}},
+  \label{eq:macroir}
+\end{equation}
+where $\bm{\mu}_{0\to\Delta}$ and $\bm{\Sigma}_{0\to\Delta}$ are the mean and covariance of the
+boundary state, $\mu_{i\to j}=\mu_{0,i}P_{i\to j}(\Delta)$, and $\bar{\bm{v}}$ collects the
+$\bar{v}_{i\to j}$, so the last substitution charges to the instrumental term what the
+conductance still varies by once the pair is fixed. The start index
+is then summed away, the next window having no use for it. That is \texttt{IR}, and every other
+interval member is one of these substitutions made in part, each closed by a Gaussian
+(Appendix~\ref{app:derivation}).
+
+The pairs collapse before they are built. Eq.~\ref{eq:macroir} puts
+$\bm{\Sigma}_{0\to\Delta}$ in two places, the predicted variance and the gain, and each contracts
+in closed form to $K$-vectors and $K\times K$ matrices, so no $K^2\times K^2$ object is formed
+anywhere and one window costs $K^3$ however many channels the patch holds
+(Appendix~\ref{app:derivation}). Chaining intervals leaves a single state variable per junction,
+since the end state of one interval is the start state of the next, so the record stays Markov
+across the windows as well as inside them.
 % MOVED 2026-08-12 to 05_discussion.tex, the relation-to-other-work half: that munch2022bayesian
 % meet the same obstruction and resolve it the same way, with their three quoted phrases ("the
 % conjugacy property is lost"; the covariance equations "are still exact for the more general noise
