@@ -70,7 +70,7 @@ substituted.
 
 \subsection*{One cycle, three switches}
 
-Every member on the lattice runs the same four steps on each window: propagate the occupancy
+Every one of the six runs the same four steps on each window: propagate the occupancy
 Gaussian (Eqs.~\ref{eq:mu-prop} and~\ref{eq:sig-prop}), predict the observation
 (Eqs.~\ref{eq:ypred} and~\ref{eq:pred-var}), condition on the recorded average
 (Eqs.~\ref{eq:mu-post} and~\ref{eq:sig-post}), and either carry the posterior to the next
@@ -152,7 +152,7 @@ so the total form would count it twice. % src: legacy/qmodel.h:4557 (averaging==
 
 \subsection*{The members}
 
-Table~\ref{tab:appendix-members} sets the six lattice members against the three switches, and it is
+Table~\ref{tab:appendix-members} sets the six members against the three switches, and it is
 the equation-level counterpart of Table~\ref{tab:members} in the body: where that table says in
 words what each member predicts, this one says which setting of Eqs.~\ref{eq:av0},
 \ref{eq:variance-form} and~\ref{eq:mu-post} produces it.
@@ -175,7 +175,7 @@ Member & window & recursive & interval variance & what it is \\
 \texttt{IR}  & both ends & yes & residual (forced) & \texttt{VR} with the boundary terms restored \\
 \bottomrule
 \end{tabularx}
-\captionof{table}{The six members of the lattice as settings of the three switches. Reading down the
+\captionof{table}{The six members as settings of the three switches. Reading down the
 last column, each row differs from an earlier one in exactly one switch, which is what makes
 the ladder measurable one step at a time. \texttt{IR} is MacroIR; \texttt{INR} is the
 MacroINR of \citet{moffatt2025bayesian}. The data keys under which each is
@@ -200,8 +200,9 @@ $\sum_{j}P_{i\to j}(\Delta)=1$ and $\sum_{j}P_{i\to j}(\Delta)\bar{\gamma}_{i\to
 and the two extra pieces are exactly what switch~1 moves from the third term of
 Eq.~\ref{eq:pred-var} into the second when the window goes from the start state to both
 ends. The
-decompositions differ, the sum does not. What does change between the two members is the
-gain, and at a common prior that is the whole of the \texttt{MR}-to-\texttt{IR} difference.
+decompositions differ, the sum does not; what that leaves as the whole of the difference, and why
+the equality is between two maps from a prior and not between two recordings, is
+Appendix~\ref{app:derivation}.
 % COMPRESSED 2026-08-26, item "COMPRESS ~165 words, the A37 paragraph and the Results-steps
 % paragraph" of docs/shortening_plan.md. Cut here: the on-a-recording caveat, from "It does not
 % follow that the two report the same variance on a recording" to "tested only where the two
@@ -248,9 +249,9 @@ flips, for the reason given in Appendix~\ref{app:derivation}. The two together a
 
 Classical nonlinear least squares has no setting of the three switches. It propagates the
 mean occupancy alone, $\bm{\mu}_\Delta = \mathbf{P}(\Delta)^\top\bm{\mu}_0$, predicts
-$\bar{y}^{\mathrm{pred}}_{0\to\Delta}$ from Eq.~\ref{eq:ypred}, and assigns one constant fitted
-variance to every residual. There is no gain, so no occupancy object is ever conditioned on the
-data. It is the anchor of the comparison rather than a member of the family.
+$\bar{y}^{\mathrm{pred}}_{0\to\Delta}$ from Eq.~\ref{eq:ypred}, and assigns to every residual one
+scale common to the whole record, marginalised rather than fitted (Methods). There is no gain, so
+no occupancy object is ever conditioned on the data.
 % COMPRESSED 2026-08-26, item "COMPRESS ~45 words, Least squares, which is off the lattice" of
 % docs/shortening_plan.md. Cut: "with no covariance and no update", the gloss that the constant
 % variance is fitted as the residual sum of squares over the number of samples, and "Neither term

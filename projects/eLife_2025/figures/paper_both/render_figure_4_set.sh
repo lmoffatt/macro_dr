@@ -35,7 +35,11 @@ JOBS=(
   "figure_4:Figure_4.pdf"
   "figure_4_supplement_standard_error:Figure_4_supplement_standard_error.pdf"
   "figure_4_S1:Figure_4_supplement_sample_corr.pdf"
-  "figure_4_S3:Figure_4_supplement_recursive_ladder.pdf"
+  # 2026-08-27: the recursive ladder moved from slot 3 to slot 2 with the manuscript renumber, so
+  # the notebook that draws it is now figure_4_S2 and it writes Figure_4_S2.pdf. The output names
+  # on the neighbouring lines are pre-2026-08-12 and were already stale before that swap.
+  "figure_4_S2:Figure_4_S2.pdf"
+  "figure_4_S3:Figure_4_S3.pdf"
   "figure_4_supplement_lag_kappa:Figure_4_supplement_lag_kappa.pdf"
   "figure_4_supplement_se_kappa:Figure_4_supplement_se_kappa.pdf"
   "figure_4_supplement_coverage:Figure_4_supplement_coverage.pdf"

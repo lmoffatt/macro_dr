@@ -371,8 +371,10 @@ one, the one member whose variance form is a choice rather than a consequence of
 conditions on (Appendix~\ref{app:members}). The two least-squares arms sit off this lattice, \texttt{LSE} fitting
 the instantaneous deterministic mean and \texttt{ILSE} the same mean averaged over the interval,
 where the \texttt{I} records the window setting and nothing else. Each is the open-loop
-member at its own window setting with the gating variance replaced by one constant fitted over the
-whole record, and what the least-squares arm discards is the variance (Methods).
+member at its own window setting with the gating variance replaced by one scale common to the
+whole record, marginalised rather than fitted, and what the least-squares arm discards is the
+variance; the arm is also run in two parameter configurations, which are different statistical
+models, so every least-squares number below is scoped to one of them (Methods).
 Six and two are the eight members the Results compare, and Table~\ref{tab:members} lists the name
 each goes by there.
 % ADDED 2026-08-12 with the removal of the two least-squares columns from Figure 1 (Luciano's call,
@@ -558,9 +560,23 @@ variance divides it, and nothing else in the update touches the data.
 % DELETED 2026-08-26 (shortening_plan.md, family item 13): "It is also the object the interval
 % version has to rebuild." A forward tease whose content the substitution paragraph below delivers
 % concretely, in the sentence about the K^2 pairs of endpoint states. Nothing points at it.
-Every moment here belongs to a single channel, and the
+Every moment here is carried on a single channel, and the
 factors of $N_{\mathrm{ch}}$ are where the counts over the ensemble enter
 (Appendix~\ref{app:derivation}).
+% COMPRESSED 2026-08-28. The clause was written three times: here, at Methods:280 ("from the first
+% update onward the recursion carries Cov(N)/N_ch instead"), and in Appendix 1's "Every moment in the
+% construction belongs to a single channel" paragraph, which is the fullest of the three (it builds X,
+% mu and Sigma, gives diag(mu)-mu mu^T, and derives every factor of N_ch in Eq. macror). Found by a
+% shingle scan of every framework sentence against Methods and the appendices: this pair scored 0.77
+% and 0.61, the two highest overlaps in the section, and nothing else scored above 0.50 that was not
+% either a body-owned definition or a Methods copy the reader needs before the Results. It is a scope
+% caveat, so it is compressed and not cut (08_length_plan.md: caveats are never deleted to save
+% words), and it now points at both surviving copies. What went: "and not a claim that the channels
+% stay independent under it" and "writing N for the counts by state over the ensemble", 19 words.
+Per channel is a normalization:
+conditioning on a shared recorded value correlates the channels, so from the first update onward
+$\bm{\Sigma}$ is $\mathrm{Cov}(\mathbf{N})/N_{\mathrm{ch}}$ rather than one channel's own
+covariance (Methods, Appendix~\ref{app:derivation}).
 % SLOT SYMBOLS, settled 2026-08-06 (Luciano), after two rounds of getting it wrong: this equation is
 % not a template, it is MacroR, published with gamma, so no neutral letter goes on that slot; k
 % collides with the state count and with the channel index. Sigma*gamma is named g, the name the
@@ -829,9 +845,14 @@ quantity, and the Results state it where the number is quoted.
 The same matrix repairs what it measures. The sandwich covariance \cite{huber1967behavior,godambe1960optimum}
 \[ \Sigma=\mathbf{H}^{-1}\,\mathbf{J}\,\mathbf{H}^{-1}=\mathbf{H}^{-1/2}\,\mathbf{C}\,\mathbf{H}^{-1/2} \]
 substitutes the information the likelihood actually carries for the information it reported. It and
-the bias vector $b$ are first-order approximations (Appendix~\ref{app:diagnostics}). We verify it
-directly, without leaning on the expansion, against the empirical covariance of the estimates over
-the simulated recordings (Figure~\ref{fig:clouds}).
+the bias vector $b$ are first-order approximations, verified without leaning on the expansion
+% COMPRESSED 2026-08-28, same scan, overlap 0.40. Appendix 4 carries the fuller copy in one
+% sentence: "Both corrections are first order, and the sandwich is verified directly against the
+% empirical covariance of the estimates over the simulated recordings and against the coverage of
+% the nominal region", which is this claim plus the coverage check the body never mentioned. The
+% body keeps the claim and both pointers; the standalone "We verify it directly" sentence goes.
+against the empirical covariance of the estimates over the simulated recordings
+(Figure~\ref{fig:clouds}, Appendix~\ref{app:diagnostics}).
 
 The distortion splits into two physically distinct parts.
 % POINTER DROPPED 2026-08-26. It read "(Figure~\ref{fig:plane}--figure supplement 1)" and was the
@@ -870,9 +891,9 @@ any factor and the full matrix is needed.
 % vestigial. The idea is what the Results use, in words, and it is what stays.
 
 A matrix is not a number, and two scalars summarise it without pretending to replace it. With
-$\lambda_i$ the eigenvalues of $\mathbf{C}$ on the retained subspace (Methods),
+$\lambda_i$ the eigenvalues of $\mathbf{C}$ on the retained subspace, of dimension $d$ (Methods),
 $\bar e = d^{-1}\sum_i \log\lambda_i$ and $s^2 = \mathrm{Var}_i(\log\lambda_i)$, the population
-variance with divisor $d$, the two reported
+variance with the same divisor, the two reported
 throughout are the exponentials
 \begin{equation}
   m \;=\; e^{\bar e} \;=\; \Bigl(\textstyle\prod_i \lambda_i\Bigr)^{1/d},

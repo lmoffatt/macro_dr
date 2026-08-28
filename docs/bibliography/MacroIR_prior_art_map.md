@@ -88,7 +88,11 @@ The old map called it an *"LNA / moment state-space filter"* and quoted them arg
 correction step. (2) **They also argue against filtering on accuracy**, comparing their DME method
 favourably against an EKF, and reporting roughly **0.5 h vs 36 h**. So they are a *sharper* adversary
 than the old map made them, not a softer one. Our paper's answer must be a like-for-like accuracy
-comparison, not "they only cared about speed". (The old map's other Del Core correction stands and is
+comparison, not "they only cared about speed". **[2026-08-27: the prior-art appendix reproduced the
+error anyway, writing that they "argue against filtering on cost and measure it", and was corrected the
+same day. Their figure 9d is a lower relative error than the extended Kalman filter, and it comes
+BEFORE the half hour against thirty-six of figure 9e; verified in their PDF, the paragraph above the
+timings. This errata item earned its keep.]** (The old map's other Del Core correction stands and is
 worth repeating: **they do cite Moffatt 2007, Milescu 2005 and Münch 2022** (refs 30-32) and name
 "MacroR" in the text. The pre-correction version of this map said they did not. Never repeat that.)
 
@@ -213,10 +217,12 @@ and the new prior-art appendix repeated it as *"standard in control and target t
 econometrics, written at the U.S. Bureau of the Census, on quarterly and annual stock and flow data;
 there is no control and no tracking in it, and its only control citations are textbooks (Astrom;
 Kwakernaak & Sivan) plus Morf & Kailath for the square-root algorithm. **No target-tracking instance of
-this construction was found** in the searches of 2026-08-27. Both sentences were changed the same day,
-the body to "time-series econometrics" and the appendix to "time-series econometrics and in process
-control". The control half of the field claim belongs to Fatehi & Huang 2017 and Yaghoobi & Sarkka 2024
-(process control, laboratory assays collected over a period), neither of which is in `biblio.bib`.
+this construction was found** in the searches of 2026-08-27. Both sentences were changed the same day to
+**"time-series econometrics"**, in the body and in the appendix. The appendix carried "and in process
+control" for a few hours and then dropped it (Luciano's call): that half travelled without a citation
+of its own, since the control instances, Fatehi & Huang 2017 and Yaghoobi & Sarkka 2024 (laboratory
+assays collected over a period), are not in `biblio.bib`. The subfield and its name, IMKF, stay here in
+case a referee asks for them.
 
 **E18. "Since 1992" rests on Fredkin & Rice 1992, and that paper is not about the filter.**
 Old map, E11 headline: *"The anti-alias filter has been inside the likelihood since 1992 - in the
@@ -327,6 +333,12 @@ the established tool, show it is needed.
 ### A.4 Celentano & Hawkes 2004
 - Biophys. J. 87(1):276-294. doi:10.1529/biophysj.103.036632. PDF:
   `CelentanoHawkes_2004_Covariance_Matrix_Kinetic_Fitting_BiophysJ.pdf`.
+- **NOT least squares, and do not call it that (added 2026-08-27).** Their own abstract: covariance
+  fitting "couples Q-matrix calculations with a **maximum likelihood** algorithm", and they contrast it
+  with "conventional sum-of-squares minimization". Stepanyuk (A.5) is likewise a Gaussian likelihood.
+  The prior-art appendix called the pair "the generalized-least-squares route" and was corrected the
+  same day to the maximum-likelihood route that carries the correlation as a prior and never conditions
+  on the trace.
 - Direct fit of kinetic parameters to macroscopic currents using the full inter-time-point covariance
   matrix of intrinsic noise (O(n³)). The covariance is **between time points** (autocorrelation of the
   process), not a model of the measurement's within-interval time-average. Observation still

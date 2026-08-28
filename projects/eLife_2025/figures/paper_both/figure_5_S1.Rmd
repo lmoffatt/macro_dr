@@ -1,5 +1,5 @@
 ---
-title: "Figure 5 supplement 2 — the noise and the channel count enter only through their ratio"
+title: "Figure 5—figure supplement 1 — the noise and the channel count enter only through their ratio"
 author: "Luciano Moffatt"
 date: "`r Sys.Date()`"
 output: html_document
@@ -144,7 +144,7 @@ resid <- qty %>%
   left_join(qty %>% group_by(quantity) %>%
               summarise(boot = median(y_hi / y_lo), .groups = "drop"), by = "quantity")
 
-cat(sprintf("figure_5_S2: %d lines per panel (%d intervals x %d channel counts), %d cells\n",
+cat(sprintf("figure_5_S1: %d lines per panel (%d intervals x %d channel counts), %d cells\n",
             n_distinct(qty$curve), n_distinct(qty$interval_in_tau), n_distinct(qty$Num_ch),
             n_distinct(qty[c("noise", "Num_ch", "interval_in_tau")])))
 resid %>% as.data.frame() %>% print(digits = 3)
@@ -240,7 +240,7 @@ g <- wrap_plots(plots, ncol = 2, byrow = TRUE) +
   theme(legend.position = "right", legend.title = element_text(size = 8),
         legend.text = element_text(size = 7), legend.key.height = unit(9, "pt"))
 
-ggsave("Figure_5_S2.pdf", g, width = 7.0, height = 7.8, device = cairo_pdf)
+ggsave("Figure_5_S1.pdf", g, width = 7.0, height = 7.8, device = cairo_pdf)
 g
 ```
 

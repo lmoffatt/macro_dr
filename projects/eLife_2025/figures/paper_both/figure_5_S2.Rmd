@@ -1,5 +1,5 @@
 ---
-title: "Figure 5—figure supplement 1 — each member's distortion against the memory left in its own residual"
+title: "Figure 5—figure supplement 2 — each member's distortion against the memory left in its own residual"
 author: "Luciano Moffatt"
 date: "`r Sys.Date()`"
 output: html_document
@@ -67,7 +67,7 @@ dat <- spec %>%
          d = factor(sprintf("%g", interval_in_tau),
                     levels = sprintf("%g", sort(unique(interval_in_tau)))))
 
-cat(sprintf("figure_5_S1: %d marks; per member: %s\n", nrow(dat),
+cat(sprintf("figure_5_S2: %d marks; per member: %s\n", nrow(dat),
             paste(sprintf("%s=%d", levels(dat$member), as.integer(table(dat$member))),
                   collapse = " ")))
 ```
@@ -91,7 +91,7 @@ g <- ggplot(dat, aes(1 / tau_int, mag, colour = d)) +
         strip.background = element_rect(fill = "grey92", colour = NA),
         strip.text = element_text(face = "bold", size = 8))
 
-ggsave("Figure_5_S1.pdf", g, width = 7.0, height = 4.8, device = cairo_pdf)
+ggsave("Figure_5_S2.pdf", g, width = 7.0, height = 4.8, device = cairo_pdf)
 g
 ```
 

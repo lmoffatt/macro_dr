@@ -118,7 +118,7 @@ SIDES <- list(
 # 16 columns, so per_row is NOT the body's. MEASURED, not solved: a synthetic render of this same
 # layout at 16 columns puts 0.204 at x 0.1817, y 0.1807, 99.5 per cent isotropic
 # (tmp/calib_fig4.R, tmp/measure_fig4.py). The cell comes out 1.32 mm, wider than the body's 1.14.
-fig4_render(SIDES, per_row = 0.204, out = "Figure_4_S3.pdf")
+fig4_render(SIDES, per_row = 0.204, out = "Figure_4_S2.pdf")
 ```
 
 ```{r measured-table}

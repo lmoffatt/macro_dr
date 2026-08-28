@@ -170,7 +170,7 @@ the Discussion.
 % limitation.
 Every
 maximum-likelihood grid cell reported here, the least-squares arm included, used
-$10^4$ recordings, with one exception: the cell that carries the coverage result
+$10^4$ recordings, with one exception: the cell (the grid is defined below) that carries the coverage result
 ($N_{\mathrm{ch}}=10$, $\widetilde{S} = 0.005$, \texttt{IR}) was run at
 $10^5$, because coverage of a nominal $95\%$ region in six parameters needs a thousand
 independent fits and those fits are taken at group size $100$, so $10^5$ recordings are
@@ -276,10 +276,10 @@ with the covariance that occupancy implies for one channel,
 For the schemes run here $\bm{\pi}$ is the first basis vector: the record opens at zero agonist
 with every channel shut, so $\bm{\Sigma}_0=\bm{0}$ and the spread the filter carries is generated
 entirely by the propagation of Eq.~\ref{eq:sig-prop}. Eq.~\ref{eq:init} is also the one moment at
-which $\bm{\Sigma}$ genuinely is a single channel's covariance: from the first update onward,
-conditioning on a shared recorded value correlates the channels, so the recursion carries
-$\mathrm{Cov}(\mathbf{N})/N_{\mathrm{ch}}$, and every factor of $N_{\mathrm{ch}}$ here comes from
-that distinction.
+which $\bm{\Sigma}$ genuinely is a single channel's covariance; from the first update onward the
+recursion carries $\mathrm{Cov}(\mathbf{N})/N_{\mathrm{ch}}$ instead
+(Appendix~\ref{app:derivation}), and every factor of $N_{\mathrm{ch}}$ here comes from that
+distinction.
 % COMPRESSED 2026-08-26 (shortening_plan.md, Methods item 8), but NOT to the residue the item
 % specifies: that residue drops "the one moment at which Sigma genuinely is a single channel's
 % covariance", which the appendix item on the linear-filtering frame names as the clause that must
@@ -335,10 +335,10 @@ first and second moments of the integrated conductance over paths from $i$ to $j
 % ADDED 2026-08-12 (10_concept_census.md, defect 6 and the one live hit of the new check.sh item
 % 10). F_1 and F_2 appeared in Eq. pseudocount, in this section, with no gloss, and their definition
 % is in Appendix 1, which prints after Methods. One clause; the derivation stays where it is.
-$P_{i\to j}(\Delta)$, which is zero wherever the transition cannot happen within one window:
-at zero agonist $k_{\mathrm{on}}[A]$ vanishes identically and $P_{C\to O}$ is zero over the
-whole pre-pulse segment, so the quotient is $0/0$ in exact arithmetic and, in floating point,
-a ratio of two quantities no larger than the rounding error that produced them. The
+$P_{i\to j}(\Delta)$, which vanishes wherever the transition cannot happen within one window and
+does so over the whole pre-pulse segment of this protocol
+(Appendix~\ref{app:derivation}), leaving the quotient $0/0$ in exact arithmetic and, in floating
+point, a ratio of two quantities no larger than the rounding error that produced them. The
 implementation does not test for that case; it reads each quotient as a posterior mean and
 adds a conjugate pseudo-count $\varepsilon$ to numerator and denominator alike,
 \begin{equation}
@@ -601,11 +601,17 @@ likelihood is misspecified with respect to the exact simulator. Their difference
 $\theta_{\mathrm{pool}} - \theta_{\mathrm{sim}}$ is the misspecification bias. Every
 diagnostic below is computed at both anchors, and the two answer different
 questions: at $\theta_{\mathrm{pool}}$ the score is zero by construction so bias
-washes out, whereas at $\theta_{\mathrm{sim}}$ the bias is visible but the Fisher
-information can be indefinite away from the maximum. Each figure states which anchor
+washes out, whereas at $\theta_{\mathrm{sim}}$ the bias is visible. Each figure states which anchor
 it uses.
 % src: papers/1_method/archive/section-plans-20260729/methods.md#M7 (two anchors; state the anchor per figure)
-% src: papers/_program/provenance.md#5 (theta_pool score ~ 0; theta_sim Fisher can be indefinite)
+% SUJETO CORREGIDO 2026-08-28. La oracion decia "...the bias is visible but the Fisher information
+% can be indefinite away from the maximum", y el sujeto estaba equivocado. Indefinida en theta_sim
+% es la Fisher DIFERENCIADA, no el ancla: el ancla analitica es Sigma_t E[...] de terminos PSD y es
+% semidefinida positiva en todo theta, como dice esta misma seccion cincuenta lineas mas abajo. Un
+% lector que junte las dos lecturas concluye que hay un error. El hecho, que es real y esta medido,
+% se dice ahora donde su sujeto vive, en el parrafo de la segunda construccion.
+% El src que estaba aqui, provenance.md#5, no sostiene la mitad borrada: "indefinit" no aparece en
+% provenance.md (grep, 2026-08-28). El productor real es el encabezado del lane, citado abajo.
 
 \subsection*{Diagnostics and the Gaussian-Fisher anchor}
 
@@ -659,12 +665,31 @@ indefinite.
 % src: projects/eLife_2025/ops/local/figure_3_mle_LSE.macroir:152-168 (Fim-less gaussian battery; gidm/gfc/gdcc/gdib)
 
 A second Fisher construction exists in the codebase, a central difference of the
-analytic score. It is not interchangeable with the analytic anchor per recording,
-being widely indefinite replicate by replicate, which is one reason the body is
-anchored on the analytic construction; averaged over recordings it is the check the
-analytic anchor is measured against, over the full roster, in Supplementary File~1,
-which also holds its settings and the direction convention of the comparison. An
-earlier battery anchored on it (data directory \texttt{433ed13}) is retained in the
+analytic score. It is not interchangeable with the analytic anchor: at
+$\theta_{\mathrm{sim}}$ it is indefinite over a region of the design plane, and stays so after
+averaging over the ensemble, which is why the body is anchored on the analytic construction; it is
+nonetheless the check that anchor is measured against, over the full roster, in Supplementary
+File~1, which also holds the region, its settings and the direction convention of the comparison.
+% REESCRITA 2026-08-28. Decia "not interchangeable with the analytic anchor PER RECORDING, being
+% widely indefinite REPLICATE BY REPLICATE ... AVERAGED OVER RECORDINGS it is the check". Tres
+% defectos en una oracion. (1) El encabezado del lane prohibe esa forma de reportarlo: lambda_min es
+% concava, asi que E[lambda_min(F_i)] <= lambda_min(E[F_i]) y la indefinitud por replica sobrestima;
+% el texto que prohibe decir "X% of replicates were indefinite" esta en
+% projects/eLife_2025/ops/local/figure_3_mle_fisher_only.macroir, TRAP 2. (2) El "averaged over
+% recordings" implicaba que el promedio limpia el problema, y no lo limpia. (3) Desaprovechaba el
+% hecho fuerte, que es que sobrevive al promedio.
+% src: MEDIDO 2026-08-28 eigendescomponiendo las matrices 6x6 de
+% projects/eLife_2025/figures/data/a202e03/*_nsim_10000_*_battery_sim.csv (variable
+% Likelihood_Numerical_Fisher_Information, statistic=value, probit=mean, sin quantile_level, contra
+% Gaussian_Fisher_Information statistic=mean probit=mean): 224 celdas macro (7 miembros + los dos
+% brazos LSE, 4 N_ch, 7 intervalos, S~ = 0.01). El numerico da autovalor minimo negativo en 26; el
+% analitico en 0. Reparto: NR 9, R 6, LSE sin promediar 6, MR 5; IR, INR, VR y el brazo promediado
+% ninguna. Region de NR: dt/tau = 0.5 y 1 a los cuatro N_ch, mas 0.2 a N_ch = 1e4, que reproduce
+% exactamente lo que el encabezado del lane dice haber medido el 2026-08-15 (TRAP 1). Script en
+% tmp/fim_psd/psd.py. NUNCA leerlo de Min_Eigenvalue<...> ni de los espectros emitidos: el escalar
+% retiene solo autovalores por encima de la tolerancia y nunca devuelve un negativo
+% (likelihood.cpp:591-595), y la descomposicion PSD estricta corta en W.empty y emite ceros.
+An earlier battery anchored on it (data directory \texttt{433ed13}) is retained in the
 deposit; no number reported in this paper is taken from it.
 % src: supplementary_file_1.tex S1.5 (rewritten 2026-08-25: full-roster comparison from
 % figures/data/a202e03, fisher_only lane, seed 20260814; the 433ed13 medians and the old
@@ -679,7 +704,8 @@ deposit; no number reported in this paper is taken from it.
 One edge case governs how a cell is summarised, and it is by design rather than by accident. The anchor can be near-singular where a parameter is unidentifiable, which happens once the open population relaxes (Figure~\ref{fig:time}--figure supplements 1 and 2); there we diagonalize $\mathbf{H}$ and retain the eigenmodes whose eigenvalue exceeds a tolerance set relative to the largest, $\lambda_i > \lambda_{\max}\cdot 10^{-10}$, evaluate every inverse power on that retained subspace alone, and leave the quantity undefined, not finite, when the retained subspace is empty. The dimension $d$ of Eq.~\ref{eq:magnitude-anisotropy} is the dimension of that subspace, so a cell where a direction has been dropped is summarised over fewer directions than one where none has. Undefined is not zero, and the maps render those cells in grey to keep the two apart.
 
 The comparison of $J$ against $\bar G$ is defined, with its sign convention and its two
-scalar summaries (Eq.~\ref{eq:magnitude-anisotropy}), in the body; on the least-squares branch it
+scalar summaries (Eq.~\ref{eq:magnitude-anisotropy}), in the body; on the least-squares branch the
+anchor is Eq.~\ref{eq:lse-fisher} rather than Eq.~\ref{eq:gaussian-fisher} and it
 carries a further premise, that the residuals are homoscedastic, and the Results state
 that premise where the ratio is quoted.
 % COMPRESSED 2026-08-12 (09_carve_plan.md). The sentence restated the white1982

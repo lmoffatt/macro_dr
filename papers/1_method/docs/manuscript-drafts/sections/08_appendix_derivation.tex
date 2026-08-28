@@ -30,9 +30,14 @@
 \section*{The interval likelihood, derived}
 
 The body states what each member of the family conditions on and what that buys. This
-appendix carries the derivation behind those statements: the boundary-state construction and the
-moments it needs, what separates the start-conditioned members from the boundary-conditioned one,
-and the correspondence with the linear-filtering literature. It is written to be checked rather
+appendix carries the derivation behind those statements, in the order it is built: the law of the
+interval average and why it has no closed form, the boundary-conditioned moments and how they are
+evaluated, the three steps that turn the instantaneous update into the interval one, the
+start-conditioned members stated from their own assumptions, the two algebraic differences that
+separate them from the boundary-conditioned one, and both held against the exact law. Three
+subsections close it and depend on none of the others: the correspondence with the
+linear-filtering literature, what the uniform acquisition window misses against a real amplifier,
+and what was checked numerically and to what tolerance. It is written to be checked rather
 than read in sequence, and every equation the body or Methods refers to is numbered here.
 
 \begin{tcolorbox}[title={Three marks, and each one says one thing}, colback=gray!5, colframe=gray!55]
@@ -67,82 +72,6 @@ ends are $0$ and $\Delta$, and a collapsed object is defined the moment its pair
 %       with the reason recorded below Eq. sig-post.
 % (iii) the SI's E_i for the collapsed second moment is not used: E_2 and E_3 are the divided
 %       differences here, and a third E would collide.
-
-\subsection*{The acquisition kernel, and what the uniform window misses}
-% [BESSEL-BOUND] THIS IS NOW THE CANONICAL SITE. Moved here 2026-08-12 from a comment block under
-% the Theory paragraph, where the bound had been computed and printed in prose but the algebra and
-% the table were visible only to whoever opened the source. The note was CLOSED 2026-08-11 and stays
-% closed; what follows is its content as text. The body keeps two sentences, one of which (first
-% order for a white contribution, second order for a correlated one) is what makes this concession
-% and the noise-model concession of the Discussion one concession. Do not re-open the question of
-% how much to print without reading 05_discussion.tex's Bessel paragraph first: the three sites are
-% deliberately divided into the scope statement (body), the algebra (here) and the operational
-% recipe (Discussion).
-
-The likelihood implements the boxcar of Eq.~\ref{eq:obs-avg} exactly, while a real acquisition
-kernel is that boxcar composed with the amplifier's analogue low-pass, so what is unmodelled is
-governed by one dimensionless group, the cutoff frequency against the acquisition window,
-$f_c\Delta$. For any component flat on the scale of $\Delta$, the effect on the two objects the
-likelihood uses, the variance of a recorded value and the covariance between consecutive ones, is
-
-\begin{center}
-\begin{tabular}{@{}lccccccc@{}}
-\toprule
-$f_c\Delta$ & $0.2$ & $0.5$ & $1$ & $2$ & $5$ & $10$ & $20$ \\
-\midrule
-variance deficit & $61.5\%$ & $29.6\%$ & $14.7\%$ & $7.4\%$ & $2.9\%$ & $1.5\%$ & $0.74\%$ \\
-lag-one correlation $\rho_1$ & $64.1\%$ & $21.1\%$ & $8.6\%$ & $4.0\%$ & $1.5\%$ & $0.75\%$ & $0.37\%$ \\
-error on a confidence interval & $61\%$ & $19\%$ & $8.3\%$ & $3.9\%$ & $1.5\%$ & $0.74\%$ & $0.37\%$ \\
-\bottomrule
-\end{tabular}
-\end{center}
-
-% COMPRESSED 2026-08-26, item "COMPRESS ~60 words, acquisition-kernel subsection" of
-% docs/shortening_plan.md. Two pieces of rhetorical scaffolding are gone, the opening "Four
-% properties of that table matter more than the numbers in it" and the closing "The two concessions
-% are one concession"; all four numeric facts the item protects are untouched, and the surviving
-% statement that the residue lands in the instrumental-noise partition where the Discussion already
-% argues an unmeasured departure of the noise model lives now carries the join by itself. Actual
-% saving ~21 words, not the ~60 the item estimates: the item names only these two sentences as
-% removable and everything else in the paragraph is one of the protected facts.
-From $f_c\Delta=1$ upward the
-deficit is $0.147/(f_c\Delta)$ and $\rho_1$ is $0.075/(f_c\Delta)$, while $\rho_2$ and every longer
-lag are zero to four decimals: the residue is a nearest-neighbour effect of known size. The total is
-conserved, $\mathrm{Var}+2\sum_k\mathrm{Cov}_k=S/\Delta$ to six decimals at every setting, forced by
-the filter having unit gain at zero frequency, so what a likelihood allowing no such covariance sees
-is a misallocation of variance between the diagonal and its neighbours rather than a loss of it. The
-pole count does not enter: four poles, eight poles and a Gaussian of the same $-3\;\mathrm{dB}$
-frequency agree to the third decimal from $f_c\Delta=0.5$ upward, so the width can be quoted as the
-Gaussian equivalent $\sigma_f=\sqrt{\ln 2}/(2\pi f_c)=0.1325/f_c$, a ten-to-ninety rise time of
-$0.34/f_c$, which is the convention electrophysiology already uses for filter width
-\citep{colquhoun1995fitting}.
-% CITATION RESTORED 2026-08-12. Compressing the body's Bessel paragraph dropped
-% \citep{colquhoun1995fitting} and left the entry uncited, which check.sh item 5 caught. It belongs
-% here rather than there: the rise-time convention is what lets a reader check sigma_f against their
-% own amplifier's specification instead of taking ours.
-And the kinetics are the protected part: the deficit is first order in $1/(f_c\Delta)$
-for the instrumental noise and second order for a component carrying a correlation time of its own,
-because unit gain at zero frequency preserves the integral of an autocovariance and the
-block-averaged variance of a short-correlated component depends on that integral alone to leading
-order. At $f_c\Delta=5$ the white term loses $2.94\%$ and a gating term with correlation time
-$\Delta$ loses $0.11\%$, a factor of $27$, so the residue lands in the instrumental-noise partition,
-which is where the Discussion already argues an unmeasured departure of the noise model lives.
-
-What does not scale with the group is the interval holding the concentration jump: group delay plus
-rise displace and smear the transient by about $0.69/f_c$ at four poles, a fixed time rather than a
-fraction of $\Delta$, so that one interval carries an error the expansion says nothing about, and
-the honest recipe discards or flags the first interval after a step.
-
-One property of this family follows from the same algebra and a point-sampling method does not have
-it. Because the observable \emph{is} the integral, block-averaging a record down to a coarser
-$\Delta$ produces exactly the observable of Eq.~\ref{eq:obs-avg} at any decimation factor, with no
-aliasing question to answer; after decimation the only unmodelled piece left is the residual kernel,
-which is the table above. That is what makes ``average the record first'' a scoping statement rather
-than a workaround.
-% src: papers/1_method/decisions/recompute/bessel_bound.py (numpy + scipy, no data files, ~30 s),
-% which computes the table and each of the four properties. Read and re-run before quoting any of
-% these numbers in a different context; they are properties of boxcar-composed-with-Bessel and of
-% nothing in this paper's simulations, which carry no filter at all.
 
 \subsection*{The interval average, and how the members are built}
 % MOVED HERE 2026-08-10 from 02_framework.tex, three blocks, no sentence rewritten except where
@@ -181,12 +110,16 @@ sum, so the posterior over channels does not factorize~\citep{moffatt2007estimat
 % _program/research_program.md (Bridge 2). The host sentence for the cross-reference is the
 % lumpability clause above.
 
-Every moment in the construction belongs to a single channel. Writing $\mathbf{X}$ for the
+Every moment in the construction is carried on a single channel. Writing $\mathbf{X}$ for the
 indicator vector of the state one channel occupies, which is one on that state and zero
 elsewhere, $\bm{\mu}=\mathbb{E}[\mathbf{X}]$ is its probability vector and
 $\bm{\Sigma}=\mathrm{Cov}(\mathbf{X})$ its covariance, which is
 $\mathrm{diag}(\bm{\mu})-\bm{\mu}\bm{\mu}^\top$ for a channel nothing has been observed about
-and vanishes when its state is known. Channels are independent of each other, so the counts
+and vanishes when its state is known. Per channel is a normalization the whole construction is
+carried in, and not a claim that the channels stay independent under it: conditioning on a shared
+recorded value correlates them, so from the first update onward $\bm{\Sigma}$ is
+$\mathrm{Cov}(\mathbf{N})/N_{\mathrm{ch}}$ and not one channel's own covariance. Before any
+observation the channels are independent of each other, so the counts
 $\mathbf{N}=\sum_c \mathbf{X}^{(c)}$ over the ensemble have
 $\mathbb{E}[\mathbf{N}]=N_{\mathrm{ch}}\bm{\mu}$ and
 $\mathrm{Cov}(\mathbf{N})=N_{\mathrm{ch}}\bm{\Sigma}$, which is where every factor of
@@ -497,7 +430,9 @@ unexplained, so naming the state names it.
 % que es lo que la nota del 2026-08-26 exige que esta subseccion conserve.
 No conductance vector on the $K$ states delivers the mean of an interval average, and on the
 $K^2$ boundary pairs one does. That substitution is Eq.~\ref{eq:macroir} of the body, and three
-steps carry it out here.
+steps carry it out here. The two counts are one: the first three substitutions of
+Eq.~\ref{eq:macroir} are step one, its fourth is step two, and the start index the body sums away
+is step three.
 % PUNTERO ANADIDO 2026-08-27: el cuerpo ahora MUESTRA la sustitucion (Ec. macroir), asi que esta
 % subseccion pasa a ser su desarrollo y no su unica sede. Sin el puntero las dos se leen como dos
 % enunciados independientes de lo mismo.
@@ -808,7 +743,8 @@ the second term of Eq.~\ref{eq:pred-var} is
 $\bm{\mu}_0^\top\mathrm{Var}_{j}[\bar{\gamma}_{i\to j}\mid i]$, which is what
 the residual form removes from the third, so from the same state \texttt{MR} and \texttt{IR}
 assign the interval average the same variance by two different decompositions and the whole
-of what separates them is the gain (Appendix~\ref{app:members}). In the other direction, the predicted
+of what separates them is the gain, an identity written out at
+Eq.~\ref{eq:mr-ir-identity}. In the other direction, the predicted
 variance divides the gain, so changing the variance form changes the update as well:
 \texttt{VR} removes that spread from the third term without restoring it in the second,
 predicts less variance than either from the same state, and its posterior departs from
@@ -946,19 +882,20 @@ For a state $\mathbf{x}$ and a scalar observation $y$ jointly Gaussian, the filt
   \mathbf{x}^{\mathrm{post}}=\mathbf{x}^{\mathrm{prior}}
     +\frac{\mathrm{Cov}(\mathbf{x},y)}{\mathrm{Var}(y)}\bigl(y-\mathbb{E}[y]\bigr),
   \qquad
-  \mathbf{P}^{\mathrm{post}}=\mathbf{P}^{\mathrm{prior}}
+  \bm{\Sigma}^{\mathrm{post}}=\bm{\Sigma}^{\mathrm{prior}}
     -\frac{\mathrm{Cov}(\mathbf{x},y)\,\mathrm{Cov}(\mathbf{x},y)^\top}{\mathrm{Var}(y)} ,
   \label{eq:kf}
 \end{equation}
-which is Eq.~\ref{eq:macror} up to the per-channel convention, the source of the factors of
+written in the symbols used here, the state covariance that literature writes $\mathbf{P}$ for
+being $\bm{\Sigma}$ throughout this paper. It is Eq.~\ref{eq:macror} up to the per-channel convention, the source of the factors of
 $N_{\mathrm{ch}}$ there and not here. The two frames do not differ in the update at all: both are
 the conditioning of a joint Gaussian, and what is usually called the gain is the ratio of the cross
 block to the observation variance. The entire content of either derivation is the computation of
 the three blocks $\mathbb{E}[y]$, $\mathrm{Var}(y)$ and $\mathrm{Cov}(\mathbf{x},y)$ for a recorded
 value that is an average over the window.
 
-The standard difficulty is that $\bar y$ is not a function of the state at any single time, so no
-observation matrix $\mathbf{H}$ satisfies $\bar y=\mathbf{H}\mathbf{x}_\Delta+v$. The device is
+The standard difficulty is that $\bar y$ is not a function of the state at any single time, so it
+is not a fixed linear functional of $\mathbf{x}_\Delta$ plus noise. The device is
 state augmentation: carry the running integral
 $z_t=\int_0^{t}\bm{\gamma}^\top\mathbf{N}(s)\,\mathrm{d}s$ alongside the counts, so that
 $(\mathbf{N},z)$ propagates jointly and the recorded value is $z_\Delta/\Delta$ plus instrumental
@@ -1017,9 +954,7 @@ the next window's integral is a fresh one and is independent of the old given th
 \texttt{MR} is not the augmented filter under any choice of blocks. It is the filter for a
 misspecified measurement model,
 \begin{equation}
-  \bar y = \mathbf{H}\mathbf{N}_0 + v(\mathbf{N}_0),
-  \qquad
-  \mathbf{H}=\bar{\bm{\gamma}}_0^\top,
+  \bar y = \bar{\bm{\gamma}}_0^\top\mathbf{N}_0 + v(\mathbf{N}_0),
   \qquad
   \mathrm{Var}\bigl[v\mid \mathbf{N}_0\bigr]=\epsilon^2_{0\to\Delta}+\mathbf{N}_0^\top\mathbf{w},
   \label{eq:mr-kf}
@@ -1052,9 +987,85 @@ construction with three readings.
 % the presentation. Residue is ~170 words rather than the ~95 the item estimates, because those
 % three retained contents do not compress further without dropping one of them.
 
+\subsection*{The acquisition kernel, and what the uniform window misses}
+% [BESSEL-BOUND] THIS IS NOW THE CANONICAL SITE. Moved here 2026-08-12 from a comment block under
+% the Theory paragraph, where the bound had been computed and printed in prose but the algebra and
+% the table were visible only to whoever opened the source. The note was CLOSED 2026-08-11 and stays
+% closed; what follows is its content as text. The body keeps two sentences, one of which (first
+% order for a white contribution, second order for a correlated one) is what makes this concession
+% and the noise-model concession of the Discussion one concession. Do not re-open the question of
+% how much to print without reading 05_discussion.tex's Bessel paragraph first: the three sites are
+% deliberately divided into the scope statement (body), the algebra (here) and the operational
+% recipe (Discussion).
+
+The likelihood implements the boxcar of Eq.~\ref{eq:obs-avg} exactly, while a real acquisition
+kernel is that boxcar composed with the amplifier's analogue low-pass, so what is unmodelled is
+governed by one dimensionless group, the cutoff frequency against the acquisition window,
+$f_c\Delta$. For any component flat on the scale of $\Delta$, the effect on the two objects the
+likelihood uses, the variance of a recorded value and the covariance between consecutive ones, is
+
+\begin{center}
+\begin{tabular}{@{}lccccccc@{}}
+\toprule
+$f_c\Delta$ & $0.2$ & $0.5$ & $1$ & $2$ & $5$ & $10$ & $20$ \\
+\midrule
+variance deficit & $61.5\%$ & $29.6\%$ & $14.7\%$ & $7.4\%$ & $2.9\%$ & $1.5\%$ & $0.74\%$ \\
+lag-one correlation $\rho_1$ & $64.1\%$ & $21.1\%$ & $8.6\%$ & $4.0\%$ & $1.5\%$ & $0.75\%$ & $0.37\%$ \\
+error on a confidence interval & $61\%$ & $19\%$ & $8.3\%$ & $3.9\%$ & $1.5\%$ & $0.74\%$ & $0.37\%$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+% COMPRESSED 2026-08-26, item "COMPRESS ~60 words, acquisition-kernel subsection" of
+% docs/shortening_plan.md. Two pieces of rhetorical scaffolding are gone, the opening "Four
+% properties of that table matter more than the numbers in it" and the closing "The two concessions
+% are one concession"; all four numeric facts the item protects are untouched, and the surviving
+% statement that the residue lands in the instrumental-noise partition where the Discussion already
+% argues an unmeasured departure of the noise model lives now carries the join by itself. Actual
+% saving ~21 words, not the ~60 the item estimates: the item names only these two sentences as
+% removable and everything else in the paragraph is one of the protected facts.
+From $f_c\Delta=1$ upward the
+deficit is $0.147/(f_c\Delta)$ and $\rho_1$ is $0.075/(f_c\Delta)$, while $\rho_2$ and every longer
+lag are zero to four decimals: the residue is a nearest-neighbour effect of known size. The total is
+conserved, $\mathrm{Var}+2\sum_k\mathrm{Cov}_k=S/\Delta$ to six decimals at every setting, forced by
+the filter having unit gain at zero frequency, so what a likelihood allowing no such covariance sees
+is a misallocation of variance between the diagonal and its neighbours rather than a loss of it. The
+pole count does not enter: four poles, eight poles and a Gaussian of the same $-3\;\mathrm{dB}$
+frequency agree to the third decimal from $f_c\Delta=0.5$ upward, so the width can be quoted as the
+Gaussian equivalent $\sigma_f=\sqrt{\ln 2}/(2\pi f_c)=0.1325/f_c$, a ten-to-ninety rise time of
+$0.34/f_c$, which is the convention electrophysiology already uses for filter width
+\citep{colquhoun1995fitting}.
+% CITATION RESTORED 2026-08-12. Compressing the body's Bessel paragraph dropped
+% \citep{colquhoun1995fitting} and left the entry uncited, which check.sh item 5 caught. It belongs
+% here rather than there: the rise-time convention is what lets a reader check sigma_f against their
+% own amplifier's specification instead of taking ours.
+And the kinetics are the protected part: the deficit is first order in $1/(f_c\Delta)$
+for the instrumental noise and second order for a component carrying a correlation time of its own,
+because unit gain at zero frequency preserves the integral of an autocovariance and the
+block-averaged variance of a short-correlated component depends on that integral alone to leading
+order. At $f_c\Delta=5$ the white term loses $2.94\%$ and a gating term with correlation time
+$\Delta$ loses $0.11\%$, a factor of $27$, so the residue lands in the instrumental-noise partition,
+which is where the Discussion already argues an unmeasured departure of the noise model lives.
+
+What does not scale with the group is the interval holding the concentration jump: group delay plus
+rise displace and smear the transient by about $0.69/f_c$ at four poles, a fixed time rather than a
+fraction of $\Delta$, so that one interval carries an error the expansion says nothing about, and
+the honest recipe discards or flags the first interval after a step.
+
+One property of this family follows from the same algebra and a point-sampling method does not have
+it. Because the observable \emph{is} the integral, block-averaging a record down to a coarser
+$\Delta$ produces exactly the observable of Eq.~\ref{eq:obs-avg} at any decimation factor, with no
+aliasing question to answer; after decimation the only unmodelled piece left is the residual kernel,
+which is the table above. That is what makes ``average the record first'' a scoping statement rather
+than a workaround.
+% src: papers/1_method/decisions/recompute/bessel_bound.py (numpy + scipy, no data files, ~30 s),
+% which computes the table and each of the four properties. Read and re-run before quoting any of
+% these numbers in a different context; they are properties of boxcar-composed-with-Bessel and of
+% nothing in this paper's simulations, which carry no filter at all.
+
 \subsection*{What was verified, and to what tolerance}
 
- The identities of this section were checked
+ The identities of the boundary-state construction were checked
 against a direct contraction over the $K^2$ pairs rather than asserted. Eqs.~\ref{eq:tilde}
 and~\ref{eq:vector-tilde} reproduce the explicit contraction of the boundary covariance in $108$
 random cases to $7\times10^{-18}$ and $3\times10^{-16}$; the commutation of the start-index

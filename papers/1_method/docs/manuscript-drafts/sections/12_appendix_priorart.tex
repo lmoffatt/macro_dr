@@ -44,21 +44,25 @@
 % y hay que mantenerla verdadera si algun parrafo se mueve; en particular el peldano faltante esta
 % entre los dos estudios recientes.
 This appendix sets the construction against the work around it: the linear-Gaussian filter it
-coincides with and what that correspondence leaves to be supplied, what exists already and where,
+coincides with and what that correspondence leaves to be supplied, what exists already, where, and
+the one thing none of it does,
 the derivatives the diagnostic runs on, an earlier calibration of a filter of this kind, the rung
-the ladder is missing, and a recent cost argument against filtering.
+the ladder is missing, and a recent argument against filtering on accuracy and on cost. % GUIDE SENTENCE KEPT IN STEP 2026-08-27: it read "a recent cost argument", which is the same
+% half-reading of delcore2025parameter that E7 of the prior-art map exists to prevent; their figure
+% 9d is a lower relative error than the extended Kalman filter, before the timings of figure 9e.
 
-The same conditioning has a name in the linear-Gaussian world. Carrying the interval integral alongside the state there is what conditioning the interval average on the states at both ends of the window is here, which is why the two constructions agree to about $10^{-8}$. % src: docs/bibliography/MacroIR_prior_art_map.md (correspondence verified at 1e-8)
+The same conditioning has a name in the linear-Gaussian world, the integrated-measurement filter on an augmented state. Carrying the interval integral alongside the state there is what conditioning the interval average on the states at both ends of the window is here, which is why the two constructions agree to about $10^{-8}$. % src: docs/bibliography/MacroIR_prior_art_map.md (correspondence verified at 1e-8)
 
 Neither framework hands the construction over. The augmentation says what form the filter takes and not what goes into it. The form needs the probability of crossing the window from one state to another, and the mean and variance of the interval-averaged conductance given that pair; those are classical for a single chain, and carrying them to an ensemble of channels at a cost that does not grow with the channel count is what this family does (Appendix~\ref{app:derivation}). The exact Bayesian update is not available either, since the occupancy and the interval average are not jointly Gaussian, so the emission is closed by a Gaussian and the posterior is carried forward as a second closure, and what those two closures cost is what the body of this paper measures. % src: 02_framework.tex, the sufficiency paragraph after Eq.~\ref{eq:macror} (heteroscedastic emission treated as homoscedastic; carrying the pair forward is itself a closure)
 
-What exists, and where. The augmented-integral device is standard in time-series econometrics and in process control \citep{zadrozny1988gaussian}. The exact treatment of an integrated observation over a Markov chain is available for a single chain \citep{bauerle2015exact,blackwell2018integrated}, and for a single molecule under photon counting with trajectories sampled by Monte Carlo \citep{kilic2021extraction}; the recording filter has been inside single-channel likelihoods since the late 1990s \citep{michalek1999identification,venkataramanan2000identification,qin2000hidden}. None of them is the ensemble: the same treatment for a patch of channels, at a cost that does not grow with the channel count, which is what makes it usable on a macroscopic recording.
-% FIELD CORRECTED 2026-08-27: this sentence read "standard in control and target tracking".
-% Zadrozny 1988, the paper the body cites for the concession, is econometrics (U.S. Bureau of the
-% Census, quarterly and annual stock and flow data), and no target-tracking instance of the
-% construction was found. Process control is Fatehi & Huang 2017 and Yaghoobi & Sarkka 2024,
-% neither in biblio.bib, which is why the sentence still stands on the fields and not on names.
-% See E17 of the prior-art map.
+What exists, and where. The augmented-integral device is standard in time-series econometrics \citep{zadrozny1988gaussian}. The exact treatment of an integrated observation over a Markov chain is available for a single chain \citep{bauerle2015exact,blackwell2018integrated}, and for a single molecule under photon counting with trajectories sampled by Monte Carlo \citep{kilic2021extraction}; the recording filter has been inside single-channel likelihoods since the late 1990s \citep{michalek1999identification,venkataramanan2000identification,qin2000hidden}. None of them is the ensemble: the same treatment for a patch of channels, at a cost that does not grow with the channel count, which is what makes it usable on a macroscopic recording.
+% FIELD CORRECTED 2026-08-27, in two passes. It read "standard in control and target tracking";
+% Zadrozny 1988, the paper this sentence cites, is econometrics (U.S. Bureau of the Census, quarterly
+% and annual stock and flow data), and no target-tracking instance of the construction was found.
+% The intermediate wording added "and in process control", and that half travelled without a citation
+% of its own, since Fatehi & Huang 2017 and Yaghoobi & Sarkka 2024 are not in biblio.bib. Luciano's
+% call the same day: econometrics alone, which is the half the citation actually carries. The control
+% subfield, with the name IMKF, is in the prior-art map if a referee ever asks for it. See E17.
 % src: docs/bibliography/MacroIR_prior_art_map.md, ranked position, printed here for the first time
 % anywhere in the paper. Its verdict, verbatim: "What survives is scaling (O(k^3), independent of N,
 % versus k^L and combinatorial) and the ensemble."
@@ -75,8 +79,21 @@ What exists, and where. The augmented-integral device is standard in time-series
 % go back to three decades and gain a citation.
 % NOT VERIFIED, AND IT IS THE ONE THE NEXT SENTENCE LEANS ON: how many channels Qin 2000 demonstrates
 % and at what cost. The multiple-channel sentence in their abstract is verified; the cost is not.
+% THE CELL COUNT WAS 560 UNTIL 2026-08-27 and that number is retired: 04_results.tex, the note at the
+% shared sub-grid, says the battery-directory counts (93/70/31 over 560/238/224 cells) must not be
+% quoted beside the current ones because the two grids differ. The live plane is 210 cells per member,
+% 30 combinations of channel count and noise by 7 sampling intervals (04_results.tex, the coverage
+% correction of 2026-08-12, measured from figures/figure_4_source_data).
+% DEL CORE, SAME DAY: "argue against filtering on cost" became "on both counts". Their figure 9d is a
+% LOWER RELATIVE ERROR than the extended Kalman filter, before the half hour against thirty-six of
+% figure 9e; E7 of the prior-art map is explicit that presenting them as caring only about speed makes
+% them a softer adversary than they are. Verified in their PDF, the paragraph before the timings.
+% CELENTANO AND STEPANYUK, SAME DAY: they were called "the generalized-least-squares route". Celentano
+% and Hawkes describe covariance fitting as coupling Q-matrix calculations with a MAXIMUM LIKELIHOOD
+% algorithm and contrast it with "conventional sum-of-squares minimization" in their own abstract;
+% Stepanyuk is a Gaussian likelihood with a semiseparable covariance. Neither is least squares.
 
-The derivatives are what the diagnostic could not be run without. \citet{milescu2005maximum} computes them analytically for a likelihood over independent intervals; through a recursion the chain runs the length of the record, which puts the derivative of the spectral reconstruction inside it (Appendix~\ref{app:derivation}) and reaches the filter itself: the occupancy is held on the probability simplex by a smooth damping of the update, because an operation not differentiable where it binds pumps variance into the score (Methods).
+The derivatives are what the diagnostic could not be run without, and analytical ones are not new. \citet{milescu2005maximum} computes them for a likelihood over independent intervals, and \citet{qin2000direct} for a single-channel recursion that runs the length of the record, through the forward and backward variables and through the derivative of the matrix exponential. What differentiating this recursion adds is what this recursion carries: the derivative of the spectral reconstruction inside it (Appendix~\ref{app:derivation}), and the filter's own update, where the occupancy is held on the probability simplex by a smooth damping, because an operation not differentiable where it binds pumps variance into the score (Methods).
 % PRIOR ART FOUND 2026-08-27 AND NOT YET ANSWERED HERE: Qin, Auerbach and Sachs 2000 (the direct
 % optimization paper, qin2000direct, PDF local and read) derive the ANALYTICAL DERIVATIVES of a
 % single-channel hidden Markov likelihood with respect to the rate constants, through the forward and
@@ -84,15 +101,17 @@ The derivatives are what the diagnostic could not be run without. \citet{milescu
 % So "through a recursion the chain runs the length of the record" is, by itself, not new: they
 % differentiate a whole-record recursion, for one channel. What is not theirs is the ensemble and the
 % integrated observation. The paragraph as written contrasts only with milescu2005maximum, whose
-% likelihood is over independent intervals, and a single-channel referee will know Qin. DECIDE: either
-% name Qin here and take the narrower claim, or drop the recursion contrast.
+% likelihood is over independent intervals, and a single-channel referee will know Qin.
+% DECIDED 2026-08-27 (Luciano): name Qin and take the narrower claim. The paragraph now concedes analytical derivatives twice over, for the independent-interval
+% likelihood and for a whole-record single-channel recursion, and keeps only what this recursion
+% carries: the spectral reconstruction's derivative and the simplex damping in the update.
 % MOVED HERE 2026-08-27 from the Discussion, where this paragraph entered on 2026-08-13 with the note
 % that it was "78 words on a section already over its guion". Its primary site for the claim itself
 % is the closing paragraph of 01_introduction.tex, and THE TWO MUST NOT DRIFT: neither site may say
 % that the Fisher information comes out of the differentiation, and neither may say anything about
 % how milescu2005maximum implemented theirs.
 
-\citet{munch2022bayesian} asked this paper's question of a filter of this family and answered it by counting coverage over repeated simulated data sets. A coverage rate costs one posterior fit per replicate at every design point, which keeps such a study to a line of conditions, while a score and an information at known parameters cost one pass each, which is what puts $560$ cells within reach; and what comes back is a matrix rather than a rate, saying by how much and in which parameter the reported uncertainty departs. Their own checks were the whiteness of the residual and a rule of thumb in the channel count, and the axis this study finds moves their rung hardest is neither: its channel-number bias runs from four fifths of the parameter at the coarsest sampling to seven per cent at the finest. What their filter generalizes is the emission, through state-dependent open-channel noise and a fluorescence observable, and that generalization costs them the analytical update and obliges a two-moment closure of their own, the same obstruction the update of Eq.~\ref{eq:macror} meets. Their emission carries a term this study does not model, and their design points are not the cells measured here.
+\citet{munch2022bayesian} asked this paper's question of a filter of this family and answered it by counting coverage over repeated simulated data sets. A coverage rate costs one posterior fit per replicate at every design point, which keeps such a study to a line of conditions, while a score and an information at known parameters cost one pass each, which is what puts the $210$ cells of the design plane within reach; and what comes back is a matrix rather than a rate, saying by how much and in which parameter the reported uncertainty departs. Their own checks were the whiteness of the residual and a rule of thumb in the channel count, and the axis this study finds moves their rung hardest is neither: its channel-number bias runs from four fifths of the parameter at the coarsest sampling to seven per cent at the finest. What their filter generalizes is the emission, through state-dependent open-channel noise and a fluorescence observable, and that generalization costs them the analytical update and obliges a two-moment closure of their own, the same obstruction the update of Eq.~\ref{eq:macror} meets. Their emission carries a term this study does not model, and their design points are not the cells measured here.
 % MOVED HERE 2026-08-27 from the Discussion, which kept 303 words of this comparison. Munch is prior
 % art, and the same day's decision routed prior art out of the body; what stayed there is the one
 % claim that is not prior art, the measured statement about their rung.
@@ -107,14 +126,14 @@ The derivatives are what the diagnostic could not be run without. \citet{milescu
 % THE RULE OF THUMB is theirs, verified: "one should be careful with both algorithms for time traces
 % with N_ch in [10^1, 10^2]", with error(N_ch) proportional to a/N_ch.
 
-The ladder itself has a rung missing. The family carries no open-loop member with the full cross-interval covariance, the generalized-least-squares route of \citet{celentano2004use} and \citet{stepanyuk2011efficient}, so what the ladder measures is what conditioning buys within this family, and it does not separate recursion from correlation modelling as such; that rung would test the distinction and is not run here.
+The ladder itself has a rung missing. The family carries no open-loop member with the full cross-interval covariance, the maximum-likelihood route of \citet{celentano2004use} and \citet{stepanyuk2011efficient}, which carries the correlation between time points as a prior and never conditions on the trace, so what the ladder measures is what conditioning buys within this family, and it does not separate recursion from correlation modelling as such; that rung would test the distinction and is not run here.
 % MOVED HERE 2026-08-27 from the Discussion's perimeter, where it had been added on 2026-08-25 so a
 % referee would find it before asking for the baseline. It is not a limitation of the results but a
 % statement about the ladder, so it belongs with the lineage; the referee who asks for the GLS
 % baseline is the reader who reaches this appendix. The body keeps a pointer inside its list of named
 % companions.
 
-\citet{delcore2025parameter} argue against filtering on cost and measure it: their moment-equation method reaches the optimum in about half an hour against about thirty-six for the extended Kalman filter they compare it with, and they attribute the difference to integrating the differential moment equations between every pair of samples and correcting their initial conditions and sensitivities at each step, which for $p$ parameters is $(4+8p)$ matrix sums, $(8+17p)$ matrix products and one inversion per sample. The attribution is what decides how the figure transfers. The member here takes each acquisition interval in one spectral decomposition of the generator, reused across every interval that shares a condition, and a fixed number of $k \times k$ products, in a single pass over the record, so the work per interval is fixed and cubic in the state count, the growth is polynomial rather than combinatorial, and the numerical integration their comparison prices is not part of it. What this family costs in practice is a different number for a different task: a nine-scheme Bayesian comparison for a ligand-gated receptor took twelve to fifty-two days per scheme on sixteen to thirty-two cores \citep{moffatt2025bayesian}, an evidence computation over nine schemes on recorded data rather than an optimisation on synthetic traces.
+\citet{delcore2025parameter} argue against filtering on both counts, accuracy and cost, and measure both: their moment-equation method returns a lower relative error than the extended Kalman filter they compare it with, and reaches the optimum in about half an hour against about thirty-six, a difference they attribute to integrating the differential moment equations between every pair of samples and correcting their initial conditions and sensitivities at each step, which for $p$ parameters is $(4+8p)$ matrix sums, $(8+17p)$ matrix products and one inversion per sample. The attribution is what decides how the figure transfers. The member here takes each acquisition interval in one spectral decomposition of the generator, reused across every interval that shares a condition, and a fixed number of $k \times k$ products, in a single pass over the record, so the work per interval is fixed and cubic in the state count, the growth is polynomial rather than combinatorial, and the numerical integration their comparison prices is not part of it. What this family costs in practice is a different number for a different task: a nine-scheme Bayesian comparison for a ligand-gated receptor took twelve to fifty-two days per scheme on sixteen to thirty-two cores \citep{moffatt2025bayesian}, an evidence computation over nine schemes on recorded data rather than an optimisation on synthetic traces.
 % MOVED HERE 2026-08-27 from the Discussion (Luciano: "que aporta esto en el contexto de la
 % biologia?"). A debate about half an hour against thirty-six, with matrix-product counts per sample,
 % is between method developers; what stayed in the body is the exchange rate, which is the only part

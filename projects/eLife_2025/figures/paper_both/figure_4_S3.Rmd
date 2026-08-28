@@ -216,7 +216,7 @@ SIDES <- list(
 # than VR: the pairing this figure is organised by wants LSE opposite ILSE, and the arm is now on
 # the same thirty cells as every other member. The two together are sixteen columns, are not
 # measured, and put the cell under 1.4 mm, so VR is a roster question and not a knob.
-fig4_render(SIDES, per_row = 0.2072, out = "Figure_4_S2.pdf",
+fig4_render(SIDES, per_row = 0.2072, out = "Figure_4_S3.pdf",
             se_lines = FALSE, key = FALSE)
 ```
 

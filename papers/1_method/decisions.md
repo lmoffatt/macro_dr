@@ -286,13 +286,16 @@ recursion-without-averaging member and without it the reader attributes the repa
 ladder in a lump. ONE shared y, because the vertical distance between members at one x is the
 quantity the figure delivers, and because `IR`'s internal structure on a free axis is the estimation
 floor of the statistic (1.043 ± 0.010), so a per-panel scale would draw the bootstrap at full panel
-height. The free-scale, own-τ_int reading is Figure 5—figure supplement 1.
+height. The free-scale, own-τ_int reading is Figure 5—figure supplement 2 (supplement 1 until the 2026-08-27 renumber).
 
 *File renames, 2026-08-10, in `figures/paper_both/`.* `figure_6B_four.Rmd` → `figure_5.Rmd`
 (`Figure_5.pdf`); `figure_6BB.Rmd` → `figure_5_S1.Rmd` (`Figure_5_S1.pdf`); the old `figure_5.Rmd` →
 `figure_6.Rmd` and `figure_6.Rmd` → `figure_7.Rmd`, with their `.html`, `.pdf` and `_caption.md`
 siblings; `figure_6B.Rmd` → `figure_5_variant_2members.Rmd` and `figure_6B_all.Rmd` →
-`figure_5_variant_8members.Rmd`, neither of them a display item. NOT renamed, on purpose: the parked
+`figure_5_variant_8members.Rmd`, neither of them a display item. *Superseded in part 2026-08-27:*
+`figure_5_S1` and `figure_5_S2` swapped names and outputs when the two supplements swapped slots,
+so the notebook this paragraph calls `figure_5_S1.Rmd` (the own-τ_int companion, ex `figure_6BB.Rmd`)
+is now `figure_5_S2.Rmd`. Same for `figure_4_S2` and `figure_4_S3`. NOT renamed, on purpose: the parked
 `figure_5_budget*` and `figure_5_IR_*` families, whose 5 is the pre-2026-07-22 numbering and is
 already historical, and `figures/archive/figure_6_superseded_20260731/`, whose name is dated.
 
