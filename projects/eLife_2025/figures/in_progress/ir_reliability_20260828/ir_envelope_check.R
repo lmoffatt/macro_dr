@@ -1,0 +1,16 @@
+setwd("/home/lmoffatt/Code/macro_dr/macro_dr/projects/eLife_2025/figures/in_progress/ir_reliability_20260828")
+suppressPackageStartupMessages({library(dplyr)})
+d <- read.csv("digest/ir_collapse_cells.csv") |> filter(anchor=="sim") |> mutate(S=0.1*z, x=S*nch)
+# candidate envelopes
+d <- d |> mutate(bndD = 0.6*x^-0.2, bndZ = 0.65/sqrt(nch))
+cat("DISTORTION envelope d_AI <= 0.6 (S~ N)^-0.2 :\n")
+cat("  cells:", nrow(d), "  violations:", sum(d$dAI > d$bndD), "\n")
+print(d |> filter(dAI > bndD) |> select(nch,z,interval,dAI,bndD) |> mutate(across(c(dAI,bndD), ~round(.,3))), row.names=FALSE)
+cat("\nBIAS envelope zmax <= 0.65/sqrt(N):\n")
+v <- d |> filter(is.finite(zmax), zmax > bndZ)
+cat("  cells:", sum(is.finite(d$zmax)), "  violations:", nrow(v), " (floor ~0.015-0.03 explains high-N ones)\n")
+print(v |> select(nch,z,interval,zmax,bndZ) |> mutate(across(c(zmax,bndZ), ~round(.,3))) |> head(20), row.names=FALSE)
+cat("\nviolations with zmax>0.04 (clearly above floor):", nrow(v |> filter(zmax>0.04)), "\n")
+# tightness: ratio measured/bound by decade of x
+cat("\nmedian dAI/bound by decade of S~N:\n")
+print(d |> mutate(dec=floor(log10(x))) |> group_by(dec) |> summarise(med=round(median(dAI/bndD),2), max=round(max(dAI/bndD),2), n=n()), n=15)

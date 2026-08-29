@@ -1,0 +1,76 @@
+% Cover letter for the eLife submission. Body text is the canonical cover_letter.md; edit there
+% first and mirror here. Compile: xelatex cover_letter.tex
+\documentclass[10.5pt,a4paper]{article}
+\usepackage[margin=22mm]{geometry}
+\usepackage{fontspec}
+\setmainfont{Arial}
+\usepackage[hidelinks]{hyperref}
+\usepackage{parskip}
+\setlength{\parskip}{0.75em}
+\pagestyle{empty}
+\begin{document}
+
+\begin{flushright}
+Luciano Moffatt\\
+Instituto de Química Física de los Materiales, Medio Ambiente y Energía (INQUIMAE), CONICET\\
+Facultad de Ciencias Exactas y Naturales, Universidad de Buenos Aires\\
+Ciudad de Buenos Aires, C1428EHA, Argentina\\
+\href{mailto:lmoffatt@qi.fcen.uba.ar}{lmoffatt@qi.fcen.uba.ar}\\[0.6em]
+28 August 2026
+\end{flushright}
+
+Dear Editors,
+
+I am submitting ``Likelihood approximations distort the ion channel kinetic information in
+macroscopic currents'' for consideration as a Research Article.
+
+We have reached the limit of what a macroscopic current shows by eye. The flip state we proposed
+for P2X$_2$ in 2007 was still on the visible side, a delay before the current rises, later
+confirmed. The questions now asked of these receptors, how subunits couple and whether they do so
+symmetrically, leave no such mark. They are settled by ratios of evidence between kinetic schemes,
+and whether the likelihoods behind those ratios report the information a recording actually holds
+had never been measured. This manuscript measures it, and finds that most of them do not.
+
+We know the stake from the inside. Our 2025 report that P2X$_2$ activates asymmetrically rested on
+the evidence over nine schemes, and under a control likelihood differing only in its recursion a
+different mechanism came first and a factor of six in evidence disappeared. We published the
+sensitivity and argued for one arm. On a recording there is no truth to measure a likelihood
+against, and fitting well does not supply one: a recursive likelihood follows the record whether
+its assumptions hold or not.
+
+So we went outside the fit. Channel gating simulates exactly where its likelihood cannot be
+evaluated exactly, and at known parameters a correct likelihood must satisfy two identities: its
+score averages to zero, and the covariance of that score equals the Fisher information it reports.
+We measured both for eight likelihoods, from least squares to a filter conditioning each interval
+average on both endpoints, over 210 combinations of channel number, noise and sampling interval,
+ten thousand exact recordings at each, in a two-state scheme so that the error measured is the
+approximation's own.
+
+Every likelihood that leaves the gating correlation unmodelled misreports its information, by up
+to an order of magnitude, and no rescaling repairs it because the distortion has directions. Our
+published control is one of them: across a record it accumulates about twenty times the
+information it holds, and the recursion is what brings that factor back to one. We do not
+recompute the P2X$_2$ evidences. We show that the arm favouring the alternative mechanism is
+distorted in the simplest model there is and the calibrated arm is not, and we audit that arm on
+the same grid, where it departs in the few-channel corner and we say by how much.
+
+Münch and colleagues asked this of their own filter in eLife in 2022 by counting coverage, which
+tests a posterior and costs a fit per replicate. The identities cost one pass and return a matrix:
+which parameter is misreported, and whether the error is committed at each sample or accumulated
+across the record. We are not offering another filter; ours agrees to one part in $10^{8}$ with an
+integrated-measurement Kalman filter known since 1988. The measurement is what is new.
+
+For an experimentalist the map has one line that holds however the thresholds are drawn: no
+region gives both a trustworthy least-squares error bar and information about the unitary current,
+the two boundaries one to three decades of noise apart. The recordings rich enough to determine
+the amplitudes are the ones whose classical error bars are the wrong width. The calibrated
+likelihood, its score and Fisher information, the exact simulator and the diagnostic are a small
+library with R and Python bindings, so a reader can put the same two identities on their own
+scheme.
+
+Yours sincerely,
+
+\vspace{1.5em}
+Luciano Moffatt
+
+\end{document}

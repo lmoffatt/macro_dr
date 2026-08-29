@@ -1,116 +1,66 @@
 # Cover letter and submission-form fields
 
-Drafted 2026-08-07 for the eLife submission. Not part of the compiled PDF.
+Canonical text of the eLife cover letter. Made official 2026-08-28 (v5); the PDF is
+`cover_letter.pdf`, compiled from `cover_letter.tex`, which mirrors this file and must be edited
+with it. Earlier versions and the notes on the restrictions withdrawn on 2026-08-10 are in
+`archives/cover_letter_v1_SUPERSEDED_20260828.md`; drafts v2 to v4 of 2026-08-28 are beside it.
 
-The axis wording here matches the manuscript and is accurate: the two runs behind Figures 1d and 1e
-of Moffatt & Pierdominici-Sottile (2025) shared the interval averaging and the gating variance and
-differed in the recursion alone. That stays.
+Addressed to "Dear Editors": eLife assigns the Senior Editor after submission, and any suggestion
+of editors goes in the submission form's own field, not in the letter.
 
-The naming restriction that stood here is **withdrawn, 2026-08-10**. It read: "Never name them as
-MacroIR and MacroINR, and never call either the boundary-conditioned member: the object that ran
-there is not the member this manuscript specifies in Theory." The published names may be used; see
-`sections/00_abstract.tex` note 1f(i) ("NAMING, settled 2026-08-10"), and the bridges
-`IR = MacroIR` and `INR = MacroINR` are closed at `papers/_program/nomenclature.md:286-296`.
-
-Why it was wrong, so it is not rebuilt: two objects carried one name. The `macro_NMR` in this
-repository's freeze omits the N·ms interval-variance term (refactor regression at a3e0a89) and is
-genuinely not the member Theory specifies; the **published** MacroINR is a different object and does
-carry the term, confirmed 2026-07-31 in that same nomenclature section and again 2026-08-10 against
-the run's own `_likelihood_model.csv`. The restriction generalised a fact about a local build to a
-peer-reviewed algorithm, on a premise that had already been refuted in writing eight days earlier.
-Whether this letter should use the names is now a free choice; the prohibition is what is dead.
-
-One claim below is deliberately weaker than it could be, for the same reason it is weaker in the
-manuscript: nothing here says which of the two orderings is right, which this paper does not
-measure.
-
-The ranking restriction that stood here is **withdrawn, 2026-08-10**. It required "the two rankings
-were not the same" rather than "put different mechanisms first", on the ground that the paper
-numbers nine schemes I–IX in its main text and eleven I–XI in Table S1 with no published mapping.
-That premise is true and irrelevant: Figure 1 is in the main text, uses main-text numbering, and
-draws the schemes in panels a–c, so d and e give both rankings without touching the SI. IX first
-under the recursive likelihood, VI first under the non-recursive one, and the main text supplies the
-direction ("the control method systematically underestimated evidence for schemes with
-conformational intermediates") and the margin it erases (a Bayes factor of 6.4 for IX over VI). See
-`sections/00_abstract.tex` note 1f(i).
+"How subunits couple and whether they do so symmetrically" is a gloss of the 2025 question and is
+the one phrase that has not been checked against that paper's own wording.
 
 ---
-
-## Cover letter
 
 Dear Professor [Senior Editor],
 
 I am submitting "Likelihood approximations distort the ion channel kinetic information in
 macroscopic currents" for consideration as a Research Article.
 
-A method that cannot resolve a mechanism cannot mislead you about one. The likelihoods now applied
-to macroscopic ion-channel currents can resolve mechanisms that leave no visible trace in the
-record, and they return posteriors tens of times narrower than the priors that went in. That
-resolution is what makes their calibration a substantive question. Parameter intervals somewhat too
-narrow are a nuisance. A mechanism ranked wrongly is a conclusion.
+We have reached the limit of what a macroscopic current shows by eye. The flip state we proposed
+for P2X2 in 2007 was still on the visible side, a delay before the current rises, later confirmed.
+The questions now asked of these receptors, how subunits couple and whether they do so
+symmetrically, leave no such mark. They are settled by ratios of evidence between kinetic schemes,
+and whether the likelihoods behind those ratios report the information a recording actually holds
+had never been measured. This manuscript measures it, and finds that most of them do not.
 
-We have been on both sides of that line. In 2007 we proposed that P2X2 passes through a flip state
-before opening. That claim had a signature you could point to in the record, a delay before current
-appears, and other groups later confirmed it. Last year we reported that the same receptor
-activates asymmetrically (Communications Biology, 2025). Nothing in those recordings shows asymmetry
-the way the delay showed flip. Atomistic simulations of a zebrafish P2X4 homologue corroborate it
-and supply a direction the electrophysiology cannot resolve, and that support comes from outside the
-record. What it does not settle is which of nine kinetic schemes the recordings prefer, and that
-came from ratios of evidence alone. When we ranked the nine twice, under two likelihoods that shared
-the interval averaging and the gating variance and differed in whether each interval is conditioned
-on the data already observed, the two orderings put a different mechanism first: the conformational
-asymmetric scheme under one, the subunit-specific allosteric alternative under the other. We
-reported the sensitivity, and the direction we gave for it rested on argument: on recordings there
-is no ground truth to measure a likelihood against.
+We know the stake from the inside. Our 2025 report that P2X2 activates asymmetrically rested on
+the evidence over nine schemes, and under a control likelihood differing only in its recursion a
+different mechanism came first and a factor of six in evidence disappeared. We published the
+sensitivity and argued for one arm. On a recording there is no truth to measure a likelihood
+against, and fitting well does not supply one: a recursive likelihood follows the record whether
+its assumptions hold or not.
 
-Nothing in ordinary practice adjudicates it. A recursive likelihood follows the record whether its
-assumptions hold or not, so its residual cannot be read the way a least-squares residual can, and
-fitting well says nothing about whether the information a likelihood reports is the information it
-has. The error we were afraid of is the kind that passes every check we know how to run, which is
-why we went outside the fit for one.
+So we went outside the fit. Channel gating simulates exactly where its likelihood cannot be
+evaluated exactly, and at known parameters a correct likelihood must satisfy two identities: its
+score averages to zero, and the covariance of that score equals the Fisher information it reports.
+We measured both for eight likelihoods, from least squares to a filter conditioning each interval
+average on both endpoints, over 210 combinations of channel number, noise and sampling interval,
+ten thousand exact recordings at each, in a two-state scheme so that the error measured is the
+approximation's own.
 
-The manuscript measures both classical identities, the score mean and the information equality,
-along a ladder of macroscopic likelihoods from least squares to a filter conditioned on both ends of
-each acquisition interval, against exact simulations of the process they approximate. The measured
-object is a matrix, and it is the same matrix any correction to an evidence ratio has to start from,
-through a volume term and an effective-sample rescaling that the Discussion sets out. That is why it
-had to be measured first. We do not recompute the P2X2 evidences here, and the Discussion says so.
+Every likelihood that leaves the gating correlation unmodelled misreports its information, by up
+to an order of magnitude, and no rescaling repairs it because the distortion has directions. Our
+published control is one of them: across a record it accumulates about twenty times the
+information it holds, and the recursion is what brings that factor back to one. We do not
+recompute the P2X2 evidences. We show that the arm favouring the alternative mechanism is
+distorted in the simplest model there is and the calibrated arm is not, and we audit that arm on
+the same grid, where it departs in the few-channel corner and we say by how much.
 
-eLife published Münch and colleagues on this problem class in 2022, and they asked our question of
-their own filter, counting how often the true rate matrix falls inside a credibility volume of given
-mass. What their count tests is a posterior, so the prior and the sampler are in the verdict with the
-likelihood, and it costs a fit per replicate at every design point. The identities we use are
-evaluated on the likelihood alone at parameters that are known, they cost one pass, and what comes
-back is a matrix that says by how much and in which parameter the reported uncertainty departs, and
-whether the departure is committed at each sample or accumulated across them. That is what puts a
-plane of 560 design cells within reach. We do not offer another filter. Our best member coincides
-with an integrated-measurement Kalman filter known since 1988 to about one part in 10^8, and we say
-so in the Discussion. What is new is the measurement.
+Münch and colleagues asked this of their own filter in eLife in 2022 by counting coverage, which
+tests a posterior and costs a fit per replicate. The identities cost one pass and return a matrix:
+which parameter is misreported, and whether the error is committed at each sample or accumulated
+across the record. We are not offering another filter; ours agrees to one part in 10^8 with an
+integrated-measurement Kalman filter known since 1988. The measurement is what is new.
 
-The measurement does adjudicate the two instruments of the P2X2 comparison, and that is the one
-statement about our own record the manuscript now makes: the control that reordered the schemes is
-the non-recursive member of the ladder, measured to misreport its information about twentyfold at
-macroscopic channel counts, which is exactly the factor the recursion restores. For the job of
-reporting uncertainty, a likelihood whose identities have never been measured supplies estimates
-whose stated precision cannot be acted on; in that operational sense the field did not yet have a
-calibrated instrument for macroscopic currents. It has one now, with its own measured limits at few
-channels and low noise, and it has the apparatus that certified it, which runs on any scheme an
-exact simulator can reach.
-
-The study is simulation on a two-state scheme sampled through a uniform acquisition window, and no
-experimental recordings are analysed. The scheme is deliberately small so that what the diagnostic
-reports is the approximation's own error, with no misspecified mechanism mixed into it, and the
-manuscript states those limits beside the results. The software carries the calibrated member with
-its score and its Fisher information together with the exact simulator, and the measuring apparatus
-itself: the distortion matrix, its eigenvalues and the first-order bias come back from one call in R
-or Python, so a reader can run the same two identities on their own scheme rather than extrapolate
-from ours.
-
-One reading of the map does not depend on where a level set is drawn. No region of the measured
-plane gives both information about the unitary current and a trustworthy least-squares error bar,
-and the two boundaries sit one to three decades of instrumental noise apart everywhere they were
-measured. The recordings rich enough to determine the amplitudes are the ones whose classical
-intervals are the wrong width.
+For an experimentalist the map has one line that holds however the thresholds are drawn: no
+region gives both a trustworthy least-squares error bar and information about the unitary current,
+the two boundaries one to three decades of noise apart. The recordings rich enough to determine
+the amplitudes are the ones whose classical error bars are the wrong width. The calibrated
+likelihood, its score and Fisher information, the exact simulator and the diagnostic are a small
+library with R and Python bindings, so a reader can put the same two identities on their own
+scheme.
 
 Yours sincerely,
 
@@ -118,37 +68,28 @@ Luciano Moffatt
 
 ---
 
-## Impact statement (submission form, 15–30 words, third person)
+## Impact statement (submission form, 15 to 30 words, third person)
 
 A likelihood for macroscopic ion-channel currents whose reported information is measured against
 the exact process, with the apparatus to repeat the measurement on any scheme, available from R
 and Python.
 
-(30 words. Replaced 2026-08-25, Luciano's decision: the tool-forward form, the home found for the
-deliverable trio the abstract panel evicted from the abstract's closer. The previous
-finding-forward version, kept in case the venue prefers a finding: "In a published comparison of
-nine gating schemes for a ligand-gated receptor the ranking moved with the likelihood; measuring
-each likelihood's score and information against exact simulation shows which reported
-uncertainties can be believed, and where." 29 words.)
+(30 words, Luciano's decision of 2026-08-25.)
+
+Finding-forward alternative, trimmed to 30 words on 2026-08-28 (the v1 note called its longer form
+29 words; it was 36):
+
+In a published comparison of nine gating schemes the ranking moved with the likelihood; measuring
+score and information against exact simulation shows which reported uncertainties can be believed,
+and where.
 
 ---
 
-## Notes on choices made here
+## Notes that still apply
 
-**Why the scope paragraph sits before the result and not at the end.** The last thing the editor
-reads should be the finding. Putting "two-state scheme, no experimental data" last leaves the
-submission on its own weakest sentence.
-
-**Why the personal register appears twice and no more.** "We have been on both sides of that line"
-and "the error we were afraid of" are the only two, and they carry the motive that makes
-self-validation something other than circular. A third would turn the letter into a narrative.
-
-**What is deliberately absent.** No mention of Supplementary Table S4 of the 2025 paper, and no
-claim about which of the two orderings is correct. The first belongs to the record where the record
-lives; raising it here asks the editor to decide whether this submission is an article or a
-correction. The second is not measured anywhere in this manuscript.
-
-**Why the atomistic simulations are named and then bounded.** The first sentence of the 2025 abstract
+**Why the atomistic simulations are not in the letter.** v1 named and bounded them; v5 does not
+mention them, so the 2025 abstract's "supported by atomistic simulations" is not contradicted, only
+left out. The reasoning that governed v1 is kept for the referee stage: The first sentence of the 2025 abstract
 says the kinetics are "supported by atomistic simulations", so a letter describing that claim as
 resting on the recordings alone is contradicted by a document the editor can open in one click, and
 it drops the coauthor's contribution on the way. They are named for that reason and scoped for
@@ -157,6 +98,7 @@ direction, which the 2025 introduction states electrophysiology alone cannot res
 atomistic result orders kinetic schemes. What the evidence ratios produced on their own is the
 choice among the nine, and that is the quantity this manuscript's diagnostic bears on. The sentence
 about the record is therefore scoped to the record and says nothing about the conclusion.
+
 
 **The answer to have written before submitting, and probably never to use.** A referee who opens the
 cited 2025 paper reaches its supplement and finds two things: Table S4, whose validation against

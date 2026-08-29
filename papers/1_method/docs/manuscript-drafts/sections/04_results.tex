@@ -1601,6 +1601,7 @@ an instant describe a different random variable once the record is grouped at al
 % share is noise upward and Delta-tilde across the cell, and the clause after the colon already
 % states both, so the reference was carrying nothing it did not repeat three words later.
 \label{fig:limit}
+\figsupp[The departure of the boundary-conditioned filter, bounded in one variable.]{\textbf{The departure of the boundary-conditioned filter, bounded in one variable.} All $560$ \texttt{IR} cells at the simulation truth, coloured by $\widetilde{\Delta}$. Solid lines are the median law with the slope fixed at $-1/5$ ($-1$ in D), dashed the $95\%$ quantile of the cells about it, dotted the resolution of $10^{4}$ recordings; bars are $95\%$ bootstrap intervals over the recordings. (A) The anisotropy $a$ and (B) the magnitude $m$ of Eq.~\ref{eq:magnitude-anisotropy} against $x = N_{\mathrm{ch}}\widetilde{S}\sqrt{\widetilde{\Delta}}$, the lines of $|\log m|$ drawn on both sides of one. (C) The worst single direction, the factor by which its information is misreported (right axis, on the error bar). (D) The bias in the Fisher metric per recording, $b^{\mathsf{T}}\mathbf{H}b$ (Appendix~\ref{app:diagnostics}), against $N_{\mathrm{ch}}\widetilde{S}^{3/4}$; right axis, its reciprocal, the recordings a pooled fit holds before its bias reaches one joint standard error. All four are read over every direction; Figure~\ref{fig:usage}'s calibration line is a per-parameter crossing at the pooled optimum, with its own slope.}{\includegraphics[width=\linewidth]{Figure_6_S1}}
 \end{figure}
 
 
@@ -1618,12 +1619,18 @@ Both parts vanish by $\widetilde{S} = 1$,
 where the instrumental noise has made the emission Gaussian enough that neither closure is strained
 and the recording is outside both regimes. % src: as the figure
 
-Two limits travel with the figure. The family applies both of its Gaussian approximations at every
+One limit travels with the figure. The family applies both of its Gaussian approximations at every
 step and the score sees only their product, so a departure measured here cannot be assigned to one of
-them; separating them needs the microscopic recursion, a companion paper's subject. And the grid is
-truncated where the effect grows: the closing rate's departure is still accelerating at the lowest
-simulated noise, reading $1.22$, $1.37$ and $1.52$ over the last three noise steps at ten channels,
-so the figure locates the onset and not the far side. % src: as the figure
+them; separating them needs the microscopic recursion, a companion paper's subject. The far side follows one law, with its spread (Figure~\ref{fig:limit}--figure supplement 1): over all
+$560$ \texttt{IR} cells the anisotropy runs as $a = \exp(0.09\,x^{-1/5})$ with
+$x = N_{\mathrm{ch}}\widetilde{S}\sqrt{\widetilde{\Delta}}$, $95\%$ of cells under $\exp(0.12\,x^{-1/5})$, the
+magnitude inside it, $|\log m| \le \log a$ in every cell, and the worst single direction has its information
+misreported by $\exp(0.17\,x^{-1/5})$: under $1.24$ at $x = 1$ for $95\%$ of cells ($1.11$ on the error bar),
+under $1.09$ at $x = 100$, and $1.8$ in the worst measured cell. The bias runs as
+$b^{\mathsf{T}}\mathbf{H}b = 0.011/(N_{\mathrm{ch}}\widetilde{S}^{3/4})$ per recording, $95\%$ of cells under
+$0.018/(N_{\mathrm{ch}}\widetilde{S}^{3/4})$, so a pooled fit holds about $90\,N_{\mathrm{ch}}\widetilde{S}^{3/4}$
+recordings before its bias reaches one joint standard error, at least $55$ times that in $95\%$ of cells: about
+$290$, and at least $180$, at the reference cell. % src: figures/in_progress/ir_reliability_20260828/README.md; median and 95% quantile with slope fixed at -1/5 (-1 for the bias), figure_6_S1.R (2026-08-29) % src: as the figure
 
 \subsection*{A recording loses its parameters in a fixed order, and the amplitude goes before least squares becomes calibrated}
 % HEADING REPLACED 2026-08-26. It read "No measured regime carries amplitude information and an
