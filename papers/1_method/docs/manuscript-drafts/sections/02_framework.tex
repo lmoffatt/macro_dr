@@ -808,9 +808,18 @@ and score checks and still violate this one by an order of magnitude. Because th
 directional, we record it as a matrix,
 \[ \mathbf{C}=\mathbf{H}^{-1/2}\,\mathbf{J}\,\mathbf{H}^{-1/2}, \]
 with $\mathbf{J}=\mathrm{Cov}(S)$ the covariance of the total score, cross-interval terms included,
-so that $\mathbf{C}=\mathbf{I}$ exactly under correct specification. This is the classical
-information-matrix-equality comparison \cite{white1982maximum}, measured here rather than tested,
-and read as a property of each approximation rather than as a hypothesis to accept or reject.
+so that $\mathbf{C}=\mathbf{I}$ exactly under correct specification. It is the information-matrix
+comparison of \cite{white1982maximum} with one substitution, stated in Methods: the anchor is the
+information the likelihood reports, an expectation under the model, which equals the expected
+Hessian under the process only where the predictive mean and variance of every interval are right.
+Where they are not, $\mathbf{C}$ compares what is reported with what is delivered, which is the
+comparison the printed error bar calls for, and the sandwich below corrects that error bar rather
+than reproducing the Huber form. It is measured here rather than tested, and read as a property of
+each approximation rather than as a hypothesis to accept or reject.
+% REWRITTEN 2026-08-30 (review of 2026-08-30, item 2). For a Gaussian log-likelihood -E[Hessian]
+% equals the Gaussian-Fisher form iff E[delta_t] = 0 and E[delta_t^2] = sigma_t^2 per interval; S1.5
+% confirms it: INR and IR 1.00, both LS arms 0.71-0.78, NR 0.91-1.36. The old sentence called C
+% "the classical information-matrix-equality comparison", which it is only for calibrated members.
 % [SIGN VERIFIED 2026-08-04] Direction confirmed against the producing code and left as written.
 % legacy/lapack_headers.h:2519 computes H^(-1/2) J H^(-1/2) with H the FIRST argument, and
 % legacy/distributions.h:470-478 states that the reported Fisher information is the H reference of

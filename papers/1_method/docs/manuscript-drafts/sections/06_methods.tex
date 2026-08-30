@@ -318,8 +318,8 @@ naming they disambiguate, are in Supplementary File~1.
 % only to someone matching deposited filenames. Nothing outside this span referred to MacroMRT,
 % MRT or IRT. Extracted span kept at tmp/methods_build_flags.tex.
 
-The filter carries three numerical safeguards. The first fixes what the boundary-conditioned
-moments are where a transition cannot occur; without the other two the recursive members
+The filter carries two numerical safeguards. The first fixes what the boundary-conditioned
+moments are where a transition cannot occur; without the second the recursive members
 return no value at all at the smaller channel counts.
 % COMPRESSED 2026-08-26 (shortening_plan.md, Methods item 11): the design-rationale prose of all
 % three safeguards went to supplementary_file_1.tex S1.8; every DISCLOSURE stays here, as the
@@ -402,9 +402,23 @@ corrupts every quantity this paper measures. The covariance takes its full step,
 truncate-then-renormalise history, the two untied trusts and the $\epsilon/2$ bias arithmetic
 are in Supplementary File~1.
 
-The third is a pair of constants: a binomial-count floor of $5$, below which the expected
-count in a state is too small for the Gaussian treatment of that state and the member falls
-back to its non-recursive form, and a minimum occupancy probability of $10^{-12}$.
+% THIRD SAFEGUARD REMOVED 2026-08-30 (Luciano: "quitemos lo que nunca se uso"). The sentence read
+% "The third is a pair of constants: a binomial-count floor of 5, below which the expected count in a
+% state is too small for the Gaussian treatment of that state and the member falls back to its
+% non-recursive form, and a minimum occupancy probability of 1e-12." Neither constant acts in any
+% reported run, verified on HEAD (commit 1c2ae6f no longer resolves after the history rewrite):
+%   binomial floor: is_Binomial_Approximation_valid (legacy/qmodel.h:2693) is called only at
+%     qmodel.h:7301 and :7363, inside the else-branch of `if constexpr (!adaptive::value)` (:6857);
+%     every sweep config sets adaptive_approximation = false (ops/local/figure_3_mle_G.macroir:87,
+%     figure_3_mle_LSE.macroir:90, figure_3_mle.macroir:83). The non-recursive fallback never ran.
+%     Recorded first in figures/in_progress/ir_reliability_20260828/README.md (2026-08-29).
+%   min_P = 1e-12: read by the live Qdtm builder (qmodel.h:1595) and stored in the Qdtm object
+%     (:1673), never consumed: calc_P's normalize(..., t_min_P) is commented out (:1447, :1463), the
+%     divided-difference Ee uses its default eps_mach (:1712-1717), and the pseudo-count is
+%     eps_mach * kappa_V (:1598), which is what Eq. pseudocount already states.
+% An outside review of 2026-08-30 read the removed sentence as a confound of the N_ch = 5 and 10
+% cells (expected open count 2.5 and 5 at p = 0.5, at or under the floor). It was not, but the
+% sentence invited exactly that reading. "three safeguards" -> "two" above and in S1.8's heading.
 % THE TRUNCATION SENTENCES ADDED 2026-08-13 (Luciano), and every clause was verified first-hand in
 % the commit the P2X2 paper's Data Availability points at rather than recalled.
 %   dc1d295:qmodel.h:3394 (and :3424, :3456) takes the UNDAMPED step and pushes the result back:
@@ -670,6 +684,17 @@ $\theta_{\mathrm{sim}}$ it is indefinite over a region of the design plane, and 
 averaging over the ensemble, which is why the body is anchored on the analytic construction; it is
 nonetheless the check that anchor is measured against, over the full roster, in Supplementary
 File~1, which also holds the region, its settings and the direction convention of the comparison.
+The two constructions coincide within one per cent for \texttt{INR} and \texttt{IR} at every
+channel count, which is where the anchor question closes for the calibrated member and its
+control; for the two least-squares arms the differenced Fisher is $0.71$ to $0.78$ of the analytic
+one, so re-anchoring would enlarge their distortions by about a third, and for \texttt{NR} it runs
+from $0.91$ to $1.36$ as channels are added, narrowing its largest factors by a third without
+overturning them. The gap is the expected one: for a Gaussian log-likelihood the expected Hessian
+reduces to Eq.~\ref{eq:gaussian-fisher} only where the predictive mean and variance of every
+interval are right, and the two least-squares arms carry one marginalised variance over a record
+whose residual variance runs from $0.010$ to $1.91$.
+% ADDED 2026-08-30 (review item 2; Luciano: no table). Numbers are S1.5's table, medians over the
+% seven intervals at S~ = 0.01; the 0.010-1.91 residual run is Results, Figure 3 paragraph.
 % REESCRITA 2026-08-28. Decia "not interchangeable with the analytic anchor PER RECORDING, being
 % widely indefinite REPLICATE BY REPLICATE ... AVERAGED OVER RECORDINGS it is the check". Tres
 % defectos en una oracion. (1) El encabezado del lane prohibe esa forma de reportarlo: lambda_min es
@@ -884,8 +909,9 @@ Supplementary File~1.
 \subsection*{Reproducibility and computational environment}
 
 The engine is \texttt{macro\_dr}, built as C++20, and each analysis is a script in a
-small typed domain-specific language run in a single process
-\citep{moffatt2025macroir}. Every analysis output file stamps the build's short git commit hash
+small typed domain-specific language run in a single process; the version that produced
+every result here is deposited \citep{moffatt2026code}, and its ancestor is the record of
+the earlier study \citep{moffatt2025macroir}. Every analysis output file stamps the build's short git commit hash
 as its first row, and the data directories are named by that hash, so results from different code
 versions cannot overwrite one another.
 % COMPRESSED 2026-08-26 (shortening_plan.md, Methods item 23): the run-ledger snapshot and the

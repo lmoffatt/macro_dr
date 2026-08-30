@@ -1,66 +1,112 @@
 # Cover letter and submission-form fields
 
-Canonical text of the eLife cover letter. Made official 2026-08-28 (v5); the PDF is
-`cover_letter.pdf`, compiled from `cover_letter.tex`, which mirrors this file and must be edited
-with it. Earlier versions and the notes on the restrictions withdrawn on 2026-08-10 are in
-`archives/cover_letter_v1_SUPERSEDED_20260828.md`; drafts v2 to v4 of 2026-08-28 are beside it.
+Canonical text of the eLife cover letter. v6, 2026-08-30, rewritten after the outside review of
+2026-08-30 and then revised on the findings of four independent readers (fact-check against the
+.tex sources, referee-style refutation, style lint, editor triage). Finding first, then the stake,
+the method, the fit to eLife, and availability. v5 (official 2026-08-28) is archived at
+`archives/cover_letter_v5_SUPERSEDED_20260830.md`; v1 and the drafts v2 to v4 are beside it. The
+PDF is `cover_letter.pdf`, compiled from `cover_letter.tex`, which mirrors this file and must be
+edited with it; the PDF was NOT recompiled on 2026-08-30.
 
 Addressed to "Dear Editors": eLife assigns the Senior Editor after submission, and any suggestion
 of editors goes in the submission form's own field, not in the letter.
 
-"How subunits couple and whether they do so symmetrically" is a gloss of the 2025 question and is
-the one phrase that has not been checked against that paper's own wording.
+Voice: "I" for the submitting author and for the measurement; "we" and "our" only for the 2025
+paper, which has a coauthor.
+
+One thing to settle before submission: the bracketed related-manuscripts sentence, which eLife
+asks for and which only Luciano can confirm (the Introduction says the evidence correction "is derived elsewhere" and Results name "a
+companion paper"; if either is under consideration anywhere, say so instead).
+
+Dropped or changed on the readers' findings (two passes), each with the reason: "and was later
+confirmed" (the manuscript no longer says it; the Jiang 2012 sentence left the Discussion on
+2026-08-27, so restoring it there is the only way to put it back here); "rested on the evidence
+over nine schemes" (the 2025 abstract adds atomistic simulations); "had never been measured"
+without "how much and in which directions" and "for macroscopic currents" (Münch 2022 did count
+coverage; the single-channel literature exists); "are now chosen" (the Introduction says current
+practice is deterministic fits; now "beginning to be chosen ... as we did"); "eight likelihoods in
+use" (MR and VR are our own partial corrections, tried and rejected); "the filter is not the
+novelty ... known since 1988" (contradicted Appendix 5; now: form is the 1988 filter, what is new
+is the score and Fisher information and the measurement); "the most recent calibration" for Münch
+(the letter's own first paragraph says it had never been measured; now "the closest prior check");
+"stated as a conjecture" for the nine-scheme transfer (the Discussion's hierarchy files it under
+suggested, not shown); "the same test runs unchanged on any scheme from the deposited library" (no
+scheme library is deposited, and generality is suggested, not shown); "the exact simulator" moved
+from the library to the engine deposit (the backmatter lists it for the engine only; if the
+bindings do expose simulate(), add it to the backmatter first); "under either criterion" attached
+to the factor of a hundred (false: the loose gap is a factor of about three); "arm", "recursive
+likelihood", "decades", "unitary current", "one pass", "evidences", "the reference condition",
+"accumulates" (glossed or replaced for an editor outside the field); "I know the stake from the
+inside" (carried no fact).
+
+Numbers, each with its source: "about twenty times ... at one representative condition" = INR's
+accumulated ratio at the Figure 3 cell (Results, 20.8; N_ch = 100, S~ = 0.01, Delta~ = 0.1, at the
+truth, 1,000 recordings); "560 ... 210" = counted 2026-08-30 over the battery_pool_G files of all
+data directories at n_sim = 10^4: IR 80 (N_ch, noise) combinations x 7 intervals = 560, and
+exactly 30 combinations shared by all eight members = 210 (S1.1 was stale on this and was
+corrected the same day); "an order of magnitude, two- to threefold on the error bar" = the abstract's (re-synced 2026-08-30 with the approved 188-word abstract; "up to" dropped, it turned a typical value into a ceiling)
+wording (maxima are 57, 33 and 74 in Results; if the abstract changes, change this too); "a factor
+of a hundred ... a factor of three" = 1.7 to 2.0 decades strict, 0.4 to 0.6 loose (Discussion,
+Figure 7 caption, measured 2026-08-30); "1988" = Zadrozny 1988, form only, per Appendix 5; the
+three DOIs = biblio.bib (moffatt2026code, moffatt2026data, moffatt2026macroirlib), to be checked
+as public before sending. "Whether its subunits couple symmetrically or in sequence" is not in the
+letter any more (the 2025 abstract says "sequential, asymmetric coupling mechanism" against
+"symmetric, concerted gating", verified in the PDF, if the phrase is wanted back).
+
 
 ---
 
-Dear Professor [Senior Editor],
+Dear Editors,
 
 I am submitting "Likelihood approximations distort the ion channel kinetic information in
 macroscopic currents" for consideration as a Research Article.
 
-We have reached the limit of what a macroscopic current shows by eye. The flip state we proposed
-for P2X2 in 2007 was still on the visible side, a delay before the current rises, later confirmed.
-The questions now asked of these receptors, how subunits couple and whether they do so
-symmetrically, leave no such mark. They are settled by ratios of evidence between kinetic schemes,
-and whether the likelihoods behind those ratios report the information a recording actually holds
-had never been measured. This manuscript measures it, and finds that most of them do not.
+Kinetic mechanisms of ion channels are beginning to be chosen by comparing the Bayesian evidence
+for rival schemes fitted to macroscopic currents, as we did for nine P2X2 schemes in 2025. How
+much the likelihoods behind such a comparison misreport the information a recording holds, and in
+which directions, has never been measured for macroscopic currents. This manuscript measures both
+for a ladder of eight likelihoods, from least squares to a filter that uses the channel state at
+both ends of each sampling interval, against ten thousand exact simulations at every combination
+of channel number, noise and sampling interval tested.
+Every likelihood that ignores the correlation between successive samples misreports its
+information by an order of magnitude, two- to threefold on the error bar, wherever that correlation
+is present in the record, and no single rescaling repairs it, because the distortion differs
+between parameter directions. The filter conditioning on both ends reports the uncertainty it
+delivers, which I call calibrated, except where single openings become resolvable in the record,
+and there its departure follows one measured power law. No measured condition gives both a
+calibrated least-squares error bar and information about the single-channel current; the two lie
+about a factor of a hundred apart in noise, and still a factor of three apart under the paper's
+looser criterion.
 
-We know the stake from the inside. Our 2025 report that P2X2 activates asymmetrically rested on
-the evidence over nine schemes, and under a control likelihood differing only in its recursion a
-different mechanism came first and a factor of six in evidence disappeared. We published the
-sensitivity and argued for one arm. On a recording there is no truth to measure a likelihood
-against, and fitting well does not supply one: a recursive likelihood follows the record whether
-its assumptions hold or not.
+In our 2025 ranking of nine P2X2 schemes the winning mechanism changed when the likelihood's
+recursion was removed, overturning a factor of six in evidence, and we published that
+sensitivity. In the two-state scheme this manuscript shows that the likelihood without the
+recursion, our control, reports at one representative condition about twenty times the
+information the record holds, while the likelihood we argued for is calibrated there; whether
+that carries to nine schemes is suggested and not shown, and the evidence is not recomputed here.
 
-So we went outside the fit. Channel gating simulates exactly where its likelihood cannot be
-evaluated exactly, and at known parameters a correct likelihood must satisfy two identities: its
-score averages to zero, and the covariance of that score equals the Fisher information it reports.
-We measured both for eight likelihoods, from least squares to a filter conditioning each interval
-average on both endpoints, over 210 combinations of channel number, noise and sampling interval,
-ten thousand exact recordings at each, in a two-state scheme so that the error measured is the
-approximation's own.
+The measurement needs no fit to a real recording. At known parameters a correct likelihood
+satisfies two identities: its score, the gradient of the log-likelihood, averages to zero, and the
+covariance of the score equals the Fisher information the likelihood itself reports. The
+calibrated filter was tested over 560 such combinations, all eight likelihoods over 210 of them.
+The scheme has two states at an open probability of one half, the smallest that isolates the
+approximation's own error; the failure comes from a correlation the likelihood does not carry,
+which richer schemes share but are not tested here.
 
-Every likelihood that leaves the gating correlation unmodelled misreports its information, by up
-to an order of magnitude, and no rescaling repairs it because the distortion has directions. Our
-published control is one of them: across a record it accumulates about twenty times the
-information it holds, and the recursion is what brings that factor back to one. We do not
-recompute the P2X2 evidences. We show that the arm favouring the alternative mechanism is
-distorted in the simplest model there is and the calibrated arm is not, and we audit that arm on
-the same grid, where it departs in the few-channel corner and we say by how much.
+The closest prior check on a filter of this kind appeared in eLife, by Münch and colleagues in
+2022. They counted how often the true value fell inside the reported interval over repeated fits,
+a check that costs a fit per simulation and so covers a line of conditions. The two identities
+cost one likelihood evaluation per simulation and return a matrix over a plane: which parameter
+is misreported, and whether at each sample or across the record. The filter itself was published
+with the P2X2 analysis and has the form of a 1988 integrated-measurement Kalman filter; what is
+new is its score and Fisher information, and the measurement built on them.
 
-Münch and colleagues asked this of their own filter in eLife in 2022 by counting coverage, which
-tests a posterior and costs a fit per replicate. The identities cost one pass and return a matrix:
-which parameter is misreported, and whether the error is committed at each sample or accumulated
-across the record. We are not offering another filter; ours agrees to one part in 10^8 with an
-integrated-measurement Kalman filter known since 1988. The measurement is what is new.
-
-For an experimentalist the map has one line that holds however the thresholds are drawn: no
-region gives both a trustworthy least-squares error bar and information about the unitary current,
-the two boundaries one to three decades of noise apart. The recordings rich enough to determine
-the amplitudes are the ones whose classical error bars are the wrong width. The calibrated
-likelihood, its score and Fisher information, the exact simulator and the diagnostic are a small
-library with R and Python bindings, so a reader can put the same two identities on their own
-scheme.
+The engine with its exact simulator, the configurations and
+the notebooks are at 10.5281/zenodo.22168409, the simulation output at 10.5281/zenodo.22167744,
+and the likelihood with its score, Fisher information and diagnostic as a small library with R
+and Python bindings at 10.5281/zenodo.22168263, so a reader can apply the same two identities to
+their own scheme. [No related manuscript is under
+consideration elsewhere.]
 
 Yours sincerely,
 
@@ -85,9 +131,37 @@ and where.
 
 ---
 
+## Other form fields (2026-08-30)
+
+**Article type.** Research Article, decided 2026-08-30 against the review's Tools and Resources
+suggestion: same editors and the same assessment vocabulary for every type, and the seven eLife
+papers in the bibliography, Münch 2022 included, are all Research Articles; T&R would move the
+evaluation onto the artefact, the least mature part (K = 2, no experimental data, bindings checked
+on one cell).
+
+**Subject areas.** Structural Biology and Molecular Biophysics; second area Physics of Living
+Systems or Computational and Systems Biology (Luciano to choose).
+
+**Reviewing Editor suggestion.** Marcel P. Goldschen-Ohm (University of Texas at Austin) was the
+Reviewing Editor of Münch et al. 2022 (first page of the PDF). Experience with the competitor's
+paper, not a conflict; Luciano's decision.
+
+**Funding.** No grant funded this work. Funder: CONICET (the author is a member of its Carrera del
+Investigador Científico); grant number: none. Matches the manuscript's Funding section.
+
+**Preprint.** Not in the letter: eLife posts the preprint itself (Luciano, 2026-08-30), so no DOI
+is quoted and nothing is posted beforehand.
+
+**Related manuscripts.** eLife asks. The bracketed sentence in the letter is a placeholder for
+Luciano's answer.
+
+**Suggested and excluded reviewers.** Form fields, not the letter. To decide.
+
+---
+
 ## Notes that still apply
 
-**Why the atomistic simulations are not in the letter.** v1 named and bounded them; v5 does not
+**Why the atomistic simulations are not in the letter.** v1 named and bounded them; v5 and v6 do not
 mention them, so the 2025 abstract's "supported by atomistic simulations" is not contradicted, only
 left out. The reasoning that governed v1 is kept for the referee stage: The first sentence of the 2025 abstract
 says the kinetics are "supported by atomistic simulations", so a letter describing that claim as

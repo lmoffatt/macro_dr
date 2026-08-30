@@ -204,6 +204,18 @@ cat("\nfigure_7: how far the loose criterion moves each boundary (median factor 
 print(as.data.frame(CR %>% filter(D == DREF, is.finite(c1), is.finite(c2)) %>% group_by(q, par) %>%
       summarise(factor = round(median(10^(c2 - c1)), 2), n = n(), .groups = "drop")), row.names = FALSE)
 
+# ADDED 2026-08-30. The text quotes the band between the classical fit's calibration line and the loss of
+# the unitary current under BOTH criteria, per N_ch, so the crossings are printed per N rather than as
+# a median factor. Strict 1.93/1.78/1.69/1.69, loose 0.58/0.49/0.48/0.42 decades at N = 10/100/1000/1e4.
+cat("\nfigure_7: strict (c1) and loose (c2) boundary noise per N_ch at Delta.k_off =", DREF, "\n")
+X <- CR %>% filter(D == DREF) %>% transmute(q, par, nch, strict = 10^c1, loose = 10^c2)
+print(as.data.frame(X %>% mutate(across(c(strict, loose), ~signif(.x, 3)))), row.names = FALSE)
+cat("\nfigure_7: the band in decades (ILSE calibration line minus the unitary-current line), per N_ch\n")
+print(as.data.frame(X %>% filter(q == "lse") %>% select(par, nch, ls_s = strict, ls_l = loose) %>%
+      inner_join(X %>% filter(q == "se", par == "i") %>% select(nch, i_s = strict, i_l = loose), by = "nch") %>%
+      transmute(lse_par = par, nch, gap_strict = round(log10(ls_s / i_s), 2), gap_loose = round(log10(ls_l / i_l), 2))),
+      row.names = FALSE)
+
 # DOES THE CLASSICAL BOUNDARY MOVE IF THE OTHER LEAST-SQUARES ARM IS USED? Measured, not drawn.
 # The dotted boundary is recomputed on the un-averaged arm with the same threshold and the same
 # interpolation, and the two are reported side by side. It is deliberately NOT added to the plot:

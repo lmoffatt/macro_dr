@@ -1,5 +1,3 @@
-% Cover letter for the eLife submission. Body text is the canonical cover_letter.md; edit there
-% first and mirror here. Compile: xelatex cover_letter.tex
 \documentclass[10.5pt,a4paper]{article}
 \usepackage[margin=22mm]{geometry}
 \usepackage{fontspec}
@@ -16,7 +14,7 @@ Instituto de Química Física de los Materiales, Medio Ambiente y Energía (INQU
 Facultad de Ciencias Exactas y Naturales, Universidad de Buenos Aires\\
 Ciudad de Buenos Aires, C1428EHA, Argentina\\
 \href{mailto:lmoffatt@qi.fcen.uba.ar}{lmoffatt@qi.fcen.uba.ar}\\[0.6em]
-28 August 2026
+30 August 2026
 \end{flushright}
 
 Dear Editors,
@@ -24,53 +22,57 @@ Dear Editors,
 I am submitting ``Likelihood approximations distort the ion channel kinetic information in
 macroscopic currents'' for consideration as a Research Article.
 
-We have reached the limit of what a macroscopic current shows by eye. The flip state we proposed
-for P2X$_2$ in 2007 was still on the visible side, a delay before the current rises, later
-confirmed. The questions now asked of these receptors, how subunits couple and whether they do so
-symmetrically, leave no such mark. They are settled by ratios of evidence between kinetic schemes,
-and whether the likelihoods behind those ratios report the information a recording actually holds
-had never been measured. This manuscript measures it, and finds that most of them do not.
+Kinetic mechanisms of ion channels are beginning to be chosen by comparing the Bayesian evidence
+for rival schemes fitted to macroscopic currents, as we did for nine P2X$_2$ schemes in 2025. How
+much the likelihoods behind such a comparison misreport the information a recording holds, and in
+which directions, has never been measured for macroscopic currents. This manuscript measures both
+for a ladder of eight likelihoods, from least squares to a filter that uses the channel state at
+both ends of each sampling interval, against ten thousand exact simulations at every combination
+of channel number, noise and sampling interval tested.
+Every likelihood that ignores the correlation between successive samples misreports its
+information by an order of magnitude, two- to threefold on the error bar, wherever that correlation
+is present in the record, and no single rescaling repairs it, because the distortion differs
+between parameter directions. The filter conditioning on both ends reports the uncertainty it
+delivers, which I call calibrated, except where single openings become resolvable in the record,
+and there its departure follows one measured power law. No measured condition gives both a
+calibrated least-squares error bar and information about the single-channel current; the two lie
+about a factor of a hundred apart in noise, and still a factor of three apart under the paper's
+looser criterion.
 
-We know the stake from the inside. Our 2025 report that P2X$_2$ activates asymmetrically rested on
-the evidence over nine schemes, and under a control likelihood differing only in its recursion a
-different mechanism came first and a factor of six in evidence disappeared. We published the
-sensitivity and argued for one arm. On a recording there is no truth to measure a likelihood
-against, and fitting well does not supply one: a recursive likelihood follows the record whether
-its assumptions hold or not.
+In our 2025 ranking of nine P2X$_2$ schemes the winning mechanism changed when the likelihood's
+recursion was removed, overturning a factor of six in evidence, and we published that
+sensitivity. In the two-state scheme this manuscript shows that the likelihood without the
+recursion, our control, reports at one representative condition about twenty times the
+information the record holds, while the likelihood we argued for is calibrated there; whether
+that carries to nine schemes is suggested and not shown, and the evidence is not recomputed here.
 
-So we went outside the fit. Channel gating simulates exactly where its likelihood cannot be
-evaluated exactly, and at known parameters a correct likelihood must satisfy two identities: its
-score averages to zero, and the covariance of that score equals the Fisher information it reports.
-We measured both for eight likelihoods, from least squares to a filter conditioning each interval
-average on both endpoints, over 210 combinations of channel number, noise and sampling interval,
-ten thousand exact recordings at each, in a two-state scheme so that the error measured is the
-approximation's own.
+The measurement needs no fit to a real recording. At known parameters a correct likelihood
+satisfies two identities: its score, the gradient of the log-likelihood, averages to zero, and the
+covariance of the score equals the Fisher information the likelihood itself reports. The
+calibrated filter was tested over 560 such combinations, all eight likelihoods over 210 of them.
+The scheme has two states at an open probability of one half, the smallest that isolates the
+approximation's own error; the failure comes from a correlation the likelihood does not carry,
+which richer schemes share but are not tested here.
 
-Every likelihood that leaves the gating correlation unmodelled misreports its information, by up
-to an order of magnitude, and no rescaling repairs it because the distortion has directions. Our
-published control is one of them: across a record it accumulates about twenty times the
-information it holds, and the recursion is what brings that factor back to one. We do not
-recompute the P2X$_2$ evidences. We show that the arm favouring the alternative mechanism is
-distorted in the simplest model there is and the calibrated arm is not, and we audit that arm on
-the same grid, where it departs in the few-channel corner and we say by how much.
+The closest prior check on a filter of this kind appeared in eLife, by M\"unch and colleagues in
+2022. They counted how often the true value fell inside the reported interval over repeated fits,
+a check that costs a fit per simulation and so covers a line of conditions. The two identities
+cost one likelihood evaluation per simulation and return a matrix over a plane: which parameter
+is misreported, and whether at each sample or across the record. The filter itself was published
+with the P2X$_2$ analysis and has the form of a 1988 integrated-measurement Kalman filter; what is
+new is its score and Fisher information, and the measurement built on them.
 
-Münch and colleagues asked this of their own filter in eLife in 2022 by counting coverage, which
-tests a posterior and costs a fit per replicate. The identities cost one pass and return a matrix:
-which parameter is misreported, and whether the error is committed at each sample or accumulated
-across the record. We are not offering another filter; ours agrees to one part in $10^{8}$ with an
-integrated-measurement Kalman filter known since 1988. The measurement is what is new.
-
-For an experimentalist the map has one line that holds however the thresholds are drawn: no
-region gives both a trustworthy least-squares error bar and information about the unitary current,
-the two boundaries one to three decades of noise apart. The recordings rich enough to determine
-the amplitudes are the ones whose classical error bars are the wrong width. The calibrated
-likelihood, its score and Fisher information, the exact simulator and the diagnostic are a small
-library with R and Python bindings, so a reader can put the same two identities on their own
-scheme.
+The engine with its exact simulator, the configurations and
+the notebooks are at 10.5281/zenodo.22168409, the simulation output at 10.5281/zenodo.22167744,
+and the likelihood with its score, Fisher information and diagnostic as a small library with R
+and Python bindings at 10.5281/zenodo.22168263, so a reader can apply the same two identities to
+their own scheme. [No related manuscript is under
+consideration elsewhere.]
 
 Yours sincerely,
 
 \vspace{1.5em}
+
 Luciano Moffatt
 
 \end{document}

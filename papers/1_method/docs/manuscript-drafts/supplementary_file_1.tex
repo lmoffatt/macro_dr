@@ -29,10 +29,15 @@ $N_{\mathrm{ch}} \in \{5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000\}$ 
 all twelve levels; NR covers
 $N_{\mathrm{ch}} \in \{10, 100, 1000, 10000\}$ and R covers those and additionally
 $5$, $20$ and $50$ at $\widetilde{S} = 0.01$, with the highest levels run only at the larger
-channel counts and reaching $\widetilde{S} = 10^6$ at $N_{\mathrm{ch}} = 10^4$; MR and
-VR cover the same channel numbers at $\widetilde{S} \in \{0.01, 0.1, 1\}$; and the least-squares arm
-covers $30$ cells on $N_{\mathrm{ch}} \in \{10, 100, 1000, 10000\}$, with $\widetilde{S}$ from
-$0.01$ up to $10^3$, $10^4$, $10^5$ and $10^6$ respectively.
+channel counts and reaching $\widetilde{S} = 10^6$ at $N_{\mathrm{ch}} = 10^4$; INR, MR and
+VR cover the same $30$ combinations of channel number and noise as the least-squares arm, which
+runs on $N_{\mathrm{ch}} \in \{10, 100, 1000, 10000\}$ with $\widetilde{S}$ from
+$0.01$ up to $10^3$, $10^4$, $10^5$ and $10^6$ respectively. Those $30$ combinations, times the
+seven intervals, are the $210$ cells every one of the eight members carries; IR carries $560$.
+% CORRECTED 2026-08-30: the previous text had MR and VR at three noise levels only and did not list
+% INR. Counted over the battery_pool_G files of every data directory at n_sim = 1e4: INR 30, MR 30,
+% VR 30, LSE 30, ILSE 32, NR 32, R 34, IR 80 (N_ch, noise) combinations; intersection of the eight
+% exactly 30 (N_ch 10/100/1000/1e4, noise labels 0.1 to 1e4/1e5/1e6/1e7 respectively).
 % src: projects/eLife_2025/figures/data/1c2ae6f + 87889e6 + 0ffbda7 (per-algorithm nch and noise sets, nsim_10000 files)
 
 \section*{S1.2\quad The five reduction stages and what each writes}
@@ -310,7 +315,7 @@ what a reader matching deposited filenames needs to know.
 % taylor=false; macro_IRT: taylor=true, not run here)
 
 
-\section*{S1.8\quad Design rationale behind the three numerical safeguards}
+\section*{S1.8\quad Design rationale behind the two numerical safeguards}
 
 % MOVED HERE 2026-08-26 from Methods (shortening_plan.md, Methods item 11). Methods keeps every
 % DISCLOSURE: the pseudo-count equation with its epsilon definition, the smooth trust coefficient

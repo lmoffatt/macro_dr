@@ -1,0 +1,40 @@
+# Figure 6 -- traces on both sides of the resolvability limit (2026-08-29).
+# Six cells of the sweep's scheme_CO at the reference interval Delta = 0.1 tau = 1 ms (50 sub-samples at 50 kHz):
+#   N_ch = 10 and 100, S~ = 0.005, 0.1 and 1  (Current_Noise = S~ * i^2 / k_off = S~ / 100).
+# Protocol: 20 samples at zero agonist, then 300 samples at agonist 10 (P_open = 1/2, as in the sweep).
+# Writes the sampled current and the 50-substep occupancy trace of each cell (simulation / simulation_sub scopes),
+# so the figure can draw the true channel record behind the noisy samples. Fixed seed for reproducibility.
+model = load_model("scheme_CO")
+experiment = create_experiment(experiment_structure = [{20, 50, 0.0}, {300, 50, 10.0}],
+   frequency_of_sampling = 50e3, initial_agonist = 0.0, initial_time = 0.0)
+observations = set_observations(values_set = [0,0,0,0])
+
+par_10_0005 = create_parameters(model = model, parameters_info = [{"on","Log10",10},{"off","Log10",100},{"unitary_current","Log10",1},{"Current_Noise","Log10",0.00005},{"Current_Baseline","Log10",1},{"Num_ch_mean","Log10",10}])
+tr_10_0005 = get_standard_parameter_transformed_values(par_10_0005)
+sim_10_0005 = simulate_with_sub_intervals(model = model, parameters = tr_10_0005, experiment = experiment, observations = observations, number_of_substeps = 50, seed = 20260829)
+file_10_0005 = write_csv(experiment = experiment, simulation = sim_10_0005, number_of_substates = 50, path = "figures/data/figure_6_traces/trace_nch_10_S_0.005")
+
+par_10_01 = create_parameters(model = model, parameters_info = [{"on","Log10",10},{"off","Log10",100},{"unitary_current","Log10",1},{"Current_Noise","Log10",0.001},{"Current_Baseline","Log10",1},{"Num_ch_mean","Log10",10}])
+tr_10_01 = get_standard_parameter_transformed_values(par_10_01)
+sim_10_01 = simulate_with_sub_intervals(model = model, parameters = tr_10_01, experiment = experiment, observations = observations, number_of_substeps = 50, seed = 20260829)
+file_10_01 = write_csv(experiment = experiment, simulation = sim_10_01, number_of_substates = 50, path = "figures/data/figure_6_traces/trace_nch_10_S_0.1")
+
+par_10_1 = create_parameters(model = model, parameters_info = [{"on","Log10",10},{"off","Log10",100},{"unitary_current","Log10",1},{"Current_Noise","Log10",0.01},{"Current_Baseline","Log10",1},{"Num_ch_mean","Log10",10}])
+tr_10_1 = get_standard_parameter_transformed_values(par_10_1)
+sim_10_1 = simulate_with_sub_intervals(model = model, parameters = tr_10_1, experiment = experiment, observations = observations, number_of_substeps = 50, seed = 20260829)
+file_10_1 = write_csv(experiment = experiment, simulation = sim_10_1, number_of_substates = 50, path = "figures/data/figure_6_traces/trace_nch_10_S_1")
+
+par_100_0005 = create_parameters(model = model, parameters_info = [{"on","Log10",10},{"off","Log10",100},{"unitary_current","Log10",1},{"Current_Noise","Log10",0.00005},{"Current_Baseline","Log10",1},{"Num_ch_mean","Log10",100}])
+tr_100_0005 = get_standard_parameter_transformed_values(par_100_0005)
+sim_100_0005 = simulate_with_sub_intervals(model = model, parameters = tr_100_0005, experiment = experiment, observations = observations, number_of_substeps = 50, seed = 20260829)
+file_100_0005 = write_csv(experiment = experiment, simulation = sim_100_0005, number_of_substates = 50, path = "figures/data/figure_6_traces/trace_nch_100_S_0.005")
+
+par_100_01 = create_parameters(model = model, parameters_info = [{"on","Log10",10},{"off","Log10",100},{"unitary_current","Log10",1},{"Current_Noise","Log10",0.001},{"Current_Baseline","Log10",1},{"Num_ch_mean","Log10",100}])
+tr_100_01 = get_standard_parameter_transformed_values(par_100_01)
+sim_100_01 = simulate_with_sub_intervals(model = model, parameters = tr_100_01, experiment = experiment, observations = observations, number_of_substeps = 50, seed = 20260829)
+file_100_01 = write_csv(experiment = experiment, simulation = sim_100_01, number_of_substates = 50, path = "figures/data/figure_6_traces/trace_nch_100_S_0.1")
+
+par_100_1 = create_parameters(model = model, parameters_info = [{"on","Log10",10},{"off","Log10",100},{"unitary_current","Log10",1},{"Current_Noise","Log10",0.01},{"Current_Baseline","Log10",1},{"Num_ch_mean","Log10",100}])
+tr_100_1 = get_standard_parameter_transformed_values(par_100_1)
+sim_100_1 = simulate_with_sub_intervals(model = model, parameters = tr_100_1, experiment = experiment, observations = observations, number_of_substeps = 50, seed = 20260829)
+file_100_1 = write_csv(experiment = experiment, simulation = sim_100_1, number_of_substates = 50, path = "figures/data/figure_6_traces/trace_nch_100_S_1")
