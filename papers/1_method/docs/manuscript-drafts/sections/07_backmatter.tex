@@ -19,9 +19,24 @@ A separate library, \texttt{macroir} \citep{moffatt2026macroirlib}, carries the
 boundary-conditioned likelihood, its score, its Gaussian Fisher information and the distortion
 diagnostic of this paper out of the engine and into a small self-contained C++ core, with an R
 package and a Python package over it; the diagnostic returns the distortion matrix, its
-eigenvalue spectrum and the first-order bias from one call in either language. The two language
+eigenvalue spectrum and the first-order bias from one call in either language. Its scope is
+narrower than the paper's: it carries the boundary-conditioned member and the interval-averaged
+least-squares arm, the exact simulator and a Gauss-Newton fit, and none of the other six members,
+so the comparisons reported here are reproducible from the engine deposit and not from the
+library. Its boundary-conditioned member was checked against the engine on eight cells, four
+kinetic schemes, three acquisition intervals spanning a factor of a hundred, a protocol whose
+concentration jumps split sampling intervals and a recording with a gap, agreeing on the total
+log-likelihood to between $10^{-16}$ and $6\times10^{-15}$ relative and on the score to between
+$8\times10^{-14}$ and $1.4\times10^{-9}$. The two language
 packages are bindings over that one core, and they were checked against it on a single reference
 cell, which is the evidence for the statement that the three interfaces return the same numbers.
+% SCOPE AND CHECK RESTORED 2026-08-30: both sentences had left with the DOI rewrite of the same
+% day. Scope verified at the deposited tag macroir v0.1.0 (Code/macroir, docs/status.md 'What is
+% missing': only macro_IR and ILSE exist; R and NR off the route 2026-08-28; simulate() exported
+% in Python and R, uniformization = every channel its own CTMC, simulate.hpp header). Check numbers
+% from docs/status.md 'What it is checked against' (eight cells; logL 1e-16..6e-15; score 8e-14..1.4e-9),
+% and they are for the IR member: ILSE has no number next to macro_dr's (the frozen binary does not
+% instantiate the family).
 
 \section*{Acknowledgements}
 

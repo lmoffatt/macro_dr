@@ -549,8 +549,12 @@ the second, which is the single-channel spread of the interval mean across bound
 does not vanish when the occupancy covariance does.
 
 The gain is the same contraction taken once. Built on the pairs it is the $K^2$-vector
-$\sum_{k,l}(\bm{\Sigma}_{0\to\Delta})_{(i,j),(k,l)}
-\bar{\gamma}_{k\to l}$, and step three sums its start index away, leaving the
+\[
+  \sum_{k,l}(\bm{\Sigma}_{0\to\Delta})_{(i,j),(k,l)}\,\bar{\gamma}_{k\to l},
+\]
+% DISPLAYED 2026-08-30: inline, the sum cannot break and ran past the right margin on page 38 of the
+% 02:02 build (Luciano). Same formula, nothing else changed.
+and step three sums its start index away, leaving the
 $\mathbf{g}_{0\to\Delta}$ the interval update uses,
 \begin{equation}
   \mathbf{g}_{0\to\Delta} \;=\; \widetilde{\bm{\gamma}^\top\bm{\Sigma}}
