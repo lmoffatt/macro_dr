@@ -130,12 +130,15 @@ the design, since the recursion is linear in the groups it is given.
 % documents error_bar_factor, the square root of the distortion's diagonal. The 2026-08-11
 % abstract_guion.md claim this note used to hold as unverified is thereby confirmed and retired.
 
-\subsection*{The filter is not new; the measurement of it is}
-% [L-REVIEW 2026-09-03] Heading nuevo: los cuatro parrafos de contexto previo (el filtro de
-% Zadrozny, la cobertura de Munch, el costo, el analisis de fluctuaciones) colgaban del heading
-% "Grouping samples...", que trata otra cosa. El titulo es propuesta mia y es lo mas aforistico
-% del puerto; alternativas llanas ofrecidas a Luciano 2026-09-04. Pendiente el titulo. [/L-REVIEW]
-MacroIR is an integrated-measurement augmented Kalman filter \citep{zadrozny1988gaussian}, and its predictions coincide with that construction to about $10^{-8}$. The equations that make that agreement checkable are in Appendix~\ref{app:derivation}; what the augmentation supplies, what has to be computed for the chain, and the prior art on both sides are in Appendix~\ref{app:priorart}.
+\subsection*{Two independent derivations arrive at the same filter}
+% Decision de Luciano 2026-09-04: el bloque de contexto previo se divide en DOS subsecciones,
+% una para la convergencia con el filtro de Zadrozny (heading "Two independent derivations
+% arrive at the same filter") y otra para lo que midieron las alternativas (Munch cobertura,
+% costo, analisis de fluctuaciones; heading "What the alternatives measure, and what remained
+% unmeasured"). El parrafo de Zadrozny se reescribio para contar la genesis en su orden real:
+% MacroIR se derivo como miembro de frontera de MacroR y la coincidencia con Kalman se
+% encontro despues; "is a Kalman filter" contaba la historia al reves. RESUELTO.
+MacroIR was not built as a Kalman filter. It was derived as the boundary-state member of the MacroR recursion, by asking what the update becomes when the state carries both endpoints of the acquisition interval (Appendix~\ref{app:derivation}). The construction it lands on is not specific to ion channels: its predictions coincide, to about one part in $10^{8}$, with those of the integrated-measurement augmented Kalman filter introduced for time-averaged observations in econometrics \citep{zadrozny1988gaussian}. The agreement was found after the derivation, not used in it, and we read it as convergence: an integrated observation of a latent Markov process admits one natural Gaussian recursion, and two fields arrived at it independently. The equations that make the agreement checkable are in the same appendix; what the augmentation supplies, what has to be computed for the chain, and the prior art on both sides are in Appendix~\ref{app:priorart}.
 % p.115 (Van Loan's block exponential for the augmented transition and its three covariance
 % blocks); PDF in docs/bibliography, read first-hand 2026-08-27. The 1e-8 is
 % docs/bibliography/MacroIR_prior_art_map.md. FIELD CORRECTED THE SAME DAY: it read "control and
@@ -160,6 +163,7 @@ MacroIR is an integrated-measurement augmented Kalman filter \citep{zadrozny1988
 % repair is at 06_methods.tex, which defers to this paragraph by name for the Kalman correspondence,
 % so this is still the only place the correspondence is stated.
 
+\subsection*{What the alternatives measure, and what remained unmeasured}
 \citet{munch2022bayesian} did not overlook the averaging: they treat a finite integration time as a misspecification, measure the bias it causes and report that the algorithms they compare incur a similar one. Their observation is instantaneous and their states are propagated by the matrix exponential of the interval (their Eq.~4), which is the construction of the recursive instantaneous rung measured here, with one difference in the emission: theirs carries an open-channel noise term that this study sets to zero. What is measured at that rung is a property of the rung under this design and not a measurement of their filter at their design points. At that rung the information is calibrated at the parameters that generated the data and not where the estimates land (Figure~\ref{fig:plane-s1}), and a coverage count is taken at the estimates. What a robustness check on estimates does not show is what the same construction costs the reported uncertainty.
 % REWRITTEN 2026-08-30 (review of 2026-08-30, item 4; Luciano accepted). The old sentence attached "the one this study finds least centred of the eight in the rates", a measurement of R under this design with sigma_op = 0, to their filter. Eq. 4 verified in the PDF (docs/bibliography/Munch_2022_...eLife.pdf, p. 5: y_t = H n_t + nu_t ~ N(.|H n_t, Sigma_t)). Appendix 5 already carried the two hedges (emission term, design points); its "their rung" became "that rung" the same day.
 % COMPRESSED 2026-08-26 (shortening_plan.md, Discussion item on the Munch paragraph): the placement
