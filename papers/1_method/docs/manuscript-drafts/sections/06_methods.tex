@@ -540,13 +540,15 @@ reference point, so the fixed value and the truth are the same number by constru
 Least squares is therefore not handicapped in this configuration but helped: two of the
 six parameters are supplied to it exactly right, while the likelihood members estimate
 all six. Where it is nonetheless the arm whose reported uncertainty is furthest from
-the delivered one, that failure is not a lack of information about those two. % [L-REVIEW 2026-09-03] Referencia rota por la renumeracion: aca decia "Figures~4 and~6" con
-% numeros literales (numeracion
-% eLife vieja; hoy 4=cascada temporal y 6=info por paso, ninguna es esta configuracion). Se
-% reemplaza por \ref a las figuras que SI dibujan celdas ILSE de esta bateria (nubes, plano y
-% memoria; src arriba: figure_4_LSE.macroir y figure_3_mle_LSE.macroir). PENDIENTE DE CONFIRMAR:
-% si la columna ILSE de la familia temporal (Figs 4-6 nuevas) usa esta config o la de seis
-% parametros; si es esta, agregarlas. [/L-REVIEW]
+the delivered one, that failure is not a lack of information about those two. % VERIFICADO 2026-09-04 (cierra la duda que quedaba aqui): la columna ILSE de la familia
+% temporal corre con los SEIS parametros libres, no con esta configuracion de cuatro; el header
+% de projects/eLife_2025/ops/local/figure_3_time_LSE.macroir:9-18 lo dice textualmente ("WHY ALL
+% SIX PARAMETERS STAY FREE (Log10) here, unlike figure_3_mle_LSE.macroir which Fixes
+% unitary_current + Current_Noise"), con tres razones: las figuras temporales solo ACUMULAN el
+% Fisher y nunca lo invierten, la alineacion de param_index con los cinco dumps macro, y que las
+% direcciones planas queden visibles como filas cero. La frase de abajo (nubes + mapas del plano)
+% es correcta tal cual; la referencia vieja "Figures~4 and~6" era numeracion eLife hardcodeada.
+% RESUELTO.
 This is
 the configuration behind every \texttt{ILSE} cell of the cloud figures and the design-plane maps.
 % src: projects/eLife_2025/ops/local/figure_4_LSE.macroir:54-55 (unitary_current Fixed, Current_Noise Fixed)
