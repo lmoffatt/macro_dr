@@ -110,10 +110,13 @@ library(patchwork)
 # calibration is not monotone along the cost ladder, and with those two columns missing a reader
 # would assume it is. NMR, the build that lost the interval-variance term, is not drawn anywhere.
 ALGOS <- c("LSE", "NR", "INR", "R", "MR", "VR", "IR")
-ALAB  <- c(LSE = "LSE", NR = "NR", INR = "INR", R = "R", MR = "MR", VR = "VR", IR = "IR")
+# RELABEL 2026-09-03 (aceptado por Luciano): la columna dibuja el digest figure_3_digest_LSE.rds,
+# que es averaging_approximation = 1 = ILSE (diccionario DTOK de figure_3.Rmd:143; el LSE verdadero
+# es LSE_av0 y NO se dibuja aca). El token de archivo sigue siendo "LSE"; solo cambia el display.
+ALAB  <- c(LSE = "ILSE", NR = "NR", INR = "INR", R = "R", MR = "MR", VR = "VR", IR = "IR")
 # Wrapped at seven columns. A one-line subtitle is fine at four columns and 1.5 in per panel; at
 # 0.9 in "Interval Non-Recursive" is wider than its column and runs into its neighbours.
-FULL  <- c(LSE = "Least\nSquares", NR = "Non-\nRecursive", INR = "Interval Non-\nRecursive",
+FULL  <- c(LSE = "Interval Least\nSquares", NR = "Non-\nRecursive", INR = "Interval Non-\nRecursive",
            R = "Recursive", MR = "Mean\nRecursive", VR = "Variance\nRecursive",
            IR = "Interval\nRecursive")
 LEAD  <- ALGOS[1]                            # leftmost column carries the y titles and the tags
