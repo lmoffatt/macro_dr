@@ -125,22 +125,24 @@ cat("nominal-95% coverage:\n"); print(as.data.frame(cov_tab), digits = 3, row.na
 ```
 
 ```{r plot, fig.width = 7, fig.height = 3.6}
+# strips en la notacion del manuscrito (widetilde(Delta)), 2026-09-04; antes "Delta 0.05/1" sin glosa
 labs_df <- cov_tab %>% mutate(lab = sprintf("%s: %.0f%%", src, 100 * coverage),
-                              facet = sprintf("Delta %.2g", delta))
-qq <- qq %>% mutate(facet = sprintf("Delta %.2g", delta))
+                              facet = sprintf("widetilde(Delta)==%.2g", delta))
+qq <- qq %>% mutate(facet = sprintf("widetilde(Delta)==%.2g", delta))
 mx <- max(qq$theo, qq$emp)
 g <- ggplot(qq, aes(theo, emp, colour = src)) +
   geom_abline(slope = 1, intercept = 0, colour = "grey55", linewidth = .35) +
   geom_vline(xintercept = qchisq(0.95, P), colour = "grey80", linewidth = .3, linetype = "dotted") +
   geom_line(linewidth = .5) +
-  facet_wrap(~ facet, nrow = 1) +
+  facet_wrap(~ facet, nrow = 1, labeller = label_parsed) +
   scale_colour_manual(values = COL, name = NULL) +
   coord_equal(xlim = c(0, mx), ylim = c(0, mx)) +
   labs(x = bquote("theoretical quantile, " ~ chi[.(P)]^2),
        y = expression("empirical squared Mahalanobis distance " ~ d^2),
-       # wrapped 2026-08-05: the one-line form ran off the right edge once the art narrowed from
-       # 7.0 to 5.6 in, which is the width a figure supplement is actually placed at
-       title = sprintf("Sandwich vs reported covariance against the empirical MLE cloud\n(IR, N_ch 10, noise 0.05, 1000 fits, p = %d)", P)) +
+       # TITULO HORNEADO RETIRADO 2026-09-04 (promocion a figura de cuerpo): la caption LaTeX es
+       # la duena del titulo en JGP, y el "noise 0.05" del titulo era la etiqueta x10 donde la
+       # caption dice S-tilde = 0.005 (NOISE_AXIS_UNITS.md), un choque que un referi veria.
+       NULL) +
   # the coverage numbers, so the reader sees 91% vs 95% without measuring the tail
   geom_text(data = labs_df, aes(x = 0.05 * mx, y = mx - (as.integer(factor(src)) - 1) * 0.09 * mx,
                                 label = lab, colour = src), hjust = 0, size = 2.5, show.legend = FALSE) +

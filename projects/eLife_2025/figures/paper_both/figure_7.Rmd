@@ -1240,7 +1240,8 @@ KEY <- list(
   # needs the inference has the row above; the caption spells it out.
   annotate("text", x = kx0, y = kr(y_note), hjust = 0, size = PT(7), colour = "grey30",
            fontface = "italic",
-           label = "ILSE holds i fixed and cannot separate N_ch from it"),
+           # plotmath 2026-09-04: el subindice de N[ch] igualado al del eje (antes "N_ch" literal)
+           label = "ILSE~holds~i~fixed~and~cannot~separate~N[ch]~from~it", parse = TRUE),
   # the two line classes, explained once here instead of twice on the map
   annotate("rect", xmin = kx0 - .02, xmax = kx1 + .02, ymin = kr(y_line1) - kh*.9,
            ymax = kr(y_line1) + kh*.9, fill = PAL[["rate"]], colour = NA),

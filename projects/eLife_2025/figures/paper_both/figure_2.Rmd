@@ -521,7 +521,9 @@ note_cell <- function(px, py, lab) {
             lineheight = 1.05, inherit.aes = FALSE)
 }
 
-r1 <- pair_plot("on", "off", ALGOS) + labs(tag = "A") + DIET
+# tag "A" retirado 2026-09-04: el panel B se retiro en agosto y la caption no referencia paneles;
+# un "(A)" solitario invita una consulta de produccion (revision de figuras, aceptada por Luciano).
+r1 <- pair_plot("on", "off", ALGOS) + DIET
 r2 <- pair_plot("Num_ch_mean", "unitary_current", NOLSE) +
       note_cell("Num_ch_mean", "unitary_current", "i fixed\nat the truth") + DIET
 r3 <- pair_plot("Current_Noise", "Num_ch_mean", NOLSE) +
