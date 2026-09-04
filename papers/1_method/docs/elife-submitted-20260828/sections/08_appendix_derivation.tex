@@ -1,0 +1,1092 @@
+% Appendix 1: the derivation of the interval likelihood.
+%
+% Created 2026-08-09 by Phase 1 of papers/1_method/08_length_plan.md. This file holds the algebra
+% that used to sit in the body of the Theory section. Nothing here is new text: every block was
+% moved verbatim, one commit per move, so that `git log --follow` shows the relocation rather than a
+% deletion and an addition. What Theory keeps is the vocabulary the Results are written in (the two
+% axes, the eight members, the two closures, the observable) plus a summary of how the algorithms
+% were derived; what a reader has to CHECK rather than FOLLOW is here.
+%
+% ORDER. This appendix is input BEFORE 09_appendix_members so that it is Appendix 1: the
+% member-by-member spec cites twelve equations of this derivation and eight of them are cited from
+% nowhere else, so with the spec first every one would be a forward reference.
+%
+% THE \appendix DECLARATION AND THE A-NUMBERING LIVE HERE AND NOWHERE ELSE. They were in
+% 08_appendix_members.tex when that was the only appendix; duplicating them in two files restarts
+% the counter and produces two equations called A1.
+%
+% FLOATS. A `figure` environment inside appendixbox is a hard LaTeX error ("Not in outer par mode"),
+% because elife.cls wraps the box in mdframed: the caption is dropped and the label goes undefined.
+% Anything figure-shaped that lands here must be `center` + \captionof, the pattern
+% 09_appendix_members.tex already uses for its table, and must NOT carry `fullwidth`, which escapes
+% the panel and overprints the left rule with no overfull warning.
+
+\appendix
+\setcounter{equation}{0}
+\renewcommand{\theequation}{A\arabic{equation}}
+
+\begin{appendixbox}
+\label{app:derivation}
+\section*{The interval likelihood, derived}
+
+The body states what each member of the family conditions on and what that buys. This
+appendix carries the derivation behind those statements, in the order it is built: the law of the
+interval average and why it has no closed form, the boundary-conditioned moments and how they are
+evaluated, the three steps that turn the instantaneous update into the interval one, the
+start-conditioned members stated from their own assumptions, the two algebraic differences that
+separate them from the boundary-conditioned one, and both held against the exact law. Three
+subsections close it and depend on none of the others: the correspondence with the
+linear-filtering literature, what the uniform acquisition window misses against a real amplifier,
+and what was checked numerically and to what tolerance. It is written to be checked rather
+than read in sequence, and every equation the body or Methods refers to is numbered here.
+
+\begin{tcolorbox}[title={Three marks, and each one says one thing}, colback=gray!5, colframe=gray!55]
+\textbf{An arrow means the object spans the acquisition window}, of duration $\Delta$:
+$P_{i\to j}(\Delta)$ is a transition across it, $\bar\gamma_{i\to j}$ an average over it,
+$\bar y_{0\to\Delta}$ a recorded value formed from it. \textbf{No arrow means one instant}:
+$\bm{\mu}_0,\bm{\Sigma}_0$ are the occupancy mean and covariance where the window opens,
+$\bm{\mu}_\Delta,\bm{\Sigma}_\Delta$ where it closes. \textbf{A dot marks a collapsed end}:
+$a_{i\to\cdot}:=\sum_j P_{i\to j}(\Delta)\,a_{i\to j}=\mathbb{E}[a\mid X_0=i]$, as in
+$\bar\gamma_{i\to\cdot}$; for a probability the weight is already inside and the collapse is the
+plain margin. Across a recording a subscript $t$ indexes the window, as in $\bar y_t$; inside a window the two
+ends are $0$ and $\Delta$, and a collapsed object is defined the moment its pair-resolved version is.
+\end{tcolorbox}
+% MOVED HERE 2026-08-10 from 02_framework.tex, where it opened the section. It is appendix
+% vocabulary: two of its three marks (the instant subscripts 0 and Delta, the dot collapse) are used
+% in this file and in no body sentence, and the third, the arrow, is now glossed in the body at "The
+% boundary state", where the first arrow-marked object of the body appears. The reason for the move
+% is in the note left at the old site.
+% NOTATION, aligned 2026-08-09 with the published form. The supplementary information of
+% moffatt2025bayesian, section S1.3, writes P_{i->j}(t), gamma_{i->j}(t), gamma_0 = (E[gamma_{i->.}])_i,
+% y^pred_{0->t}, y^obs_{0->t} and K^mu_{0->t}: lowercase, i and j, the dot for the collapse, and the
+% arrow on every spanning object INCLUDING the gain. Thirteen pages with no uppercase Gamma, no
+% i_0/i_t, no "bnd" and no "prop". This section had departed from that on all four counts; the pass
+% of 2026-08-09 returns it. VERIFIED first-hand against
+% docs/bibliography/Moffatt_PierdominiciSottile_2025_Functional_Asymmetry_P2X2_CommBiol_SI.pdf,
+% Eqs. S1-S6.
+% THREE DELIBERATE DEPARTURES, kept:
+%   (i) the bar on gamma-bar. The SI writes gamma_{i->j} bare because nothing competes with it
+%       there; this section uses bold gamma for the instantaneous conductance in the same
+%       equations, so the bar is a local disambiguation and not a departure of substance.
+%  (ii) the gain is g and not K^mu, and it is not called a Kalman gain. De-Kalmaned 2026-08-06
+%       with the reason recorded below Eq. sig-post.
+% (iii) the SI's E_i for the collapsed second moment is not used: E_2 and E_3 are the divided
+%       differences here, and a third E would collide.
+
+\subsection*{The interval average, and how the members are built}
+% MOVED HERE 2026-08-10 from 02_framework.tex, three blocks, no sentence rewritten except where
+% the connective tissue had to change: the telegraph mechanics from "Two Gaussian approximations",
+% and the per-channel algebra, the three steps and the tilted semigroup from "The interval update".
+% The body keeps the claims it argues from and a bridge; this is where they are cashed. Placed
+% BEFORE the boundary-conditioned moments so that the "met above" of Eq. tilted-derivatives and the
+% "as above" of Eq. gammabar-vbar resolve inside this appendix.
+
+A single channel switching among its conductance levels traces a piecewise-constant path, the
+random telegraph signal when $K=2$, and the window delivers its integral over one acquisition
+interval,
+\begin{equation}
+  A_{0\to\Delta}=\int_0^{\Delta}\gamma\bigl(X_s\bigr)\,\mathrm{d}s,
+  \label{eq:integrated-conductance}
+\end{equation}
+where $X_s$ is the state of the channel at time $s$. Its law is mixed: an atom at
+$\Delta\gamma_i$ carrying the probability of never leaving state $i$, and a continuous part from
+the paths that switched. Its density is a series over the number of transitions in the window,
+exact at every $K$, closed only at $K=2$, and proliferating with $K$. Two things that might
+rescue it do not. Channel models carry few distinct conductances, every shut state at
+$\gamma=0$ and the open states often sharing one $\gamma$, so $A_{0\to\Delta}$ is that
+conductance times the time spent in the open aggregate however large $K$ is; but the aggregate is
+Markov only if $\mathbf{Q}$ is lumpable, which for the schemes that motivate this work it is not
+\citep{colquhoun1981stochastic}. And the population multiplies the difficulty rather than adding
+to it, since the laws of independent channels convolve and a recorded sample constrains only the
+sum, so the posterior over channels does not factorize~\citep{moffatt2007estimation}.
+% TODO citation, travelled with the paragraph 2026-08-10: the two-state occupation-time density is
+% classical (candidates to check and add to biblio.bib: Takacs 1957, Acta Math Acad Sci Hungar;
+% Pedler 1971, J Appl Prob 8:381). Neither PDF is in docs/bibliography/ yet. The general-K series is
+% the accumulated-reward problem of performability analysis (Donatiello and Iyer 1987; de Souza e
+% Silva and Gail 1986; Sericola 1990s).
+% OPEN, travelled 2026-08-10: the other consequence of the same aggregation, that distinct
+% generators can produce identical current statistics, still has no Discussion passage to point at.
+% Logged at 00_abstract.tex:203; sources in docs/bibliography/identifiability/ and the framing in
+% _program/research_program.md (Bridge 2). The host sentence for the cross-reference is the
+% lumpability clause above.
+
+Every moment in the construction is carried on a single channel. Writing $\mathbf{X}$ for the
+indicator vector of the state one channel occupies, which is one on that state and zero
+elsewhere, $\bm{\mu}=\mathbb{E}[\mathbf{X}]$ is its probability vector and
+$\bm{\Sigma}=\mathrm{Cov}(\mathbf{X})$ its covariance, which is
+$\mathrm{diag}(\bm{\mu})-\bm{\mu}\bm{\mu}^\top$ for a channel nothing has been observed about
+and vanishes when its state is known. Per channel is a normalization the whole construction is
+carried in, and not a claim that the channels stay independent under it: conditioning on a shared
+recorded value correlates them, so from the first update onward $\bm{\Sigma}$ is
+$\mathrm{Cov}(\mathbf{N})/N_{\mathrm{ch}}$ and not one channel's own covariance. Before any
+observation the channels are independent of each other, so the counts
+$\mathbf{N}=\sum_c \mathbf{X}^{(c)}$ over the ensemble have
+$\mathbb{E}[\mathbf{N}]=N_{\mathrm{ch}}\bm{\mu}$ and
+$\mathrm{Cov}(\mathbf{N})=N_{\mathrm{ch}}\bm{\Sigma}$, which is where every factor of
+$N_{\mathrm{ch}}$ in Eq.~\ref{eq:macror} comes from.
+
+% DELETED 2026-08-26, item "DELETE ~170 words, the three-step preview" of docs/shortening_plan.md
+% (appendices span), which executes duplication (b). What stood here was a full preview of the
+% three-step construction, opening "The interval average is not a function of the occupancy at any
+% one time" and closing "the Gaussian replacement is where the approximation enters". SURVIVING
+% COPIES: the body's family section, and the subsection "The three steps that build the interval
+% update" below, which carries the same three steps, the same legitimate-rather-than-convenient
+% justification and the same exactness statement. Checked before cutting: nothing between here and
+% that subsection refers back to "the three steps", and the subsection immediately below redefines
+% gammabar_{i->j} and vbar_{i->j} in its own words, so no symbol is orphaned by the deletion.
+
+% The tilted-semigroup paragraph that travelled with this block is NOT reproduced here: the
+% subsection immediately below opens by defining exactly that object, and printing both would say it
+% twice across a subsection boundary. Its two dependencies ("met above", "as above") are repaired in
+% place instead, so this appendix no longer leans on a definition in the body.
+
+\subsection*{The boundary-conditioned moments, and how they are evaluated}
+
+% RECIBIDO 2026-08-27 desde 02_framework.tex (T9) Y RETIRADO EL MISMO DIA, cuando la opcion B
+% devolvio al cuerpo una ecuacion de frontera (Ec. macroir) y con ella la definicion. Lo que se
+% habia aterrizado aqui quedaba dicho TRES veces: la convencion de la flecha ya esta en el recuadro
+% "Three marks, and each one says one thing" al abrir este apendice; el "no explicit K^2 object" ya
+% esta en el parrafo de abajo ("with no object larger than K x K formed anywhere"); y la definicion
+% mas el encadenamiento pasaron al cuerpo con Ec. macroir. El diagnostico de T9 seguia siendo
+% correcto (la notacion estaba varada en el cuerpo porque ninguna ecuacion la usaba); lo que cambio
+% es cual de las dos reparaciones opuestas se tomo.
+The ladder needs two conductance objects, both built from the boundary-conditioned
+single-channel moments $\bar{\gamma}_{i\to j}$ (the mean interval-averaged
+conductance of a channel that starts in $i$ and ends in $j$) and
+$\bar{v}_{i\to j}$ (its variance). Both are moments of the integrated conductance
+$A_{0\to\Delta}$ of Eq.~\ref{eq:integrated-conductance}, taken conditional on the chain starting
+in $i$ and ending in $j$, and both are available in closed form, with no object larger
+than $K\times K$ formed anywhere. They are derivatives at $\alpha=0$ of the conductance-tilted
+semigroup $e^{(\mathbf{Q}+\alpha\bm{\Gamma})\Delta}$, the generator biased by the conductance.
+Writing
+\begin{equation}
+  \mathbf{F}_1(\Delta)=\left.\frac{\partial}{\partial\alpha}
+      e^{(\mathbf{Q}+\alpha\bm{\Gamma})\Delta}\right|_{\alpha=0},
+  \qquad
+  2\,\mathbf{F}_2(\Delta)=\left.\frac{\partial^{2}}{\partial\alpha^{2}}
+      e^{(\mathbf{Q}+\alpha\bm{\Gamma})\Delta}\right|_{\alpha=0},
+  \label{eq:tilted-derivatives}
+\end{equation}
+with $\bm{\Gamma}=\mathrm{diag}(\bm{\gamma})$, the $(i\to j)$ entry of the first is
+$\mathbb{E}[A_{0\to\Delta}\,\mathbf{1}\{X_\Delta=j\}\mid X_0=i]$ and of the second the same
+expectation with $A^2_{0\to\Delta}$ in place of $A_{0\to\Delta}$; the factor of two is the two
+triangular halves of the double integral the second derivative unfolds into. Dividing by the
+transition probability conditions on the endpoints and dividing by $\Delta$ turns the
+integral into an average, so
+\begin{equation}
+  \bar{\gamma}_{i\to j}
+    = \frac{[\mathbf{F}_1(\Delta)]_{i\to j}}{\Delta\,P_{i\to j}(\Delta)},
+  \qquad
+  \bar{v}_{i\to j}
+    = \frac{2[\mathbf{F}_2(\Delta)]_{i\to j}}{\Delta^2\,P_{i\to j}(\Delta)}
+      - \bar{\gamma}^{\,2}_{i\to j}.
+  \label{eq:gammabar-vbar}
+\end{equation}
+
+Both derivatives are evaluated from an eigendecomposition of the generator, which is the
+route the implementation takes and the one the P2X2 analysis of \citet{moffatt2025bayesian}
+was run on. Writing $\mathbf{Q}=\mathbf{V}\bm{\Lambda}\mathbf{W}$, with
+$\bm{\Lambda}=\mathrm{diag}(\lambda_1,\dots,\lambda_K)$ the eigenvalues, $\mathbf{V}$ the
+matrix of right eigenvectors and $\mathbf{W}=\mathbf{V}^{-1}$, the transition matrix is
+$\mathbf{P}(\Delta)=\mathbf{V}e^{\bm{\Lambda}\Delta}\mathbf{W}$ and the two derivatives are
+the same sandwich with the conductance carried in the eigenbasis. With
+$\widehat{\bm{\Gamma}}=\mathbf{W}\bm{\Gamma}\mathbf{V}$ and $\circ$ the entrywise product,
+\begin{align}
+  \frac{\mathbf{F}_1(\Delta)}{\Delta}
+    &= \mathbf{V}\bigl(\widehat{\bm{\Gamma}}\circ\mathbf{E}_2\bigr)\mathbf{W},
+    &\quad (\mathbf{E}_2)_{ab} &= E_2(\lambda_a\Delta,\lambda_b\Delta),
+    \label{eq:f1-spectral}\\
+  \frac{2\,\mathbf{F}_2(\Delta)}{\Delta^{2}}
+    &= 2\,\mathbf{V}\mathbf{M}\mathbf{W},
+    &\quad M_{ab} &= \sum_{c}\widehat{\Gamma}_{ac}\,\widehat{\Gamma}_{cb}\,
+                     E_3(\lambda_a\Delta,\lambda_c\Delta,\lambda_b\Delta),
+    \label{eq:f2-spectral}
+\end{align}
+where $E_2$ and $E_3$ are the first and second divided differences of the exponential,
+\begin{equation}
+  E_2(x,y)=\frac{e^{x}-e^{y}}{x-y},
+  \qquad
+  E_3(x,y,z)=\frac{e^{x}}{(x-y)(x-z)}+\frac{e^{y}}{(y-x)(y-z)}+\frac{e^{z}}{(z-x)(z-y)}.
+  \label{eq:divided-differences}
+\end{equation}
+Both are symmetric in their arguments and both are smooth where the denominators vanish, so
+repeated and near-repeated eigenvalues are read off the coincidence limits $E_2(x,x)=e^{x}$
+and $E_3(x,x,x)=e^{x}/2$, with the one-pair-coincident form between them (Supplementary
+Information).
+Eq.~\ref{eq:f1-spectral} is the form in which the first moment is given in the supplement of
+\citet{moffatt2025bayesian}; the second moment was not stated there. The eigendecomposition
+is computed once per agonist concentration and reused by every window at that concentration,
+after which each window costs the $O(K^3)$ contraction of Eq.~\ref{eq:f2-spectral}.
+% src: legacy/CLI_function_table.h:209-233 (Calc_eigen wrapped in Single_Thread_Memoizer, keyed on
+% Agonist_concentration, so the decomposition really is shared across windows and not recomputed)
+% src: legacy/qmodel.h:1681-1780 (calc_Qdt_eig, the production path; dispatch at 3147-3166 with the
+% series fallback below), 814-865 (Ee and E3 with their coincidence branches), 1066-1092 (calc_eigen:
+% W is tr(VL), the left eigenvectors normalized biorthogonally against V rather than V inverted, so
+% W = V^-1 holds by construction; kappa_V is computed here). Read 2026-08-06.
+% NAMING, and it is a real clash: what this manuscript calls E_2 is `Ee` in the code, which reserves
+% `E2` for exp[0,x,y]. E_2 follows the published supplement (Moffatt & Pierdominici-Sottile 2025,
+% Eq. S1), which the reader can check; E_3 is the same object under both names. Do not "align" the
+% manuscript to the code here without changing the published-form claim above it.
+% VERIFIED: E_2 = exp[x,y] and E_3 = exp[x,y,z] give exactly the code's kernels, and the
+% normalizations match Eq. gammabar-vbar: the code's gtotal_ij is F_1/Delta and its gtotal_sqr_ij is
+% 2F_2/Delta^2, because Ee/E3 are evaluated on the SCALED spectrum lambda*Delta, which carries the
+% 1/Delta and 1/Delta^2. Checked at lambda->0: E_3(0,0,0)=1/2 against the direct double integral
+% Delta^2/2.
+% ROUTE CHANGED 2026-08-06 (Luciano). What stood here was the Van Loan block construction: the 2K
+% and 3K augmented generators, F_1 and F_2 read off their upper blocks. That is correct mathematics
+% and it is NOT what the code runs, so a replication following the body text would build a different
+% numerical object in exactly the two places the section then discusses (repeated eigenvalues, and
+% the 0/0 at unreachable transitions), and the shrinkage weight below, which is keyed to the
+% conditioning of V, would have no referent at all. The block form is kept, demoted to the
+% equivalent-evaluation sentence below, with its citation intact.
+
+An equivalent evaluation avoids diagonalizing $\mathbf{Q}$ altogether. $\mathbf{F}_1$ and
+$\mathbf{F}_2$ are the strictly upper blocks of the exponentials of the augmented generators
+\begin{equation}
+  \mathcal{Q}_2=\begin{pmatrix}\mathbf{Q} & \bm{\Gamma}\\ \bm{0} & \mathbf{Q}\end{pmatrix},
+  \qquad
+  \mathcal{Q}_3=\begin{pmatrix}\mathbf{Q} & \bm{\Gamma} & \bm{0}\\
+                               \bm{0} & \mathbf{Q} & \bm{\Gamma}\\
+                               \bm{0} & \bm{0} & \mathbf{Q}\end{pmatrix},
+  \label{eq:augmented}
+\end{equation}
+of sizes $2K\times 2K$ and $3K\times 3K$, whose exponentials are block triangular with
+$e^{\mathbf{Q}\Delta}$ on the diagonal \citep{vanloan1978computing}, so that
+$e^{\mathcal{Q}_3\Delta}$ on its own returns the transition matrix and both moments with no
+spectral machinery, and where no reliable eigensolver is at hand it is the construction to
+use. The route taken here is the spectral one because this paper propagates the derivative
+of the log-likelihood with respect to the kinetic parameters through every object the
+filter builds, and the eigenvalues and eigenvectors of $\mathbf{Q}$ move with those
+parameters in closed form, by a first-order perturbation of the same decomposition. Every
+number reported in this paper comes from the spectral route.
+% COMPRESSED 2026-08-26, item "COMPRESS ~85 words, Van Loan alternative" of
+% docs/shortening_plan.md. Kept, as the item's residue requires: Eq. augmented with its
+% vanloan1978computing citation, the one sentence that it returns the transition matrix and both
+% moments with no spectral machinery and is the construction to use where no reliable eigensolver
+% is at hand, and the one sentence that the spectral route was chosen for the closed-form parameter
+% derivatives, with every reported number coming from it. Discussion's "the derivative of the
+% spectral reconstruction inside it (Appendix 1)" still lands on that sentence.
+% Cut: the 3K-block derivative-payload tour ("an object of side 3K whose nine blocks hold three
+% distinct matrices") and the "the reason is the derivatives rather than the exponential" preamble.
+% NOTE for whoever reads the caveat comment below: with the payload clause gone the text now makes
+% NO claim about the cost of the augmented route at all, which is a stronger form of what that
+% caveat asks for, so the caveat stands unviolated and is kept for the record.
+% src: theory/macroir/notes/Gmean_ij_gvarij/gmean_ij_gvar_by_blocks.tex (the block derivation and
+% W = 2F_2) ; legacy/parameters_derivative.h:1449-1507 (the analytic eigen derivative the last
+% sentence refers to: dlambda = diag(VL^T dQ VR) and dVR = VR*Omega with Omega_jk = G_jk/(l_k - l_j),
+% guarded at |l_k - l_j| > 100*sqrt(eps), plus the zero-mode gauge for the generator at 1509-1514;
+% Derivative<Eigs> is memoized alongside the primitive at CLI_function_table.h:229-233).
+% THIS IS SETTLED IN THE REPOSITORY AND THE PARAGRAPH FOLLOWS IT. The augmented route is not
+% hypothetical here: calc_Qdt_schur (legacy/qmodel.h:2496-2542) is exactly it, ONE 3N x 3N Pade
+% scaling-and-squaring on [[Q,G,0],[0,Q,G],[0,0,Q]]*dt, harvesting P, A and B from the (0,0), (0,1)
+% and (0,2) blocks. It is live, and the micro path calls it (legacy/micro_full.h:1738, 1973). Its
+% derivative branch is abandoned IN THE CODE and says why, at qmodel.h:2502-2510: it delegates to
+% calc_Qdt_taylor because "every Derivative matmul on the 3N x 3N augmented matrix is 27x more
+% expensive than the same operation on N x N (cost scales as N^3 x (1+2p))", a ~10x speedup at
+% N = 51 and p = 6 with no accuracy loss. That is the sentence the body paraphrases.
+% THE CAVEAT THAT KEEPS 27 OUT OF THE TEXT, and it is the author's own:
+% theory/scientific-software/notes/Qdt_schur_vs_taylor_rationale.md argues the 27x is dense against
+% sparse and NOT algorithmic. Only 3 of the 9 blocks are distinct; a sparse-aware version storing
+% (P, F, B) costs 6 N x N matmuls per doubling, identical to calc_Qdt_taylor, which that note calls
+% "the natural sparse form of the Van Loan algorithm". So the body must not claim the Van Loan
+% identity is intrinsically expensive: what is expensive is carrying a derivative payload through
+% the dense object, which is what the sentence says and all it says.
+% NOTE for the record: the eigensolver fallback, calc_Qdt_taylor (qmodel.h:2271-2299), is itself
+% that sparse Van Loan form: P(2t) = P^2, F(2t) = PF + FP, B(2t) = PB + BP + FF by doubling. No
+% reported run took it; if one does, it is a Methods sentence, not this one.
+
+Both expressions are $0/0$ where a transition is unreachable, which is not a numerical edge case
+here: at zero agonist $k_{\mathrm{on}}[A]$ vanishes identically, so $P_{C\to O}(\Delta)=0$ exactly
+over the whole pre-pulse segment. Conditioning on a single transit whose time, in the short-window limit, is uniform over the
+window makes the average $\gamma_{j} + (\gamma_{i}-\gamma_{j})\,U$ with $U$ uniform on $(0,1)$,
+so the limit is the midpoint in the mean and the uniform-split variance,
+\begin{equation}
+  \bar{\gamma}_{i\to j}\to\tfrac12(\gamma_{i}+\gamma_{j}),
+  \qquad
+  \bar{v}_{i\to j}\to\tfrac{(\gamma_{i}-\gamma_{j})^{2}}{12},
+  \label{eq:endpoint-limit}
+\end{equation}
+which depends on the conductance vector alone. The implementation does not branch on the
+singular case: it reads the two quotients of Eq.~\ref{eq:gammabar-vbar} as posterior means
+and shrinks them towards an endpoint prior with the same midpoint mean and the second moment
+$\tfrac12(\gamma_{i}^{2}+\gamma_{j}^{2})$ (Methods), whose implied variance
+$((\gamma_{i}-\gamma_{j})/2)^{2}$ is three times the limit above, a deliberately conservative
+floor, with a pseudo-count whose weight is the floating-point noise of the spectral
+reconstruction, so the limit is approached smoothly and no fitted constant enters (Methods).
+% VARIANCE CONSTANT CORRECTED 2026-08-25 (naive full-read round, CONFIRMED by their independent
+% Van Loan rederivation and by rederivation here): the old text called ((gamma_i-gamma_j)/2)^2
+% "the limit"; that is the Bernoulli endpoint variance, which is what the IMPLEMENTATION's prior
+% uses (Methods Eq. pseudocount: second moment (gi^2+gj^2)/2 about the midpoint mean, the code's
+% "Poisson endpoint" prior, legacy/qmodel.h:1104,1146-1147), not the limit of the conditional
+% moments, which is (gamma_i-gamma_j)^2/12 (Var of U uniform = 1/12). The text now states the
+% exact limit AND the prior, faithful to both the math and the code. Their check also shows the
+% midpoint mean holds only as the short-window limit (at k_off*Delta = 1 the conditional mean
+% reads 0.418, not 0.5); the epsilon weight makes both departures immaterial to any fit.
+% MOVED TO METHODS 2026-08-06 (Luciano). The pseudo-count itself, its two prior means, the weight
+% eps_mach*kappa_F(V) and the two design choices behind them are now the first of the numerical
+% safeguards at 06_methods.tex, beside the trust coefficient and the binomial floor, which is where
+% a reimplementer looks for all of it at once. What stays here is the hint, because the sentence
+% this replaces claimed the code TESTS for the singular case, which it does not, and leaving the
+% limit unqualified in the body would put that claim back.
+% src for the Methods paragraph, kept here too since this is where the limit is stated:
+% legacy/qmodel.h:1691-1694 and 1743-1757 (min_P_prior = eps_mach * kappa_V), 1160-1179
+% (gmean_ij_prior and gsqr_ij_prior are the endpoint averages), 1189-1202 (calc_g_ij_bayes, the
+% pseudo-count quotient), 1750 (gvar_ij by subtraction, so its prior is exactly Eq. endpoint-limit).
+% GAP CLOSED 2026-08-04, and it was the one that stopped a replication attempt in four of its six
+% stages. The manuscript previously said only that these two objects "are computed from Q and the
+% recording filter (Methods)", and neither Methods nor Appendix 1 gave a formula, a method or a
+% citation, while these two symbols carry the whole av=1 against av=2 distinction, the MR/VR/IR
+% algebra, the G and H matrices of Appendix 1 and the MR-IR identity.
+% Sources transplanted, both verified against their own derivations:
+%   theory/macroir/notes/Gmean_ij_gvarij/gmean_ij_gvar_by_blocks.tex (the two blocks, the reads,
+%     W = 2F_2, the two normalisations)
+%   theory/macroir/notes/Gmean_ij_gvarij/bayesian_prior_regularization_of_Qdt.md (the endpoint
+%     average as the small-P limit, and why the smooth 1/sqrt(P^2+eps^2) replacement is worse:
+%     it smuggles in a zero-conductance prior without flagging it)
+% What stays out of the body and belongs in the Supplementary Information: the derivation of why
+% F_1 and F_2 are those derivatives, the spectral evaluation of the two of them at index level with
+% the coincidence branches written out, and the argument for the endpoint average. Recipe here,
+% derivation there.
+% AMENDED 2026-08-06 with the route change above. The pseudo-count paragraph now states the
+% regularizer the code applies, which the 2026-08-04 transplant left out: it took only the
+% "endpoint average as the small-P limit" half of bayesian_prior_regularization_of_Qdt.md and
+% presented the limit as if the code tested for the singular case, which it does not. The rejected
+% 1/sqrt(P^2+eps^2) alternative is still the note's, still out of the body.
+The start-conditioned mean conductance is the $K$-vector
+\begin{equation}
+  \bar{\gamma}_{i\to\cdot} \;=\; \sum_{j} P_{i\to j}(\Delta)\,\bar{\gamma}_{i\to j},
+  \label{eq:gammabar}
+\end{equation}
+which conditions on the state at the interval's start alone and is the object \texttt{INR},
+\texttt{MR} and \texttt{VR} use. The boundary-conditioned mean conductance is the same
+average retained on both endpoints, so it stays a $K\times K$ object rather than collapsing
+to a vector, and is the object \texttt{IR} uses.
+% DE-JARGONED 2026-08-06 (Luciano), here and at the two sites below. The text said "the object used
+% at av=1" and "at av=2". The averaging flag is defined once in the manuscript, at
+% 06_methods.tex:201, which in eLife order the reader reaches after the Results, so in the body it
+% was an undefined symbol standing for a flag of the program. Naming the members instead says the
+% same thing, is checkable against Table 1, and costs no notation. The flag stays in Methods, where
+% it is the subject.
+
+\paragraph{One generalization, and the whole family is inside it.}
+Eq.~\ref{eq:macror} takes a channel's conductance to be a number once its state is known. That is
+true of the current at an instant and of nothing else. One step of generality covers every member
+below: alongside the conductance, supply a \emph{per-state variance} $\mathbf{w}$, the variance the
+recorded value still has once the state is fixed. Channels being independent given their states,
+those variances add over the ensemble, so
+\begin{equation}
+  \mathbb{E}\bigl[\bar y \bigm| \mathbf{N}\bigr]=\bm{\gamma}^\top\mathbf{N},
+  \qquad
+  \mathrm{Var}\bigl[\bar y \bigm| \mathbf{N}\bigr]
+    =\epsilon^2_{0\to\Delta}+\textstyle\sum_s N_s\,w_s ,
+  \label{eq:emission}
+\end{equation}
+and the extra variance is linear in the counts, exactly as the mean is. Taking the expectation over
+the state distribution turns the predictive variance of Eq.~\ref{eq:macror} into
+\begin{equation}
+  \sigma^2 \;=\; \epsilon^2_{0\to\Delta}
+    \;+\; N_{\mathrm{ch}}\,\bm{\gamma}^\top\bm{\Sigma}\bm{\gamma}
+    \;+\; N_{\mathrm{ch}}\,\bm{\mu}^\top\mathbf{w},
+  \label{eq:macror-w}
+\end{equation}
+with every other line of Eq.~\ref{eq:macror} unchanged. Setting $\mathbf{w}=\bm{0}$ returns the
+published filter. This is the same device \citet{munch2022bayesian} add to the same filter to model
+open-channel noise, from a different motivation; here the state-dependent term will carry the
+gating variance the chosen state leaves unexplained rather than a property of the pore.
+
+\paragraph{Four contractions, and the members differ in three of them.}
+Written this way, Eq.~\ref{eq:macror} contracts a member's objects against its own state
+distribution and covariance, and it does so four times:
+\[
+  \underbrace{\bm{\mu}^\top\bm{\gamma}}_{\text{the mean}}
+  \qquad
+  \underbrace{\bm{\mu}^\top\mathbf{w}}_{\text{the state-dependent noise}}
+  \qquad
+  \underbrace{\bm{\gamma}^\top\bm{\Sigma}\bm{\gamma}}_{\text{what the state contributes}}
+  \qquad
+  \underbrace{\bm{\Sigma}\bm{\gamma}}_{\text{state against current},\ \mathbf{g}}
+\]
+two against $\bm{\mu}$ and two against $\bm{\Sigma}$, and everything else in Eq.~\ref{eq:macror} is
+a scalar. Extending the filter to a recorded value that spans the window therefore cannot require a
+new algorithm. It requires choosing a state variable and supplying $(\bm{\gamma},\mathbf{w})$ on
+it, and the members below are those choices. The per-state variance is not a free third choice
+beside the other two: Eq.~\ref{eq:emission} defines it as whatever variance the chosen state leaves
+unexplained, so naming the state names it.
+% CORRECTED here relative to 02_theory.tex, which called these "the two contractions" at the end of
+% the gain paragraph above. Two is the count against Sigma alone, and it undercounts even Eq. macror
+% as published, where mu^T gamma is a third. With the per-state variance in the equation there are
+% four. The miscount was load-bearing: it is what makes the interval variance look like an axis of
+% its own, which is the reading that admits VR as a fourth member rather than as a mismatch. See the
+% caption of Table 1.
+
+\subsection*{The three steps that build the interval update}
+
+% RECORTADO 2026-08-27, segunda pasada. La apertura repetia casi palabra por palabra las dos
+% oraciones que el cuerpo adquirio ESE MISMO DIA alrededor de Ec. macroir, y despues apuntaba a esa
+% ecuacion igual. Verificado sobre texto vivo: el cuerpo dice "no conductance vector on the K states
+% delivers its mean" y "A channel that starts in i and ends in j contributes gammabar_{i->j} on
+% average, so the interval average is linear in the boundary counts", y abre con la misma expresion
+% "On the K^2 pairs ... one does". Queda la premisa una vez, el puntero, y los tres pasos intactos,
+% que es lo que la nota del 2026-08-26 exige que esta subseccion conserve.
+No conductance vector on the $K$ states delivers the mean of an interval average, and on the
+$K^2$ boundary pairs one does. That substitution is Eq.~\ref{eq:macroir} of the body, and three
+steps carry it out here. The two counts are one: the first three substitutions of
+Eq.~\ref{eq:macroir} are step one, its fourth is step two, and the start index the body sums away
+is step three.
+% PUNTERO ANADIDO 2026-08-27: el cuerpo ahora MUESTRA la sustitucion (Ec. macroir), asi que esta
+% subseccion pasa a ser su desarrollo y no su unica sede. Sin el puntero las dos se leen como dos
+% enunciados independientes de lo mismo.
+Run Eq.~\ref{eq:macror} on the pairs, with $\bar{\gamma}_{i\to j}$ in place of
+$\bm{\gamma}$ and the boundary covariance in place of $\bm{\Sigma}$. Charge what the
+conductance still varies by once the pair is fixed to $\epsilon^2$, as though the recording
+carried an extra noise of variance $\bar{v}_{i\to j}$ per channel, of a size that
+depends on the pair that channel took. Marginalize over the start index, which the next window
+has no use for. Every equation in this subsection is one of those three steps carried out, and
+the two objects the interval likelihood is usually written with are those two contractions
+read on the larger space.
+
+Conditioning on the pair rather than on one end is the same device as static condensation, or as
+the spatial Markov property, applied on the time axis: the filter holds the states at the interval
+boundaries and marginalizes the trajectory between them analytically. It is not a transition state
+in the mechanistic sense, and the word \emph{transition} is not used for it anywhere in this paper.
+% COMPRESSED 2026-08-26, item "COMPRESS ~40 words, static condensation" of docs/shortening_plan.md,
+% which executes duplication (f). Cut: the clause "and chaining intervals leaves a single state
+% variable per junction, since the end state of one interval is the start state of the next".
+% SURVIVING COPY: the body's family section, where the reader first meets the chaining point.
+% Kept deliberately, as the item requires: the static-condensation and spatial-Markov analogy, which
+% appears nowhere else in the paper, and the "not a transition state in the mechanistic sense"
+% disclaimer.
+% MOVED 2026-08-12 from the body's boundary-state paragraph (09_carve_plan.md): both sentences are
+% readings of the construction rather than vocabulary the Results need. What the body keeps is the
+% definition of the pair, the single-variable-per-junction consequence and the cost claim.
+
+The boundary state's own Gaussian follows from the prior and the propagator. Let
+$\mathbf{X}_{0\to\Delta}$ be the indicator of the pair a single channel takes, one on the
+$(i,j)$ it starts and ends in and zero on the other $K^2-1$, and let
+$(\bm{\mu}_0,\bm{\Sigma}_0)$ be the channel's state at the window's start. It leaves $i$ and
+lands in $j$ with probability $P_{i\to j}(\Delta)$, so
+\begin{align}
+  \mu_{i\to j} &= \mu_{0,i}\,P_{i\to j}(\Delta), \label{eq:mu-bnd}\\
+  (\bm{\Sigma}_{0\to\Delta})_{(i\to j),(k\to l)} &=
+    P_{i\to j}(\Delta)\,\bigl(\bm{\Sigma}_0-\mathrm{diag}(\bm{\mu}_0)\bigr)_{i k}\,
+    P_{k\to l}(\Delta)
+    \;+\; \bigl[\mathrm{diag}(\bm{\mu}_{0\to\Delta})\bigr]_{(i,j),(k,l)}.
+  \label{eq:sig-bnd}
+\end{align}
+The two terms of Eq.~\ref{eq:sig-bnd} are the two sources of spread. The first carries the
+uncertainty already in the prior across the window, once on each index. The second is the
+uncertainty a channel known to be leaving $i$ still has about where it lands, the covariance
+of a single draw from row $i$ of $\mathbf{P}(\Delta)$, which is diagonal on the pairs
+because a channel takes exactly one of them. Subtracting $\mathrm{diag}(\bm{\mu}_0)$ in the
+first term is what keeps the prior's own single-channel part from being counted twice, since
+the second term regenerates it at the resolution of the pairs.
+
+Summing the start index out of Eqs.~\ref{eq:mu-bnd} and~\ref{eq:sig-bnd} gives the occupancy
+Gaussian at the end of the window,
+\begin{align}
+  \bm{\mu}_\Delta &= \mathbf{P}(\Delta)^\top \bm{\mu}_0, \label{eq:mu-prop}\\
+  \bm{\Sigma}_\Delta &= \mathbf{P}(\Delta)^\top\bigl(\bm{\Sigma}_0-\mathrm{diag}(\bm{\mu}_0)\bigr)\mathbf{P}(\Delta) + \mathrm{diag}(\bm{\mu}_\Delta), \label{eq:sig-prop}
+\end{align}
+term by term, the diagonal of the one becoming the diagonal of the other. This is the
+propagation an unconditioned member performs, and it is Eq.~\ref{eq:sig-bnd} seen from the end
+of the window alone.
+% MOVED UP 2026-08-06, to just after Eq. macror. The per-channel convention used to be declared
+% here, after four equations that already assume it, which is where it landed when Eq. mu-prop
+% opened the subsection. It now stands where the normalisation is first used.
+% ADDED 2026-08-04. The convention was used consistently throughout this section and declared
+% nowhere, which is worse than a contradiction because nothing in the text looks wrong. A reader
+% implementing from Eq. mu-prop and Eq. sig-prop builds Sigma_0 as a total covariance and then
+% every N_ch factor downstream is off by that factor. Found by a replication audit.
+% SUPERSEDED IN ITS CONTENT 2026-08-06, kept for the history. The 2026-08-04 transplant was right
+% that the convention had to be declared and wrong about which convention it is. It took it from
+% theory/macroir/docs/Macro_IR/macroir_derivation.tex:73-95 ("all covariance matrices in the spec
+% are per-channel covariances, i.e. total covariances divided by N_ch"), a derivation document, when
+% the implementation states the meaning directly at legacy/qmodel.h:867-874 and states a different
+% one: Sigma is the covariance of the one-hot state indicator of a SINGLE channel. Same numbers
+% while the channels are independent, different object. The rule the episode illustrates is the
+% repo's own: the producer code decides, a derivation note does not. Details at the correction
+% comment below Eq. sig-post.
+The first line of Eq.~\ref{eq:macror}, on the boundary state, is the predictive. Its mean is
+\begin{equation}
+  \bar{y}^{\mathrm{pred}}_{0\to\Delta} \;=\; N_{\mathrm{ch}}\,\bm{\mu}_0^\top \bar{\bm{\gamma}}_0,
+  \label{eq:ypred}
+\end{equation}
+since $\bm{\mu}_{0\to\Delta}$ contracted against $\bar{\gamma}$ is Eq.~\ref{eq:gammabar}
+summed against the prior, and its variance has three terms,
+\begin{equation}
+  \sigma^2_{0\to\Delta} \;=\; \epsilon^2_{0\to\Delta}
+  \;+\; N_{\mathrm{ch}}\,\widetilde{\bm{\gamma}^\top\bm{\Sigma}\bm{\gamma}}
+  \;+\; N_{\mathrm{ch}}\,\bm{\mu}_0^\top\mathbf{w}.
+  \label{eq:pred-var}
+\end{equation}
+The first is the $\epsilon^2$ of Eq.~\ref{eq:macror}, the instrumental noise now taken over the
+window, which carries the acquisition averaging and decreases with $\Delta$; its parametric
+form is given in Methods. The third is the noise charged in step two,
+$N_{\mathrm{ch}}\sum_{i,j}\mu_{i\to j}\bar{v}_{i\to j}$, which
+is what Eq.~\ref{eq:pred-var} writes with $\mathbf{w}$, the
+start-conditioned interval variance, once the end index is summed. The middle term is
+$\bm{\gamma}^\top\bm{\Sigma}\bm{\gamma}$ of Eq.~\ref{eq:macror} evaluated on the pairs, and the
+tilde is what marks that: under it the two $\bm{\gamma}$ stand for
+$\bar{\gamma}_{i\to j}$ and $\bm{\Sigma}$ for the $K^2\times K^2$ boundary covariance,
+not for the $K$-vector and the $K\times K$ matrix they name everywhere else. Written out with $\bm{\Sigma}_{0\to\Delta}$
+of Eq.~\ref{eq:sig-bnd} and then collapsed by substituting it,
+\begin{align}
+  \widetilde{\bm{\gamma}^\top\bm{\Sigma}\bm{\gamma}}
+  &\;=\; \sum_{i,j}\ \sum_{k,l}
+    \bar{\gamma}_{i\to j}\,
+    \bigl(\bm{\Sigma}_{0\to\Delta}\bigr)_{(i,j),(k,l)}\,
+    \bar{\gamma}_{k\to l} \nonumber\\[2pt]
+  &\;=\; \bar{\bm{\gamma}}_0^\top\bigl(\bm{\Sigma}_0-\mathrm{diag}(\bm{\mu}_0)\bigr)\bar{\bm{\gamma}}_0
+    \;+\; \bm{\mu}_0^\top\bigl(\mathbf{H}\mathbf{1}\bigr),
+  \label{eq:tilde}
+\end{align}
+where $H_{i\to j} = \bar{\gamma}^2_{i\to j}\,P_{i\to j}(\Delta)$ and $\mathbf{1}$
+is the vector of ones. The two summands are the two terms of Eq.~\ref{eq:sig-bnd} in order,
+and only $K$-vectors and $K\times K$ matrices survive, so the $K^2\times K^2$ covariance is
+never built. Reading the tilde as
+$\bar{\bm{\gamma}}_0^\top\bm{\Sigma}_0\bar{\bm{\gamma}}_0$ keeps the first summand and drops
+the second, which is the single-channel spread of the interval mean across boundary pairs and
+does not vanish when the occupancy covariance does.
+
+The gain is the same contraction taken once. Built on the pairs it is the $K^2$-vector
+\[
+  \sum_{k,l}(\bm{\Sigma}_{0\to\Delta})_{(i,j),(k,l)}\,\bar{\gamma}_{k\to l},
+\]
+% DISPLAYED 2026-08-30: inline, the sum cannot break and ran past the right margin on page 38 of the
+% 02:02 build (Luciano). Same formula, nothing else changed.
+and step three sums its start index away, leaving the
+$\mathbf{g}_{0\to\Delta}$ the interval update uses,
+\begin{equation}
+  \mathbf{g}_{0\to\Delta} \;=\; \widetilde{\bm{\gamma}^\top\bm{\Sigma}}
+  \;=\; \mathbf{P}(\Delta)^\top\bigl(\bm{\Sigma}_0-\mathrm{diag}(\bm{\mu}_0)\bigr)\bar{\bm{\gamma}}_0
+  \;+\; \mathbf{G}^\top\bm{\mu}_0,
+  \qquad
+  G_{i\to j} \;=\; \bar{\gamma}_{i\to j}\,P_{i\to j}(\Delta),
+  \label{eq:vector-tilde}
+\end{equation}
+the covariance between the state $\mathbf{X}_\Delta$ a channel ends the window in and the
+current that same channel contributes to the window average. Over the ensemble it is
+$\mathrm{Cov}(\mathbf{N}_\Delta,\bar{y})=N_{\mathrm{ch}}\,\mathbf{g}_{0\to\Delta}$, with $\mathbf{N}_\Delta$
+the counts by state at the end of the window, and that is the form the update uses.
+Again the two summands are the two terms of Eq.~\ref{eq:sig-bnd}:
+$\mathbf{G}$ carries one power of $\bar{\gamma}$ where $\mathbf{H}$ carried two, and the
+end index is left open instead of being summed against $\mathbf{1}$.
+
+The second line of Eq.~\ref{eq:macror}, marginalized the same way, is the update, with
+$\delta = \bar{y}^{\mathrm{obs}}_{0\to\Delta} - \bar{y}^{\mathrm{pred}}_{0\to\Delta}$ the innovation,
+\begin{align}
+  \bm{\mu}^{\mathrm{post}} &= \bm{\mu}_\Delta + \frac{\mathbf{g}_{0\to\Delta}}{\sigma^2_{0\to\Delta}}\,\delta, \label{eq:mu-post}\\
+  \bm{\Sigma}^{\mathrm{post}} &= \bm{\Sigma}_\Delta - \frac{N_{\mathrm{ch}}\,\mathbf{g}_{0\to\Delta}\mathbf{g}_{0\to\Delta}^\top}{\sigma^2_{0\to\Delta}}. \label{eq:sig-post}
+\end{align}
+Conditioning and summing the start index commute here, because the sum is linear and the
+correction is rank one on the index it acts on, so the downdate crosses it unchanged, with
+$\mathbf{g}_{0\to\Delta}$ standing where the boundary gain stood. What the sum discards is the posterior correlation
+between the interval current and the state the window \emph{started} in, which costs nothing
+inside the window and is what the recursion pays for below.
+
+Two of the three steps are exact and one is the approximation. Eqs.~\ref{eq:mu-bnd}
+and~\ref{eq:sig-bnd} are the true moments of $\mathbf{X}_{0\to\Delta}$, and so are the three
+the predictive consumes. Writing $\mathbf{N}_{0\to\Delta}=\sum_c\mathbf{X}^{(c)}_{0\to\Delta}$
+for the boundary counts over the ensemble, channels are independent given the pairs each of
+them took, so given $\mathbf{N}_{0\to\Delta}$ the recorded average has mean
+$\sum_{i,j}\bar{\gamma}_{i\to j}N_{i\to j}$ and variance
+$\epsilon^2_{0\to\Delta} + \sum_{i,j}\bar{v}_{i\to j}N_{i\to j}$
+exactly, and the state-dependent noise of step two, having no covariance with the counts that
+carry it, enters $\sigma^2_{0\to\Delta}$ and changes neither $\bar{y}^{\mathrm{pred}}_{0\to\Delta}$ nor
+$\mathbf{g}_{0\to\Delta}$. That last point is what makes charging it to the noise term legitimate rather
+than convenient. What is
+approximate is the Gaussian, in the two places the box above names: the counts are not
+Gaussian, which is the occupancy closure, and neither is the window average of one channel
+given its pair, so replacing its law by the two numbers $\bar{\gamma}_{i\to j}$ and
+$\bar{v}_{i\to j}$ is the interval-signal closure. The two together still do not make
+the pair $(\mathbf{N}_{0\to\Delta},\bar{y})$ jointly Gaussian, since its conditional variance
+depends on the state, so the update conditions the Gaussian that carries the exact moments.
+% DE-KALMANED 2026-08-06 (Luciano), here and at 08_appendix_members.tex:62. The passage read "the
+% Gaussian update of the occupancy is the scalar Kalman correction" and defined g in words only,
+% with the formula reachable only from Appendix 1. Two objections, one editorial and one factual.
+% The formula belongs where the symbol is introduced. And the update is Gaussian conditioning of a
+% joint law whose moments are computed from interval physics; naming it a Kalman correction imports
+% a measurement equation y = Hx + v that this construction never writes down and that is not
+% available for an interval average. The prior-art relation (integrated-measurement augmented
+% Kalman, coincident to 1e-8) is conceded in the Discussion, 05_discussion.tex:127, which is the
+% right place for it.
+%
+% REWRITTEN 2026-08-06 (Luciano), same day, on his own derivation, told directly instead of
+% presented as a set of given formulas with a tilde operator arriving from nowhere: take MacroR as
+% true, apply it to the BOUNDARY state, take gmean_ij as the conductance and add N*p*gvar_ij as if
+% it were a state-dependent noise, then marginalise the start index. The equations fall out. What
+% this buys, beyond being his: the tilde stops being a new operator and becomes MacroR's own c'Sc
+% and Sc read on the K^2 pairs (so "the general operator ... is given in Appendix 1" is gone, there
+% is no operator to generalise); Sigma^bnd is finally PRINTED (Eq. sig-bnd) instead of named in
+% words, which was the same defect as g's; the propagation Eqs. mu-prop/sig-prop become the
+% marginal of the boundary Gaussian rather than a separate starting point; the pivot of the whole
+% construction gets said in one sentence (the interval average is not a function of the occupancy
+% at any one time, but IS linear in the boundary counts); and the two closures of the box above
+% acquire an exact address, one per approximate step, with the other two steps exact.
+% VERIFIED before writing, papers/1_method/decisions/recompute/macroir_from_macror_boundary.py: MacroR run on the K^2 pairs and
+% marginalised reproduces mu-prop, sig-prop, ypred, pred-var, tilde, vector-tilde, mu-post and
+% sig-post to 9.3e-16 relative, on two priors (multinomial start and a perturbed post-update one),
+% and MR built the same way on the start state reproduces the mr-vr identity to 9e-16 while its
+% gain genuinely differs. Eq. sig-bnd itself checked against a Monte Carlo of 4e5 replicates of 200
+% channels, worst entry 2.9 standard errors over 256 entries.
+% The exactness paragraph is new and is the honest statement of where the approximation is: the
+% three predictive moments are exact functions of (mu_0, Sigma_0) because channels are independent
+% given their boundary pairs, and the state-dependent noise contributes nothing to the
+% cross-covariance, which is what licenses charging it to r^2.
+% src: theory/macroir/docs/Macro_IR/macroir_derivation.tex (boundary covariance 213-363, predictive
+% variance 654-1013, vector tilde 1015-1165) and elife-template.tex:360-390 (MacroR as published,
+% from which Eq. macror is the state-space-agnostic transcription).
+The factor $N_{\mathrm{ch}}$ in the downdate, and its absence from the mean correction, come
+from the same place. All three of $\bm{\mu}$, $\bm{\Sigma}$ and $\mathbf{g}_{0\to\Delta}$ belong to one
+channel, while what is observed belongs to the ensemble, so the conditioning is done on
+$\mathrm{Cov}(\mathbf{N}_\Delta,\bar{y})=N_{\mathrm{ch}}\mathbf{g}_{0\to\Delta}$ against
+$\mathrm{Cov}(\mathbf{N}_\Delta)=N_{\mathrm{ch}}\bm{\Sigma}_\Delta$. The rank-one
+term picks up the channel count twice and the return to one channel gives one back, leaving a
+single factor; the mean correction picks it up once and gives it back, leaving none.
+% CONVENTION CORRECTED 2026-08-06 (Luciano). This paragraph used to say that "Sigma is carried on
+% the population scale ... whereas mu and the gain g are per-channel objects", which is false on
+% both halves and was the visible symptom of the convention imported at the same time as it, four
+% paragraphs above: Sigma = Cov(N)/N_ch. The implementation says otherwise, and says it in the one
+% place a reimplementer would look, legacy/qmodel.h:867-874: "P_Cov is stored as the *bare centered
+% covariance* of the one-hot channel-state indicator: Cov(X) = diag(P_mean) - P_mean*P_mean^T.
+% Sanity check: deterministic state P = e_i => Cov(X) = 0". That is a covariance of ONE channel's
+% state, a primitive, not a population covariance with a factor divided out; the two coincide
+% numerically while the channels are independent, which is why the equations never caught it.
+% The bad convention is the spec's, theory/macroir/docs/Macro_IR/macroir_derivation.tex:73-95 ("all
+% covariance matrices in the spec are per-channel covariances, i.e. total covariances divided by
+% N_ch"), and it reaches this section only through the 2026-08-04 transplant recorded above. The
+% notation is Milescu's and the code's, and it is the one the P2X2 manuscript uses.
+% STILL OPEN, one sentence the body does not say: the two readings part company after the first
+% update, because conditioning on a shared observation correlates the channels, so what the
+% recursion then carries is Cov(N)/N_ch and no longer any single channel's covariance. That is the
+% same non-factorization the occupancy closure is about (line 283, citing moffatt2007estimation),
+% so the honest place for it is there rather than here. Luciano's call.
+
+\subsection*{The start-conditioned members, stated forward}
+
+% COMPRESSED 2026-08-26, item "COMPRESS ~80 words, The start-conditioned members, stated forward"
+% of docs/shortening_plan.md. Cut here: the "usually presented as abbreviations / they are not /
+% the difference matters" framing, which restated the subsection's purpose. Cut at the end of the
+% MR paragraph below: "Neither needs a state larger than K" (said one sentence earlier as "complete
+% without any object larger than the K states") and the "This is worth stating plainly" preamble.
+% Kept, as the item's residue requires: Eq. mr-assumption with everything MR does following from it
+% and needing no object larger than the K states; Eq. mr-objects identified with Eq. gammabar and
+% Eq. macror-w; and the row-sums sentence ending "reached without ever forming a pair". The falsity
+% paragraph below is on the untouched list and is not edited.
+The construction above reaches \texttt{IR} by choosing the boundary pair as the state. The members
+that stop at the interval's start are stated here from their own assumptions rather than as that
+construction with the collapse brought forward.
+
+\texttt{MR} takes the recorded value to depend on the occupancy where the window opens. Formally
+this asserts
+\begin{equation}
+  \bar y_{0\to\Delta} \ \perp\ X_\Delta \ \bigm|\ X_0 ,
+  \label{eq:mr-assumption}
+\end{equation}
+that once the state a channel started in is known, the recorded average says nothing further about
+where that channel ended. Everything \texttt{MR} does follows from Eq.~\ref{eq:mr-assumption}, and
+the member is complete without any object larger than the $K$ states. What it must supply is a
+conductance and a per-state variance on that state, and both are conditional moments of
+$A_{0\to\Delta}$ given the start alone:
+\begin{equation}
+  (\bar\gamma_0)_{i}=\mathbb{E}\bigl[\tfrac{1}{\Delta}A_{0\to\Delta}\bigm| X_0=i\bigr],
+  \qquad
+  (\sigma^2_{\bar\gamma_0})_{i}
+    =\mathrm{Var}\bigl[\tfrac{1}{\Delta}A_{0\to\Delta}\bigm| X_0=i\bigr],
+  \label{eq:mr-objects}
+\end{equation}
+the first being Eq.~\ref{eq:gammabar} and the second the per-state variance
+Eq.~\ref{eq:macror-w} then asks for. Both come from the same
+tilted semigroup of Eq.~\ref{eq:tilted-derivatives} that any interval member needs, but from its
+derivatives contracted against the vector of ones rather than read entry by entry: what
+\texttt{MR} requires are the row sums, and the row sums are integrals of $K$-vectors, so
+\texttt{MR} is reached without ever forming a pair.
+
+Eq.~\ref{eq:mr-assumption} is an assumption about the process and can be examined on its own terms.
+It is false for any window of nonzero length: a channel that starts shut and delivers current
+during the window is more likely to have ended open than one that delivers none, so the recorded
+average does carry information about the end state beyond what the start state gives.
+\texttt{IR} is the member that declines to assume it, and the boundary pair is the state on which
+the recorded average is linear with no conditional expectation taken at all. \texttt{MR} is
+therefore a correctly derived filter for a measurement model that is false, rather than an
+approximate version of \texttt{IR}; how much the falsehood costs is Eq.~\ref{eq:cdiff} below.
+
+\subsection*{What separates the start-conditioned members from the boundary one}
+
+Run as the same three steps on the $K$ states instead of the pairs, with
+$\bar{\bm{\gamma}}_0$ in place of $\bm{\gamma}$, two
+algebraic differences separate them from the one that conditions on both ends. The first is
+the form of the third term of Eq.~\ref{eq:pred-var}.
+\texttt{MR} carries the total per-start-state interval variance, the spread of the
+interval-averaged conductance of a channel known only to have started in $i$, while
+\texttt{VR} and \texttt{IR} carry the residual variance left once the end state is also
+conditioned on, $\sum_{j} P_{i\to j}(\Delta)\,\bar{v}_{i\to j}$. By the law
+of total variance the two forms differ by the spread of the interval mean across end
+states,
+\begin{equation}
+  \underbrace{\sum_{j} P_{i\to j}(\Delta)\bigl[\bar{v}_{i\to j}
+    + \bigl(\bar{\gamma}_{i\to j}-\bar{\gamma}_{i\to\cdot}\bigr)^2\bigr]}_{\text{total, }\texttt{MR}}
+  \;=\; \underbrace{\sum_{j} P_{i\to j}(\Delta)\,\bar{v}_{i\to j}}_{\text{residual, }\texttt{VR},\,\texttt{IR}}
+  \;+\; \mathrm{Var}_{j}\bigl[\bar{\gamma}_{i\to j}\mid i\bigr],
+  \label{eq:mr-vr}
+\end{equation}
+so \texttt{MR} charges to the observation variance a spread that the end state, once
+conditioned on, would resolve. The second difference is the boundary cross-covariance term
+\begin{equation}
+  N_{\mathrm{ch}}\,\widetilde{\bm{\gamma}^\top\bm{\Sigma}\bm{\gamma}}
+  \label{eq:mr-ir}
+\end{equation}
+which \texttt{IR} retains and both start-conditioned members drop. It enters twice, in the
+second term of Eq.~\ref{eq:pred-var} and in the gain $\mathbf{g}_{0\to\Delta}$ of
+Eqs.~\ref{eq:mu-post} and~\ref{eq:sig-post}.
+
+The two differences are not independent, and the tempting reading of them, one step that
+moves the variance followed by one that moves the gain, is wrong in both directions. Taken
+from a common prior they cancel in the predicted variance: what the boundary term adds to
+the second term of Eq.~\ref{eq:pred-var} is
+$\bm{\mu}_0^\top\mathrm{Var}_{j}[\bar{\gamma}_{i\to j}\mid i]$, which is what
+the residual form removes from the third, so from the same state \texttt{MR} and \texttt{IR}
+assign the interval average the same variance by two different decompositions and the whole
+of what separates them is the gain, an identity written out at
+Eq.~\ref{eq:mr-ir-identity}. In the other direction, the predicted
+variance divides the gain, so changing the variance form changes the update as well:
+\texttt{VR} removes that spread from the third term without restoring it in the second,
+predicts less variance than either from the same state, and its posterior departs from
+\texttt{MR}'s at once. The equality is therefore between two maps from a prior to a
+predicted variance, and not between two recordings. Once the gains differ the priors differ,
+and the variances the two members report along one recording differ with them, which is what
+the Results measure across the regime grid.
+% src: legacy/qmodel.h:4568-4619, read 2026-08-06, and verified three ways rather than asserted:
+% (i) term by term, gSg at av=2 is gmean_i^T·SmD·gmean_i + p·(gtotal_ij o gmean_ij)·1 against
+% gmean_i^T·P_Cov·gmean_i at av<=1, while ms switches total (gsqr_i - gmean_i^2) against residual
+% (gsqr_i - (gtotal_ij o gmean_ij)·1); the cross term enters gSg with + and ms with - and cancels,
+% and MR's contraction against the full P_Cov contributes exactly the gamma^T diag(mu) gamma the
+% total form subtracts. (ii) numerically on random fields, difference 0.0, including deliberately
+% inconsistent Qdt fields: the cancellation is structural. (iii) on the figure-1 dumps, where MR and
+% IR agree to the last printed digit at every interval in which they still share a prior and part
+% company at the first update after that. THE QUALIFICATION IS LOAD-BEARING AND WAS MISSING HERE:
+% an earlier draft of this paragraph said "MR and IR predict the same variance and differ only in
+% the gain" with no "from the same state", which reads as a statement about a recording, where it is
+% false. papers/1_method/figures_build_plan.md:199-220 already had the identity, the numbers and the
+% retirement of the "changes nothing else" slogan; program.md:78, decisions.md:161 and
+% CONTINUE_HERE.md:88 forbid that slogan in four documents, and 05_discussion.tex:101 states it
+% correctly ("from the same state"). This paragraph carried the retired form until now.
+
+\subsection*{Both members against the exact law}
+
+Neither member is measured against the other. Both are approximations to one joint law, that of
+$(\mathbf{N}_\Delta,\bar y)$ under the true process, and given
+$(\bm{\mu}_0,\bm{\Sigma}_0)$ that law has exact first two moments which either member can be held
+against. Two elementary decompositions supply them, and they say different things about the two
+blocks.
+
+\paragraph{The variance: both members are exact, and their slots differ.}
+By the law of total variance, conditioning on the counts where the window opens,
+\begin{equation}
+  \mathrm{Var}\bigl[\bar y\bigr]
+  = \epsilon^2_{0\to\Delta}
+  + \underbrace{\mathbb{E}\bigl[\mathrm{Var}(\bar y \mid \mathbf{N}_0)\bigr]}_{N_{\mathrm{ch}}\,\bm{\mu}_0^\top\mathbf{w}}
+  + \underbrace{\mathrm{Var}\bigl[\mathbb{E}(\bar y \mid \mathbf{N}_0)\bigr]}_{N_{\mathrm{ch}}\,\bar{\bm{\gamma}}_{0}^\top\bm{\Sigma}_0\bar{\bm{\gamma}}_{0}} ,
+  \label{eq:ltv}
+\end{equation}
+which is Eq.~\ref{eq:pred-var} read with the start-conditioned objects: the middle term is
+$\bar{\bm{\gamma}}_0^\top\bm{\Sigma}_0\bar{\bm{\gamma}}_0$, the tilde dropped, and $\mathbf{w}$ is
+the total slot of Eq.~\ref{eq:mr-vr}. Read with the boundary objects instead, the tilde of
+Eq.~\ref{eq:tilde} in the middle and the residual slot in $\mathbf{w}$, the same quantity is
+Eq.~\ref{eq:pred-var} again. \textbf{Both members report the exact
+variance of the recorded value} given $(\bm{\mu}_0,\bm{\Sigma}_0)$, so they agree with each other
+for the reason that each agrees with the truth, and nothing is measured by that agreement.
+% COMPRESSED 2026-08-26, item "COMPRESS ~115 words, The variance: both members are exact" of
+% docs/shortening_plan.md. Cut here: "This is Eq. mr-vr read from the outside: the same second
+% moment sits in the state term of one member and in the noise term of the other, which is why the
+% totals coincide", the third statement of the MR/IR variance identity. SURVIVING ANCHORS: Eq.
+% mr-vr itself, with its two underbraces, and Eq. mr-ir-identity in Appendix 2 as the switch-level
+% algebra; the Methods table caption cites Eq. mr-vr for the state-dependent noise and is unaffected.
+% Cut in the paragraph below: the intermediate algebra reading Eq. emission into the second
+% underbrace and supplying the factor of N_ch, leaving the one-sentence caveat the item requires.
+The variable conditioned on in Eq.~\ref{eq:ltv} is the count vector and not one channel's state:
+conditioning on a single channel's $X_0$ returns the same expressions only while $\bm{\Sigma}_0$ is
+still that channel's own covariance, which it stops being at the first update.
+
+\paragraph{The covariance: one member is exact and the other is short by a named amount.}
+By the law of total covariance, conditioning on the same counts and carried on the per-channel
+scale,
+\begin{equation}
+  \frac{1}{N_{\mathrm{ch}}}\mathrm{Cov}\bigl[\mathbf{N}_\Delta,\ \bar y\bigr]
+  = \underbrace{\frac{1}{N_{\mathrm{ch}}}\mathrm{Cov}\bigl[\mathbb{E}(\mathbf{N}_\Delta\mid \mathbf{N}_0),\ \bar y\bigr]}_{\textstyle \mathbf{g}^{\mathtt{MR}}_{0\to\Delta}}
+  + \ \frac{1}{N_{\mathrm{ch}}}\mathbb{E}\bigl[\mathrm{Cov}(\mathbf{N}_\Delta,\ \bar y \mid \mathbf{N}_0)\bigr] .
+  \label{eq:ltc}
+\end{equation}
+The first term is the start-conditioned gain
+$\mathbf{g}^{\mathtt{MR}}_{0\to\Delta}=\mathbf{P}(\Delta)^\top\bm{\Sigma}_0\bar{\bm{\gamma}}_0$ exactly. The
+second is what Eq.~\ref{eq:mr-assumption} sets to zero: given the counts the channels are
+conditionally independent, so it is the per-channel conditional covariance summed over the
+population, and a conditional independence is precisely the statement that it vanishes. It does not
+vanish. \texttt{IR} carries the whole of Eq.~\ref{eq:ltc}, so the difference between the two
+members in this block is that second summand and nothing else,
+\begin{equation}
+  \mathbf{g}^{\mathtt{IR}}_{0\to\Delta}-\mathbf{g}^{\mathtt{MR}}_{0\to\Delta}
+  \;=\;\Bigl(\textstyle\sum_{i}\mu_{i\to j}\,D_{i\to j}\Bigr)_{j},
+  \qquad
+  D_{i\to j}=\bar{\gamma}_{i\to j}-(\bar\gamma_0)_{i} ,
+  \label{eq:cdiff}
+\end{equation}
+which is Eq.~\ref{eq:vector-tilde} minus $\mathbf{P}(\Delta)^\top\bm{\Sigma}_0\bar{\bm{\gamma}}_0$
+written out. The deviation $D_{i\to j}$ is a property of the process and not of either
+algorithm: it is how far the interval average of a channel that ended in $j$ sits from the
+average over all the places it might have ended. It has zero row sums,
+$\sum_{j}P_{i\to j}(\Delta)D_{i\to j}=0$, since $(\bar\gamma_0)_{i}$ is that very
+average, and it therefore has zero mean under $\mu_{i\to j}$ as well, so the gap between the
+two forms of Eq.~\ref{eq:mr-vr} is exactly its variance under the law of the pairs.
+Eq.~\ref{eq:cdiff} does not depend on $\bm{\Sigma}_0$ at all. The same deviation is invisible in
+one block and decisive in the other because it enters the variance squared and the covariance
+once: a second moment can sit in either of the two variance terms without the total noticing,
+which is Eq.~\ref{eq:mr-vr}, while a collapsed first moment has nowhere to go, a noise term having
+no first moment. That asymmetry between $D^2$ and $D$ is the whole of the difference between the
+two members, and it is a consequence of Eq.~\ref{eq:mr-assumption} rather than a defect of the
+arithmetic that implements it.
+% COMPRESSED 2026-08-26, item "COMPRESS ~85 words, Why the same quantity is invisible in one block
+% and decisive in the other" of docs/shortening_plan.md. The subsection header is gone and the two
+% sentences the item asks for are folded onto the end of the covariance paragraph above, which is
+% where the deviation D is defined. Nothing else in the paper states the D-squared-versus-D
+% asymmetry, so it is compressed rather than dropped; "column profile", which occurred only in the
+% cut text, is gone with it.
+% VERIFIED 2026-08-09, and these are the checks the tmp/MR_IR_derivation family carried in
+% comments where no reader could see them; the visible statement is in "What was verified" below.
+% Eq. cdiff: identity to 1e-17 in 36 cases, independent of Sigma_0, and against a Monte Carlo of the
+% CTMC path. Three equivalent writings of the same term, all verified: weighted by mu_0 with the
+% per-start variance; weighted by mu^bnd with D^2 per pair; and Var(D) under mu^bnd. They agree
+% because E[D] = 0 under that law.
+% src of the derivation: papers/1_method/decisions/recompute/mr_vs_ir_boxes.py
+
+% SUBSECTION "How the two parts of the distortion compose" MOVED 2026-08-12 to
+% 10_appendix_diagnostics.tex, verbatim (09_carve_plan.md). It derives nothing about the
+% likelihood: C, C_s and R are properties of the diagnostic, and this appendix is the derivation of
+% the interval likelihood. Appendix 3 now holds it beside the expansion behind the sandwich, which
+% is the material it was separated from.
+
+\subsection*{The same construction in the linear-filtering frame}
+
+Everything above was Gaussian conditioning: a joint law over (state, recorded value), its three
+blocks, and Bayes. Nothing was borrowed from linear filtering, and the derivation does not need it.
+The correspondence with that literature is nevertheless exact; the relation is conceded in the
+Discussion and placed against the prior art in Appendix~\ref{app:priorart}, and the equations that
+% PUNTERO ANADIDO 2026-08-27: el unico destino que daba era "the Discussion", y la oracion viva de
+% la Discusion se redujo ese mismo dia a un reenvio al Apendice 5, asi que el lector hacia dos
+% saltos para llegar a donde esta la posicion contra la literatura.
+make it checkable are here.
+% COMPRESSED 2026-08-26, item "COMPRESS ~45 words, opening of the linear-filtering-frame
+% subsection" of docs/shortening_plan.md. Cut: the "forty years of work on the same measurement
+% problem" and "rather than take it on faith" ornament, which restated the Discussion's concession.
+% SURVIVING COPY: the Discussion, where the concession is made and the specificity case is argued;
+% the sentence kept here holds the pointer to it.
+
+For a state $\mathbf{x}$ and a scalar observation $y$ jointly Gaussian, the filter's update is
+\begin{equation}
+  \mathbf{x}^{\mathrm{post}}=\mathbf{x}^{\mathrm{prior}}
+    +\frac{\mathrm{Cov}(\mathbf{x},y)}{\mathrm{Var}(y)}\bigl(y-\mathbb{E}[y]\bigr),
+  \qquad
+  \bm{\Sigma}^{\mathrm{post}}=\bm{\Sigma}^{\mathrm{prior}}
+    -\frac{\mathrm{Cov}(\mathbf{x},y)\,\mathrm{Cov}(\mathbf{x},y)^\top}{\mathrm{Var}(y)} ,
+  \label{eq:kf}
+\end{equation}
+written in the symbols used here, the state covariance that literature writes $\mathbf{P}$ for
+being $\bm{\Sigma}$ throughout this paper. It is Eq.~\ref{eq:macror} up to the per-channel convention, the source of the factors of
+$N_{\mathrm{ch}}$ there and not here. The two frames do not differ in the update at all: both are
+the conditioning of a joint Gaussian, and what is usually called the gain is the ratio of the cross
+block to the observation variance. The entire content of either derivation is the computation of
+the three blocks $\mathbb{E}[y]$, $\mathrm{Var}(y)$ and $\mathrm{Cov}(\mathbf{x},y)$ for a recorded
+value that is an average over the window.
+
+The standard difficulty is that $\bar y$ is not a function of the state at any single time, so it
+is not a fixed linear functional of $\mathbf{x}_\Delta$ plus noise. The device is
+state augmentation: carry the running integral
+$z_t=\int_0^{t}\bm{\gamma}^\top\mathbf{N}(s)\,\mathrm{d}s$ alongside the counts, so that
+$(\mathbf{N},z)$ propagates jointly and the recorded value is $z_\Delta/\Delta$ plus instrumental
+noise, which \emph{is} linear in the augmented state. This is the treatment of an observation that
+is a flow rather than a stock, and it is a known construction rather than a new one
+\citep{zadrozny1988gaussian}. Augmentation moves the problem rather than solving it: the filter now
+needs the variance of the accumulator and its covariance with the occupancy at the end of the
+window, and in general those are not free. For a continuous-time Markov chain they are, and by the
+two derivatives already written as Eq.~\ref{eq:tilted-derivatives}: the $(i\to j)$ entry of
+$\mathbf{F}_1$ is $\mathbb{E}[A_{0\to\Delta}\mathbf{1}\{X_\Delta=j\}\mid X_0=i]$ and of
+$2\mathbf{F}_2$ the same with $A^2_{0\to\Delta}$, which is exactly what the augmented filter asks for.
+
+Condition on the counts where the window opens; given those the channels are independent, and the
+three blocks are
+\begin{align}
+  \mathbb{E}\bigl[\bar y\bigr] &= N_{\mathrm{ch}}\,\bm{\mu}_0^\top\bar{\bm{\gamma}}_0,
+  \label{eq:kf-mean}\\
+  \mathrm{Var}\bigl[\bar y\bigr] &= \epsilon^2_{0\to\Delta} + \frac{\mathrm{Var}(z_\Delta)}{\Delta^2},
+  \label{eq:kf-var}\\
+  \frac{\mathrm{Cov}\bigl[\mathbf{N}_\Delta,\bar y\bigr]}{N_{\mathrm{ch}}}
+    &= \frac{\mathrm{Cov}\bigl[\mathbf{N}_\Delta,z_\Delta\bigr]}{N_{\mathrm{ch}}\Delta}
+    = \mathbf{P}(\Delta)^\top\bm{\Sigma}_0\bar{\bm{\gamma}}_0
+      + \Bigl(\textstyle\sum_{i}\mu_{i\to j}D_{i\to j}\Bigr)_{j} .
+  \label{eq:kf-cross}
+\end{align}
+Eq.~\ref{eq:kf-mean} is Eq.~\ref{eq:ypred}, Eq.~\ref{eq:kf-var} is Eq.~\ref{eq:pred-var}, and
+Eq.~\ref{eq:kf-cross} is $\mathbf{g}^{\mathtt{MR}}_{0\to\Delta}$ plus Eq.~\ref{eq:cdiff}, which is to say the
+$\mathbf{g}_{0\to\Delta}$ of Eq.~\ref{eq:vector-tilde}. The second term of Eq.~\ref{eq:kf-cross} needs nothing
+from the boundary construction: for one channel, $\mathbf{F}_1$ divided by $\Delta$ and by the
+transition probability gives
+$\mathbb{E}[\mathbf{1}\{X_\Delta=j\}\,\tfrac{1}{\Delta}A_{0\to\Delta}\mid X_0=i]
+= P_{i\to j}(\Delta)\bar{\gamma}_{i\to j}$, the product of the two conditional
+expectations is $P_{i\to j}(\Delta)(\bar\gamma_0)_{i}$, and their difference is
+$P_{i\to j}(\Delta)D_{i\to j}$. The deviation of Eq.~\ref{eq:cdiff} is therefore what the
+first derivative of the tilted semigroup leaves once the product of the two first moments is taken
+out, and the agreement between the two routes is a result rather than an input.
+
+\textbf{The augmented-state filter and the boundary-state filter compute the same three blocks},
+so they perform the same update and return the same posterior over the occupancy.
+
+% COMPRESSED 2026-08-26, item "COMPRESS ~90 words, the 'Three things follow' paragraph" of
+% docs/shortening_plan.md. Cut: the "Three things about that follow" announcement and the preamble
+% clause of each of the three, one sentence now carrying each. All three facts are retained as the
+% item requires, the reset caveat verbatim in substance, and the "device not information" point
+% keeps its cross-reference to Eqs. mu-prop and sig-prop.
+The augmented state has $K+1$ entries against the boundary state's $K^2$, so \emph{the pair is a
+device of the derivation and not information the filter must carry}, which is the same conclusion
+Eqs.~\ref{eq:mu-prop} and~\ref{eq:sig-prop} reached from the other side. Given
+$(\mathbf{N}_\Delta, z_\Delta)$ the recorded value is deterministic, so what
+Eq.~\ref{eq:pred-var} splits between its second and third terms sits entirely inside
+$\mathrm{Var}(z_\Delta)$, and that is why the cross block needs only $\mathbf{F}_1$ while the
+variance block needs $\mathbf{F}_2$ as well. The equivalence holds per window, with a reset: the
+augmented filter must discard the posterior on $z$ and open the next window with $z=0$, because
+the next window's integral is a fresh one and is independent of the old given the occupancy.
+
+\texttt{MR} is not the augmented filter under any choice of blocks. It is the filter for a
+misspecified measurement model,
+\begin{equation}
+  \bar y = \bar{\bm{\gamma}}_0^\top\mathbf{N}_0 + v(\mathbf{N}_0),
+  \qquad
+  \mathrm{Var}\bigl[v\mid \mathbf{N}_0\bigr]=\epsilon^2_{0\to\Delta}+\mathbf{N}_0^\top\mathbf{w},
+  \label{eq:mr-kf}
+\end{equation}
+whose expectation over $\mathbf{N}_0$ returns Eq.~\ref{eq:pred-var}. The measurement noise depends
+on the state, which is outside the textbook filter: with that extension the two frames give the
+same equations for \texttt{MR} as well, and without it \texttt{MR} has no linear-filtering form at
+all.
+
+Where the frames genuinely differ is the model rather than the arithmetic. A Kalman derivation
+presumes a linear-Gaussian state process, and the occupancy counts of a channel population are not
+one: they are multinomial, their transition noise depends on the state they leave, and no
+linear-Gaussian system generates them. The derivation above presumes none of that: it computes the
+exact first two moments of the true process, over the pairs where the recorded average is genuinely
+linear, and replaces the law by a Gaussian only at the two places the box above names, so the two
+routes arrive at the same equations because the conditioning of a joint Gaussian consumes nothing
+but the first two moments. The pair survives as the presentation even though the augmented state
+reaches the same blocks with fewer entries: on the pair the recorded average is linear in
+the state with no conditional expectation taken, the collapse hands over the next window's prior at
+no cost, and the per-state variance slot is what makes \texttt{R}, \texttt{MR} and \texttt{IR} one
+construction with three readings.
+% COMPRESSED 2026-08-26, item "COMPRESS ~180 words, closing paragraph of the linear-filtering-frame
+% subsection" of docs/shortening_plan.md. Cut: the two "consequences" sentences. The
+% imported-measurement-equation point is already carried by Eq. mr-kf and by the DE-KALMANED note
+% above; the Sigma meaning-versus-convention point survives in Methods, at the sentence on the one
+% moment at which Sigma genuinely is a single channel's covariance. Also cut: "The augmentation
+% gives no comparably natural form to the other two members." Kept, as the item requires: the
+% linear-Gaussian presumption and why occupancy counts are not one, the exact-two-moments plus
+% two-closures statement with the reason the routes agree, and the sentence on why the pair remains
+% the presentation. Residue is ~170 words rather than the ~95 the item estimates, because those
+% three retained contents do not compress further without dropping one of them.
+
+\subsection*{The acquisition kernel, and what the uniform window misses}
+% [BESSEL-BOUND] THIS IS NOW THE CANONICAL SITE. Moved here 2026-08-12 from a comment block under
+% the Theory paragraph, where the bound had been computed and printed in prose but the algebra and
+% the table were visible only to whoever opened the source. The note was CLOSED 2026-08-11 and stays
+% closed; what follows is its content as text. The body keeps two sentences, one of which (first
+% order for a white contribution, second order for a correlated one) is what makes this concession
+% and the noise-model concession of the Discussion one concession. Do not re-open the question of
+% how much to print without reading 05_discussion.tex's Bessel paragraph first: the three sites are
+% deliberately divided into the scope statement (body), the algebra (here) and the operational
+% recipe (Discussion).
+
+The likelihood implements the boxcar of Eq.~\ref{eq:obs-avg} exactly, while a real acquisition
+kernel is that boxcar composed with the amplifier's analogue low-pass, so what is unmodelled is
+governed by one dimensionless group, the cutoff frequency against the acquisition window,
+$f_c\Delta$. For any component flat on the scale of $\Delta$, the effect on the two objects the
+likelihood uses, the variance of a recorded value and the covariance between consecutive ones, is
+
+\begin{center}
+\begin{tabular}{@{}lccccccc@{}}
+\toprule
+$f_c\Delta$ & $0.2$ & $0.5$ & $1$ & $2$ & $5$ & $10$ & $20$ \\
+\midrule
+variance deficit & $61.5\%$ & $29.6\%$ & $14.7\%$ & $7.4\%$ & $2.9\%$ & $1.5\%$ & $0.74\%$ \\
+lag-one correlation $\rho_1$ & $64.1\%$ & $21.1\%$ & $8.6\%$ & $4.0\%$ & $1.5\%$ & $0.75\%$ & $0.37\%$ \\
+error on a confidence interval & $61\%$ & $19\%$ & $8.3\%$ & $3.9\%$ & $1.5\%$ & $0.74\%$ & $0.37\%$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+% COMPRESSED 2026-08-26, item "COMPRESS ~60 words, acquisition-kernel subsection" of
+% docs/shortening_plan.md. Two pieces of rhetorical scaffolding are gone, the opening "Four
+% properties of that table matter more than the numbers in it" and the closing "The two concessions
+% are one concession"; all four numeric facts the item protects are untouched, and the surviving
+% statement that the residue lands in the instrumental-noise partition where the Discussion already
+% argues an unmeasured departure of the noise model lives now carries the join by itself. Actual
+% saving ~21 words, not the ~60 the item estimates: the item names only these two sentences as
+% removable and everything else in the paragraph is one of the protected facts.
+From $f_c\Delta=1$ upward the
+deficit is $0.147/(f_c\Delta)$ and $\rho_1$ is $0.075/(f_c\Delta)$, while $\rho_2$ and every longer
+lag are zero to four decimals: the residue is a nearest-neighbour effect of known size. The total is
+conserved, $\mathrm{Var}+2\sum_k\mathrm{Cov}_k=S/\Delta$ to six decimals at every setting, forced by
+the filter having unit gain at zero frequency, so what a likelihood allowing no such covariance sees
+is a misallocation of variance between the diagonal and its neighbours rather than a loss of it. The
+pole count does not enter: four poles, eight poles and a Gaussian of the same $-3\;\mathrm{dB}$
+frequency agree to the third decimal from $f_c\Delta=0.5$ upward, so the width can be quoted as the
+Gaussian equivalent $\sigma_f=\sqrt{\ln 2}/(2\pi f_c)=0.1325/f_c$, a ten-to-ninety rise time of
+$0.34/f_c$, which is the convention electrophysiology already uses for filter width
+\citep{colquhoun1995fitting}.
+% CITATION RESTORED 2026-08-12. Compressing the body's Bessel paragraph dropped
+% \citep{colquhoun1995fitting} and left the entry uncited, which check.sh item 5 caught. It belongs
+% here rather than there: the rise-time convention is what lets a reader check sigma_f against their
+% own amplifier's specification instead of taking ours.
+And the kinetics are the protected part: the deficit is first order in $1/(f_c\Delta)$
+for the instrumental noise and second order for a component carrying a correlation time of its own,
+because unit gain at zero frequency preserves the integral of an autocovariance and the
+block-averaged variance of a short-correlated component depends on that integral alone to leading
+order. At $f_c\Delta=5$ the white term loses $2.94\%$ and a gating term with correlation time
+$\Delta$ loses $0.11\%$, a factor of $27$, so the residue lands in the instrumental-noise partition,
+which is where the Discussion already argues an unmeasured departure of the noise model lives.
+
+What does not scale with the group is the interval holding the concentration jump: group delay plus
+rise displace and smear the transient by about $0.69/f_c$ at four poles, a fixed time rather than a
+fraction of $\Delta$, so that one interval carries an error the expansion says nothing about, and
+the honest recipe discards or flags the first interval after a step.
+
+One property of this family follows from the same algebra and a point-sampling method does not have
+it. Because the observable \emph{is} the integral, block-averaging a record down to a coarser
+$\Delta$ produces exactly the observable of Eq.~\ref{eq:obs-avg} at any decimation factor, with no
+aliasing question to answer; after decimation the only unmodelled piece left is the residual kernel,
+which is the table above. That is what makes ``average the record first'' a scoping statement rather
+than a workaround.
+% src: papers/1_method/decisions/recompute/bessel_bound.py (numpy + scipy, no data files, ~30 s),
+% which computes the table and each of the four properties. Read and re-run before quoting any of
+% these numbers in a different context; they are properties of boxcar-composed-with-Bessel and of
+% nothing in this paper's simulations, which carry no filter at all.
+
+\subsection*{What was verified, and to what tolerance}
+
+ The identities of the boundary-state construction were checked
+against a direct contraction over the $K^2$ pairs rather than asserted. Eqs.~\ref{eq:tilde}
+and~\ref{eq:vector-tilde} reproduce the explicit contraction of the boundary covariance in $108$
+random cases to $7\times10^{-18}$ and $3\times10^{-16}$; the commutation of the start-index
+marginalization with the update, which is what licenses Eqs.~\ref{eq:mu-post}
+and~\ref{eq:sig-post} being written on the $K$ states, holds in $36$ cases to $2\times10^{-16}$;
+Eq.~\ref{eq:cdiff} holds to $1\times10^{-17}$ in $36$ cases, independently of $\bm{\Sigma}_0$, and
+against a Monte Carlo of the continuous-time path; Eqs.~\ref{eq:mu-bnd} and~\ref{eq:sig-bnd} were
+checked against a Monte Carlo of $4\times10^{5}$ replicates of $200$ channels, worst entry $2.9$
+standard errors over $256$ entries; and the two forms of Eq.~\ref{eq:mr-vr} agree with the forms
+that go through the pair-resolved variance to $1\times10^{-15}$ in $16$ cases. The whole
+construction, run on the pairs and marginalized, reproduces
+Eqs.~\ref{eq:mu-prop},~\ref{eq:sig-prop},~\ref{eq:ypred},~\ref{eq:pred-var},~\ref{eq:tilde},~\ref{eq:vector-tilde},~\ref{eq:mu-post}
+and~\ref{eq:sig-post} to $9.3\times10^{-16}$ relative on two priors, a multinomial start and a
+perturbed post-update one.
+% src: papers/1_method/decisions/recompute/mr_vs_ir_boxes.py and papers/1_method/decisions/recompute/macroir_from_macror_boundary.py.
+% These numbers were carried in LaTeX comments in every previous version of this material, where no
+% reader could see them. For a section whose purpose is that someone can reproduce the construction,
+% the checks belong in the text.
+
+\end{appendixbox}

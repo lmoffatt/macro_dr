@@ -147,7 +147,8 @@ throughout is likelihood only, with no prior and no evidence computation.
 % points at and must not be removed without putting the enumeration back there.
 The likelihood and the simulator are independent implementations sharing one upstream
 specification, the rate matrix built from the parameters, the conductance vector, the
-protocol and the sampling times, written out symbol by symbol in the supplemental material; what that sharing costs the diagnostic is stated with the other limitations in
+protocol and the sampling times, written out symbol by symbol in Supplementary
+File~1; what that sharing costs the diagnostic is stated with the other limitations in
 the Discussion.
 % The "symbol by symbol below" pointer was re-aimed at Supplementary File 1 on 2026-08-26, with the
 % symbol table itself (shortening_plan.md, Methods item 9).
@@ -222,7 +223,7 @@ its mean model exactly with the macroscopic member carrying the same averaging f
 with \texttt{NR} and \texttt{ILSE} with \texttt{INR}, and differs from it only in the predictive
 variance: on the recording of Figure~\ref{fig:ladder} those predicted means agree to
 $9\times10^{-16}$ interval by interval. The dispatched flags, the data keys, the conditioning each
-member applies and the cells each was run over are tabulated in the supplemental material.
+member applies and the cells each was run over are tabulated in Supplementary File~1.
 \texttt{INR} is the member published as MacroINR in \citet{moffatt2025bayesian}, where it served as
 the control against which MacroIR, the member called \texttt{IR} here, was compared.
 % MOVED 2026-08-26 to supplementary_file_1.tex S1.6 (shortening_plan.md, Methods items 5, 6 and 7):
@@ -243,7 +244,7 @@ this family was first applied to macroscopic recordings, of the P2X$_2$ receptor
 \citep{moffatt2025bayesian}, and it coincides with a time-integrated Kalman filter, a correspondence
 stated and quantified in the Discussion. Every member scores with Eq.~\ref{eq:loglik} and the
 regularizer of Eq.~\ref{eq:pseudocount} below; the correspondence between the symbols of
-Appendix~\ref{app:derivation} and the names the implementation carries is in the supplemental material.
+Appendix~\ref{app:derivation} and the names the implementation carries is in Supplementary File~1.
 
 \paragraph{The likelihood.} Every member of the family delivers, per window, a predicted mean
 $\bar y^{\mathrm{pred}}_t$ and a predicted variance $\sigma^2_{\mathrm{pred},t}$, and the recorded
@@ -289,7 +290,8 @@ distinction.
 % equilibrium: calc_Peq exists (qmodel.h:1333) and is not what init consumes.
 
 The equations of Appendix~\ref{app:derivation} are written with the objects the implementation
-forms, and the correspondence is one to one; it is tabulated symbol by symbol in the supplemental material, because a specification whose symbols cannot be found in the code is not a specification.
+forms, and the correspondence is one to one; it is tabulated symbol by symbol in Supplementary
+File~1, because a specification whose symbols cannot be found in the code is not a specification.
 % SYMBOL TABLE MOVED 2026-08-26 to supplementary_file_1.tex S1.7 (shortening_plan.md, Methods
 % item 9): a code-mapping table for reimplementers. The equations of Appendix 1 stand alone in
 % symbols, so the body needs only this pointer; the "symbol by symbol" clause earlier in this
@@ -310,7 +312,7 @@ written out on one template in Appendix~\ref{app:members}.
 % src: papers/_program/nomenclature.md (MR drops N*gamma^T Sigma gamma that IR keeps)
 
 The remaining build flags were held fixed in every reported run; their settings, and the
-naming they disambiguate, are in the supplemental material.
+naming they disambiguate, are in Supplementary File~1.
 % BUILD-FLAG INVENTORY MOVED 2026-08-26 to supplementary_file_1.tex S1.7 (shortening_plan.md,
 % Methods item 10): the V-of-VR versus Taylor-flag disambiguation and the MRT/IRT exclusion matter
 % only to someone matching deposited filenames. Nothing outside this span referred to MacroMRT,
@@ -363,7 +365,7 @@ $\mathbf{P}(\Delta)$, so the pseudo-count is inert wherever the transition proba
 above that noise, takes over where the quotient carries no information, and introduces no
 fitted constant. Why $\varepsilon$ is keyed to $\kappa_F(\mathbf{V})$, and why the prior is
 taken from the conductance vector rather than from the marginals of $\mathbf{F}_1$, is in
-the supplemental material.
+Supplementary File~1.
 % MOVED HERE 2026-08-06 (Luciano) from 02_theory.tex, which now carries the endpoint limit and a
 % one-sentence pointer. Grouped with the trust coefficient and the binomial floor because all three
 % answer the same reimplementer question and were previously scattered.
@@ -398,7 +400,7 @@ with $\alpha_p$ the largest scaling that keeps the posterior mean on the simplex
 $\epsilon = 10^{-4}$. Reimplementing this with a hard minimum reproduces the mean current and
 corrupts every quantity this paper measures. The covariance takes its full step, and the
 truncate-then-renormalise history, the two untied trusts and the $\epsilon/2$ bias arithmetic
-are in the supplemental material.
+are in Supplementary File~1.
 
 % THIRD SAFEGUARD REMOVED 2026-08-30 (Luciano: "quitemos lo que nunca se uso"). The sentence read
 % "The third is a pair of constants: a binomial-count floor of 5, below which the expected count in a
@@ -464,7 +466,8 @@ simulator, and both minimise the same sum of squares. They differ in which param
 are free, so no quantity computed under one may be compared against the same quantity
 computed under the other. Which parameters are free is independent of the window setting
 of the previous section, so the configurations and the arms cross: the six-parameter
-configuration is run on both arms and supplies the least-squares pair of the time-resolved figure, and the four-parameter configuration is run on \texttt{ILSE} alone
+configuration is run on both arms and supplies the least-squares pair of
+Figure~\ref{fig:time}, and the four-parameter configuration is run on \texttt{ILSE} alone
 and supplies every grid cell.
 
 The residual scale is not a free parameter of either and is not given a value. It is
@@ -504,7 +507,7 @@ standardized residual is pinned at one by construction.
 % the scale. Either that configuration runs through a different path, or the description is loose.
 % Check against the run configs before submission and make the two paragraphs agree.
 
-The six-parameter configuration feeds the time-resolved figure. Both
+The six-parameter configuration feeds the time-resolved figure (Figure~\ref{fig:time}). Both
 arms of it are produced by the same script that simulates the ensemble and scores the
 macroscopic members, so all eight members of that figure score one common set of recordings.
 % src: projects/eLife_2025/ops/local/figure_3_time.macroir:115-155 (the av=1 and av=0 blocks) ; figures/data/figure_3_time_dlik_*.csv (all eight written 2026-08-05 23:13-23:19 from git ccd26f9-dirty)
@@ -540,15 +543,8 @@ reference point, so the fixed value and the truth are the same number by constru
 Least squares is therefore not handicapped in this configuration but helped: two of the
 six parameters are supplied to it exactly right, while the likelihood members estimate
 all six. Where it is nonetheless the arm whose reported uncertainty is furthest from
-the delivered one, that failure is not a lack of information about those two. % [L-REVIEW 2026-09-03] Referencia rota por la renumeracion: aca decia "Figures~4 and~6" con
-% numeros literales (numeracion
-% eLife vieja; hoy 4=cascada temporal y 6=info por paso, ninguna es esta configuracion). Se
-% reemplaza por \ref a las figuras que SI dibujan celdas ILSE de esta bateria (nubes, plano y
-% memoria; src arriba: figure_4_LSE.macroir y figure_3_mle_LSE.macroir). PENDIENTE DE CONFIRMAR:
-% si la columna ILSE de la familia temporal (Figs 4-6 nuevas) usa esta config o la de seis
-% parametros; si es esta, agregarlas. [/L-REVIEW]
-This is
-the configuration behind every \texttt{ILSE} cell of the cloud figures and the design-plane maps.
+the delivered one, that failure is not a lack of information about those two. This is
+the configuration behind every \texttt{ILSE} cell of Figures~4 and~6.
 % src: projects/eLife_2025/ops/local/figure_4_LSE.macroir:54-55 (unitary_current Fixed, Current_Noise Fixed)
 % src: projects/eLife_2025/ops/local/figure_3_mle_LSE.macroir:54-55 (same two Fixed; Stage 1 cloud retained)
 % PARAMETER-INDEX DICTIONARY MOVED 2026-08-26 to projects/eLife_2025/data_note.md
@@ -576,7 +572,7 @@ which costs nothing here because the recordings are independent and identically
 distributed and $10^4$ divides by both group sizes used.
 % src: src/core/likelihood.cpp:4101-4113 (contiguous blocks, idx = g*gsize+k; remainder dropped with a warning)
 The optimiser is Gauss--Newton with Levenberg damping, warm-started at the
-simulation truth. Its damping schedule and its three convergence limits are in the supplemental material.
+simulation truth. Its damping schedule and its three convergence limits are in Supplementary File~1.
 % src: projects/eLife_2025/ops/local/figure_3_mle.macroir:93-95 (lambda_kickoff=10, lambda_factor=3, lambda_max=1e10, grad_rtol=1e-6, dvalue_tol=1e-10; max_iter=gn_max_iter is injected)
 % src: projects/eLife_2025/ops/slurm/dispatch_figure_3.sh:107 (GN_MAX_ITER default 100 -> injected as gn_max_iter)
 What stops most fits, however, is a fourth criterion the script cannot reach: the optimiser
@@ -600,7 +596,9 @@ near-zero gradient certifies that it is a stationary point of the pooled likelih
 A group whose refit fails outright is dropped from the cloud, so a cloud can hold
 fewer estimates than the partition has groups, and its size is conditional on
 convergence. Every fit that did complete carries its convergence status, decided by
-the criteria above, into the per-group run log. The figures do not filter on that status except where a caption says so.
+the criteria above, into the per-group run log. The figures in the body do not
+filter on that status; the supplements that restrict themselves to converged fits
+say so.
 % src: src/core/likelihood.cpp:4150-4154, 4198-4209 (failed refits dropped, not retained as not-a-number)
 % src: src/core/likelihood.cpp:4326-4335 (Convergence_Status_Code per group, written to <path>_runs.csv)
 % src: papers/_program/provenance.md:138 (figure_2.Rmd applies no convergence filter to the cloud)
@@ -684,7 +682,8 @@ A second Fisher construction exists in the codebase, a central difference of the
 analytic score. It is not interchangeable with the analytic anchor: at
 $\theta_{\mathrm{sim}}$ it is indefinite over a region of the design plane, and stays so after
 averaging over the ensemble, which is why the body is anchored on the analytic construction; it is
-nonetheless the check that anchor is measured against, over the full roster, in the supplemental material, which also holds the region, its settings and the direction convention of the comparison.
+nonetheless the check that anchor is measured against, over the full roster, in Supplementary
+File~1, which also holds the region, its settings and the direction convention of the comparison.
 The two constructions coincide within one per cent for \texttt{INR} and \texttt{IR} at every
 channel count, which is where the anchor question closes for the calibrated member and its
 control; for the two least-squares arms the differenced Fisher is $0.71$ to $0.78$ of the analytic
@@ -727,7 +726,7 @@ deposit; no number reported in this paper is taken from it.
 % src: papers/_program/provenance.md#5 (433ed13 = numerical anchor, superseded for the body)
 % src: papers/1_method/decisions/D-0_freeze_and_rerun_scope.md (body moved to the Gaussian anchor)
 
-One edge case governs how a cell is summarised, and it is by design rather than by accident. The anchor can be near-singular where a parameter is unidentifiable, which happens once the open population relaxes, as the per-step information figures of the Results show; there we diagonalize $\mathbf{H}$ and retain the eigenmodes whose eigenvalue exceeds a tolerance set relative to the largest, $\lambda_i > \lambda_{\max}\cdot 10^{-10}$, evaluate every inverse power on that retained subspace alone, and leave the quantity undefined, not finite, when the retained subspace is empty. The dimension $d$ of Eq.~\ref{eq:magnitude-anisotropy} is the dimension of that subspace, so a cell where a direction has been dropped is summarised over fewer directions than one where none has. Undefined is not zero, and the maps render those cells in grey to keep the two apart.
+One edge case governs how a cell is summarised, and it is by design rather than by accident. The anchor can be near-singular where a parameter is unidentifiable, which happens once the open population relaxes (Figure~\ref{fig:time}--figure supplements 1 and 2); there we diagonalize $\mathbf{H}$ and retain the eigenmodes whose eigenvalue exceeds a tolerance set relative to the largest, $\lambda_i > \lambda_{\max}\cdot 10^{-10}$, evaluate every inverse power on that retained subspace alone, and leave the quantity undefined, not finite, when the retained subspace is empty. The dimension $d$ of Eq.~\ref{eq:magnitude-anisotropy} is the dimension of that subspace, so a cell where a direction has been dropped is summarised over fewer directions than one where none has. Undefined is not zero, and the maps render those cells in grey to keep the two apart.
 
 The comparison of $J$ against $\bar G$ is defined, with its sign convention and its two
 scalar summaries (Eq.~\ref{eq:magnitude-anisotropy}), in the body; on the least-squares branch the
@@ -866,7 +865,7 @@ long ones.
 % src: projects/eLife_2025/NOISE_AXIS_UNITS.md ; ops/slurm/dispatch_figure_3_G.sh:209-222
 
 The mean channel number $N_{\mathrm{ch}}$ and the noise level are the other two map
-axes. Every cell entering a map figure is at $n_{\mathrm{sim}} = 10^4$, enforced by the figure
+axes. Every cell entering a body figure is at $n_{\mathrm{sim}} = 10^4$, enforced by the figure
 code, so a cell run at a smaller ensemble cannot enter a map silently.
 % MOVED 2026-08-26 to projects/eLife_2025/data_note.md (shortening_plan.md, Methods item 20): the
 % three commit-named data directories, their search order and the filename matching are deposit
@@ -891,7 +890,7 @@ carry information and coarse on the side where they do not.
 % "noise levels present: 0.05 0.1 0.2 0.5 1 10 100 1000 10000 100000 1000000 10000000".
 Coverage is deliberately not a rectangle and it differs by member: \texttt{IR} spans eleven
 channel counts from $5$ to $10^4$ across all twelve noise levels, and every
-other member covers less. The per-member cell manifest is in the supplemental material.
+other member covers less. The per-member cell manifest is in Supplementary File~1.
 % DELETED 2026-08-26 (shortening_plan.md, Methods item 19): "The noise range is deliberately not
 % rectangular: the highest levels were run only at the larger channel numbers, where the crossover
 % the map measures sits" duplicated, within this paragraph, both "denser below one, where the
@@ -902,7 +901,7 @@ other member covers less. The per-member cell manifest is in the supplemental ma
 
 Each grid cell is reduced through five stages, from the per-group estimate cloud to the
 empirical-against-theoretical distortion capstone; the stages and their outputs are listed in
-the supplemental material.
+Supplementary File~1.
 % src: projects/eLife_2025/ops/local/figure_3_mle_LSE.macroir:105-178 (stages 1, 2, 4, 5, 6; five CSV families per cell)
 % src: projects/eLife_2025/ops/local/figure_3_mle.macroir:150-157 (stage 3 = numerical Fisher, present only on the superseded lane)
 % src: projects/eLife_2025/ops/local/figure_4_LSE.macroir:105-119,168-171 (Stage 1 and Stage 6 removed on the grid lane)
@@ -986,7 +985,7 @@ differentiable.
 
 The production batteries ran under SLURM with the linear-algebra back end pinned to a single
 thread so that OpenMP parallelises the per-simulation and bootstrap loops; the resource
-settings and the one environment variable that is load-bearing are in the supplemental material.
+settings and the one environment variable that is load-bearing are in Supplementary File~1.
 % src: papers/_program/provenance.md#2,#9 (SLURM 32 CPU, 48/96 GB, BLAS 1 thread, MACRODR_AXIS_SERIAL=1)
 % src: projects/eLife_2025/ops/slurm/dispatch_figure_3.sh:196-205 (CPUS 32, MEM 48G, MACRODR_AXIS_SERIAL=1)
 
@@ -1025,11 +1024,3 @@ generate, alter or select data, to derive the likelihood family or the diagnosti
 interpretation of the results. No figure or figure panel is AI generated. The author reviewed and
 verified all content, and takes full responsibility for the work, including any part of it that
 was drafted with such assistance.
-
-\subsection*{Online supplemental material}
-One supplemental document accompanies the paper. It records the measured grid cell by cell, the
-five reduction stages between engine output and figure data, the production environment, the
-optimiser schedule and its tolerances, the differenced-Fisher check of the Gaussian anchor with
-its tables, the members as dispatched with their flags, data keys and cells, the map between the
-symbols of the text and the names the implementation carries, and the design rationale behind the
-two numerical safeguards.

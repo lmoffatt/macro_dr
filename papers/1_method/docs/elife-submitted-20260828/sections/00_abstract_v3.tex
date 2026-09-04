@@ -1,0 +1,64 @@
+% Abstract v3, 2026-08-11. 234 words. NOT installed in 00_abstract.tex.
+% Base: the live 220-word v2 (00_abstract.tex line 2, decision record in note 1h there).
+% This file changes five things and nothing else. Every other sentence is v2 verbatim.
+%
+% S3, REWRITTEN, +2. Was "this gating process simulates exactly where its likelihood cannot be
+%   evaluated exactly". Two defects in one clause: the process was the grammatical agent of
+%   "simulates", which it is not, and "where" was doing logical work in a section that uses
+%   "where" spatially in four other places (the plane, the regions, the memory condition). It
+%   read as a riddle on first pass, and it is the sentence carrying the whole methodological
+%   premise. "can be simulated exactly, though its likelihood cannot be evaluated exactly."
+%   "for want of a known truth" is kept: the defect was the second half.
+%
+% S5, VERB, 0. "We scored eight members" -> "We tested eight likelihoods". S4 defines "the score"
+%   as the log-likelihood's gradient one sentence earlier, so "scored" invited the reading "we
+%   computed the score for eight members", which is also true and is a different claim. And
+%   "members" had no set: "ladder" was cut on 2026-08-07 (note 1f(ii)) and nothing replaced it,
+%   so the abstract's first quantitative word counted members of nothing. Same word count.
+%   Carries into S6 ("Members that leave" -> "Those that leave", 0) and S9.
+%
+% S7, LOCATION RESTORED, +1. "and its own departures are located too" was a promise of content,
+%   not content, and it left S7 and S8 as two consecutive result sentences with no number.
+%   "departing toward few channels and low noise" is HEAD's own wording and the same seven words.
+%   The mechanism half of HEAD's sentence ("where the Gaussian moment closure on the occupancy is
+%   misspecified") is NOT restored here: see the priced list below.
+%
+% S8, THE SEPARATION RESTORED, +10. "the two boundaries one to three decades of noise apart".
+%   This is the only unfree change and it is the one worth paying for. Without it S8 is a
+%   categorical claim with no scale, and the reader cannot see why the ordering survives a looser
+%   criterion, which is the whole argument for it being the section's one criterion-free result
+%   (provenance under "No region of the measured plane", 00_abstract.tex section 2).
+%   THIS OVERRIDES note 1h's "if the ceiling moves, buy the shield back first". The two-state
+%   shield (18 words) answers a referee objection; these 10 serve the editor and the referee both,
+%   and they defend the strongest checkable claim in the section. Editor before referee.
+%
+% S9, ANTECEDENT, +1. "The member" -> "The boundary-conditioned likelihood", because "member" is
+%   retired by S5 and "that likelihood" would sit one sentence after "least-squares interval".
+%   Functional description, not the product name, so rule 5 holds and the name stays in Code
+%   Availability. It is glossed by S5 and S7 before it is used.
+%
+% LENGTH. 234 against the brief's 220. Note 1g's own measurement is that 39% of eLife abstracts
+% run over 200 and this subfield's median is 210, so the ceiling is soft, but it is over the
+% constraint as written and the constraint has not been changed.
+%
+% NOT TAKEN, priced, in the order I would buy them:
+%   +9  the Gaussian moment closure gloss in S7 ("where the Gaussian moment closure on the
+%       occupancy is misspecified"). Section 4's "first thing to buy"; two readers tripped on the
+%       bare term from opposite directions. Lands at 243.
+%   +18 the two-state shield ("Two states is the most favourable case for the Gaussian closure,
+%       so these departures are a lower bound"). Raised in three consecutive outside rounds.
+%   +22 HEAD's opening sentence, the statement of standard practice ("Kinetic schemes are usually
+%       fitted to macroscopic ion-channel currents by least squares on the deterministic mean,
+%       leaving the gating fluctuations unmodelled"). This version never tells the reader what the
+%       default method is or what it discards, and the mean/fluctuation contrast is the paper's
+%       premise. No cheap repair exists; it needs the words or it needs S1 rebuilt.
+%   +23 HEAD's least-squares crossing sentence, the one measured scaling law and the explicit
+%       concession that least squares is fine above it. Cut on 2026-08-11 (note 1g).
+%
+% NOT RESTORED, deliberately: "two decades old and little used" (an empirical claim about other
+% people's practice that a referee disputes with "according to whom?"), and "In our own
+% comparison ... dropping the recursion" (self-critical register, and S2 states the fact instead).
+
+\begin{abstract}
+The flip state of P2X$_2$ was read off a delay in the current. The asymmetric activation reported from the same recordings two decades later has no such signature: it rests on ratios of evidence between schemes, and changing the likelihood approximation changed which mechanism came first. Where such approximations break was never located, for want of a known truth: this gating process can be simulated exactly, though its likelihood cannot be evaluated exactly. The instruments are then classical: at the true parameters the score, the log-likelihood's gradient, averages to zero, and its covariance across recordings equals the Fisher information reported. We tested eight likelihoods, from least squares to a filter conditioning each interval average on both ends, over channel number, noise and interval, ten thousand recordings per cell. Those that leave the correlation unmodelled misreport their information by an order of magnitude wherever the residual retains memory, and no single factor repairs it, because the distortion has directions. One of them, conditioning on both ends, is calibrated over almost the whole plane, departing toward few channels and low noise. No region of the measured plane gives both information about the unitary current and a trustworthy least-squares interval, the two boundaries one to three decades of noise apart. The boundary-conditioned likelihood, its score and Fisher information and the exact simulator are available for R and Python, so the measurement can be run on another scheme.
+\end{abstract}

@@ -1,0 +1,123 @@
+\documentclass[9pt]{elife}
+
+% amssymb dropped 2026-08-05: elife.cls loads stix, which already provides the AMS symbols, and
+% amssymb declines to load itself under it ("the 'amssymb' package is redundant when you are using
+% the 'stix' package"). It was one of the build's warnings and nothing in the manuscript used it.
+\usepackage{amsmath,mathtools}
+\usepackage{siunitx}
+\usepackage{graphicx}
+% Figures live in the shared figure tree and are regenerated there; point at the source so
+% the draft always compiles against the current PDFs. Bundle them into the submission dir at
+% submission time. Path is relative to this file (latexmk runs from manuscript-drafts/).
+% Repointed 2026-07-28 from figures/paper/ (retired with the three-paper split; the directory
+% is now figures/paper_1/ and does not hold the merged-roster figures) to figures/paper_both/,
+% which is where figure_1/3/4/5/6 and every supplement of the merged paper are written.
+\graphicspath{{../../../../projects/eLife_2025/figures/paper_both/}}
+\usepackage{booktabs}
+% tabularx gives the tables a last column that wraps to the available width. Both tables
+% overflow the 14.3 cm text block with plain l columns (121 pt and 141 pt in the log).
+\usepackage{tabularx}
+\usepackage{hyperref}
+\usepackage{tcolorbox}
+\usepackage{bm}
+
+% TITLE. Reviewed 2026-07-28 against the merged frame, in which the comparison anchor is least
+% squares, the contribution is the validity criterion plus the map, and the conclusion is an
+% ordering on the design plane rather than a threshold. Three candidates, live one first.
+%
+% (1) LIVE, below: names the biological system, states the two deliverables, promotes no
+%     algorithm, carries no threshold and no "only".
+% (2) The title this file carried until now: "Validity limits of time-averaged likelihoods for
+%     macroscopic kinetic inference". It reads the failure as a consequence of time averaging,
+%     which the results contradict (least squares averages nothing over the window and is the
+%     worst-calibrated arm; the boundary-conditioned member averages and is calibrated), and
+%     "limits" invites a threshold reading the map does not support. Restorable in one line.
+% (3) "Honest uncertainty in kinetic inference from macroscopic ion-channel currents: a
+%     validity criterion and a design map". Longer, and "honest" in a title may read as a
+%     claim about other people's work rather than about a measured quantity.
+% (4) SETTLED 2026-08-04, and this closes the standing title conflict. The previous title,
+%     "A validity criterion and a usage map for likelihoods of macroscopic ion-channel currents",
+%     promised recommendations that the paper deliberately declines to make: the Discussion now
+%     carries an explicit demarcation of what is not settled, and "usage map" contradicts it.
+%     The word "map" itself is fine and is the right epistemic word, continuous and cartographic;
+%     "usage" is what promises a verdict.
+%     The adopted form is the declarative finding recommended by the title study
+%     (archive/section-plans-20260729/title.md, revised recommendation), because that is eLife's
+%     dominant shape (over half of 20 surveyed titles, zero colons, zero questions, zero aphorisms)
+%     and it is the grammar of Luciano's most-cited paper. Reordered to the grammar of
+%     moffatt2007estimation, "Estimation of Ion Channel Kinetics from Fluctuations of Macroscopic
+%     Currents": "ion channel" open and attached to the kinetic information, "macroscopic currents"
+%     unmodified. That echo is free and it removes the hyphen question.
+%     Rejected in the same pass: "Measuring/Quantifying how ..." (gerund is eLife's tertiary shape
+%     and reads as a procedure rather than a finding; the novelty scoping it bought is already done,
+%     and better, by the narrow-novelty paragraph in the Introduction), and any form carrying
+%     "differ" or "differently" (the plural already says a family is compared, and it shifts the
+%     emphasis away from the fact that the best member distorts too, which the Discussion defends).
+\title{Likelihood approximations distort the ion channel kinetic information in macroscopic currents}
+
+\author[1*]{Luciano Moffatt}
+\affil[1]{Instituto de Qu\'imica F\'isica de los Materiales, Medio Ambiente y Energ\'ia (INQUIMAE), CONICET; Facultad de Ciencias Exactas y Naturales, Universidad de Buenos Aires, Ciudad de Buenos Aires, C1428EHA, Argentina}
+% \corr takes TWO arguments (elife.cls:202): the address and the corresponding author's name,
+% which it prints in parentheses after it. Called with one argument, \corr is \long, so #2 picks
+% up the \par of the blank line below and the class typesets " (" + paragraph break + ")": the
+% empty parenthesis next to the e-mail in the margin. The empty second argument suppresses it.
+\corr{lmoffatt@qi.fcen.uba.ar}{}
+
+\begin{document}
+\maketitle
+
+\input{sections/00_abstract}
+
+
+% ================= SKELETON: titles only below. Fill-hints in % comments. =================
+% One file per top-level section under sections/, so that one section = one owner = no merge
+% conflicts (01_writing_plan.md, T-1). The fill-hints live in the section files, with the
+% section they brief. Add nothing here but \input lines.
+
+\input{sections/01_introduction}
+% 2026-08-12: 02_theory_full and 03_diagnostics MERGED into 02_framework, one section before the
+% Results, by papers/1_method/09_carve_plan.md (Luciano's decision 1). Both originals are retired
+% whole to archives/ with a dated suffix, so their comment history is quotable; the merged file
+% carries forward the notes that still constrain an edit. The carve keeps what the Results use and
+% sends derivation and justification to the appendices: the evidence for the cut is that the
+% Results cite no equation and no table, and that Table 1 and Figure 1 are cited from nowhere
+% outside their own section.
+% 2026-08-09: this file became the single master (the elife_paper / elife_paper_full fork and the
+% 02_theory / 02_theory_full fork were closed in one move).
+\input{sections/02_framework}
+% [L-REVIEW 2026-09-03] Methods movido aqui porque JGP ordena introduccion -> materials and
+% methods -> results -> discussion; en la version eLife iba despues de la Discusion. Pendiente
+% que Luciano lea las dos costuras: fin de Theory -> comienzo de Methods, y fin de Methods ->
+% comienzo de Results. [/L-REVIEW]
+\input{sections/06_methods}
+\input{sections/04_results}
+\input{sections/05_discussion}
+\input{sections/07_backmatter}
+% Appendices, in the order a reader needs them: the derivation first, because the member-by-member
+% spec cites twelve of its equations and eight of those are cited from nowhere else, so with the
+% spec first every one of them would be a forward reference. All three carry a \label so that no
+% cross-reference in the body hard-codes an appendix number (08_length_plan.md, Phase 1).
+% The third was added 2026-08-11 and is input LAST for that reason: 08 stays Appendix 1 and 09 stays
+% Appendix 2, so nothing renumbers. It holds the menu of repairs that do not change the likelihood,
+% moved out of the Discussion by decision (ii) of that section's rewrite.
+% 2026-08-12: a third appendix is inserted before the repairs one, holding the algebra behind the
+% diagnostics. It exists because that algebra had no owner: the expansion behind the sandwich was
+% promised in the body as "see Supplementary Information" and was written nowhere, and the
+% composition identity was inside the derivation appendix. Repairs moves from 10_ to 11_ and becomes
+% Appendix 4; nothing hard-codes an appendix number, every reference goes through \ref.
+\input{sections/08_appendix_derivation}
+\input{sections/09_appendix_members}
+\input{sections/10_appendix_diagnostics}
+\input{sections/11_appendix_repairs}
+\input{sections/12_appendix_priorart}
+
+% Reads biblio.bib, the CITED-ONLY file. It was repointed to biblio_full on 2026-07-28 because
+% biblio.bib then had 15 entries and broke on the first prior-art citation; on 2026-07-29 the six
+% missing keys (katz1970, katz1972, anderson1973, conti1980, sigworth1981, lei2020) were migrated
+% across, so biblio.bib is complete again and is the right target: check.sh reads it, and its
+% "no dead entries" test is only meaningful against a cited-only file. biblio_full.bib stays as
+% the verified pool.
+% \nocite{*}
+\bibliography{biblio}
+
+\end{document}

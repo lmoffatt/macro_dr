@@ -1,0 +1,87 @@
+% !TEX program = xelatex
+\documentclass[10.5pt,a4paper]{article}
+\usepackage[margin=22mm]{geometry}
+\usepackage{fontspec}
+\setmainfont{Arial}
+\usepackage[hidelinks]{hyperref}
+\usepackage{parskip}
+\setlength{\parskip}{0.75em}
+\pagestyle{empty}
+\begin{document}
+
+\begin{flushright}
+Luciano Moffatt\\
+Instituto de Química Física de los Materiales, Medio Ambiente y Energía (INQUIMAE), CONICET\\
+Facultad de Ciencias Exactas y Naturales, Universidad de Buenos Aires\\
+Ciudad de Buenos Aires, C1428EHA, Argentina\\
+\href{mailto:lmoffatt@qi.fcen.uba.ar}{lmoffatt@qi.fcen.uba.ar}\\[0.6em]
+30 August 2026
+\end{flushright}
+
+Dear Editors,
+
+I am submitting ``Likelihood approximations distort the ion channel kinetic information in
+macroscopic currents'' for consideration as a Research Article.
+
+Macroscopic currents have reached the limit of what they show by eye. The flip state we proposed
+for P2X$_2$ in 2007 was still on the visible side, a delay before the current rises. The questions
+now asked, whether its subunits couple in sequence or all at once, leave no such mark. They are
+beginning to be settled by comparing the Bayesian evidence for rival kinetic schemes, and how
+much the likelihoods behind such a comparison misreport the information a recording holds, and
+in which directions, had never been measured for macroscopic currents. This manuscript measures
+both.
+
+Every likelihood that ignores the correlation between successive samples misreports its
+information by an order of magnitude, two- to threefold on the error bar, wherever that
+correlation is present in the record, and no single rescaling repairs it, because the distortion
+differs between parameter directions. The filter that uses the channel state at both ends of each
+sampling interval is calibrated: it reports the uncertainty it delivers, except where single
+openings become resolvable, and there its departure follows one measured power law.
+
+I know the stake from the inside. In our 2025 ranking of nine P2X$_2$ schemes the winning
+mechanism changed when the likelihood's recursion was removed, overturning a factor of six in
+evidence; we published the sensitivity and argued for one of the two mechanisms. On a recording
+there is no truth to measure a likelihood against, and fitting well does not supply one.
+
+So I went outside the fit. Channel gating simulates exactly where its likelihood cannot be
+evaluated exactly, and at known parameters a correct likelihood satisfies two identities: its
+score, the gradient of the log-likelihood, averages to zero, and the covariance of the score
+equals the Fisher information the likelihood itself reports. I measured both for eight
+likelihoods, from least squares to the filter above, against ten thousand exact simulations at
+every combination of channel number, noise and sampling interval tested, 560 combinations for
+the filter and 210 for all eight, in a two-state scheme, the smallest that isolates the
+approximation's own error.
+
+Our control, the likelihood without the recursion, reports at one representative condition about
+twenty times the information the record holds; the likelihood we argued for is calibrated there.
+The 2025 evidence is not recomputed, and whether this carries to nine schemes is suggested and
+not shown.
+
+The closest prior check on a filter of this kind appeared in eLife, by M\"unch and colleagues in
+2022. They counted how often the true value fell inside the reported interval, at a fit per
+simulation, which covers a line of conditions. The two identities cost one likelihood evaluation
+per simulation and return a matrix: which parameter is misreported, and whether at each sample or
+across the record. The filter measured here was published
+with our 2025 P2X$_2$ analysis and has the form of
+a 1988 integrated-measurement Kalman filter; what is new is its score and Fisher information, and
+the measurement built on them.
+
+For an experimentalist the map has one line. No measured condition gives both a calibrated
+least-squares error bar and information about the single-channel current; the two lie a factor of
+a hundred apart in noise, and still a factor of three under the paper's looser criterion. The
+recordings rich enough to determine the amplitudes are the ones whose least-squares error bars
+are the wrong width.
+
+The engine with its exact simulator, configurations and notebooks (10.5281/zenodo.22168409), the
+simulation output (10.5281/zenodo.22167744) and the likelihood with its score, Fisher information
+and diagnostic, a small library with R and Python bindings (10.5281/zenodo.22168263), are public,
+so a reader can put the same two identities on their own scheme. No related manuscript is under
+consideration elsewhere.
+
+Yours sincerely,
+
+\vspace{1.5em}
+
+Luciano Moffatt
+
+\end{document}
