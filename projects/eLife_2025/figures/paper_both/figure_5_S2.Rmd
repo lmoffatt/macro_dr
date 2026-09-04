@@ -70,9 +70,9 @@ dat <- spec %>%
 # Celda mal condicionada de NR (Num_ch 1e4, interval 1): su distorsion ~1e7 estira el eje log del
 # panel y aplasta la estructura 6.7-99 del resto (revision de figuras 2026-09-03, aceptada por
 # Luciano 2026-09-04, espejo del gris que la figura del plano ya aplica). La caption la nombra.
-n_excl <- sum(dat$algo == "NR" & dat$Num_ch == 1e4 & dat$interval_in_tau == 1)
+n_excl <- sum(dat$algo == "macro_NR" & dat$Num_ch == 1e4 & dat$interval_in_tau == 1 & dat$noise == 0.1)
 cat(sprintf("figure_5_S2: excluida la celda NR mal condicionada (%d marca/s)\n", n_excl))
-dat <- dat %>% filter(!(algo == "NR" & Num_ch == 1e4 & interval_in_tau == 1))
+dat <- dat %>% filter(!(algo == "macro_NR" & Num_ch == 1e4 & interval_in_tau == 1 & noise == 0.1))
 
 cat(sprintf("figure_5_S2: %d marks; per member: %s\n", nrow(dat),
             paste(sprintf("%s=%d", levels(dat$member), as.integer(table(dat$member))),

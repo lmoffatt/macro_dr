@@ -55,7 +55,7 @@ A8. Verificaciones externas — CORREGIDO 2026-09-03: los depósitos Zenodo YA E
     (código 10.5281/zenodo.22167744, datos 22168409, macroir 22168263, P2X2-2025 17162475) y la
     sección "Data and code availability" del backmatter ya los cita; el error "sin DOI" fue mío
     (warnings de bibtex por tipo de entrada + captura vieja del form). Queda: bioRxiv (subir, con
-    el PDF actual sirve), ORCID en el sistema, lista países RUP (¿Gold gratis?), y para JGP sólo
+    el PDF actual sirve), ORCID en el sistema, lista países RUP: Argentina PROBABLEMENTE NO elegible (listas ligadas a Research4Life, sin países de ingreso medio-alto; no confirmado país por país porque rupress 403). IRRELEVANTE para la ruta elegida: Green = $0 y el preprint da acceso desde el día uno, y para JGP sólo
     RE-UBICAR la sección de datos arriba de Acknowledgments con título "Data availability".
 
 ### Estado de ejecución (2026-09-03)
@@ -75,7 +75,8 @@ A8. Verificaciones externas — CORREGIDO 2026-09-03: los depósitos Zenodo YA E
   declaración de IA YA EXISTÍA al final de Methods (decisión #5 CERRADA; cumple la política JGP tal
   cual). Main renombrado: elife_paper.tex → jgp_biorxiv_moffatt.tex (pedido L.); elife_paper.pdf
   restaurado a HEAD = artefacto enviado a eLife, intocado.
-- xelatex devuelve rc=1 sin "!" en el log desde la línea de base; PDF completo; vigilar.
+- xelatex rc=1 SIGUE ABIERTO (2026-09-04: un rc=0 aparente era el exit del tail en un pipeline,
+  error mio); PDF completo y 0 refs rotas en todas las corridas; buscar la causa en el log.
 
 ## 3. Etapa B — si invitan a revisar
 Referencias a formato JGP fino (et al.>10, abreviaturas, Reference Guidelines); figuras a 85/180 mm

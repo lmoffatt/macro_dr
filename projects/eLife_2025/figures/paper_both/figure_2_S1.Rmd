@@ -142,7 +142,7 @@ g <- ggplot(qq, aes(theo, emp, colour = src)) +
        # TITULO HORNEADO RETIRADO 2026-09-04 (promocion a figura de cuerpo): la caption LaTeX es
        # la duena del titulo en JGP, y el "noise 0.05" del titulo era la etiqueta x10 donde la
        # caption dice S-tilde = 0.005 (NOISE_AXIS_UNITS.md), un choque que un referi veria.
-       NULL) +
+       title = NULL) +
   # the coverage numbers, so the reader sees 91% vs 95% without measuring the tail
   geom_text(data = labs_df, aes(x = 0.05 * mx, y = mx - (as.integer(factor(src)) - 1) * 0.09 * mx,
                                 label = lab, colour = src), hjust = 0, size = 2.5, show.legend = FALSE) +
