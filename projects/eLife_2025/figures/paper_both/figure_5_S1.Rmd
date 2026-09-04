@@ -162,7 +162,7 @@ notes <- resid %>%
                           100 * (med - 1), 100 * (max - 1)))
 ```
 
-```{r render, fig.width = 7.0, fig.height = 7.8}
+```{r render, fig.width = 7.0, fig.height = 6.9}
 suppressMessages({ library(patchwork) })
 
 # ONE PLOT PER PANEL, assembled with patchwork, because the axes of this figure are genuinely
@@ -240,7 +240,9 @@ g <- wrap_plots(plots, ncol = 2, byrow = TRUE) +
   theme(legend.position = "right", legend.title = element_text(size = 8),
         legend.text = element_text(size = 7), legend.key.height = unit(9, "pt"))
 
-ggsave("Figure_5_S1.pdf", g, width = 7.0, height = 7.8, device = cairo_pdf)
+# 7.8 -> 6.9 in (2026-09-04): promovida a figura de cuerpo, con caption ya no entraba en la pagina
+# y pisaba la linea del pie (reporte de Luciano); paneles comprimidos, fuentes intactas.
+ggsave("Figure_5_S1.pdf", g, width = 7.0, height = 6.9, device = cairo_pdf)
 g
 ```
 

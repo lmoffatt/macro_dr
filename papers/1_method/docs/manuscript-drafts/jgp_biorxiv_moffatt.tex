@@ -19,11 +19,16 @@
 \usepackage{tabularx}
 \usepackage{hyperref}
 \usepackage{tcolorbox}
-% \usepackage{bm}  % RETIRADO 2026-09-04: bm redefine \boldsymbol a un mecanismo que choca
-% con los chardefs de stix bajo XeTeX ("Improper alphabetic constant" en cada griega, recuperado
-% en silencio como ITALICA SIMPLE: los vectores nunca salieron en negrita, incluida la version
-% enviada a eLife). Sin bm, \boldsymbol es el de amsmath y rinde negrita correcta; los 240 \bm{
-% del texto ya fueron pasados a \boldsymbol{ el mismo dia.
+% bm: historia completa 2026-09-04. (1) bm redefine \boldsymbol con un mecanismo que choca con
+% los chardefs de stix bajo XeTeX ("Improper alphabetic constant"), y la recuperacion silenciosa
+% imprimia los vectores griegos en ITALICA SIMPLE (asi salio la version enviada a eLife). (2) Pero
+% quitar bm rompe \underbrace (asignacion de familias de fuentes: las llaves salen como barras
+% gruesas), verificado contra el PDF congelado. La configuracion que sana AMBOS: cargar bm por su
+% efecto de fuentes y restaurar el \boldsymbol de amsmath despues; el texto ya usa \boldsymbol
+% (240 sitios convertidos de \bm el mismo dia).
+\let\savedamsboldsymbol\boldsymbol
+\usepackage{bm}
+\let\boldsymbol\savedamsboldsymbol
 
 % TITLE. Reviewed 2026-07-28 against the merged frame, in which the comparison anchor is least
 % squares, the contribution is the validity criterion plus the map, and the conclusion is an

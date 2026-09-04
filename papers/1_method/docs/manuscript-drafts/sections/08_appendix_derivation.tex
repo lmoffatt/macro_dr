@@ -398,13 +398,13 @@ gating variance the chosen state leaves unexplained rather than a property of th
 Written this way, Eq.~\ref{eq:macror} contracts a member's objects against its own state
 distribution and covariance, and it does so four times:
 \[
-  \underbrace{\boldsymbol{\mu}^\top\boldsymbol{\gamma}}_{\text{the mean}}
+  \underbracket{\boldsymbol{\mu}^\top\boldsymbol{\gamma}}_{\text{the mean}}
   \qquad
-  \underbrace{\boldsymbol{\mu}^\top\mathbf{w}}_{\text{the state-dependent noise}}
+  \underbracket{\boldsymbol{\mu}^\top\mathbf{w}}_{\text{the state-dependent noise}}
   \qquad
-  \underbrace{\boldsymbol{\gamma}^\top\boldsymbol{\Sigma}\boldsymbol{\gamma}}_{\text{what the state contributes}}
+  \underbracket{\boldsymbol{\gamma}^\top\boldsymbol{\Sigma}\boldsymbol{\gamma}}_{\text{what the state contributes}}
   \qquad
-  \underbrace{\boldsymbol{\Sigma}\boldsymbol{\gamma}}_{\text{state against current},\ \mathbf{g}}
+  \underbracket{\boldsymbol{\Sigma}\boldsymbol{\gamma}}_{\text{state against current},\ \mathbf{g}}
 \]
 two against $\boldsymbol{\mu}$ and two against $\boldsymbol{\Sigma}$, and everything else in Eq.~\ref{eq:macror} is
 a scalar. Extending the filter to a recorded value that spans the window therefore cannot require a
@@ -724,9 +724,9 @@ conditioned on, $\sum_{j} P_{i\to j}(\Delta)\,\bar{v}_{i\to j}$. By the law
 of total variance the two forms differ by the spread of the interval mean across end
 states,
 \begin{equation}
-  \underbrace{\sum_{j} P_{i\to j}(\Delta)\bigl[\bar{v}_{i\to j}
+  \underbracket{\sum_{j} P_{i\to j}(\Delta)\bigl[\bar{v}_{i\to j}
     + \bigl(\bar{\gamma}_{i\to j}-\bar{\gamma}_{i\to\cdot}\bigr)^2\bigr]}_{\text{total, }\texttt{MR}}
-  \;=\; \underbrace{\sum_{j} P_{i\to j}(\Delta)\,\bar{v}_{i\to j}}_{\text{residual, }\texttt{VR},\,\texttt{IR}}
+  \;=\; \underbracket{\sum_{j} P_{i\to j}(\Delta)\,\bar{v}_{i\to j}}_{\text{residual, }\texttt{VR},\,\texttt{IR}}
   \;+\; \mathrm{Var}_{j}\bigl[\bar{\gamma}_{i\to j}\mid i\bigr],
   \label{eq:mr-vr}
 \end{equation}
@@ -785,8 +785,8 @@ By the law of total variance, conditioning on the counts where the window opens,
 \begin{equation}
   \mathrm{Var}\bigl[\bar y\bigr]
   = \epsilon^2_{0\to\Delta}
-  + \underbrace{\mathbb{E}\bigl[\mathrm{Var}(\bar y \mid \mathbf{N}_0)\bigr]}_{N_{\mathrm{ch}}\,\boldsymbol{\mu}_0^\top\mathbf{w}}
-  + \underbrace{\mathrm{Var}\bigl[\mathbb{E}(\bar y \mid \mathbf{N}_0)\bigr]}_{N_{\mathrm{ch}}\,\bar{\boldsymbol{\gamma}}_{0}^\top\boldsymbol{\Sigma}_0\bar{\boldsymbol{\gamma}}_{0}} ,
+  + \underbracket{\mathbb{E}\bigl[\mathrm{Var}(\bar y \mid \mathbf{N}_0)\bigr]}_{N_{\mathrm{ch}}\,\boldsymbol{\mu}_0^\top\mathbf{w}}
+  + \underbracket{\mathrm{Var}\bigl[\mathbb{E}(\bar y \mid \mathbf{N}_0)\bigr]}_{N_{\mathrm{ch}}\,\bar{\boldsymbol{\gamma}}_{0}^\top\boldsymbol{\Sigma}_0\bar{\boldsymbol{\gamma}}_{0}} ,
   \label{eq:ltv}
 \end{equation}
 which is Eq.~\ref{eq:pred-var} read with the start-conditioned objects: the middle term is
@@ -813,7 +813,7 @@ By the law of total covariance, conditioning on the same counts and carried on t
 scale,
 \begin{equation}
   \frac{1}{N_{\mathrm{ch}}}\mathrm{Cov}\bigl[\mathbf{N}_\Delta,\ \bar y\bigr]
-  = \underbrace{\frac{1}{N_{\mathrm{ch}}}\mathrm{Cov}\bigl[\mathbb{E}(\mathbf{N}_\Delta\mid \mathbf{N}_0),\ \bar y\bigr]}_{\textstyle \mathbf{g}^{\mathtt{MR}}_{0\to\Delta}}
+  = \underbracket{\frac{1}{N_{\mathrm{ch}}}\mathrm{Cov}\bigl[\mathbb{E}(\mathbf{N}_\Delta\mid \mathbf{N}_0),\ \bar y\bigr]}_{\textstyle \mathbf{g}^{\mathtt{MR}}_{0\to\Delta}}
   + \ \frac{1}{N_{\mathrm{ch}}}\mathbb{E}\bigl[\mathrm{Cov}(\mathbf{N}_\Delta,\ \bar y \mid \mathbf{N}_0)\bigr] .
   \label{eq:ltc}
 \end{equation}
