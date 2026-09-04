@@ -86,6 +86,10 @@ y ≤1 página c/u; estadística en leyendas; SciScore (Methods al sistema); pun
 DOCX final (pandoc + pasada manual de math), figuras editables individuales, CRediT, license,
 proofs en 48 h; tapa opcional (300 dpi, 8.75×11.25 in).
 
+## Estado bioRxiv (2026-09-04): DEPOSITADO, MS ID BIORXIV/2026/749531, CC-BY 4.0, en screening
+(24-72 h); al recibir el DOI: acknowledgment en el manuscrito + hueco de la carta + form JGP; la
+transferencia directa bioRxiv->JGP esta confirmada en su cola B2J.
+
 ## 5. Decisiones de L. pendientes
 1. Veto de la tabla A1 (bloquea A2).
 2. Green vs Gold (tras lista de países RUP).
