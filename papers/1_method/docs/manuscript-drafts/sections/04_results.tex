@@ -1290,10 +1290,9 @@ verdict, least squares being the one it would make more conservative (supplement
 % the gating". If a fuller version is wanted, the natural place is not here but Methods, where
 % the absence of an analogue stage is already stated; this paragraph exists to pre-empt two
 % misreadings and a third would crowd it.
-% [L-REVIEW 2026-09-03] Subseccion movida aqui desde despues de las tres secciones de tau9:
-% lee la figura del error estandar corregido, que pertenece al bloque del plano, y su oracion
-% final (tau9 como eje de la figura siguiente) introduce naturalmente esas tres secciones.
-% Pendiente que Luciano lea la transicion de entrada. [/L-REVIEW]
+% Decision de Luciano 2026-09-04: posicion aprobada, y la oracion de n/tau9 se movio al CIERRE
+% de la subseccion (tras el parrafo del agrupamiento, donde es su consecuencia natural), para que
+% la seccion entregue a las de tau9 con la ultima palabra. RESUELTO.
 \subsection*{Sampling a hundred times faster buys the noise level and nine per cent of a rate}
 
 Everything so far asks whether the report of a member of the likelihood family is calibrated. The complementary question is what
@@ -1320,9 +1319,7 @@ The amplitude pair is measured from the gating fluctuation, correlated on the sc
 so faster sampling buys the part of its spectrum above that scale, which is real and bounded, and
 nothing once the instrumental noise has covered the fluctuation. The rates are measured from the
 shape of the deterministic transient, which any interval shorter than the relaxation already
-resolves, so the extra samples are redundant. Averaging $n$ samples of a correlated process divides
-the variance by $n/\tau_{9}$ and not by $n$, and $\tau_{9}$ is the quantity Figure~\ref{fig:memory}
-puts on its horizontal axis.
+resolves, so the extra samples are redundant. 
 
 One consequence belongs to the reduction rather than to the acquisition. This axis is not the
 sampling rate of the rig: a record acquired fast and uniformly is reduced before it is fitted by
@@ -1332,6 +1329,7 @@ numbers above are what that grouping costs: almost nothing for a kinetic questio
 for an amplitude one. The interval members take the window as an argument rather than as a constant,
 so the groups need not be equal and the schedule can follow the transient; the members written for
 an instant describe a different random variable once the record is grouped at all.
+Averaging $n$ samples of a correlated process divides the variance by $n/\tau_{9}$ and not by $n$, and $\tau_{9}$ is the quantity Figure~\ref{fig:memory} puts on its horizontal axis.
  % src: projects/eLife_2025/figures/paper_both/figure_4_S2.html (figure_4_S3 until the 2026-08-27 renumber; measured-table chunk, 2026-08-12 render: medians over the seven intervals at noise label 0.1, read from m; k_off R 1.4246/1.4869/1.4810/1.4561, MR 1.4477/1.7780/1.7768/1.9422, VR/R 0.955/0.998/1.023/1.091, N_ch VR/R 1.135/1.204/1.168/1.168, IR k_off 1.0055 at 1e4) % src: same chunk (magnitude R 1.09-1.24, MR 1.30-1.56, IR 1.02-1.00; anisotropy R 1.29-1.19, MR 1.40-1.39, IR 1.25-1.04)
 
 
