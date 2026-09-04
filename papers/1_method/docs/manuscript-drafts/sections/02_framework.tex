@@ -35,7 +35,7 @@ throughout this paper, carried symbolically). Each channel has a generator (rate
 $\mathbf{Q}\in\mathbb{R}^{K\times K}$, hence the row-stochastic transition matrix
 $\mathbf{P}(t)=e^{\mathbf{Q}t}$ over an elapsed time $t$, with entries $P_{i\to j}(t)$ from
 state $i$ to state $j$, and a conductance $\gamma_k$ in state $k$, collected in
-$\bm{\gamma}\in\mathbb{R}^{K}$.
+$\boldsymbol{\gamma}\in\mathbb{R}^{K}$.
 
 % T1, 2026-08-27: "Writing THAT likelihood" no tenia antecedente. El parrafo de arriba no menciona
 % ninguna verosimilitud; el original (archives/02_theory_full_SUPERSEDED_20260812.tex:47) decia
@@ -121,7 +121,7 @@ that scale before analysis.
 
 To close a distribution is to replace it by the Gaussian with the same mean and covariance. Two
 closures are available, and every member makes the first; whether it pays for the second is set by
-what it predicts. The current at an instant is $\bm{\gamma}$ contracted against the occupancies at
+what it predicts. The current at an instant is $\boldsymbol{\gamma}$ contracted against the occupancies at
 one time, and the linear image of a Gaussian is Gaussian; the interval average is a functional of
 the path inside the window and needs a closure of its own. An instantaneous member drops that
 evolution instead, which misspecifies the random variable rather than closing it, and in the
@@ -139,7 +139,7 @@ unhelpful direction, since averaging is what brings the law closer to Gaussian.
 
 \begin{tcolorbox}[title={The two Gaussian approximations}, colback=gray!5, colframe=gray!55]
 \textbf{Occupancy closure.} One probability per occupancy vector, a count that grows with
-$N_{\mathrm{ch}}$, is replaced by a Gaussian in the per-channel pair $(\bm{\mu},\bm{\Sigma})$, the
+$N_{\mathrm{ch}}$, is replaced by a Gaussian in the per-channel pair $(\boldsymbol{\mu},\boldsymbol{\Sigma})$, the
 same size at every channel count and living on the simplex.
 \emph{Validity:} two conditions, not one. The channel count must be high enough for the counts to
 behave as a continuum, which fails as $N_{\mathrm{ch}}$ falls; and the recorded sample must not
@@ -540,17 +540,17 @@ The interval likelihood is the instantaneous one applied to the boundary state, 
 instantaneous one is where it starts. The recursive
 member of \citet{moffatt2007estimation} carries a Gaussian over the channel occupancies and
 conditions it on each recorded sample: in the per-channel normalization used throughout, with
-$\bm{\gamma}$ the per-state conductance and $\epsilon^2$ the instrumental variance,
+$\boldsymbol{\gamma}$ the per-state conductance and $\epsilon^2$ the instrumental variance,
 \begin{align}
-  y^{\mathrm{pred}} &= N_{\mathrm{ch}}\,\bm{\mu}^\top\bm{\gamma},
+  y^{\mathrm{pred}} &= N_{\mathrm{ch}}\,\boldsymbol{\mu}^\top\boldsymbol{\gamma},
   \qquad
-  \mathbf{g} = \bm{\Sigma}\bm{\gamma},
+  \mathbf{g} = \boldsymbol{\Sigma}\boldsymbol{\gamma},
   \qquad
-  \sigma^2 = \epsilon^2 + N_{\mathrm{ch}}\,\bm{\gamma}^\top\bm{\Sigma}\bm{\gamma},
+  \sigma^2 = \epsilon^2 + N_{\mathrm{ch}}\,\boldsymbol{\gamma}^\top\boldsymbol{\Sigma}\boldsymbol{\gamma},
   \nonumber\\
-  \bm{\mu}^{\mathrm{post}} &= \bm{\mu} + \frac{\mathbf{g}}{\sigma^2}\,\delta,
+  \boldsymbol{\mu}^{\mathrm{post}} &= \boldsymbol{\mu} + \frac{\mathbf{g}}{\sigma^2}\,\delta,
   \qquad
-  \bm{\Sigma}^{\mathrm{post}} = \bm{\Sigma} - \frac{N_{\mathrm{ch}}\,\mathbf{g}\mathbf{g}^\top}{\sigma^2},
+  \boldsymbol{\Sigma}^{\mathrm{post}} = \boldsymbol{\Sigma} - \frac{N_{\mathrm{ch}}\,\mathbf{g}\mathbf{g}^\top}{\sigma^2},
   \qquad
   \delta = y^{\mathrm{obs}} - y^{\mathrm{pred}}.
   \label{eq:macror}
@@ -577,7 +577,7 @@ factors of $N_{\mathrm{ch}}$ are where the counts over the ensemble enter
 % stay independent under it" and "writing N for the counts by state over the ensemble", 19 words.
 Per channel is a normalization:
 conditioning on a shared recorded value correlates the channels, so from the first update onward
-$\bm{\Sigma}$ is $\mathrm{Cov}(\mathbf{N})/N_{\mathrm{ch}}$ rather than one channel's own
+$\boldsymbol{\Sigma}$ is $\mathrm{Cov}(\mathbf{N})/N_{\mathrm{ch}}$ rather than one channel's own
 covariance (Methods, Appendix~\ref{app:derivation}).
 % SLOT SYMBOLS, settled 2026-08-06 (Luciano), after two rounds of getting it wrong: this equation is
 % not a template, it is MacroR, published with gamma, so no neutral letter goes on that slot; k
@@ -587,7 +587,7 @@ covariance (Methods, Appendix~\ref{app:derivation}).
 % plan (Luciano, 2026-08-11): it is the one algorithmic anchor a reader gets before the Results.
 
 What it gives up is not exactness but \emph{sufficiency}: the three moments it consumes are exact
-functions of $(\bm{\mu},\bm{\Sigma})$, but $\mathrm{Var}[\bar y\mid\mathbf{N}]$ depends on
+functions of $(\boldsymbol{\mu},\boldsymbol{\Sigma})$, but $\mathrm{Var}[\bar y\mid\mathbf{N}]$ depends on
 $\mathbf{N}$, so $(\mathbf{N},\bar y)$ is not jointly Gaussian and Eq.~\ref{eq:macror} is not the
 exact Bayesian update, a heteroscedastic emission treated as if it were homoscedastic. Nor can it
 be used on the interval average, which is not a function of the occupancy at any one time, so no
@@ -615,17 +615,17 @@ still has once the pair is fixed. A channel that starts in $i$ and ends in $j$ c
 $\bar{\gamma}_{i\to j}$ on average, so the interval average is linear in the boundary counts and
 Eq.~\ref{eq:macror} applies to them with nothing added to it,
 \begin{equation}
-  \bm{\mu} \to \bm{\mu}_{0\to\Delta},
+  \boldsymbol{\mu} \to \boldsymbol{\mu}_{0\to\Delta},
   \qquad
-  \bm{\Sigma} \to \bm{\Sigma}_{0\to\Delta},
+  \boldsymbol{\Sigma} \to \boldsymbol{\Sigma}_{0\to\Delta},
   \qquad
-  \bm{\gamma} \to \bar{\gamma}_{i\to j},
+  \boldsymbol{\gamma} \to \bar{\gamma}_{i\to j},
   \qquad
-  \epsilon^2 \to \epsilon^2 + N_{\mathrm{ch}}\,\bm{\mu}_{0\to\Delta}^\top\bar{\bm{v}},
+  \epsilon^2 \to \epsilon^2 + N_{\mathrm{ch}}\,\boldsymbol{\mu}_{0\to\Delta}^\top\bar{\boldsymbol{v}},
   \label{eq:macroir}
 \end{equation}
-where $\bm{\mu}_{0\to\Delta}$ and $\bm{\Sigma}_{0\to\Delta}$ are the mean and covariance of the
-boundary state, $\mu_{i\to j}=\mu_{0,i}P_{i\to j}(\Delta)$, and $\bar{\bm{v}}$ collects the
+where $\boldsymbol{\mu}_{0\to\Delta}$ and $\boldsymbol{\Sigma}_{0\to\Delta}$ are the mean and covariance of the
+boundary state, $\mu_{i\to j}=\mu_{0,i}P_{i\to j}(\Delta)$, and $\bar{\boldsymbol{v}}$ collects the
 $\bar{v}_{i\to j}$, so the last substitution charges to the instrumental term what the
 conductance still varies by once the pair is fixed. The start index
 is then summed away, the next window having no use for it. That is \texttt{IR}, and every other
@@ -633,7 +633,7 @@ interval member is one of these substitutions made in part, each closed by a Gau
 (Appendix~\ref{app:derivation}).
 
 The pairs collapse before they are built. Eq.~\ref{eq:macroir} puts
-$\bm{\Sigma}_{0\to\Delta}$ in two places, the predicted variance and the gain, and each contracts
+$\boldsymbol{\Sigma}_{0\to\Delta}$ in two places, the predicted variance and the gain, and each contracts
 in closed form to $K$-vectors and $K\times K$ matrices, so no $K^2\times K^2$ object is formed
 anywhere and one window costs $K^3$ however many channels the patch holds
 (Appendix~\ref{app:derivation}). Chaining intervals leaves a single state variable per junction,

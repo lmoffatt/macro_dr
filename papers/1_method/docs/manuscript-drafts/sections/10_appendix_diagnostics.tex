@@ -22,16 +22,16 @@ which neither can be read.
 \subsection*{The sandwich and the bias are one first-order expansion}
 
 Both corrections come from the same step. Expanding the total score around the parameters
-$\bm{\theta}_0$ the recordings were generated from,
+$\boldsymbol{\theta}_0$ the recordings were generated from,
 \begin{equation}
-  S(\hat{\bm{\theta}}) \;\approx\; S(\bm{\theta}_0)
-    + \nabla_{\bm{\theta}} S(\bm{\theta}_0)\,(\hat{\bm{\theta}}-\bm{\theta}_0),
+  S(\hat{\boldsymbol{\theta}}) \;\approx\; S(\boldsymbol{\theta}_0)
+    + \nabla_{\boldsymbol{\theta}} S(\boldsymbol{\theta}_0)\,(\hat{\boldsymbol{\theta}}-\boldsymbol{\theta}_0),
   \label{eq:score-expansion}
 \end{equation}
-and using $S(\hat{\bm{\theta}})=0$ at a maximum-likelihood estimate, with the empirical Hessian
+and using $S(\hat{\boldsymbol{\theta}})=0$ at a maximum-likelihood estimate, with the empirical Hessian
 replaced by its expectation $-\mathbf{H}$,
 \begin{equation}
-  \hat{\bm{\theta}}-\bm{\theta}_0 \;\approx\; \mathbf{H}^{-1}S(\bm{\theta}_0).
+  \hat{\boldsymbol{\theta}}-\boldsymbol{\theta}_0 \;\approx\; \mathbf{H}^{-1}S(\boldsymbol{\theta}_0).
   \label{eq:displacement}
 \end{equation}
 Taking the covariance of Eq.~\ref{eq:displacement} over independent recordings gives the sandwich,
@@ -43,7 +43,7 @@ Taking the covariance of Eq.~\ref{eq:displacement} over independent recordings g
 and taking its expectation gives the bias, $b=\mathbf{H}^{-1}\mathbb{E}[S]$, which is nonzero
 exactly when the mean score is. The two are therefore the same approximation applied to the two
 moments of one displacement, which is why a member can fail them separately: $\mathbb{E}[S]$ can
-vanish while $\mathrm{Cov}(S)$ departs from $\mathbf{H}$, and at $\bm{\theta}_{\mathrm{pool}}$ it
+vanish while $\mathrm{Cov}(S)$ departs from $\mathbf{H}$, and at $\boldsymbol{\theta}_{\mathrm{pool}}$ it
 does so by construction. When $\mathbf{C}=\mathbf{I}$, Eq.~\ref{eq:sandwich} returns
 $\mathbf{H}^{-1}$ and the correction is inert. Where $\mathbf{H}$ is singular, every inverse is
 taken on its retained eigenspace (Methods).

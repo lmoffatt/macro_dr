@@ -44,8 +44,8 @@ than read in sequence, and every equation the body or Methods refers to is numbe
 \textbf{An arrow means the object spans the acquisition window}, of duration $\Delta$:
 $P_{i\to j}(\Delta)$ is a transition across it, $\bar\gamma_{i\to j}$ an average over it,
 $\bar y_{0\to\Delta}$ a recorded value formed from it. \textbf{No arrow means one instant}:
-$\bm{\mu}_0,\bm{\Sigma}_0$ are the occupancy mean and covariance where the window opens,
-$\bm{\mu}_\Delta,\bm{\Sigma}_\Delta$ where it closes. \textbf{A dot marks a collapsed end}:
+$\boldsymbol{\mu}_0,\boldsymbol{\Sigma}_0$ are the occupancy mean and covariance where the window opens,
+$\boldsymbol{\mu}_\Delta,\boldsymbol{\Sigma}_\Delta$ where it closes. \textbf{A dot marks a collapsed end}:
 $a_{i\to\cdot}:=\sum_j P_{i\to j}(\Delta)\,a_{i\to j}=\mathbb{E}[a\mid X_0=i]$, as in
 $\bar\gamma_{i\to\cdot}$; for a probability the weight is already inside and the collapse is the
 plain margin. Across a recording a subscript $t$ indexes the window, as in $\bar y_t$; inside a window the two
@@ -112,17 +112,17 @@ sum, so the posterior over channels does not factorize~\citep{moffatt2007estimat
 
 Every moment in the construction is carried on a single channel. Writing $\mathbf{X}$ for the
 indicator vector of the state one channel occupies, which is one on that state and zero
-elsewhere, $\bm{\mu}=\mathbb{E}[\mathbf{X}]$ is its probability vector and
-$\bm{\Sigma}=\mathrm{Cov}(\mathbf{X})$ its covariance, which is
-$\mathrm{diag}(\bm{\mu})-\bm{\mu}\bm{\mu}^\top$ for a channel nothing has been observed about
+elsewhere, $\boldsymbol{\mu}=\mathbb{E}[\mathbf{X}]$ is its probability vector and
+$\boldsymbol{\Sigma}=\mathrm{Cov}(\mathbf{X})$ its covariance, which is
+$\mathrm{diag}(\boldsymbol{\mu})-\boldsymbol{\mu}\boldsymbol{\mu}^\top$ for a channel nothing has been observed about
 and vanishes when its state is known. Per channel is a normalization the whole construction is
 carried in, and not a claim that the channels stay independent under it: conditioning on a shared
-recorded value correlates them, so from the first update onward $\bm{\Sigma}$ is
+recorded value correlates them, so from the first update onward $\boldsymbol{\Sigma}$ is
 $\mathrm{Cov}(\mathbf{N})/N_{\mathrm{ch}}$ and not one channel's own covariance. Before any
 observation the channels are independent of each other, so the counts
 $\mathbf{N}=\sum_c \mathbf{X}^{(c)}$ over the ensemble have
-$\mathbb{E}[\mathbf{N}]=N_{\mathrm{ch}}\bm{\mu}$ and
-$\mathrm{Cov}(\mathbf{N})=N_{\mathrm{ch}}\bm{\Sigma}$, which is where every factor of
+$\mathbb{E}[\mathbf{N}]=N_{\mathrm{ch}}\boldsymbol{\mu}$ and
+$\mathrm{Cov}(\mathbf{N})=N_{\mathrm{ch}}\boldsymbol{\Sigma}$, which is where every factor of
 $N_{\mathrm{ch}}$ in Eq.~\ref{eq:macror} comes from.
 
 % DELETED 2026-08-26, item "DELETE ~170 words, the three-step preview" of docs/shortening_plan.md
@@ -157,17 +157,17 @@ $\bar{v}_{i\to j}$ (its variance). Both are moments of the integrated conductanc
 $A_{0\to\Delta}$ of Eq.~\ref{eq:integrated-conductance}, taken conditional on the chain starting
 in $i$ and ending in $j$, and both are available in closed form, with no object larger
 than $K\times K$ formed anywhere. They are derivatives at $\alpha=0$ of the conductance-tilted
-semigroup $e^{(\mathbf{Q}+\alpha\bm{\Gamma})\Delta}$, the generator biased by the conductance.
+semigroup $e^{(\mathbf{Q}+\alpha\boldsymbol{\Gamma})\Delta}$, the generator biased by the conductance.
 Writing
 \begin{equation}
   \mathbf{F}_1(\Delta)=\left.\frac{\partial}{\partial\alpha}
-      e^{(\mathbf{Q}+\alpha\bm{\Gamma})\Delta}\right|_{\alpha=0},
+      e^{(\mathbf{Q}+\alpha\boldsymbol{\Gamma})\Delta}\right|_{\alpha=0},
   \qquad
   2\,\mathbf{F}_2(\Delta)=\left.\frac{\partial^{2}}{\partial\alpha^{2}}
-      e^{(\mathbf{Q}+\alpha\bm{\Gamma})\Delta}\right|_{\alpha=0},
+      e^{(\mathbf{Q}+\alpha\boldsymbol{\Gamma})\Delta}\right|_{\alpha=0},
   \label{eq:tilted-derivatives}
 \end{equation}
-with $\bm{\Gamma}=\mathrm{diag}(\bm{\gamma})$, the $(i\to j)$ entry of the first is
+with $\boldsymbol{\Gamma}=\mathrm{diag}(\boldsymbol{\gamma})$, the $(i\to j)$ entry of the first is
 $\mathbb{E}[A_{0\to\Delta}\,\mathbf{1}\{X_\Delta=j\}\mid X_0=i]$ and of the second the same
 expectation with $A^2_{0\to\Delta}$ in place of $A_{0\to\Delta}$; the factor of two is the two
 triangular halves of the double integral the second derivative unfolds into. Dividing by the
@@ -185,15 +185,15 @@ integral into an average, so
 
 Both derivatives are evaluated from an eigendecomposition of the generator, which is the
 route the implementation takes and the one the P2X2 analysis of \citet{moffatt2025bayesian}
-was run on. Writing $\mathbf{Q}=\mathbf{V}\bm{\Lambda}\mathbf{W}$, with
-$\bm{\Lambda}=\mathrm{diag}(\lambda_1,\dots,\lambda_K)$ the eigenvalues, $\mathbf{V}$ the
+was run on. Writing $\mathbf{Q}=\mathbf{V}\boldsymbol{\Lambda}\mathbf{W}$, with
+$\boldsymbol{\Lambda}=\mathrm{diag}(\lambda_1,\dots,\lambda_K)$ the eigenvalues, $\mathbf{V}$ the
 matrix of right eigenvectors and $\mathbf{W}=\mathbf{V}^{-1}$, the transition matrix is
-$\mathbf{P}(\Delta)=\mathbf{V}e^{\bm{\Lambda}\Delta}\mathbf{W}$ and the two derivatives are
+$\mathbf{P}(\Delta)=\mathbf{V}e^{\boldsymbol{\Lambda}\Delta}\mathbf{W}$ and the two derivatives are
 the same sandwich with the conductance carried in the eigenbasis. With
-$\widehat{\bm{\Gamma}}=\mathbf{W}\bm{\Gamma}\mathbf{V}$ and $\circ$ the entrywise product,
+$\widehat{\boldsymbol{\Gamma}}=\mathbf{W}\boldsymbol{\Gamma}\mathbf{V}$ and $\circ$ the entrywise product,
 \begin{align}
   \frac{\mathbf{F}_1(\Delta)}{\Delta}
-    &= \mathbf{V}\bigl(\widehat{\bm{\Gamma}}\circ\mathbf{E}_2\bigr)\mathbf{W},
+    &= \mathbf{V}\bigl(\widehat{\boldsymbol{\Gamma}}\circ\mathbf{E}_2\bigr)\mathbf{W},
     &\quad (\mathbf{E}_2)_{ab} &= E_2(\lambda_a\Delta,\lambda_b\Delta),
     \label{eq:f1-spectral}\\
   \frac{2\,\mathbf{F}_2(\Delta)}{\Delta^{2}}
@@ -243,11 +243,11 @@ after which each window costs the $O(K^3)$ contraction of Eq.~\ref{eq:f2-spectra
 An equivalent evaluation avoids diagonalizing $\mathbf{Q}$ altogether. $\mathbf{F}_1$ and
 $\mathbf{F}_2$ are the strictly upper blocks of the exponentials of the augmented generators
 \begin{equation}
-  \mathcal{Q}_2=\begin{pmatrix}\mathbf{Q} & \bm{\Gamma}\\ \bm{0} & \mathbf{Q}\end{pmatrix},
+  \mathcal{Q}_2=\begin{pmatrix}\mathbf{Q} & \boldsymbol{\Gamma}\\ \boldsymbol{0} & \mathbf{Q}\end{pmatrix},
   \qquad
-  \mathcal{Q}_3=\begin{pmatrix}\mathbf{Q} & \bm{\Gamma} & \bm{0}\\
-                               \bm{0} & \mathbf{Q} & \bm{\Gamma}\\
-                               \bm{0} & \bm{0} & \mathbf{Q}\end{pmatrix},
+  \mathcal{Q}_3=\begin{pmatrix}\mathbf{Q} & \boldsymbol{\Gamma} & \boldsymbol{0}\\
+                               \boldsymbol{0} & \mathbf{Q} & \boldsymbol{\Gamma}\\
+                               \boldsymbol{0} & \boldsymbol{0} & \mathbf{Q}\end{pmatrix},
   \label{eq:augmented}
 \end{equation}
 of sizes $2K\times 2K$ and $3K\times 3K$, whose exponentials are block triangular with
@@ -375,7 +375,7 @@ below: alongside the conductance, supply a \emph{per-state variance} $\mathbf{w}
 recorded value still has once the state is fixed. Channels being independent given their states,
 those variances add over the ensemble, so
 \begin{equation}
-  \mathbb{E}\bigl[\bar y \bigm| \mathbf{N}\bigr]=\bm{\gamma}^\top\mathbf{N},
+  \mathbb{E}\bigl[\bar y \bigm| \mathbf{N}\bigr]=\boldsymbol{\gamma}^\top\mathbf{N},
   \qquad
   \mathrm{Var}\bigl[\bar y \bigm| \mathbf{N}\bigr]
     =\epsilon^2_{0\to\Delta}+\textstyle\sum_s N_s\,w_s ,
@@ -385,11 +385,11 @@ and the extra variance is linear in the counts, exactly as the mean is. Taking t
 the state distribution turns the predictive variance of Eq.~\ref{eq:macror} into
 \begin{equation}
   \sigma^2 \;=\; \epsilon^2_{0\to\Delta}
-    \;+\; N_{\mathrm{ch}}\,\bm{\gamma}^\top\bm{\Sigma}\bm{\gamma}
-    \;+\; N_{\mathrm{ch}}\,\bm{\mu}^\top\mathbf{w},
+    \;+\; N_{\mathrm{ch}}\,\boldsymbol{\gamma}^\top\boldsymbol{\Sigma}\boldsymbol{\gamma}
+    \;+\; N_{\mathrm{ch}}\,\boldsymbol{\mu}^\top\mathbf{w},
   \label{eq:macror-w}
 \end{equation}
-with every other line of Eq.~\ref{eq:macror} unchanged. Setting $\mathbf{w}=\bm{0}$ returns the
+with every other line of Eq.~\ref{eq:macror} unchanged. Setting $\mathbf{w}=\boldsymbol{0}$ returns the
 published filter. This is the same device \citet{munch2022bayesian} add to the same filter to model
 open-channel noise, from a different motivation; here the state-dependent term will carry the
 gating variance the chosen state leaves unexplained rather than a property of the pore.
@@ -398,17 +398,17 @@ gating variance the chosen state leaves unexplained rather than a property of th
 Written this way, Eq.~\ref{eq:macror} contracts a member's objects against its own state
 distribution and covariance, and it does so four times:
 \[
-  \underbrace{\bm{\mu}^\top\bm{\gamma}}_{\text{the mean}}
+  \underbrace{\boldsymbol{\mu}^\top\boldsymbol{\gamma}}_{\text{the mean}}
   \qquad
-  \underbrace{\bm{\mu}^\top\mathbf{w}}_{\text{the state-dependent noise}}
+  \underbrace{\boldsymbol{\mu}^\top\mathbf{w}}_{\text{the state-dependent noise}}
   \qquad
-  \underbrace{\bm{\gamma}^\top\bm{\Sigma}\bm{\gamma}}_{\text{what the state contributes}}
+  \underbrace{\boldsymbol{\gamma}^\top\boldsymbol{\Sigma}\boldsymbol{\gamma}}_{\text{what the state contributes}}
   \qquad
-  \underbrace{\bm{\Sigma}\bm{\gamma}}_{\text{state against current},\ \mathbf{g}}
+  \underbrace{\boldsymbol{\Sigma}\boldsymbol{\gamma}}_{\text{state against current},\ \mathbf{g}}
 \]
-two against $\bm{\mu}$ and two against $\bm{\Sigma}$, and everything else in Eq.~\ref{eq:macror} is
+two against $\boldsymbol{\mu}$ and two against $\boldsymbol{\Sigma}$, and everything else in Eq.~\ref{eq:macror} is
 a scalar. Extending the filter to a recorded value that spans the window therefore cannot require a
-new algorithm. It requires choosing a state variable and supplying $(\bm{\gamma},\mathbf{w})$ on
+new algorithm. It requires choosing a state variable and supplying $(\boldsymbol{\gamma},\mathbf{w})$ on
 it, and the members below are those choices. The per-state variance is not a free third choice
 beside the other two: Eq.~\ref{eq:emission} defines it as whatever variance the chosen state leaves
 unexplained, so naming the state names it.
@@ -437,7 +437,7 @@ is step three.
 % subseccion pasa a ser su desarrollo y no su unica sede. Sin el puntero las dos se leen como dos
 % enunciados independientes de lo mismo.
 Run Eq.~\ref{eq:macror} on the pairs, with $\bar{\gamma}_{i\to j}$ in place of
-$\bm{\gamma}$ and the boundary covariance in place of $\bm{\Sigma}$. Charge what the
+$\boldsymbol{\gamma}$ and the boundary covariance in place of $\boldsymbol{\Sigma}$. Charge what the
 conductance still varies by once the pair is fixed to $\epsilon^2$, as though the recording
 carried an extra noise of variance $\bar{v}_{i\to j}$ per channel, of a size that
 depends on the pair that channel took. Marginalize over the start index, which the next window
@@ -463,29 +463,29 @@ in the mechanistic sense, and the word \emph{transition} is not used for it anyw
 The boundary state's own Gaussian follows from the prior and the propagator. Let
 $\mathbf{X}_{0\to\Delta}$ be the indicator of the pair a single channel takes, one on the
 $(i,j)$ it starts and ends in and zero on the other $K^2-1$, and let
-$(\bm{\mu}_0,\bm{\Sigma}_0)$ be the channel's state at the window's start. It leaves $i$ and
+$(\boldsymbol{\mu}_0,\boldsymbol{\Sigma}_0)$ be the channel's state at the window's start. It leaves $i$ and
 lands in $j$ with probability $P_{i\to j}(\Delta)$, so
 \begin{align}
   \mu_{i\to j} &= \mu_{0,i}\,P_{i\to j}(\Delta), \label{eq:mu-bnd}\\
-  (\bm{\Sigma}_{0\to\Delta})_{(i\to j),(k\to l)} &=
-    P_{i\to j}(\Delta)\,\bigl(\bm{\Sigma}_0-\mathrm{diag}(\bm{\mu}_0)\bigr)_{i k}\,
+  (\boldsymbol{\Sigma}_{0\to\Delta})_{(i\to j),(k\to l)} &=
+    P_{i\to j}(\Delta)\,\bigl(\boldsymbol{\Sigma}_0-\mathrm{diag}(\boldsymbol{\mu}_0)\bigr)_{i k}\,
     P_{k\to l}(\Delta)
-    \;+\; \bigl[\mathrm{diag}(\bm{\mu}_{0\to\Delta})\bigr]_{(i,j),(k,l)}.
+    \;+\; \bigl[\mathrm{diag}(\boldsymbol{\mu}_{0\to\Delta})\bigr]_{(i,j),(k,l)}.
   \label{eq:sig-bnd}
 \end{align}
 The two terms of Eq.~\ref{eq:sig-bnd} are the two sources of spread. The first carries the
 uncertainty already in the prior across the window, once on each index. The second is the
 uncertainty a channel known to be leaving $i$ still has about where it lands, the covariance
 of a single draw from row $i$ of $\mathbf{P}(\Delta)$, which is diagonal on the pairs
-because a channel takes exactly one of them. Subtracting $\mathrm{diag}(\bm{\mu}_0)$ in the
+because a channel takes exactly one of them. Subtracting $\mathrm{diag}(\boldsymbol{\mu}_0)$ in the
 first term is what keeps the prior's own single-channel part from being counted twice, since
 the second term regenerates it at the resolution of the pairs.
 
 Summing the start index out of Eqs.~\ref{eq:mu-bnd} and~\ref{eq:sig-bnd} gives the occupancy
 Gaussian at the end of the window,
 \begin{align}
-  \bm{\mu}_\Delta &= \mathbf{P}(\Delta)^\top \bm{\mu}_0, \label{eq:mu-prop}\\
-  \bm{\Sigma}_\Delta &= \mathbf{P}(\Delta)^\top\bigl(\bm{\Sigma}_0-\mathrm{diag}(\bm{\mu}_0)\bigr)\mathbf{P}(\Delta) + \mathrm{diag}(\bm{\mu}_\Delta), \label{eq:sig-prop}
+  \boldsymbol{\mu}_\Delta &= \mathbf{P}(\Delta)^\top \boldsymbol{\mu}_0, \label{eq:mu-prop}\\
+  \boldsymbol{\Sigma}_\Delta &= \mathbf{P}(\Delta)^\top\bigl(\boldsymbol{\Sigma}_0-\mathrm{diag}(\boldsymbol{\mu}_0)\bigr)\mathbf{P}(\Delta) + \mathrm{diag}(\boldsymbol{\mu}_\Delta), \label{eq:sig-prop}
 \end{align}
 term by term, the diagonal of the one becoming the diagonal of the other. This is the
 propagation an unconditioned member performs, and it is Eq.~\ref{eq:sig-bnd} seen from the end
@@ -508,15 +508,15 @@ of the window alone.
 % comment below Eq. sig-post.
 The first line of Eq.~\ref{eq:macror}, on the boundary state, is the predictive. Its mean is
 \begin{equation}
-  \bar{y}^{\mathrm{pred}}_{0\to\Delta} \;=\; N_{\mathrm{ch}}\,\bm{\mu}_0^\top \bar{\bm{\gamma}}_0,
+  \bar{y}^{\mathrm{pred}}_{0\to\Delta} \;=\; N_{\mathrm{ch}}\,\boldsymbol{\mu}_0^\top \bar{\boldsymbol{\gamma}}_0,
   \label{eq:ypred}
 \end{equation}
-since $\bm{\mu}_{0\to\Delta}$ contracted against $\bar{\gamma}$ is Eq.~\ref{eq:gammabar}
+since $\boldsymbol{\mu}_{0\to\Delta}$ contracted against $\bar{\gamma}$ is Eq.~\ref{eq:gammabar}
 summed against the prior, and its variance has three terms,
 \begin{equation}
   \sigma^2_{0\to\Delta} \;=\; \epsilon^2_{0\to\Delta}
-  \;+\; N_{\mathrm{ch}}\,\widetilde{\bm{\gamma}^\top\bm{\Sigma}\bm{\gamma}}
-  \;+\; N_{\mathrm{ch}}\,\bm{\mu}_0^\top\mathbf{w}.
+  \;+\; N_{\mathrm{ch}}\,\widetilde{\boldsymbol{\gamma}^\top\boldsymbol{\Sigma}\boldsymbol{\gamma}}
+  \;+\; N_{\mathrm{ch}}\,\boldsymbol{\mu}_0^\top\mathbf{w}.
   \label{eq:pred-var}
 \end{equation}
 The first is the $\epsilon^2$ of Eq.~\ref{eq:macror}, the instrumental noise now taken over the
@@ -525,41 +525,41 @@ form is given in Methods. The third is the noise charged in step two,
 $N_{\mathrm{ch}}\sum_{i,j}\mu_{i\to j}\bar{v}_{i\to j}$, which
 is what Eq.~\ref{eq:pred-var} writes with $\mathbf{w}$, the
 start-conditioned interval variance, once the end index is summed. The middle term is
-$\bm{\gamma}^\top\bm{\Sigma}\bm{\gamma}$ of Eq.~\ref{eq:macror} evaluated on the pairs, and the
-tilde is what marks that: under it the two $\bm{\gamma}$ stand for
-$\bar{\gamma}_{i\to j}$ and $\bm{\Sigma}$ for the $K^2\times K^2$ boundary covariance,
-not for the $K$-vector and the $K\times K$ matrix they name everywhere else. Written out with $\bm{\Sigma}_{0\to\Delta}$
+$\boldsymbol{\gamma}^\top\boldsymbol{\Sigma}\boldsymbol{\gamma}$ of Eq.~\ref{eq:macror} evaluated on the pairs, and the
+tilde is what marks that: under it the two $\boldsymbol{\gamma}$ stand for
+$\bar{\gamma}_{i\to j}$ and $\boldsymbol{\Sigma}$ for the $K^2\times K^2$ boundary covariance,
+not for the $K$-vector and the $K\times K$ matrix they name everywhere else. Written out with $\boldsymbol{\Sigma}_{0\to\Delta}$
 of Eq.~\ref{eq:sig-bnd} and then collapsed by substituting it,
 \begin{align}
-  \widetilde{\bm{\gamma}^\top\bm{\Sigma}\bm{\gamma}}
+  \widetilde{\boldsymbol{\gamma}^\top\boldsymbol{\Sigma}\boldsymbol{\gamma}}
   &\;=\; \sum_{i,j}\ \sum_{k,l}
     \bar{\gamma}_{i\to j}\,
-    \bigl(\bm{\Sigma}_{0\to\Delta}\bigr)_{(i,j),(k,l)}\,
+    \bigl(\boldsymbol{\Sigma}_{0\to\Delta}\bigr)_{(i,j),(k,l)}\,
     \bar{\gamma}_{k\to l} \nonumber\\[2pt]
-  &\;=\; \bar{\bm{\gamma}}_0^\top\bigl(\bm{\Sigma}_0-\mathrm{diag}(\bm{\mu}_0)\bigr)\bar{\bm{\gamma}}_0
-    \;+\; \bm{\mu}_0^\top\bigl(\mathbf{H}\mathbf{1}\bigr),
+  &\;=\; \bar{\boldsymbol{\gamma}}_0^\top\bigl(\boldsymbol{\Sigma}_0-\mathrm{diag}(\boldsymbol{\mu}_0)\bigr)\bar{\boldsymbol{\gamma}}_0
+    \;+\; \boldsymbol{\mu}_0^\top\bigl(\mathbf{H}\mathbf{1}\bigr),
   \label{eq:tilde}
 \end{align}
 where $H_{i\to j} = \bar{\gamma}^2_{i\to j}\,P_{i\to j}(\Delta)$ and $\mathbf{1}$
 is the vector of ones. The two summands are the two terms of Eq.~\ref{eq:sig-bnd} in order,
 and only $K$-vectors and $K\times K$ matrices survive, so the $K^2\times K^2$ covariance is
 never built. Reading the tilde as
-$\bar{\bm{\gamma}}_0^\top\bm{\Sigma}_0\bar{\bm{\gamma}}_0$ keeps the first summand and drops
+$\bar{\boldsymbol{\gamma}}_0^\top\boldsymbol{\Sigma}_0\bar{\boldsymbol{\gamma}}_0$ keeps the first summand and drops
 the second, which is the single-channel spread of the interval mean across boundary pairs and
 does not vanish when the occupancy covariance does.
 
 The gain is the same contraction taken once. Built on the pairs it is the $K^2$-vector
 \[
-  \sum_{k,l}(\bm{\Sigma}_{0\to\Delta})_{(i,j),(k,l)}\,\bar{\gamma}_{k\to l},
+  \sum_{k,l}(\boldsymbol{\Sigma}_{0\to\Delta})_{(i,j),(k,l)}\,\bar{\gamma}_{k\to l},
 \]
 % DISPLAYED 2026-08-30: inline, the sum cannot break and ran past the right margin on page 38 of the
 % 02:02 build (Luciano). Same formula, nothing else changed.
 and step three sums its start index away, leaving the
 $\mathbf{g}_{0\to\Delta}$ the interval update uses,
 \begin{equation}
-  \mathbf{g}_{0\to\Delta} \;=\; \widetilde{\bm{\gamma}^\top\bm{\Sigma}}
-  \;=\; \mathbf{P}(\Delta)^\top\bigl(\bm{\Sigma}_0-\mathrm{diag}(\bm{\mu}_0)\bigr)\bar{\bm{\gamma}}_0
-  \;+\; \mathbf{G}^\top\bm{\mu}_0,
+  \mathbf{g}_{0\to\Delta} \;=\; \widetilde{\boldsymbol{\gamma}^\top\boldsymbol{\Sigma}}
+  \;=\; \mathbf{P}(\Delta)^\top\bigl(\boldsymbol{\Sigma}_0-\mathrm{diag}(\boldsymbol{\mu}_0)\bigr)\bar{\boldsymbol{\gamma}}_0
+  \;+\; \mathbf{G}^\top\boldsymbol{\mu}_0,
   \qquad
   G_{i\to j} \;=\; \bar{\gamma}_{i\to j}\,P_{i\to j}(\Delta),
   \label{eq:vector-tilde}
@@ -575,8 +575,8 @@ end index is left open instead of being summed against $\mathbf{1}$.
 The second line of Eq.~\ref{eq:macror}, marginalized the same way, is the update, with
 $\delta = \bar{y}^{\mathrm{obs}}_{0\to\Delta} - \bar{y}^{\mathrm{pred}}_{0\to\Delta}$ the innovation,
 \begin{align}
-  \bm{\mu}^{\mathrm{post}} &= \bm{\mu}_\Delta + \frac{\mathbf{g}_{0\to\Delta}}{\sigma^2_{0\to\Delta}}\,\delta, \label{eq:mu-post}\\
-  \bm{\Sigma}^{\mathrm{post}} &= \bm{\Sigma}_\Delta - \frac{N_{\mathrm{ch}}\,\mathbf{g}_{0\to\Delta}\mathbf{g}_{0\to\Delta}^\top}{\sigma^2_{0\to\Delta}}. \label{eq:sig-post}
+  \boldsymbol{\mu}^{\mathrm{post}} &= \boldsymbol{\mu}_\Delta + \frac{\mathbf{g}_{0\to\Delta}}{\sigma^2_{0\to\Delta}}\,\delta, \label{eq:mu-post}\\
+  \boldsymbol{\Sigma}^{\mathrm{post}} &= \boldsymbol{\Sigma}_\Delta - \frac{N_{\mathrm{ch}}\,\mathbf{g}_{0\to\Delta}\mathbf{g}_{0\to\Delta}^\top}{\sigma^2_{0\to\Delta}}. \label{eq:sig-post}
 \end{align}
 Conditioning and summing the start index commute here, because the sum is linear and the
 correction is rank one on the index it acts on, so the downdate crosses it unchanged, with
@@ -637,10 +637,10 @@ depends on the state, so the update conditions the Gaussian that carries the exa
 % variance 654-1013, vector tilde 1015-1165) and elife-template.tex:360-390 (MacroR as published,
 % from which Eq. macror is the state-space-agnostic transcription).
 The factor $N_{\mathrm{ch}}$ in the downdate, and its absence from the mean correction, come
-from the same place. All three of $\bm{\mu}$, $\bm{\Sigma}$ and $\mathbf{g}_{0\to\Delta}$ belong to one
+from the same place. All three of $\boldsymbol{\mu}$, $\boldsymbol{\Sigma}$ and $\mathbf{g}_{0\to\Delta}$ belong to one
 channel, while what is observed belongs to the ensemble, so the conditioning is done on
 $\mathrm{Cov}(\mathbf{N}_\Delta,\bar{y})=N_{\mathrm{ch}}\mathbf{g}_{0\to\Delta}$ against
-$\mathrm{Cov}(\mathbf{N}_\Delta)=N_{\mathrm{ch}}\bm{\Sigma}_\Delta$. The rank-one
+$\mathrm{Cov}(\mathbf{N}_\Delta)=N_{\mathrm{ch}}\boldsymbol{\Sigma}_\Delta$. The rank-one
 term picks up the channel count twice and the return to one channel gives one back, leaving a
 single factor; the mean correction picks it up once and gives it back, leaving none.
 % CONVENTION CORRECTED 2026-08-06 (Luciano). This paragraph used to say that "Sigma is carried on
@@ -714,7 +714,7 @@ approximate version of \texttt{IR}; how much the falsehood costs is Eq.~\ref{eq:
 \subsection*{What separates the start-conditioned members from the boundary one}
 
 Run as the same three steps on the $K$ states instead of the pairs, with
-$\bar{\bm{\gamma}}_0$ in place of $\bm{\gamma}$, two
+$\bar{\boldsymbol{\gamma}}_0$ in place of $\boldsymbol{\gamma}$, two
 algebraic differences separate them from the one that conditions on both ends. The first is
 the form of the third term of Eq.~\ref{eq:pred-var}.
 \texttt{MR} carries the total per-start-state interval variance, the spread of the
@@ -733,7 +733,7 @@ states,
 so \texttt{MR} charges to the observation variance a spread that the end state, once
 conditioned on, would resolve. The second difference is the boundary cross-covariance term
 \begin{equation}
-  N_{\mathrm{ch}}\,\widetilde{\bm{\gamma}^\top\bm{\Sigma}\bm{\gamma}}
+  N_{\mathrm{ch}}\,\widetilde{\boldsymbol{\gamma}^\top\boldsymbol{\Sigma}\boldsymbol{\gamma}}
   \label{eq:mr-ir}
 \end{equation}
 which \texttt{IR} retains and both start-conditioned members drop. It enters twice, in the
@@ -744,7 +744,7 @@ The two differences are not independent, and the tempting reading of them, one s
 moves the variance followed by one that moves the gain, is wrong in both directions. Taken
 from a common prior they cancel in the predicted variance: what the boundary term adds to
 the second term of Eq.~\ref{eq:pred-var} is
-$\bm{\mu}_0^\top\mathrm{Var}_{j}[\bar{\gamma}_{i\to j}\mid i]$, which is what
+$\boldsymbol{\mu}_0^\top\mathrm{Var}_{j}[\bar{\gamma}_{i\to j}\mid i]$, which is what
 the residual form removes from the third, so from the same state \texttt{MR} and \texttt{IR}
 assign the interval average the same variance by two different decompositions and the whole
 of what separates them is the gain, an identity written out at
@@ -776,7 +776,7 @@ the Results measure across the regime grid.
 
 Neither member is measured against the other. Both are approximations to one joint law, that of
 $(\mathbf{N}_\Delta,\bar y)$ under the true process, and given
-$(\bm{\mu}_0,\bm{\Sigma}_0)$ that law has exact first two moments which either member can be held
+$(\boldsymbol{\mu}_0,\boldsymbol{\Sigma}_0)$ that law has exact first two moments which either member can be held
 against. Two elementary decompositions supply them, and they say different things about the two
 blocks.
 
@@ -785,16 +785,16 @@ By the law of total variance, conditioning on the counts where the window opens,
 \begin{equation}
   \mathrm{Var}\bigl[\bar y\bigr]
   = \epsilon^2_{0\to\Delta}
-  + \underbrace{\mathbb{E}\bigl[\mathrm{Var}(\bar y \mid \mathbf{N}_0)\bigr]}_{N_{\mathrm{ch}}\,\bm{\mu}_0^\top\mathbf{w}}
-  + \underbrace{\mathrm{Var}\bigl[\mathbb{E}(\bar y \mid \mathbf{N}_0)\bigr]}_{N_{\mathrm{ch}}\,\bar{\bm{\gamma}}_{0}^\top\bm{\Sigma}_0\bar{\bm{\gamma}}_{0}} ,
+  + \underbrace{\mathbb{E}\bigl[\mathrm{Var}(\bar y \mid \mathbf{N}_0)\bigr]}_{N_{\mathrm{ch}}\,\boldsymbol{\mu}_0^\top\mathbf{w}}
+  + \underbrace{\mathrm{Var}\bigl[\mathbb{E}(\bar y \mid \mathbf{N}_0)\bigr]}_{N_{\mathrm{ch}}\,\bar{\boldsymbol{\gamma}}_{0}^\top\boldsymbol{\Sigma}_0\bar{\boldsymbol{\gamma}}_{0}} ,
   \label{eq:ltv}
 \end{equation}
 which is Eq.~\ref{eq:pred-var} read with the start-conditioned objects: the middle term is
-$\bar{\bm{\gamma}}_0^\top\bm{\Sigma}_0\bar{\bm{\gamma}}_0$, the tilde dropped, and $\mathbf{w}$ is
+$\bar{\boldsymbol{\gamma}}_0^\top\boldsymbol{\Sigma}_0\bar{\boldsymbol{\gamma}}_0$, the tilde dropped, and $\mathbf{w}$ is
 the total slot of Eq.~\ref{eq:mr-vr}. Read with the boundary objects instead, the tilde of
 Eq.~\ref{eq:tilde} in the middle and the residual slot in $\mathbf{w}$, the same quantity is
 Eq.~\ref{eq:pred-var} again. \textbf{Both members report the exact
-variance of the recorded value} given $(\bm{\mu}_0,\bm{\Sigma}_0)$, so they agree with each other
+variance of the recorded value} given $(\boldsymbol{\mu}_0,\boldsymbol{\Sigma}_0)$, so they agree with each other
 for the reason that each agrees with the truth, and nothing is measured by that agreement.
 % COMPRESSED 2026-08-26, item "COMPRESS ~115 words, The variance: both members are exact" of
 % docs/shortening_plan.md. Cut here: "This is Eq. mr-vr read from the outside: the same second
@@ -805,7 +805,7 @@ for the reason that each agrees with the truth, and nothing is measured by that 
 % Cut in the paragraph below: the intermediate algebra reading Eq. emission into the second
 % underbrace and supplying the factor of N_ch, leaving the one-sentence caveat the item requires.
 The variable conditioned on in Eq.~\ref{eq:ltv} is the count vector and not one channel's state:
-conditioning on a single channel's $X_0$ returns the same expressions only while $\bm{\Sigma}_0$ is
+conditioning on a single channel's $X_0$ returns the same expressions only while $\boldsymbol{\Sigma}_0$ is
 still that channel's own covariance, which it stops being at the first update.
 
 \paragraph{The covariance: one member is exact and the other is short by a named amount.}
@@ -818,7 +818,7 @@ scale,
   \label{eq:ltc}
 \end{equation}
 The first term is the start-conditioned gain
-$\mathbf{g}^{\mathtt{MR}}_{0\to\Delta}=\mathbf{P}(\Delta)^\top\bm{\Sigma}_0\bar{\bm{\gamma}}_0$ exactly. The
+$\mathbf{g}^{\mathtt{MR}}_{0\to\Delta}=\mathbf{P}(\Delta)^\top\boldsymbol{\Sigma}_0\bar{\boldsymbol{\gamma}}_0$ exactly. The
 second is what Eq.~\ref{eq:mr-assumption} sets to zero: given the counts the channels are
 conditionally independent, so it is the per-channel conditional covariance summed over the
 population, and a conditional independence is precisely the statement that it vanishes. It does not
@@ -831,14 +831,14 @@ members in this block is that second summand and nothing else,
   D_{i\to j}=\bar{\gamma}_{i\to j}-(\bar\gamma_0)_{i} ,
   \label{eq:cdiff}
 \end{equation}
-which is Eq.~\ref{eq:vector-tilde} minus $\mathbf{P}(\Delta)^\top\bm{\Sigma}_0\bar{\bm{\gamma}}_0$
+which is Eq.~\ref{eq:vector-tilde} minus $\mathbf{P}(\Delta)^\top\boldsymbol{\Sigma}_0\bar{\boldsymbol{\gamma}}_0$
 written out. The deviation $D_{i\to j}$ is a property of the process and not of either
 algorithm: it is how far the interval average of a channel that ended in $j$ sits from the
 average over all the places it might have ended. It has zero row sums,
 $\sum_{j}P_{i\to j}(\Delta)D_{i\to j}=0$, since $(\bar\gamma_0)_{i}$ is that very
 average, and it therefore has zero mean under $\mu_{i\to j}$ as well, so the gap between the
 two forms of Eq.~\ref{eq:mr-vr} is exactly its variance under the law of the pairs.
-Eq.~\ref{eq:cdiff} does not depend on $\bm{\Sigma}_0$ at all. The same deviation is invisible in
+Eq.~\ref{eq:cdiff} does not depend on $\boldsymbol{\Sigma}_0$ at all. The same deviation is invisible in
 one block and decisive in the other because it enters the variance squared and the covariance
 once: a second moment can sit in either of the two variance terms without the total noticing,
 which is Eq.~\ref{eq:mr-vr}, while a collapsed first moment has nowhere to go, a noise term having
@@ -886,12 +886,12 @@ For a state $\mathbf{x}$ and a scalar observation $y$ jointly Gaussian, the filt
   \mathbf{x}^{\mathrm{post}}=\mathbf{x}^{\mathrm{prior}}
     +\frac{\mathrm{Cov}(\mathbf{x},y)}{\mathrm{Var}(y)}\bigl(y-\mathbb{E}[y]\bigr),
   \qquad
-  \bm{\Sigma}^{\mathrm{post}}=\bm{\Sigma}^{\mathrm{prior}}
+  \boldsymbol{\Sigma}^{\mathrm{post}}=\boldsymbol{\Sigma}^{\mathrm{prior}}
     -\frac{\mathrm{Cov}(\mathbf{x},y)\,\mathrm{Cov}(\mathbf{x},y)^\top}{\mathrm{Var}(y)} ,
   \label{eq:kf}
 \end{equation}
 written in the symbols used here, the state covariance that literature writes $\mathbf{P}$ for
-being $\bm{\Sigma}$ throughout this paper. It is Eq.~\ref{eq:macror} up to the per-channel convention, the source of the factors of
+being $\boldsymbol{\Sigma}$ throughout this paper. It is Eq.~\ref{eq:macror} up to the per-channel convention, the source of the factors of
 $N_{\mathrm{ch}}$ there and not here. The two frames do not differ in the update at all: both are
 the conditioning of a joint Gaussian, and what is usually called the gain is the ratio of the cross
 block to the observation variance. The entire content of either derivation is the computation of
@@ -901,7 +901,7 @@ value that is an average over the window.
 The standard difficulty is that $\bar y$ is not a function of the state at any single time, so it
 is not a fixed linear functional of $\mathbf{x}_\Delta$ plus noise. The device is
 state augmentation: carry the running integral
-$z_t=\int_0^{t}\bm{\gamma}^\top\mathbf{N}(s)\,\mathrm{d}s$ alongside the counts, so that
+$z_t=\int_0^{t}\boldsymbol{\gamma}^\top\mathbf{N}(s)\,\mathrm{d}s$ alongside the counts, so that
 $(\mathbf{N},z)$ propagates jointly and the recorded value is $z_\Delta/\Delta$ plus instrumental
 noise, which \emph{is} linear in the augmented state. This is the treatment of an observation that
 is a flow rather than a stock, and it is a known construction rather than a new one
@@ -915,13 +915,13 @@ $2\mathbf{F}_2$ the same with $A^2_{0\to\Delta}$, which is exactly what the augm
 Condition on the counts where the window opens; given those the channels are independent, and the
 three blocks are
 \begin{align}
-  \mathbb{E}\bigl[\bar y\bigr] &= N_{\mathrm{ch}}\,\bm{\mu}_0^\top\bar{\bm{\gamma}}_0,
+  \mathbb{E}\bigl[\bar y\bigr] &= N_{\mathrm{ch}}\,\boldsymbol{\mu}_0^\top\bar{\boldsymbol{\gamma}}_0,
   \label{eq:kf-mean}\\
   \mathrm{Var}\bigl[\bar y\bigr] &= \epsilon^2_{0\to\Delta} + \frac{\mathrm{Var}(z_\Delta)}{\Delta^2},
   \label{eq:kf-var}\\
   \frac{\mathrm{Cov}\bigl[\mathbf{N}_\Delta,\bar y\bigr]}{N_{\mathrm{ch}}}
     &= \frac{\mathrm{Cov}\bigl[\mathbf{N}_\Delta,z_\Delta\bigr]}{N_{\mathrm{ch}}\Delta}
-    = \mathbf{P}(\Delta)^\top\bm{\Sigma}_0\bar{\bm{\gamma}}_0
+    = \mathbf{P}(\Delta)^\top\boldsymbol{\Sigma}_0\bar{\boldsymbol{\gamma}}_0
       + \Bigl(\textstyle\sum_{i}\mu_{i\to j}D_{i\to j}\Bigr)_{j} .
   \label{eq:kf-cross}
 \end{align}
@@ -958,7 +958,7 @@ the next window's integral is a fresh one and is independent of the old given th
 \texttt{MR} is not the augmented filter under any choice of blocks. It is the filter for a
 misspecified measurement model,
 \begin{equation}
-  \bar y = \bar{\bm{\gamma}}_0^\top\mathbf{N}_0 + v(\mathbf{N}_0),
+  \bar y = \bar{\boldsymbol{\gamma}}_0^\top\mathbf{N}_0 + v(\mathbf{N}_0),
   \qquad
   \mathrm{Var}\bigl[v\mid \mathbf{N}_0\bigr]=\epsilon^2_{0\to\Delta}+\mathbf{N}_0^\top\mathbf{w},
   \label{eq:mr-kf}
@@ -1075,7 +1075,7 @@ and~\ref{eq:vector-tilde} reproduce the explicit contraction of the boundary cov
 random cases to $7\times10^{-18}$ and $3\times10^{-16}$; the commutation of the start-index
 marginalization with the update, which is what licenses Eqs.~\ref{eq:mu-post}
 and~\ref{eq:sig-post} being written on the $K$ states, holds in $36$ cases to $2\times10^{-16}$;
-Eq.~\ref{eq:cdiff} holds to $1\times10^{-17}$ in $36$ cases, independently of $\bm{\Sigma}_0$, and
+Eq.~\ref{eq:cdiff} holds to $1\times10^{-17}$ in $36$ cases, independently of $\boldsymbol{\Sigma}_0$, and
 against a Monte Carlo of the continuous-time path; Eqs.~\ref{eq:mu-bnd} and~\ref{eq:sig-bnd} were
 checked against a Monte Carlo of $4\times10^{5}$ replicates of $200$ channels, worst entry $2.9$
 standard errors over $256$ entries; and the two forms of Eq.~\ref{eq:mr-vr} agree with the forms

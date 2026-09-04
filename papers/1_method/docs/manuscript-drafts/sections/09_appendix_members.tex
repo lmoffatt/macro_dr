@@ -24,10 +24,10 @@ that each is fixed by three switches on a single set of equations.
 All members share the quantities built from the rate matrix $\mathbf{Q}$ and the recording
 filter for a window of length $\Delta$: the transition matrix $\mathbf{P}(\Delta)$; the
 boundary-conditioned single-channel moments $\bar{\gamma}_{i\to j}$ and
-$\bar{v}_{i\to j}$; the start-conditioned mean conductance $\bar{\bm{\gamma}}_0$ of
+$\bar{v}_{i\to j}$; the start-conditioned mean conductance $\bar{\boldsymbol{\gamma}}_0$ of
 Eq.~\ref{eq:gammabar}; the start-conditioned interval variance
 $\mathbf{w}$; and, for the members that ignore the acquisition
-averaging, the instantaneous per-state conductance vector $\bm{\gamma}$. Two matrices
+averaging, the instantaneous per-state conductance vector $\boldsymbol{\gamma}$. Two matrices
 collect the boundary weights,
 \begin{equation}
   G_{i\to j} \;=\; \bar{\gamma}_{i\to j}\,P_{i\to j}(\Delta),
@@ -42,10 +42,10 @@ Over a bold symbol, the tilde marks a contraction taken on the $K^2$ boundary pa
 rather than on the $K$ states. (Over a scalar it means something else, a quantity in the natural
 units of the model, as in $\widetilde{\Delta}$ and $\widetilde{S}$; the two uses are disjoint and
 never meet in one expression.) It is not a new operator: its two cases are the two contractions the update of
-Eq.~\ref{eq:macror} already has, $\bm{\gamma}^\top\bm{\Sigma}\bm{\gamma}$ and
-$\bm{\Sigma}\bm{\gamma}$, evaluated there with the boundary objects substituted. Both are written out in Appendix~\ref{app:derivation}, the
+Eq.~\ref{eq:macror} already has, $\boldsymbol{\gamma}^\top\boldsymbol{\Sigma}\boldsymbol{\gamma}$ and
+$\boldsymbol{\Sigma}\boldsymbol{\gamma}$, evaluated there with the boundary objects substituted. Both are written out in Appendix~\ref{app:derivation}, the
 bilinear one as the scalar of Eq.~\ref{eq:tilde} and the vector one as the gain
-$\mathbf{g}_{0\to\Delta}=\widetilde{\bm{\gamma}^\top\bm{\Sigma}}$ of Eq.~\ref{eq:vector-tilde}, and both
+$\mathbf{g}_{0\to\Delta}=\widetilde{\boldsymbol{\gamma}^\top\boldsymbol{\Sigma}}$ of Eq.~\ref{eq:vector-tilde}, and both
 collapse to $K\times K$ arithmetic once the boundary covariance Eq.~\ref{eq:sig-bnd} is
 substituted.
 % COMPRESSED 2026-08-26, item "COMPRESS ~105 words, The tilde operator" of docs/shortening_plan.md,
@@ -81,15 +81,15 @@ window's start, and the states at both of its ends, and it selects the conductan
 and with it the second term of the predictive variance and the gain. At the instantaneous
 setting the observation is treated as a sample taken at the centre of
 the window: the occupancy is propagated there first, by $\mathbf{P}(\Delta/2)$, the conductance
-is $\bm{\gamma}$, and, with $\bm{\Sigma}$ read in that mid-window frame,
+is $\boldsymbol{\gamma}$, and, with $\boldsymbol{\Sigma}$ read in that mid-window frame,
 \begin{equation}
-  \widetilde{\bm{\gamma}^\top\bm{\Sigma}\bm{\gamma}} \;\to\; \bm{\gamma}^\top\bm{\Sigma}\bm{\gamma},
+  \widetilde{\boldsymbol{\gamma}^\top\boldsymbol{\Sigma}\boldsymbol{\gamma}} \;\to\; \boldsymbol{\gamma}^\top\boldsymbol{\Sigma}\boldsymbol{\gamma},
   \qquad
-  \mathbf{g} \;\to\; \mathbf{P}(\Delta/2)^\top\bm{\Sigma}\,\bm{\gamma}.
+  \mathbf{g} \;\to\; \mathbf{P}(\Delta/2)^\top\boldsymbol{\Sigma}\,\boldsymbol{\gamma}.
   \label{eq:av0}
 \end{equation}
-At the start-conditioned setting the same two expressions hold with $\bar{\bm{\gamma}}_0$ in
-place of $\bm{\gamma}$ and the full $\mathbf{P}(\Delta)$ in the gain, since the conductance is
+At the start-conditioned setting the same two expressions hold with $\bar{\boldsymbol{\gamma}}_0$ in
+place of $\boldsymbol{\gamma}$ and the full $\mathbf{P}(\Delta)$ in the gain, since the conductance is
 conditioned on the state at the window's start and the whole window remains to be crossed;
 the contraction is still an ordinary quadratic form on the $K$ states.
 The trailing propagator in the gain is not decoration. It carries the update from the frame in
@@ -117,14 +117,14 @@ channel counts.
 At the boundary setting the
 conductance is conditioned on both endpoints and the two expressions become the tildes,
 Eq.~\ref{eq:tilde} and Eq.~\ref{eq:vector-tilde}. The step from the start state to the
-boundary therefore does two things at once: it replaces $\bm{\Sigma}_0$ by
-$\bm{\Sigma}_0-\mathrm{diag}(\bm{\mu}_0)$ and adds the boundary term ($\bm{\mu}_0^\top
-\mathbf{H}\mathbf{1}$ in the variance, $\mathbf{G}^\top\bm{\mu}_0$ in the gain). The
+boundary therefore does two things at once: it replaces $\boldsymbol{\Sigma}_0$ by
+$\boldsymbol{\Sigma}_0-\mathrm{diag}(\boldsymbol{\mu}_0)$ and adds the boundary term ($\boldsymbol{\mu}_0^\top
+\mathbf{H}\mathbf{1}$ in the variance, $\mathbf{G}^\top\boldsymbol{\mu}_0$ in the gain). The
 subtracted diagonal is not a second approximation: the within-channel part it removes is
 already inside the boundary term, and dropping the subtraction would count it twice.
 
 \paragraph{Switch 2: recursion.} A recursive member carries
-$(\bm{\mu}^{\mathrm{post}}, \bm{\Sigma}^{\mathrm{post}})$ into the next window. A
+$(\boldsymbol{\mu}^{\mathrm{post}}, \boldsymbol{\Sigma}^{\mathrm{post}})$ into the next window. A
 non-recursive one discards it and propagates the next window's predictive from the initial
 condition, so its log-likelihood factorizes over windows. The switch changes no formula
 above; it changes only what is fed to the next one.
@@ -190,11 +190,11 @@ Eq.~\ref{eq:variance-form} and using
 $\sum_{j}P_{i\to j}(\Delta)=1$ and $\sum_{j}P_{i\to j}(\Delta)\bar{\gamma}_{i\to j}
 =\bar{\gamma}_{i\to\cdot}$,
 \begin{equation}
-  \bm{\mu}_0^\top\mathbf{w}\big|_{\text{total}}
+  \boldsymbol{\mu}_0^\top\mathbf{w}\big|_{\text{total}}
   \;=\;
-  \bm{\mu}_0^\top\mathbf{w}\big|_{\text{residual}}
-  \;+\; \bm{\mu}_0^\top\mathbf{H}\mathbf{1}
-  \;-\; \bar{\bm{\gamma}}_0^\top\mathrm{diag}(\bm{\mu}_0)\,\bar{\bm{\gamma}}_0,
+  \boldsymbol{\mu}_0^\top\mathbf{w}\big|_{\text{residual}}
+  \;+\; \boldsymbol{\mu}_0^\top\mathbf{H}\mathbf{1}
+  \;-\; \bar{\boldsymbol{\gamma}}_0^\top\mathrm{diag}(\boldsymbol{\mu}_0)\,\bar{\boldsymbol{\gamma}}_0,
   \label{eq:mr-ir-identity}
 \end{equation}
 and the two extra pieces are exactly what switch~1 moves from the third term of
@@ -248,7 +248,7 @@ flips, for the reason given in Appendix~\ref{app:derivation}. The two together a
 \subsection*{Least squares, which is off the lattice}
 
 Classical nonlinear least squares has no setting of the three switches. It propagates the
-mean occupancy alone, $\bm{\mu}_\Delta = \mathbf{P}(\Delta)^\top\bm{\mu}_0$, predicts
+mean occupancy alone, $\boldsymbol{\mu}_\Delta = \mathbf{P}(\Delta)^\top\boldsymbol{\mu}_0$, predicts
 $\bar{y}^{\mathrm{pred}}_{0\to\Delta}$ from Eq.~\ref{eq:ypred}, and assigns to every residual one
 scale common to the whole record, marginalised rather than fitted (Methods). There is no gain, so
 no occupancy object is ever conditioned on the data.
