@@ -583,6 +583,19 @@ its other two columns are empty.
 \label{fig:time-s2}
 \end{figure}
 
+% Figura restaurada 2026-09-04 por decision de Luciano: se habia eliminado 2026-09-03 como
+% ex Figure 3--figure supplement 3, pero su caption carga tres afirmaciones sin otro hogar (el
+% primer momento no separa a nadie; el score del nivel de ruido queda blanco todo el registro;
+% el ruido de LSE es plug-in) y comparte ejes y gramatica con sus hermanas, asi que vuelve como
+% figura de cuerpo. Titulo adaptado ("this figure" apuntaba al padre del que colgaba) y
+% referencias deicticas pasadas a numeros.
+\begin{figure}
+\includegraphics[width=\linewidth]{Figure_3_S3}
+\caption{\textbf{The checks the cascade has no room for.} The seven members of Figures~\ref{fig:time-s1} and~\ref{fig:time-s2} at the same cell, carrying (A) the mean standardized residual, the one of the three properties of $r_t$ not drawn there; (B) the score bias for the three parameters those figures do not colour, $k_{\mathrm{on}}$, the unitary current and the instrumental noise level; and (C) their score autocorrelation. The first residual moment separates nobody, which is what makes the other two properties the informative ones. In (B) the ordering repeats the one in row (D) of Figure~\ref{fig:time}: counting informative intervals whose interval excludes zero against a chance level of $0.05$, \texttt{IR} reads $0.067$, $0.050$ and $0.050$, \texttt{INR} $0.100$, $0.100$ and $0.000$, and the three recursive members between $0.409$ and $0.975$. The noise level, measured before the agonist arrives, keeps a white score even where the kinetic directions do not. Least squares carries no noise curve: its noise level is a plug-in, not a free direction.}
+\label{fig:time-s3}
+\end{figure}
+
+
 
 % RETITLED 2026-08-12, third and current. The subsection is organised by what each quantity is able
 % to say (closeness, displacement, misreported uncertainty) and its distinctive claim is the split of
@@ -871,16 +884,15 @@ $0.12$ for \texttt{R} and $-0.01$ for \texttt{IR}, the half a real recording giv
 % src: projects/eLife_2025/figures/figure_4_source_data/figure_4_source_data_distortion.csv,
 % components sample/corr/total of figure_4_common.R:103-105, read at m and not at Dconf.
 
-% [L-REVIEW 2026-09-03] Al eliminar la figura del residuo y el score en los tres parametros no
-% coloreados (la ex Figure 3--figure supplement 3, decision de Luciano de este dia) cayo tambien
-% la clausula "while the noise level keeps a white score throughout", porque esa figura era su
-% unica evidencia. Si la afirmacion debe volver al texto, debe volver la figura con ella. [/L-REVIEW]
+% Decision de Luciano 2026-09-04: la figura eliminada VUELVE como figura de cuerpo (nueva Fig 7,
+% ver el env tras fig:time-s2) y la clausula del score blanco del nivel de ruido vuelve con ella.
+% Razon: tres afirmaciones sin otro hogar y misma gramatica visual que sus hermanas. RESUELTO.
 Row (C) alone says where each parameter is measured. The channel number and the opening rate reach
 the numerical floor within six intervals of the agonist being removed, while the closing rate
 survives through the mean and the unitary current through the variance of the channels still open
 (Figures~\ref{fig:time-s1} and~\ref{fig:time-s2}): a member that conditions on the past already
 carries the number still open, so a parameter reaching the recording only through it has nothing
-left to give. The two open-loop members go on reporting
+left to give, while the noise level keeps a white score throughout (Figure~\ref{fig:time-s3}). The two open-loop members go on reporting
 information about the channel count through the washout, $15$ to $16\%$ of their pulse total against
 $0.5$ to $0.8\%$, which their accumulated ratio charges them for as the same information counted
 twice.
