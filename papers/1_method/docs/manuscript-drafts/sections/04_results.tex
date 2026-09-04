@@ -579,7 +579,7 @@ its other two columns are empty.
 
 \begin{figure}
 \includegraphics[width=\linewidth]{Figure_3_S2}
-\caption{\textbf{Per-step information against score variance, the unitary current and the channel number.} The other half of Figure~\ref{fig:time-s1}, on the same seven members and read the same way: the unitary current (A, B) and $N_{\mathrm{ch}}$ (C, D), the upper row of each band the per-interval Fisher information against the score variance and the lower row $\log_{10}(J_t/F_t)$ with its $95\%$ bootstrap interval. In the two recursive columns the $N_{\mathrm{ch}}$ band reaches the information floor within six intervals of washout while the unitary-current band does not. The channel-number band carries no least-squares panel: $N_{\mathrm{ch}}$ is not separable from $i$ there.}
+\caption{\textbf{Per-step information against score variance, the unitary current and the channel number.} The other half of Figure~\ref{fig:time-s1}, on the same seven members of the likelihood ladder, read the same way: the unitary current (A, B) and $N_{\mathrm{ch}}$ (C, D), the upper row of each band the per-interval Fisher information against the score variance and the lower row $\log_{10}(J_t/F_t)$ with its $95\%$ bootstrap interval. In the two recursive columns the $N_{\mathrm{ch}}$ band reaches the information floor within six intervals of washout while the unitary-current band does not. The channel-number band carries no least-squares panel: $N_{\mathrm{ch}}$ is not separable from $i$ there.}
 \label{fig:time-s2}
 \end{figure}
 
@@ -1047,7 +1047,7 @@ is calibrated, everywhere on the design plane}
 \begin{fullwidth}
 \includegraphics[width=\linewidth]{Figure_4_S4}
 \end{fullwidth}
-\caption{\textbf{What each member achieves, as opposed to what it reports.} The standard error each member delivers on each parameter: the square root of the diagonal of the distortion-corrected covariance, over the same plane as Figure~\ref{fig:plane} and in the same orientation. What the design axes buy is read directly off it, and the reading is in the text. It is also the field whose level set at a factor of two draws two of the boundaries of Figure~\ref{fig:usage}. Blocks are per parameter, the members side by side inside each. The scale is sequential: pale is a parameter pinned, dark one barely determined. The two marks are an error bar of $15\%$ of the parameter and an error bar of a factor two. The corrected error is drawn rather than the reported one, which Figure~\ref{fig:plane} shows wrong by up to a factor of $74$, so only the corrected version compares members on the same footing. Both least-squares arms hold the unitary current and the noise level fixed and so appear on the rate blocks alone.}
+\caption{\textbf{What each member of the likelihood family achieves, as opposed to what it reports.} The standard error each member delivers on each parameter: the square root of the diagonal of the distortion-corrected covariance, over the same plane as Figure~\ref{fig:plane} and in the same orientation. What the design axes buy is read directly off it, and the reading is in the text. It is also the field whose level set at a factor of two draws two of the boundaries of Figure~\ref{fig:usage}. Blocks are per parameter, the members side by side inside each. The scale is sequential: pale is a parameter pinned, dark one barely determined. The two marks are an error bar of $15\%$ of the parameter and an error bar of a factor two. The corrected error is drawn rather than the reported one, which Figure~\ref{fig:plane} shows wrong by up to a factor of $74$, so only the corrected version compares members on the same footing. Both least-squares arms hold the unitary current and the noise level fixed and so appear on the rate blocks alone.}
 \label{fig:plane-s4}
 \end{figure}
 
@@ -1296,7 +1296,7 @@ verdict, least squares being the one it would make more conservative (supplement
 % Pendiente que Luciano lea la transicion de entrada. [/L-REVIEW]
 \subsection*{Sampling a hundred times faster buys the noise level and nine per cent of a rate}
 
-Everything so far asks whether a member's report is calibrated. The complementary question is what
+Everything so far asks whether the report of a member of the likelihood family is calibrated. The complementary question is what
 the report is worth, and the standard error each member delivers answers it: the square root of the
 diagonal of its distortion-corrected covariance (Figure~\ref{fig:plane-s4}). Read
 along the acquisition interval it says something the design axes do not otherwise make visible:
@@ -1874,7 +1874,7 @@ $290$, and at least $180$, at the reference cell. % src: figures/in_progress/ir_
 What a recording can be asked for is set by two properties of the preparation: how many channels
 the patch holds, and how much noise the rig adds. Those are the axes of Figure~\ref{fig:usage},
 which they cut into five regions, each with its own answer to which parameters can be recovered
-and with which method. Of the eight methods on the ladder only two are ever the right answer here,
+and with which method. Of the eight members of the ladder only two are ever the right answer here,
 \texttt{IR}, the boundary-conditioned member, and the classical fit; the rest are biased or
 miscalibrated wherever they are cheap (Figure~\ref{fig:plane}). Read upward at a fixed channel
 count, which is a noisier rig or a smaller unitary current, the regions come in a fixed order.
