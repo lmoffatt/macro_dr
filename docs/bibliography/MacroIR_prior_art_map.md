@@ -346,7 +346,13 @@ the established tool, show it is needed.
 
 ### A.5 Stepanyuk et al. 2011 / 2014 — faster successors to Celentano-Hawkes
 - **See E1: the old "Stepanyuk 2012 / PLoS ONE e35208" entry was a different paper.** The real lineage:
-- 2011: PLoS ONE 6(12):e29731. doi:10.1371/journal.pone.0029731. **PDF not in repo.**
+- 2011: PLoS ONE 6(12):e29731. doi:10.1371/journal.pone.0029731. PDF:
+  `Stepanyuk_2011_Efficient_MLE_Kinetic_Rates_PLoSONE.pdf` (la nota vieja "not in repo" quedo
+  stale; corregida 2026-09-04).
+- **2011 LLAMA KALMAN A MOFFATT 2007** (verificado en el PDF 2026-09-04): "a recursive
+  algorithm, which utilizes Kalman filter for the maximum likelihood estimation of kinetic
+  parameters [22]", [22] = Moffatt 2007 Biophys J; repiten "the previous Kalman filter based
+  method [22]" dos veces. Citado desde la Discusion (subseccion de la convergencia) 2026-09-04.
 - 2014: Front. Cell. Neurosci. 8:303. doi:10.3389/fncel.2014.00303. PDF:
   `Stepanyuk_2014_Synaptic_Receptors_Macroscopic_FrontCellNeurosci.pdf`.
 - Macroscopic current as a non-stationary Gaussian process (ML NSFA); exploits **semiseparability** of the
