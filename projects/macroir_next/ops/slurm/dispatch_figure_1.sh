@@ -104,6 +104,15 @@ mkdir -p "$WORKDIR/logs" "$WORKDIR/data"
 # recommended CPUS as the default (explicit CPUS env still wins). See
 # dispatch_figure_0.sh; run the probe before big campaigns.
 TUNE_FILE="${TUNE_FILE:-$WORKDIR/figure_0/tuning.env}"
+if [ ! -f "$TUNE_FILE" ] && [ -n "${DEPEND:-}" ]; then
+    # sbatch freezes --cpus-per-task at submit time: chaining the campaign
+    # behind a still-running figure_0 job means submitting WITHOUT its
+    # measurement, and the dependency cannot fix that afterwards.
+    echo "[fig1] WARNING: no tuning.env at $TUNE_FILE and DEPEND is set." >&2
+    echo "[fig1]          These jobs will be submitted with CPUS=${CPUS:-32} (default)," >&2
+    echo "[fig1]          ignoring whatever figure_0 measures. To use the measurement," >&2
+    echo "[fig1]          wait for figure_0 to finish and dispatch WITHOUT DEPEND." >&2
+fi
 if [ -f "$TUNE_FILE" ]; then
     # shellcheck source=/dev/null
     source "$TUNE_FILE"

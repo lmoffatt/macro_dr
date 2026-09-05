@@ -67,4 +67,10 @@ jobid=$(sbatch --parsable \
     --export=ALL,MODE="$MODE",BIN="$BIN",WORKDIR="$WORKDIR",PROJ="$PROJ",SIM_SCRIPT="$SIM_SCRIPT",EVI0_SCRIPT="$EVI0_SCRIPT",MACRODR_PROFILE="$PROFILE",TOTAL_CPUS="$TOTAL_CPUS",CLUSTER="$CLUSTER" \
     "$PAYLOAD")
 echo "[fig0] submitted $MODE as job $jobid; results in $WORKDIR/figure_0/"
-echo "[fig0] chain the campaign with: DEPEND=$jobid projects/macroir_next/ops/slurm/dispatch_figure_1.sh $CLUSTER"
+# Do NOT suggest DEPEND-chaining the campaign onto this job: sbatch freezes
+# each job's --cpus-per-task at SUBMIT time, so a campaign submitted before
+# tuning.env exists would run at the CPUS default and never see the very
+# measurement this job produces (that happened on 2026-09-05, 40 jobs at 32
+# CPUs). The campaign must be dispatched AFTER this job finishes.
+echo "[fig0] when it FINISHES, dispatch the campaign (it reads tuning.env at submit):"
+echo "[fig0]     projects/macroir_next/ops/slurm/dispatch_figure_1.sh $CLUSTER"
