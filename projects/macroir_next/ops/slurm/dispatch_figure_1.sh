@@ -190,7 +190,7 @@ submit_pack() {
         --exclusive \
         --cpus-per-task="$NODE_CPUS" \
         --mem="${MEM:-0}" \
-        --time="${TIME:-1-00:00:00}" \
+        --time="${TIME:-2-00:00:00}" \
         --job-name="f1pack_${pack_idx}" \
         --output="$WORKDIR/logs/pack_${pack_idx}_slurm-%j.out" \
         --export=ALL,CLUSTER="$CLUSTER",BIN="$BIN",WORKDIR="$WORKDIR",MACRODR_PROFILE="$PROFILE",SIM_SCRIPT="$SIM_SCRIPT",EVI_SCRIPT="$EVI_SCRIPT",RUN_ONE="$PAYLOAD",MANIFEST="$pack_manifest",THREADS_PER_FIT="$THREADS_PER_FIT",PRIOR_CCO="$PRIOR_CCO",PRIOR_COC="$PRIOR_COC",NSAMP="$N_SAMP",SCOUTS="$SCOUTS",BETA_SIZE="$BETA_SIZE",MAX_ITER="$MAX_ITER",ADAPT_EVERY="$ADAPT_EVERY",MAX_VALUES="$MAX_VALUES" \
@@ -250,7 +250,7 @@ EOF
             ${DEPEND:+--dependency="$DEP_SPEC"} \
             --cpus-per-task="${CPUS:-32}" \
             --mem="${MEM:-16G}" \
-            --time="${TIME:-1-00:00:00}" \
+            --time="${TIME:-2-00:00:00}" \
             --job-name="f1_${truth}_${prot}_r${rep}" \
             --output="$WORKDIR/logs/${label}_slurm-%j.out" \
             --export=ALL,CLUSTER="$CLUSTER",BIN="$BIN",WORKDIR="$WORKDIR",MACRODR_PROFILE="$PROFILE",SIM_SCRIPT="$SIM_SCRIPT",EVI_SCRIPT="$EVI_SCRIPT",LABEL="$label",PROT="$prot",TRUTH_MODEL="$truth_model",TRUTH_PAR="$truth_par",TEMPLATE="$template",PRIOR_CCO="$PRIOR_CCO",PRIOR_COC="$PRIOR_COC",N1="$n1",N2="$n2",N3="$n3",NSAMP="$N_SAMP",AG2="$ag2",AG3="$ag3",SEED_SIM="$seed_sim",SEED_CCO="$seed_cco",SEED_COC="$seed_coc",SCOUTS="$SCOUTS",BETA_SIZE="$BETA_SIZE",MAX_ITER="$MAX_ITER",ADAPT_EVERY="$ADAPT_EVERY",MAX_VALUES="$MAX_VALUES" \
