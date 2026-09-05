@@ -1,0 +1,608 @@
+% macroir_bessel_method.tex
+% Draft theory/methods section for the MacroIR-Bessel paper.
+% 2026-08-31. Source of record: theory/macroir/notes/macroir_bessel_plan.md
+% Notation and vocabulary aligned with the submitted eLife manuscript
+% (papers/1_method/docs/manuscript-drafts/): per-channel pair (mu, Sigma)
+% with explicit N_ch factors as in 02_framework.tex Eq. block :543-551;
+% "boxcar" / "acquisition kernel" as in Appendix 1 subsection "The
+% acquisition kernel, and what the uniform window misses" (the canonical
+% bound-table site); the augmented state (N, z) and its per-window reset as
+% in Appendix 1 subsection on the augmented-state filter
+% (08_appendix_derivation.tex:948-956). The object Sigma*gamma is named by
+% its meaning (the covariance between the state a channel is in and the
+% current it carries), never "gain".
+% Status: exposition draft. The block-by-block derivation of the covariance
+% prediction (pole-shifted endpoint-conditioned integrals, multinomial
+% assembly) is milestone M0 of the plan; TODO markers flag what M0 fills.
+% Claim discipline (plan, section 10): "extended closure, measured", never
+% "exact likelihood"; the cost claim is stated as scaling, never as absence
+% of prior art.
+
+\documentclass[11pt]{article}
+
+\usepackage{amsmath,amssymb,amsfonts,bm}
+\usepackage{booktabs}
+\usepackage{geometry}
+\geometry{margin=1in}
+
+\title{A likelihood that carries the recording filter's state\\[4pt]
+Draft section for the MacroIR--Bessel paper}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Var}{\operatorname{Var}}
+\newcommand{\Cov}{\operatorname{Cov}}
+\newcommand{\diag}{\operatorname{diag}}
+\newcommand{\Nch}{N_{\mathrm{ch}}}
+\newcommand{\N}{\mathbf{N}}
+\newcommand{\ff}{\bm{\varphi}}
+\newcommand{\Af}{\mathbf{A}_{\mathrm{f}}}
+\newcommand{\bff}{\mathbf{b}_{\mathrm{f}}}
+\newcommand{\cf}{\mathbf{c}_{\mathrm{f}}}
+
+%------------------------------------------------------------
+\section{The measurement problem}
+%------------------------------------------------------------
+
+The patch-clamp amplifier low-pass filters the current before the digitizer
+samples it, so the real acquisition kernel is the boxcar composed with the
+amplifier's analogue low-pass. In the recordings that motivate this work
+the filter is a 4-pole Bessel with cutoff $f_c = 10\,\mathrm{kHz}$ and the
+sampling rate is $50\,\mathrm{kHz}$ \cite{moffatt2007}. A low-pass filter
+has memory: the value the digitizer records at time $t$ is a weighted
+average of the recent past of the current $i(t)$,
+\begin{equation}
+  z(t) \;=\; \int_0^{\infty} h(s)\, i(t-s)\,\mathrm{d}s
+  \;+\; \text{filtered instrument noise},
+  \label{eq:conv}
+\end{equation}
+where $h$ is the filter's impulse response. For a 4-pole Bessel at
+$10\,\mathrm{kHz}$, $h$ is appreciable for about $100\,\mu\mathrm{s}$,
+which spans five sampling intervals.
+
+The likelihood of the companion paper \cite{macroir2026} implements the
+boxcar exactly: each recorded value is modelled as the plain average of the
+current over its own acquisition window. What the composition with the
+analogue filter changes is governed by one dimensionless group, the cutoff
+frequency against the window, $f_c\Delta$, and the companion paper's
+appendix quantifies it: at $f_c\Delta = 0.2$ the white-noise component of a
+recorded value has $61.5\%$ less variance than the boxcar assigns, and
+neighbouring recorded values are correlated at $0.641$, both effects the
+boxcar model ignores.
+
+Two separate things go wrong when the kernel spills across window
+boundaries:
+\begin{enumerate}
+  \item a recorded value depends on what the channels did during earlier
+    windows, and the recursion never conditions on that history;
+  \item consecutive recorded values share signal history and share
+    filtered noise, so they are correlated even once the occupancies at
+    the window boundaries are known, while the recursion treats them as
+    conditionally independent.
+\end{enumerate}
+
+On the record of \cite{moffatt2007} the failure sits exactly where the
+information is. The single-sample windows around the agonist pulses are
+$20\,\mu\mathrm{s}$ long, so they sit at $f_c\Delta = 0.2$; the
+$187\,\mu\mathrm{s}$ test pulses are only about $2.7$ times the filter's
+fixed smear of $0.69/f_c = 69\,\mu\mathrm{s}$. Grouping samples until the
+boxcar becomes valid would discard the very windows the ultrashort-pulse
+experiment exists to produce. A filter-aware likelihood buys those windows
+back.
+
+The obstruction to fixing this inside the existing recursion is named in
+the companion paper's appendix. There, the boundary-state construction is
+shown equivalent to a filter on the augmented state $(\N, z)$, where $z$
+accumulates the window average; the equivalence holds per window, with a
+reset: the augmented filter must discard the posterior on $z$ and open the
+next window with $z = 0$, because the next window's integral is fresh and
+independent of the old given the occupancy. A filter that remembers across
+windows forbids exactly that reset. The construction below removes the
+need for it.
+
+%------------------------------------------------------------
+\section{The amplifier as part of the model}
+%------------------------------------------------------------
+
+A $k_{\mathrm{f}}$-pole filter is itself a small physical system. It has
+$k_{\mathrm{f}}$ internal variables (the voltages on the capacitors inside
+the filter), collected in a vector $\ff \in \mathbb{R}^{k_{\mathrm{f}}}$,
+which evolve linearly, driven by whatever current enters:
+\begin{equation}
+  \frac{\mathrm{d}\ff}{\mathrm{d}t} \;=\; \Af\,\ff + \bff\, i(t),
+  \qquad
+  \text{recorded output} \;=\; \cf^{\top}\ff ,
+  \label{eq:filter-ss}
+\end{equation}
+with $\Af,\bff,\cf$ fixed, known matrices determined by the pole positions
+and the cutoff. For the 4-pole Bessel, $k_{\mathrm{f}} = 4$ and the
+transfer function is $H(s) = \theta_4(0)/\theta_4(s/\omega_0)$ with
+$\theta_4(s) = s^4 + 10s^3 + 45s^2 + 105s + 105$ the reverse Bessel
+polynomial, realized in companion form, with the frequency scale
+$\omega_0$ chosen so that the $-3\,\mathrm{dB}$ point falls at $f_c$. We
+write $\nu_1,\dots,\nu_{k_{\mathrm{f}}}$ for the filter poles, with
+$\operatorname{Re}\nu_p > 0$, so that the eigenvalues of $\Af$ are
+$-\nu_p$; the poles come in complex-conjugate pairs and every quantity
+below recombines to a real number.
+
+The channels are the ensemble of the companion paper: $\Nch$ independent
+Markov channels on $K$ states with generator $\mathbf{Q}$, transition
+matrix $\mathbf{P}(t) = e^{\mathbf{Q}t}$ (row-stochastic), and conductance
+vector $\bm{\gamma}$. Writing $\N(t) \in \mathbb{N}^K$ for the vector of
+state counts, the current entering the amplifier is
+\begin{equation}
+  i(t) \;=\; \bm{\gamma}^{\top}\N(t) + i_{\mathrm{b}} + \xi(t),
+  \label{eq:current}
+\end{equation}
+where $i_{\mathrm{b}}$ is the baseline current and $\xi$ is white
+instrument noise with autocovariance
+$\E[\xi(t)\,\xi(t')] = S_0\,\delta(t-t')$; $S_0$ is the noise power
+spectral density referred to the filter input.
+
+The digitizer does not record $i(t)$. It records the linear readout
+$\cf^{\top}\ff(t)$ of the filter state at the sampling instants. This
+observation converts the memory problem into a state problem. The recorded
+value remembers more about the past than the occupancies at the window
+boundaries do, which is why no recursion over occupancies alone can be
+correct on short windows. All of that memory, however, is stored in $\ff$:
+since $\ff$ is driven by $i$, the joint pair $(\N,\ff)$ is Markov, and its
+present value determines the statistics of its whole future. Because the
+filter sits in series with the channels, its states add to the description
+($K + k_{\mathrm{f}}$ variables); this is unlike coloured noise modelled
+as a parallel hidden process, which multiplies the state space.
+
+%------------------------------------------------------------
+\section{The augmented recursion}
+%------------------------------------------------------------
+
+\subsection{The carried state}
+
+The companion paper's recursion carries a Gaussian in the per-channel pair
+$(\bm{\mu},\bm{\Sigma})$, with $\bm{\mu} = \E[\N]/\Nch$ and
+$\bm{\Sigma} = \Cov(\N)/\Nch$, conditioned on all recorded values so far.
+The Bessel member carries a Gaussian over the joint of occupancies and
+filter state, closed at two moments:
+\begin{equation}
+  \bm{\mu} = \frac{\E[\N]}{\Nch}, \quad
+  \mathbf{m} = \E[\ff], \quad
+  \bm{\Sigma} = \frac{\Cov(\N)}{\Nch}, \quad
+  \bm{\Sigma}_{\!N\varphi} = \frac{\Cov(\N,\ff)}{\Nch}, \quad
+  \bm{\Sigma}_{\!\varphi\varphi} = \Cov(\ff),
+  \label{eq:carried}
+\end{equation}
+where the filter blocks $\mathbf{m}$ and
+$\bm{\Sigma}_{\!\varphi\varphi}$ stay at physical scale because $\ff$ is
+one physical object, driven by the whole ensemble.
+$\bm{\Sigma}_{\!N\varphi}$ is the structurally new block: it records how
+uncertainty about where the channels are is tied to uncertainty about the
+filter's internal state, and it is the conduit through which a recorded
+value informs the occupancy. Between windows nothing is reset: the
+quantity whose reset the augmented formulation required, and a filter with
+memory forbids, is simply carried.
+
+\subsection{Prediction}
+
+The posterior at the start of a window of length $\Delta$, pushed through
+the joint dynamics, is the prior at its end. The means propagate through
+the block-triangular augmented drift,
+\begin{equation}
+  \frac{\mathrm{d}}{\mathrm{d}t}
+  \begin{pmatrix} \bm{\mu} \\ \mathbf{m} \end{pmatrix}
+  =
+  \begin{pmatrix}
+    \mathbf{Q}^{\top} & \mathbf{0} \\
+    \Nch\,\bff\,\bm{\gamma}^{\top} & \Af
+  \end{pmatrix}
+  \begin{pmatrix} \bm{\mu} \\ \mathbf{m} \end{pmatrix}
+  +
+  \begin{pmatrix} \mathbf{0} \\ \bff\, i_{\mathrm{b}} \end{pmatrix},
+  \label{eq:mean-prop}
+\end{equation}
+so the spectrum of the augmented system is
+$\operatorname{spec}(\mathbf{Q}) \cup \{-\nu_p\}$: the channel eigenvalues
+and the filter poles, with no mixing. The covariance blocks propagate by
+the laws of total expectation and variance over the hidden path,
+conditioned on the boundary occupancies, exactly as in the companion
+paper's boundary-state construction; the only new ingredients are the
+endpoint-conditioned moments of exponentially weighted conductance
+integrals, given in Section~\ref{sec:integrals}. Every expectation the
+propagation needs is an affine or bilinear function of the moments already
+carried in \eqref{eq:carried}, so the moment propagation itself introduces
+no approximation.
+% TODO(M0): the appendix derives each covariance block from the
+% boundary-state construction (multinomial boundary counts, pole-shifted
+% interval moments).
+
+\subsection{The two reads}
+
+The observation model splits into two cases, according to how the record
+was produced.
+
+\emph{Native-rate window} (one raw sample). The recorded value is the
+filter output at the sampling instant,
+\begin{equation}
+  z \;=\; \cf^{\top}\ff(\Delta).
+  \label{eq:read-native}
+\end{equation}
+There is no fresh observation noise in this read: the instrument noise
+entered before the filter, and its contribution already lives inside
+$\bm{\Sigma}_{\!\varphi\varphi}$ (Section~\ref{sec:noise}).
+
+\emph{Grouped window} (an average of several raw samples). The recorded
+value is the average of the filter output over the window. We add one
+accumulator variable $u$, the direct heir of the augmented state $z$ of
+the companion paper's appendix, now fed by the filter output rather than
+by the raw current:
+\begin{equation}
+  \frac{\mathrm{d}u}{\mathrm{d}t} = \cf^{\top}\ff,
+  \qquad u(0) = 0,
+  \qquad
+  z \;=\; \frac{u(\Delta)}{\Delta}.
+  \label{eq:read-grouped}
+\end{equation}
+The reset of $u$ at the start of each recorded window is a property of the
+recorder, whose averaging genuinely restarts there, so it remains as
+legitimate as it was in the boxcar member. The accumulator is an
+integrator, a pole at zero; it exists only within the window and is
+discarded after the update. Applying the grouped read to a native-rate
+sample would impose an averaging the hardware never performed, so the
+member switches reads per window.
+
+\subsection{Update}
+
+The recorded value $z$ is a linear functional of the augmented state, so
+the Bayes update is Gaussian conditioning of the joint moments, with the
+same three blocks as the companion paper: the covariance of the state, the
+variance of the recorded value, and the covariance between the state and
+the recorded value. For the native-rate read,
+\begin{align}
+  z^{\mathrm{pred}} &= \cf^{\top}\mathbf{m},
+  &
+  \sigma^2 &= \cf^{\top}\bm{\Sigma}_{\!\varphi\varphi}\,\cf
+             + \sigma_{\mathrm{fl}}^2,
+  &
+  \mathbf{g}_{\varphi} &= \bm{\Sigma}_{\!N\varphi}\,\cf,
+  &
+  \delta &= z - z^{\mathrm{pred}},
+  \label{eq:threeblocks}
+\end{align}
+where $\mathbf{g}_{\varphi}$ takes the place of
+$\mathbf{g} = \bm{\Sigma}\bm{\gamma}$ in the companion paper: it is the
+covariance between the state a channel is in and the value the amplifier
+is about to hand the digitizer. The term $\sigma_{\mathrm{fl}}^2$ is an
+optional additive floor for noise components with no finite-dimensional
+linear realisation (Section~\ref{sec:noise}). The posterior follows by
+conditioning:
+\begin{equation}
+  \begin{aligned}
+  \bm{\mu}^{\mathrm{post}}
+    &= \bm{\mu} + \frac{\mathbf{g}_{\varphi}}{\sigma^2}\,\delta,
+  &
+  \bm{\Sigma}^{\mathrm{post}}
+    &= \bm{\Sigma}
+       - \frac{\Nch\,\mathbf{g}_{\varphi}\mathbf{g}_{\varphi}^{\top}}
+              {\sigma^2},
+  \\[4pt]
+  \mathbf{m}^{\mathrm{post}}
+    &= \mathbf{m}
+       + \frac{\bm{\Sigma}_{\!\varphi\varphi}\cf}{\sigma^2}\,\delta,
+  &
+  \bm{\Sigma}_{\!\varphi\varphi}^{\mathrm{post}}
+    &= \bm{\Sigma}_{\!\varphi\varphi}
+       - \frac{(\bm{\Sigma}_{\!\varphi\varphi}\cf)
+               (\bm{\Sigma}_{\!\varphi\varphi}\cf)^{\top}}{\sigma^2},
+  \\[4pt]
+  &
+  &
+  \bm{\Sigma}_{\!N\varphi}^{\mathrm{post}}
+    &= \bm{\Sigma}_{\!N\varphi}
+       - \frac{\mathbf{g}_{\varphi}
+               (\bm{\Sigma}_{\!\varphi\varphi}\cf)^{\top}}{\sigma^2},
+  \end{aligned}
+  \label{eq:update}
+\end{equation}
+which reduces, block by block, to the companion paper's update when the
+filter rows are removed. The grouped read conditions on $u(\Delta)/\Delta$
+instead, with the same structure. Two things happen here that the boxcar
+member cannot express. The datum updates the filter state as well as the
+occupancy: it says where the capacitors are, and that knowledge carries
+into the next window. And the correlation between neighbouring recorded
+values is accounted for, because the predictive distribution of each
+sample conditions on the previous ones through the carried filter moments.
+
+\subsection{The likelihood}
+
+The log-likelihood is the chain rule over windows,
+\begin{equation}
+  \log p(z_1,\dots,z_T)
+  \;=\;
+  \sum_{j=1}^{T} \log \mathcal{N}\!\bigl(z_j;\,
+    z^{\mathrm{pred}}_j,\, \sigma^2_j\bigr),
+  \label{eq:lik}
+\end{equation}
+with $z^{\mathrm{pred}}_j$ and $\sigma^2_j$ the predictive mean and
+variance of sample $j$ given all earlier samples, read off
+\eqref{eq:threeblocks} after the prediction step of window $j$.
+
+%------------------------------------------------------------
+\section{The interval integrals}
+\label{sec:integrals}
+%------------------------------------------------------------
+
+\subsection{Pole decomposition}
+
+The impulse response of the filter is a sum of decaying exponentials, one
+per pole:
+\begin{equation}
+  h(s) \;=\; \cf^{\top} e^{\Af s}\, \bff
+  \;=\; \sum_{p=1}^{k_{\mathrm{f}}} r_p\, e^{-\nu_p s},
+  \label{eq:impulse}
+\end{equation}
+with residues $r_p$. Solving \eqref{eq:filter-ss} over one window,
+\begin{equation}
+  \ff(\Delta)
+  \;=\;
+  e^{\Af\Delta}\,\ff(0)
+  \;+\;
+  \int_0^{\Delta} e^{\Af(\Delta-s)}\,\bff\; i(s)\,\mathrm{d}s ,
+  \label{eq:filter-sol}
+\end{equation}
+and in the eigenbasis of $\Af$ the channel part of the integral
+decomposes, channel by channel, into the scalar quantities
+\begin{equation}
+  W_p \;=\; \int_0^{\Delta} e^{-\nu_p(\Delta-s)}\,
+  \gamma_{X(s)}\,\mathrm{d}s ,
+  \label{eq:Wp}
+\end{equation}
+where $X(s)$ is the state of one channel at time $s$. $W_p$ is the
+channel's conductance history as the filter's $p$-th mode remembers it.
+Setting $\nu_p = 0$ recovers the plain time integral of the conductance,
+which is the boxcar member's object.
+
+\subsection{Endpoint-conditioned moments and their spectral evaluation}
+
+To propagate the covariance blocks, the recursion needs the moments of
+$W_p$ conditioned on the channel's occupancy at the window boundaries, in
+direct analogy with the boundary-conditioned window mean
+$\bar{\gamma}_{i\to j}$ and per-state variance of the companion paper:
+\begin{equation}
+  \bar{\gamma}^{(p)}_{i\to j}
+  = \E\!\left[ W_p \mid X(0)=i,\, X(\Delta)=j \right],
+  \qquad
+  \overline{M}^{(pq)}_{i}
+  = \E\!\left[ W_p W_q \mid X(0)=i \right].
+  \label{eq:cond-moments}
+\end{equation}
+The asymmetry in the conditioning is deliberate and it is where the cost
+is contained. First moments are needed pair-resolved, because the
+covariance between where a channel ends and what it contributed to the
+filter is what feeds $\bm{\Sigma}_{\!N\varphi}$ and the update vector
+$\mathbf{g}_{\varphi}$. Second moments enter only
+$\bm{\Sigma}_{\!\varphi\varphi}$, where the end state is summed over, and
+a pole-discounted propagator applied to the all-ones vector collapses,
+\begin{equation}
+  e^{(\mathbf{Q}-\nu\mathbf{I})t}\,\mathbf{1} = e^{-\nu t}\,\mathbf{1},
+  \label{eq:collapse}
+\end{equation}
+so each pole pair $(p,q)$ costs a matrix-vector chain rather than a
+$K\times K$ table.
+% TODO(M0): prove the no-pair-resolved-seconds claim through every
+% consumer, including the variance-corrected branches if inherited.
+
+All of these integrals are evaluated by the machinery the boxcar member
+already uses. With the spectral decomposition of the generator,
+$\mathbf{Q} = \mathbf{V}\bm{\Lambda}\mathbf{V}^{-1}$ with eigenvalues
+$\lambda_a$, the boxcar member's conditioned moments reduce to divided
+differences of the exponential,
+\begin{equation}
+  D[x,y] = \frac{e^{x} - e^{y}}{x-y},
+  \qquad D[x,x] = e^{x},
+  \label{eq:divdiff}
+\end{equation}
+evaluated at pairs of arguments $\lambda_a\Delta,\ \lambda_b\Delta$. An
+exponential weight in \eqref{eq:Wp} does nothing except shift arguments
+inside the very same functions: the generic building block is
+\begin{equation}
+  \int_0^{\Delta} e^{\lambda_a s}\,
+  e^{(\lambda_b-\nu_p)(\Delta-s)}\,\mathrm{d}s
+  \;=\;
+  \Delta\; D\!\left[\lambda_a\Delta,\ (\lambda_b-\nu_p)\Delta\right],
+  \label{eq:shifted}
+\end{equation}
+and second moments involve the analogous second divided differences at
+argument triples with shifts $\nu_p$, $\nu_q$. No new class of integral
+appears; the existing code shapes run with shifted inputs, and setting
+every $\nu_p = 0$ reproduces the boxcar member's formulas identically.
+
+\subsection{Instrument noise}
+\label{sec:noise}
+
+The filter that colours the signal also colours the white instrument noise
+$\xi$, and its contribution to the covariance of $\ff$ over a window has
+the closed form
+\begin{equation}
+  \bm{\Sigma}_{\xi}(\Delta)
+  \;=\;
+  S_0 \int_0^{\Delta} e^{\Af s}\,\bff\,\bff^{\top} e^{\Af^{\top} s}\,
+  \mathrm{d}s ,
+  \label{eq:noise-gramian}
+\end{equation}
+which in the eigenbasis of $\Af$ is again the divided differences of
+\eqref{eq:divdiff}, at arguments $-(\nu_p+\nu_q)\Delta$. This term
+generalises, and replaces, the white per-sample instrumental variance
+$\epsilon^2$ of the companion paper; the noise correlations it induces
+across samples are then carried by $\bm{\Sigma}_{\!\varphi\varphi}$ like
+any other filter memory. It also keeps the predictive variance $\sigma^2$
+in \eqref{eq:threeblocks} strictly positive, since the pair $(\Af,\bff)$
+is controllable. Noise components with no finite-dimensional linear
+realisation, such as $1/f$ noise, stay outside the augmentation as the
+additive per-observation floor $\sigma_{\mathrm{fl}}^2$.
+
+%------------------------------------------------------------
+\section{The boxcar member as an exact special case}
+%------------------------------------------------------------
+
+Delete the $\ff$ rows and keep only the accumulator $u$, so that the
+observation system is $\Af = 0$, $\bff = 1$: the augmented state
+collapses to the $(\N, z)$ of the companion paper's appendix, and the
+equations of Section~\ref{sec:integrals} collapse, term by term, to the
+boxcar member. The same collapse is visible in the algebra as the limit
+$\nu_p = 0$ of \eqref{eq:shifted}. This subcase is the main regression
+anchor of the implementation: the new code, run in that configuration,
+must reproduce the existing, validated member to machine precision. The
+limit $f_c \to \infty$ also recovers the boxcar member, though only
+approximately at finite $f_c$, and serves as a secondary check.
+
+%------------------------------------------------------------
+\section{What is exact and what is approximate}
+%------------------------------------------------------------
+
+The moment propagation is exact: every expectation the recursion needs is
+an affine or bilinear function of the moments it already carries, so no
+information is silently dropped in the prediction step. What remains
+approximate is exactly what is approximate in the boxcar member: the
+Bayes update treats the joint distribution as Gaussian, and between
+windows only two moments are carried. Both closures now act on a larger
+object, the joint of occupancy and filter state, so their error is of the
+same kind but need not be of the same size. We measure it on simulated
+ground truth rather than assume it; the construction is an extended
+closure whose accuracy is reported, and we make no exactness claim for
+the likelihood itself.
+
+%------------------------------------------------------------
+\section{Cost}
+%------------------------------------------------------------
+
+Relative to the boxcar member, the growth is a combinatorial factor in
+how many argument pairs the divided differences are evaluated at, with
+the modes of the observation system playing the role of extra
+eigenvalues: first-moment tables grow linearly in the number of modes
+(one pair-resolved table per pole, plus one for the accumulator), while
+second-moment quantities grow with the number of pole pairs but are held
+at matrix-vector cost by \eqref{eq:collapse}. Conjugate symmetry halves
+the complex arithmetic. The overall cost is polynomial in the state count
+$K$ and the pole count $k_{\mathrm{f}}$, and independent of the number of
+channels $\Nch$. Two properties of real records reduce it further:
+distinct window lengths are few, so the window quantities are memoized on
+the triple (length, stimulus, pole set); and on windows with
+$f_c\Delta \gg 1$ the filter has settled well within the window, and the
+computation reverts to the boxcar member's cost through an asymptotic
+branch. On the record of \cite{moffatt2007}, 742 of 1078 windows sit in
+that regime.
+
+%------------------------------------------------------------
+\section{Fixed filter parameters and identifiability}
+%------------------------------------------------------------
+
+The filter's cutoff and pole count are properties of the recording
+apparatus. They are fixed at their known values and never fitted: they
+trade almost degenerately against fast rate constants and against the
+noise amplitude, so releasing them would launder model error into
+pseudo-physical parameters. Rates faster than $f_c$ remain weakly
+identified under any correct treatment, because the filter genuinely
+destroyed that information before the digitizer saw it; the honest
+outcome is wider posteriors on those rates, and a narrower posterior
+there would be a defect of the method, a point the simulations verify.
+Under a filter the noise amplitude must be stated as the input-referred
+spectral density $S_0$ of \eqref{eq:current}; conventions that quote a
+variance per sample depend on the bandwidth and do not transfer across
+members.
+% TODO: priors on S_0 restated accordingly before any evidence comparison
+% across members (plan, decision 4).
+
+%------------------------------------------------------------
+\section{Relation to existing treatments}
+%------------------------------------------------------------
+
+Filters inside single-channel likelihoods have a long history. Michalek
+and colleagues identified the anti-aliasing filter as a cause of wrong
+model identification and modelled it with moving-average filtered hidden
+Markov models \cite{michalek1999}; Venkataramanan, Kuc and Sigworth built
+the metastate formulation, expanding the hidden state over the filter's
+memory so that band-limited sampled data become Markov again
+\cite{venkataramanan2000}; Qin, Auerbach and Sachs modelled the filter as
+a finite impulse response within a hidden Markov likelihood and describe
+an extension to multiple channels \cite{qin2000}. These treatments are
+discrete-time and truncate the filter to a sampled impulse response, with
+a cost that grows exponentially in the filter memory expressed in states
+per channel, which confines them to one or few channels. Absorbing a
+linear filter into an augmented state is textbook filtering theory
+\cite{jazwinski1970}; propagating integrated or averaged observations
+through an augmented state with matrix-exponential machinery goes back at
+least to Zadrozny \cite{zadrozny1988}, has a general integral primitive
+in Carbonell, Jim\'enez and Pedroso \cite{carbonell2008}, and a recent
+instance with overlapping windows in Rubenzahl and colleagues
+\cite{rubenzahl2026}.
+
+What this member contributes is the combination needed for macroscopic
+channel data: the endpoint-conditioned mean, variance and cross-sample
+covariance of a Bessel-filtered current for $\Nch$ independent channels,
+computed from the generator's spectral decomposition at a cost polynomial
+in state count and pole count and independent of $\Nch$, exact for the
+analogue kernel where the treatments above are exact only for a sampled
+truncation; and, with it, the ability to fit a macroscopic record at its
+native sampling rate, including the windows the filter smears.
+
+%------------------------------------------------------------
+\begin{thebibliography}{9}
+
+\bibitem{moffatt2007}
+Moffatt, L. \& Hume, R.~I. (2007).
+Responses of rat P2X2 receptors to ultrashort pulses of ATP provide
+insights into ATP binding and channel gating.
+\emph{Journal of General Physiology} 130(2):183--201.
+
+\bibitem{macroir2026}
+% TODO: replace with the final citation of the companion (MacroIR) paper.
+Moffatt, L. (2026). The companion MacroIR paper (submitted).
+
+\bibitem{michalek1999}
+Michalek, S., Lerche, H., Wagner, M., Mitrovi\'c, N., Schiebe, M.,
+Lehmann-Horn, F. \& Timmer, J. (1999).
+On identification of Na$^+$ channel gating schemes using moving-average
+filtered hidden Markov models.
+\emph{European Biophysics Journal} 28(7):605--609.
+
+\bibitem{venkataramanan2000}
+Venkataramanan, L., Kuc, R. \& Sigworth, F.~J. (2000).
+Identification of hidden Markov models for ion channel currents.
+III. Bandlimited, sampled data.
+\emph{IEEE Transactions on Signal Processing} 48(2):376--385.
+
+\bibitem{qin2000}
+Qin, F., Auerbach, A. \& Sachs, F. (2000).
+Hidden Markov modeling for single channel kinetics with filtering and
+correlated noise.
+\emph{Biophysical Journal} 79(4):1928--1944.
+
+\bibitem{jazwinski1970}
+Jazwinski, A.~H. (1970).
+\emph{Stochastic Processes and Filtering Theory.}
+Academic Press.
+
+\bibitem{zadrozny1988}
+Zadrozny, P. (1988).
+Gaussian likelihood of continuous-time ARMAX models when data are stocks
+and flows at different frequencies.
+\emph{Econometric Theory} 4(1):108--124.
+
+\bibitem{carbonell2008}
+Carbonell, F., Jim\'enez, J.~C. \& Pedroso, L.~M. (2008).
+Computing multiple integrals involving matrix exponentials.
+\emph{Journal of Computational and Applied Mathematics} 213(1):300--305.
+
+\bibitem{rubenzahl2026}
+Rubenzahl, R.~A., Hattori, S., S\"arkk\"a, S., Farr, B.~F., Luhn, J.,
+Foreman-Mackey, D. \& Bedell, M. (2026).
+Scalable Gaussian processes for integrated and overlapping measurements
+via augmented state-space models.
+\emph{Astronomical Journal}, doi:10.3847/1538-3881/ae4d0b.
+
+\end{thebibliography}
+
+\end{document}

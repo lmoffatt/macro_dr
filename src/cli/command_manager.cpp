@@ -3,6 +3,7 @@
 #include <macrodr/cmd/cli_meta.h>
 #include <macrodr/cmd/indexed_construction.h>
 #include <macrodr/cmd/likelihood.h>
+#include <macrodr/cmd/qdtf_likelihood.h>
 #include <macrodr/cmd/load_experiment.h>
 #include <macrodr/cmd/load_model.h>
 #include <macrodr/cmd/load_parameters.h>
@@ -1130,6 +1131,25 @@ dsl::Compiler<dsl::Lexer> make_compiler_new() {
             &cmd::calculate_simulation_likelihood, "model", "parameters", "experiment", "data",
             "adaptive_approximation", "recursive_approximation", "averaging_approximation",
             "variance_approximation", "taylor_variance_correction", "micro_approximation"));
+
+    // Bessel member (qdtf): direct likelihood evaluation. n_poles = 0 selects
+    // the box configuration (regression anchor vs the av=2 member); 4 or 8
+    // selects the Bessel filter with the given −3 dB cutoff in Hz. The filter
+    // parameters are rig metadata, fixed inputs, never fitted.
+    cm.push_function(
+        "calc_qdtf_likelihood",
+        dsl::to_typed_function<const ModelPtr&, const var::Parameters_transformed&,
+                               const Experiment&, const Recording&, std::size_t, double>(
+            &cmd::calculate_qdtf_likelihood, "model", "parameters", "experiment", "data",
+            "n_poles", "cutoff"));
+
+    cm.push_function(
+        "calc_qdtf_likelihood",
+        dsl::to_typed_function<const ModelPtr&, const var::Parameters_transformed&,
+                               const Experiment&, const Simulated_Recording<var::please_include<>>&,
+                               std::size_t, double>(
+            &cmd::calculate_simulation_qdtf_likelihood, "model", "parameters", "experiment",
+            "data", "n_poles", "cutoff"));
 
     cm.push_function(
         "calc_dlikelihood",
