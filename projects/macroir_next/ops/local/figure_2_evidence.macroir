@@ -1,0 +1,70 @@
+# figure_2_evidence.macroir — PAIRED MEMBER fits on the same recording, for
+# the Figure 2 member-confusion matrix (Bessel plan M4): both arms fit the
+# SAME model (fit_model) with the SAME prior on the SAME data; they differ
+# ONLY in the acquisition model of the likelihood:
+#   box arm    -> the canonical IR member of the eLife paper (av=2), i.e.
+#                 the same thermo_evidence_dts call figure_1 uses;
+#   bessel arm -> the qdtf member with the filter fixed at
+#                 (fit_filter_n_poles, fit_filter_cutoff): rig metadata,
+#                 never fitted.
+# The evidence difference between the arms is the member Bayes factor per
+# recording; over the (truth in {box, bessel}) grid it fills the confusion
+# matrix, and its off-diagonal magnitude is the box member's bias on
+# filtered truth. Note the bessel arm emits no score/fim csvs (the qdtf
+# member is plain-likelihood; save_Score is excluded by design).
+#
+# FILE CONTRACT — must NOT define the injected names:
+#   exp_n_step_1, exp_n_step_2, exp_n_step_3, exp_n_samp, agonist_2, agonist_3
+#   observations_file, prior_file, fit_model, idname_box, idname_bessel
+#   num_scouts, beta_size, max_iter, adapt_beta_every, max_values
+#   seed_box, seed_bessel, fit_filter_n_poles, fit_filter_cutoff
+
+experiment = create_experiment(
+   experiment_structure = [
+      {exp_n_step_1, exp_n_samp, 0.0},
+      {exp_n_step_2, exp_n_samp, agonist_2},
+      {exp_n_step_3, exp_n_samp, agonist_3}],
+   frequency_of_sampling = 50e3,
+   initial_agonist = 0.0,
+   initial_time = 0.0)
+
+likelihood_algorithm = set_Likelihood_algorithm(
+   adaptive_aproximation = 0, recursive_approximation = 1,
+   averaging_approximation = 2, variance_correction_approximation = 0,
+   variance_approximation = 1, n_sub_dt = 1000)
+
+thermo_algorithm_dts = set_ThermoAlgorithm_dts(
+   num_scouts_per_ensemble = num_scouts,
+   number_trials_until_give_up = 100000,
+   max_iter_equilibrium = max_iter,
+   beta_size = beta_size,
+   thermo_jumps_every = 1,
+   save_every_param_size_factor = 1,
+   adapt_beta_every = adapt_beta_every,
+   adapt_beta_equalizer = "deltaBeta_deltaL_vfm",
+   adapt_beta_controler = "s",
+   adapt_beta_variance = "variance",
+   adapt_beta_nu = 0.5,
+   adapt_beta_t0 = 3000,
+   adjust_beta = 1,
+   acceptance_upper_limit = 1.95,
+   acceptance_lower_limit = 0.25,
+   desired_acceptance = 0.25)
+
+acquisition = set_Acquisition_filter(n_poles = fit_filter_n_poles,
+                                     cutoff_hz = fit_filter_cutoff)
+
+# box arm: the canonical member, identical in form to figure_1
+thermo_evidence_dts(idname = idname_box, model = fit_model,
+   prior = prior_file, likelihood_algorithm = likelihood_algorithm,
+   data = observations_file, experiment = experiment,
+   thermo_algorithm = thermo_algorithm_dts, sampling_interval = 1,
+   max_number_of_values_per_iteration = max_values, init_seed = seed_box)
+
+# bessel arm: same call plus the acquisition filter selects the qdtf member
+thermo_evidence_dts(idname = idname_bessel, model = fit_model,
+   prior = prior_file, likelihood_algorithm = likelihood_algorithm,
+   data = observations_file, experiment = experiment,
+   thermo_algorithm = thermo_algorithm_dts,
+   acquisition_filter = acquisition, sampling_interval = 1,
+   max_number_of_values_per_iteration = max_values, init_seed = seed_bessel)

@@ -30,6 +30,33 @@
 > commands (the direct entry point covers evaluation and samplers that need
 > only plain logL).
 
+> ADDENDUM 2026-09-05 ("Implementa todo", Luciano): the evidence hook and the
+> M1 truth generator are now implemented in HEAD, ahead of the rewrite-first
+> ordering of section 6 by owner decision (target: fit the real P2X2 record).
+> * Evidence: `Qdtf_Likelihood_Model` + plain `logLikelihood`/`simulate`
+>   overloads (legacy/qdtf_member.h; the member self-caches, the FuncMap is
+>   ignored) and `thermo_evidence_dts(..., acquisition_filter =
+>   set_Acquisition_filter(n_poles, cutoff_hz), ...)` — same DSL name, the
+>   extra argument selects the member; reporter tuple WITHOUT save_Score and
+>   save_Predictions (plain-likelihood member); inline-Experiment, stateless
+>   (legacy/CLI_thermo_evidence_dts.h).
+> * M1 generator: `sample_bessel` (legacy/qdtf_member.h) — the substep
+>   simulator with the partial-fraction filter state advanced exactly per
+>   piecewise-constant substep, instrument noise (Current_Noise = pre-filter
+>   PSD S0) filtered by the same system, filter started at the deterministic
+>   steady state, Proportional_Noise rejected; n_poles=0 delegates to the
+>   plain sampler bit-identically. DSL: the legacy 7-arg `simulate` plus
+>   `acquisition_filter`.
+> * Lane: projects/macroir_next/ops/local/figure_2_{sim,evidence}.macroir +
+>   dispatch_figure_2_local.sh — the M4 member-confusion matrix ({box,
+>   bessel} truth x two cutoffs x replicas; defaults fc = 600/200 Hz so
+>   fc·Delta = 1/0.32 at the figure_1 protocol, where the box member's
+>   damage is visible).
+> GATES STILL OWED before believing a real-data fit: the M1 oracle check
+> (independent matrix-exponential discretization at high rate — NOT scipy
+> filtfilt), the n_poles=0 bit-compat run, M4 itself (evidence selects the
+> right member on this lane), and decision 4 (the S0 prior convention).
+
 ## 1. The problem
 
 The patch-clamp amplifier low-pass filters the current before the digitizer samples it. In the Moffatt & Hume 2007 recordings (Methods of the JGP paper, verified in the PDF) the filter is a 4-pole Bessel with cutoff f_c = 10 kHz, and the sampling rate is fs = 50 kHz.

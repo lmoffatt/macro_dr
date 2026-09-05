@@ -12,6 +12,7 @@
 #include "maybe_error.h"
 #include "parallel_tempering.h"
 #include "parallel_tempering_linear_regression.h"
+#include "qdtf_member.h"
 #include "qmodel.h"
 
 namespace macrodr {
@@ -594,6 +595,197 @@ inline void calc_thermo_evidence_dts_continuation_2(std::string id, std::size_t 
             model_v);
     }
 }
+// ── Bessel (qdtf) member: evidence with the acquisition filter explicit ─────
+// The filter is rig metadata (pole count, −3 dB cutoff in Hz), never fitted:
+// it enters the DSL as its own object so the SAME likelihood_algorithm can be
+// passed to a box arm and a Bessel arm of a paired fit. n_poles = 0 selects
+// the qdtf box configuration (the regression anchor against the av=2 member).
+inline auto set_Acquisition_filter(std::size_t n_poles, double cutoff_hz) {
+    return std::pair(n_poles, cutoff_hz);
+}
+using acquisition_filter_type =
+    typename return_type<std::decay_t<decltype(&set_Acquisition_filter)>>::type;
+
+// Reporter tuple for the qdtf member: save_Score and save_Predictions are
+// EXCLUDED because the member is plain-likelihood only (no dlogLikelihood /
+// logLikelihoodPredictions overloads exist for it; see the adapter note in
+// qdtf_member.h). Everything else is the dts tuple unchanged: save_likelihood
+// and save_Evidence read stored walker state, save_RateParameter only needs
+// lik.m, so the telescopic/trapezoid evidence columns come out identical in
+// form to the box runs.
+inline auto new_thermo_Model_by_max_iter_dts_qdtf(
+    std::string path, std::string filename, std::size_t num_scouts_per_ensemble,
+    std::size_t thermo_jumps_every, std::size_t max_iter_equilibrium, std::size_t beta_size,
+    Saving_intervals sint, std::size_t initseed, std::size_t t_adapt_beta_every,
+    std::string t_adapt_beta_equalizer, std::string t_adapt_beta_constroler,
+    std::string t_adapt_beta_variance, double t_adapt_beta_nu, double t_adapt_beta_t0,
+    double t_adapt_beta_threshold, bool t_adjust_beta, double t_acceptance_upper_limit,
+    double t_acceptance_lower_limit, double t_desired_acceptance) {
+    return new_thermodynamic_integration(
+        thermo_less_than_max_iteration(max_iter_equilibrium),
+        save_mcmc<var::Parameters_transformed, save_Iter,
+                  save_likelihood<var::Parameters_transformed>,
+                  save_Parameter<var::Parameters_transformed>,
+                  save_RateParameter<var::Parameters_transformed>, save_Evidence>(
+            path, filename, std::pair(1ul, 1ul), get<Save_Likelihood_every>(sint())(),
+            get<Save_Parameter_every>(sint())(), get<Save_RateParameter_every>(sint())(),
+            get<Save_Evidence_every>(sint())()),
+        num_scouts_per_ensemble, thermo_jumps_every, beta_size, initseed, t_adapt_beta_every,
+        t_adapt_beta_equalizer, t_adapt_beta_constroler, t_adapt_beta_variance, t_adapt_beta_nu,
+        t_adapt_beta_t0, t_adapt_beta_threshold, t_adjust_beta, t_acceptance_upper_limit,
+        t_acceptance_lower_limit, t_desired_acceptance);
+}
+
+// Core evidence run for the qdtf member over an in-memory Experiment. Same
+// skeleton as run_thermo_evidence_dts, but the likelihood is the concrete
+// Qdtf_Likelihood_Model (no flag-domain variant: the member has no member
+// flags, only the filter). Of likelihood_algorithm only n_sub_dt is used
+// (for the concept-satisfying simulate overload); the av/variance/taylor
+// flags do not apply to this member.
+inline void run_thermo_evidence_dts_qdtf(std::string filename, std::string model,
+                                         std::string prior, likelihood_algo_type likelihood,
+                                         std::string recording, const Experiment& experiment,
+                                         thermo_algo_dts_type thermo_algorithm,
+                                         acquisition_filter_type acquisition_filter,
+                                         std::size_t sampling_interval,
+                                         std::size_t max_number_of_values_per_iteration,
+                                         std::size_t myseed) {
+    using namespace macrodr;
+
+    auto ftbl3 = cmd::get_function_Table_maker_St(filename, sampling_interval,
+                                                  max_number_of_values_per_iteration)();
+
+    auto Maybe_model_v = get_model(model);
+
+    if (!Maybe_model_v) {
+        std::cerr << Maybe_model_v.error()();
+    } else {
+        auto model_v = std::move(Maybe_model_v.value());
+        return std::visit(
+            [&filename, &ftbl3, &experiment, &recording, &prior, &likelihood, &thermo_algorithm,
+             &acquisition_filter, &myseed, sampling_interval,
+             max_number_of_values_per_iteration](auto model0ptr) {
+                std::string sep = ",";
+                auto& model0 = *model0ptr;
+
+                auto [num_scouts_per_ensemble, number_trials_until_give_up, thermo_jumps_every,
+                      max_iter_equilibrium, beta_size, save_every_param_size_factor,
+                      t_adapt_beta_every, t_adapt_beta_equalizer, t_adapt_beta_controler,
+                      t_adapt_beta_variance, t_adapt_beta_nu, t_adapt_beta_t0, t_adjust_beta,
+                      t_acceptance_upper_limit, t_acceptance_lower_limit, t_desired_acceptance] =
+                    std::move(thermo_algorithm);
+
+                auto n_sub_dt = std::get<5>(likelihood);
+
+                auto Maybe_param1_prior =
+                    var::load_Prior(prior, sep, model0.model_name(), model0.names());
+                if (!Maybe_param1_prior) {
+                    std::cerr << "\n-------------errror------------\n"
+                              << Maybe_param1_prior.error()();
+                } else {
+                    auto param1_prior = std::move(Maybe_param1_prior.value());
+
+                    Recording y;
+                    auto Maybe_y = load_Recording_Data(recording, ",", y);
+                    if (Maybe_y) {
+                        auto saving_intervals = Saving_intervals(Vector_Space(
+                            Save_Evidence_every(
+                                std::pair(sampling_interval, max_number_of_values_per_iteration)),
+                            Save_Likelihood_every(
+                                std::pair(sampling_interval, max_number_of_values_per_iteration)),
+                            Save_Parameter_every(
+                                std::pair(sampling_interval, max_number_of_values_per_iteration)),
+                            Save_RateParameter_every(
+                                std::pair(sampling_interval, max_number_of_values_per_iteration)),
+                            Save_Predictions_every(
+                                std::pair(sampling_interval, max_number_of_values_per_iteration))));
+
+                        auto tmi = new_thermo_Model_by_max_iter_dts_qdtf(
+                            "", filename, num_scouts_per_ensemble, thermo_jumps_every,
+                            max_iter_equilibrium, beta_size, saving_intervals, myseed,
+                            t_adapt_beta_every, t_adapt_beta_equalizer, t_adapt_beta_controler,
+                            t_adapt_beta_variance, t_adapt_beta_nu, t_adapt_beta_t0, 0.0,
+                            t_adjust_beta, t_acceptance_upper_limit, t_acceptance_lower_limit,
+                            t_desired_acceptance);
+
+                        auto lik = Qdtf_Likelihood_Model<std::decay_t<decltype(model0)>>{
+                            model0, Simulation_n_sub_dt(n_sub_dt),
+                            static_cast<int>(acquisition_filter.first),
+                            acquisition_filter.second};
+
+                        auto opt = thermo_evidence<true>(ftbl3, std::move(tmi), param1_prior, lik,
+                                                         y, experiment);
+                    }
+                }
+            },
+            model_v);
+    }
+}
+
+// Inline-Experiment entry for the qdtf member, stateless like the inline box
+// entry above (no restart txt; continuation applies to file-based runs only).
+inline void calc_thermo_evidence_dts_qdtf(std::string id, std::string model, std::string prior,
+                                          likelihood_algo_type likelihood, std::string recording,
+                                          const Experiment& experiment,
+                                          thermo_algo_dts_type thermo_algorithm,
+                                          acquisition_filter_type acquisition_filter,
+                                          std::size_t sampling_interval,
+                                          std::size_t max_number_of_values_per_iteration,
+                                          std::size_t myseed) {
+    myseed = calc_seed(myseed);
+    std::string filename = id + "_" + model + "_" + time_now() + "_" + std::to_string(myseed);
+    run_thermo_evidence_dts_qdtf(filename, model, prior, likelihood, recording, experiment,
+                                 thermo_algorithm, acquisition_filter, sampling_interval,
+                                 max_number_of_values_per_iteration, myseed);
+}
+
+// Bessel-filtered simulation entry (the plan's M1 truth generator), mirroring
+// the legacy 7-arg simulate in filename and output conventions plus the
+// acquisition filter argument. n_poles = 0 delegates to the unfiltered
+// substep sampler bit-identically (the M1 gate). Substeps only; the
+// include_N_states channel is not carried (plain Recording output).
+inline Maybe_error<std::string> run_qdtf_simulation(
+    std::string filename_prefix, std::string recording_file, const Experiment& experiment,
+    std::size_t myseed, const std::string& modelName, parameters_value_type parameter_files,
+    simulation_algo_type sim_algo_type, acquisition_filter_type acquisition_filter) {
+    if (sim_algo_type.algorithm != "substeps")
+        return error_message(
+            "simulate with acquisition_filter supports number_of_substeps only, got algorithm \"" +
+            sim_algo_type.algorithm + "\"");
+    if (sim_algo_type.include_N_states)
+        return error_message("simulate with acquisition_filter does not carry N-state evolution");
+    Recording recording;
+    auto Maybe_y = load_Recording_Data(recording_file, ",", recording);
+    if (!Maybe_y)
+        return Maybe_y.error();
+    auto Maybe_model_v = get_model(modelName);
+    if (!Maybe_model_v)
+        return Maybe_model_v.error();
+    auto model_v = std::move(Maybe_model_v.value());
+    return std::visit(
+        [&](auto model0ptr) -> Maybe_error<std::string> {
+            auto& model0 = *model0ptr;
+            auto seed = calc_seed(myseed);
+            mt_64i mt(seed);
+            auto Maybe_parameter_values = var::load_Parameters(
+                parameter_files.first, parameter_files.second, model0.model_name(), model0.names());
+            if (!Maybe_parameter_values)
+                return Maybe_parameter_values.error();
+            auto param1 = Maybe_parameter_values.value().standard_parameter();
+            std::string filename = filename_prefix + "_" + model0.model_name() + "_" + time_now() +
+                                   "_" + std::to_string(seed);
+            auto sim = sample_bessel(mt, model0, param1, experiment,
+                                     sim_algo_type.number_of_substeps,
+                                     static_cast<int>(acquisition_filter.first),
+                                     acquisition_filter.second, recording);
+            if (!sim)
+                return sim.error();
+            save_Recording(filename + "_simulation.csv", ",", get<Recording>(sim.value()()));
+            return filename + "_simulation.csv";
+        },
+        model_v);
+}
+
 inline dsl::Compiler<dsl::Lexer> make_dts_compiler() {
     dsl::Compiler<dsl::Lexer> cm;
     cm.push_function(
@@ -637,6 +829,28 @@ inline dsl::Compiler<dsl::Lexer> make_dts_compiler() {
                                std::size_t, std::size_t>(
             &calc_thermo_evidence_dts_2, "idname", "model", "prior", "likelihood_algorithm", "data",
             "experiment", "thermo_algorithm", "sampling_interval",
+            "max_number_of_values_per_iteration", "init_seed"));
+    cm.push_function("set_Acquisition_filter",
+                     dsl::to_typed_function<std::size_t, double>(&set_Acquisition_filter,
+                                                                 "n_poles", "cutoff_hz"));
+    // Same DSL name as the legacy 7-arg simulate; the extra named argument
+    // (acquisition_filter) selects the Bessel-filtered truth generator.
+    cm.push_function(
+        "simulate",
+        dsl::to_typed_function<std::string, std::string, const Experiment&, std::size_t,
+                               const std::string&, parameters_value_type, simulation_algo_type,
+                               acquisition_filter_type>(
+            &run_qdtf_simulation, "filename_prefix", "recording", "experiment", "init_seed",
+            "modelName", "parameter_values", "simulation_algorithm", "acquisition_filter"));
+    // Same DSL name, one extra named argument (acquisition_filter) selects
+    // the Bessel/qdtf member; inline-Experiment form only (stateless).
+    cm.push_function(
+        "thermo_evidence_dts",
+        dsl::to_typed_function<std::string, std::string, std::string, likelihood_algo_type,
+                               std::string, const Experiment&, thermo_algo_dts_type,
+                               acquisition_filter_type, std::size_t, std::size_t, std::size_t>(
+            &calc_thermo_evidence_dts_qdtf, "idname", "model", "prior", "likelihood_algorithm",
+            "data", "experiment", "thermo_algorithm", "acquisition_filter", "sampling_interval",
             "max_number_of_values_per_iteration", "init_seed"));
     cm.push_function(
         "thermo_evidence_dts_continuation",

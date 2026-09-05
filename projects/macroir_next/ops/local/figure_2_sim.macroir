@@ -1,0 +1,36 @@
+# figure_2_sim.macroir — simulate ONE replica recording for the Figure 2
+# member-confusion campaign (Bessel plan M4): same three-segment experiment
+# as figure_1_sim, plus the acquisition filter on the simulator.
+#   sim_filter_n_poles = 0  -> unfiltered box truth (bit-identical to the
+#                              plain substep simulator; the M1 gate)
+#   sim_filter_n_poles = 4  -> causal Bessel-filtered truth: the filter state
+#                              rides the substep channel path exactly, and the
+#                              instrument noise (Current_Noise read as the
+#                              pre-filter PSD S0) is filtered by the same
+#                              system (sample_bessel, legacy/qdtf_member.h).
+#
+# FILE CONTRACT — must NOT define the injected names:
+#   exp_n_step_1, exp_n_step_2, exp_n_step_3, exp_n_samp, agonist_2, agonist_3
+#   truth_model, truth_par_file, observations_template, sim_prefix, sim_seed
+#   sim_filter_n_poles, sim_filter_cutoff
+
+experiment = create_experiment(
+   experiment_structure = [
+      {exp_n_step_1, exp_n_samp, 0.0},
+      {exp_n_step_2, exp_n_samp, agonist_2},
+      {exp_n_step_3, exp_n_samp, agonist_3}],
+   frequency_of_sampling = 50e3,
+   initial_agonist = 0.0,
+   initial_time = 0.0)
+
+truth_parameters = load_Parameter(filename = truth_par_file, separator = ",")
+
+sim_algo = simulation_algorithm(include_N_states = 0, number_of_substeps = 1000)
+
+acquisition = set_Acquisition_filter(n_poles = sim_filter_n_poles,
+                                     cutoff_hz = sim_filter_cutoff)
+
+simulate(filename_prefix = sim_prefix, recording = observations_template,
+   experiment = experiment, init_seed = sim_seed, modelName = truth_model,
+   parameter_values = truth_parameters, simulation_algorithm = sim_algo,
+   acquisition_filter = acquisition)

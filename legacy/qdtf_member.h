@@ -214,4 +214,177 @@ auto qdtf_log_Likelihood(const Model& model, const C_Parameters& par, const Reco
     return logLs(logL(sum_logl), elogL(0.0), vlogL(0.0));
 }
 
+// ── Tempering-world adapter ──────────────────────────────────────────────
+// Qdtf_Likelihood_Model: the Bessel member as a concrete likelihood object
+// the parallel-tempering machinery can drive (thermo_evidence and friends).
+// It satisfies is_likelihood_model (mcmc.h:72) through the logLikelihood and
+// simulate overloads below. The FuncMap table argument is ignored: the
+// member self-caches per evaluation (eig_cache per agonist concentration,
+// win_cache per (dt, agonist); the pole set is fixed per run), which is the
+// same per-call semantics the box world gets from f.create("_lik").
+//
+// Sampler support is PLAIN likelihood only: there is deliberately no
+// dlogLikelihood / logLikelihoodPredictions overload, so a reporter tuple
+// for this member must exclude save_Score and save_Predictions (see
+// new_thermo_Model_by_max_iter_dts_qdtf in CLI_thermo_evidence_dts.h).
+// Note qdtf_log_Likelihood returns elogL = vlogL = 0: the across-walker
+// statistics that drive beta_min and the ladder equalizer do not use them,
+// but vlogL-based diagnostic columns will read 0 for this member.
+template <class Model>
+struct Qdtf_Likelihood_Model {
+    Model m;
+    Simulation_n_sub_dt n_sub_dt;
+    int n_poles;
+    double cutoff_hz;
+};
+
+template <class FuncTable, class Model>
+Maybe_error<logLs> logLikelihood(FuncTable&, const Qdtf_Likelihood_Model<Model>& lik,
+                                 const var::Parameters_values& p, const Recording& y,
+                                 const Experiment& x) {
+    return qdtf_log_Likelihood(lik.m, p, y, x, lik.n_poles, lik.cutoff_hz);
+}
+
+// Box simulator pass-through: exists ONLY to satisfy is_likelihood_model.
+// It does NOT apply the acquisition filter; Bessel-filtered truth is
+// sample_bessel below. Never use this overload as filtered truth.
+template <class Model, class Parameters>
+auto simulate(mt_64i& mt, const Qdtf_Likelihood_Model<Model>& lik, Parameters const& p,
+              const Experiment& var) {
+    return Macro_DMR{}
+        .sample(mt, lik.m, p, var, make_substep_simulation_parameters(lik.n_sub_dt()))
+        .value()();
+}
+
+// ── M1: Bessel-filtered truth generator ─────────────────────────────────
+// (macroir_bessel_plan.md milestone M1.) The substep simulator with the
+// analog filter carried along the sampled channel path:
+//   * the channel path is piecewise-constant on the substep grid (that is
+//     what the multinomial substep simulation produces), and over each
+//     constant piece the filter ODE has the exact affine solution
+//       z_k <- e^{p_k δ} z_k + r_k (e^{p_k δ}−1)/p_k · u,
+//     one complex accumulator per pole of the partial-fraction realization
+//     h(t) = Σ_k r_k e^{p_k t} (acquisition_filter.h); e/w are precomputed
+//     once per distinct substep length;
+//   * the instrument noise enters BEFORE the filter, as it does physically:
+//     Current_Noise is read as the pre-filter (one-sided) PSD S0 — the same
+//     number whose box convention is per-sample variance S0/Δ — realized as
+//     a piecewise-constant input of variance S0/δ per substep and filtered
+//     by the same system. With f_c·δ ~ 1e-4 the hold bias is O((f_c·δ)²),
+//     far below anything measurable;
+//   * the filter is stationary since before the record: z starts at the
+//     steady state of the initial deterministic current (Σ_k z_k = u0 by
+//     H(0)=1). The noise component of z starts at zero and settles within
+//     ~1/f_c, i.e. inside the first window at these rates;
+//   * the recorded value per window is the accumulator average of the
+//     filter OUTPUT (the recorder's own block average), plus
+//     Current_Baseline (H(0)=1, an offset, never filter input) and the
+//     Pink_Noise additive per-observation floor;
+//   * Proportional_Noise is rejected: its box scaling does not transfer
+//     under a filter (plan section 8).
+// n_poles = 0 delegates to the unfiltered box sampler, bit-identical.
+template <class Model>
+Maybe_error<Simulated_Recording<var::please_include<>>> sample_bessel(
+    mt_64i& mt, const Model& model, const var::Parameters_values& par, const Experiment& e,
+    std::size_t n_sub_dt, int n_poles, double cutoff_hz, const Recording& r = Recording{}) {
+    auto md = Macro_DMR{};
+    if (n_poles == 0)
+        return md.sample(mt, model, par, e, make_substep_simulation_parameters(n_sub_dt), r);
+    if (n_sub_dt == 0)
+        return error_message("sample_bessel: number_of_substeps must be greater than zero");
+
+    auto Maybe_m = model(par);
+    if (!is_valid(Maybe_m))
+        return get_error(Maybe_m);
+    auto m = std::move(get_value(Maybe_m));
+
+    if (get<Proportional_Noise>(m).value() > 0.0)
+        return error_message(
+            "sample_bessel: Proportional_Noise is not defined under an acquisition filter "
+            "(its box scaling does not transfer); set it to zero for this member");
+
+    auto filt = acqf::make_bessel_filter(n_poles, cutoff_hz);
+    if (auto err = acqf::validate(filt); err.has_value())
+        return error_message("sample_bessel filter construction: " + err.value());
+
+    const double fs = get<Frequency_of_Sampling>(e).value();
+    const double S0 = get<Current_Noise>(m)();
+    const double pink = get<Pink_Noise>(m).value();
+    const double baseline = get<Current_Baseline>(m)();
+    auto& t_g = get<g>(m);
+
+    // initial state: channels from the stationary distribution, filter at
+    // the steady state of the resulting deterministic current
+    auto N = Macro_DMR::sample_Multinomial(
+        mt, P_mean(get<P_initial>(m)()),
+        static_cast<std::size_t>(std::llround(get<N_Ch_mean>(m)()[0])));
+    const std::size_t n_poles_t = filt.poles.size();
+    std::vector<acqf::cdouble> z(n_poles_t);
+    {
+        const double u0 = getvalue(N() * t_g());
+        for (std::size_t k = 0; k < n_poles_t; ++k)
+            z[k] = -filt.residues[k] * u0 / filt.poles[k];
+    }
+
+    // per-substep-length propagators: e_k = exp(p_k δ), w_k = r_k(e_k−1)/p_k
+    struct Prop {
+        std::vector<acqf::cdouble> ee, ww;
+    };
+    std::map<double, Prop> prop_cache;
+    auto get_prop = [&](double sub_dt) -> const Prop& {
+        auto it = prop_cache.find(sub_dt);
+        if (it != prop_cache.end())
+            return it->second;
+        Prop pr;
+        pr.ee.resize(n_poles_t);
+        pr.ww.resize(n_poles_t);
+        for (std::size_t k = 0; k < n_poles_t; ++k) {
+            pr.ee[k] = std::exp(filt.poles[k] * sub_dt);
+            pr.ww[k] = filt.residues[k] * (pr.ee[k] - 1.0) / filt.poles[k];
+        }
+        return prop_cache.emplace(sub_dt, std::move(pr)).first->second;
+    };
+
+    Simulated_Recording<var::please_include<>> sim{};
+    get<SeedNumber>(sim())() = mt.initial_seed();
+    std::normal_distribution<double> gauss{};
+
+    for (auto const& t_step : get<Recording_conditions>(e)()) {
+        double ysum_f = 0.0;
+        std::size_t win_samples = 0;
+        for (auto const& t_s : get<Agonist_evolution>(t_step)()) {
+            const auto n_samples = get<number_of_samples>(t_s)();
+            const double dt = n_samples / fs;
+            const double sub_dt = dt / n_sub_dt;
+            const double sub_sample = 1.0 * n_samples / n_sub_dt;
+            auto tQx = md.calc_Qx(m, get<Agonist_concentration>(t_s));
+            auto Maybe_t_P = md.calc_P(m, tQx, sub_dt, get<min_P>(m)());
+            if (!Maybe_t_P)
+                return Maybe_t_P.error();
+            auto t_P = std::move(Maybe_t_P.value());
+            auto const& pr = get_prop(sub_dt);
+            const double noise_sd = std::sqrt(S0 / sub_dt);
+            for (std::size_t i = 0; i < n_sub_dt; ++i) {
+                N = Macro_DMR::sample_Multinomial(mt, t_P, N);
+                const double u = getvalue(N() * t_g()) + gauss(mt) * noise_sd;
+                acqf::cdouble out{0.0, 0.0};
+                for (std::size_t k = 0; k < n_poles_t; ++k) {
+                    z[k] = pr.ee[k] * z[k] + pr.ww[k] * u;
+                    out += z[k];
+                }
+                ysum_f += out.real() * sub_sample;
+            }
+            win_samples += n_samples;
+        }
+        double y = ysum_f / win_samples + baseline;
+        if (pink > 0)
+            y += gauss(mt) * std::sqrt(pink);
+        get<Recording>(sim())().emplace_back(Patch_current(y));
+    }
+    for (std::size_t i = 0; i < size(r()); ++i)
+        if (std::isnan(r()[i]()))
+            get<Recording>(sim())()[i]() = r()[i]();
+    return sim;
+}
+
 }  // namespace macrodr
