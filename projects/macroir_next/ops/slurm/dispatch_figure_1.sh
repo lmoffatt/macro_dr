@@ -129,7 +129,8 @@ if [ -f "$TUNE_FILE" ]; then
     echo "[fig1] tuning.env: CPUS=$CPUS beta_size=$BETA_SIZE jobs/node=${JOBS_PER_NODE:-?} s/iter=${SECONDS_PER_ITER:-?}"
     if [ -n "${SECONDS_PER_ITER:-}" ]; then
         est=$(python3 -c "print(round($SECONDS_PER_ITER*${MAX_ITER:-30000}/3600, 2))")
-        echo "[fig1] predicted wall-clock per job: ~${est} h"
+        est2=$(python3 -c "print(round(2*$SECONDS_PER_ITER*${MAX_ITER:-30000}/3600, 2))")
+        echo "[fig1] predicted wall-clock: ~${est} h per fit, ~${est2} h per pair (= packed-job wall)"
     fi
 fi
 BETA_SIZE="${BETA_SIZE:-16}"
