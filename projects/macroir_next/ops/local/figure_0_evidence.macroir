@@ -1,0 +1,62 @@
+# figure_0_evidence.macroir — ONE evidence fit, used only by the figure_0
+# parallelism characterization and its per-campaign probe, in two roles:
+#   - DISCOVERY (adjust_beta_flag = 1): let the ladder insert/remove rungs
+#     until it settles, to learn the EFFECTIVE rung count this workload needs
+#     (the per-iteration load scales with n_beta x n_walkers, so timing at a
+#     nominal beta_size measures the wrong load);
+#   - TIMING (adjust_beta_flag = 0): fixed ladder at the discovered count, so
+#     the work per iteration is stable and seconds/iteration are clean
+#     (position adaptation stays on; it is cost-neutral).
+# A single thermo_evidence_dts call: timing does not need the paired fit.
+#
+# FILE CONTRACT — must NOT define the injected names:
+#   exp_n_step_1, exp_n_step_2, exp_n_step_3, exp_n_samp, agonist_2, agonist_3
+#   observations_file, prior_file, fit_model, run_idname
+#   num_scouts, beta_size, max_iter, adapt_beta_every, max_values, mcmc_seed
+#
+# adjust_beta is bool and a bool CANNOT be injected: an injected `--name = expr`
+# can only bind size_t (get_number), double or string identifiers, and a bool
+# parameter accepts nothing but a literal written directly in argument position
+# (identifier arguments need the exact type; a bare `true` assignment does not
+# compile). `adjust_beta_flag` below is therefore a SUBSTITUTION MARKER, not an
+# injected name: run_figure_0.sh sed-copies this file into the workdir as
+# figure_0_evidence_{discover,timing}.macroir with the literal 1 / 0 in place.
+# This canonical file is not runnable as-is.
+
+experiment = create_experiment(
+   experiment_structure = [
+      {exp_n_step_1, exp_n_samp, 0.0},
+      {exp_n_step_2, exp_n_samp, agonist_2},
+      {exp_n_step_3, exp_n_samp, agonist_3}],
+   frequency_of_sampling = 50e3,
+   initial_agonist = 0.0,
+   initial_time = 0.0)
+
+likelihood_algorithm = set_Likelihood_algorithm(
+   adaptive_aproximation = 0, recursive_approximation = 1,
+   averaging_approximation = 2, variance_correction_approximation = 0,
+   variance_approximation = 1, n_sub_dt = 1000)
+
+thermo_algorithm_dts = set_ThermoAlgorithm_dts(
+   num_scouts_per_ensemble = num_scouts,
+   number_trials_until_give_up = 100000,
+   max_iter_equilibrium = max_iter,
+   beta_size = beta_size,
+   thermo_jumps_every = 1,
+   save_every_param_size_factor = 1,
+   adapt_beta_every = adapt_beta_every,
+   adapt_beta_equalizer = "deltaBeta_deltaL_vfm",
+   adapt_beta_controler = "s",
+   adapt_beta_variance = "variance",
+   adapt_beta_nu = 0.5,
+   adapt_beta_t0 = 3000,
+   adjust_beta = adjust_beta_flag,
+   acceptance_upper_limit = 1.95,
+   acceptance_lower_limit = 0.25,
+   desired_acceptance = 0.25)
+
+thermo_evidence_dts(idname = run_idname, model = fit_model,
+   prior = prior_file, likelihood_algorithm = likelihood_algorithm,
+   data = observations_file, experiment = experiment,
+   thermo_algorithm = thermo_algorithm_dts, sampling_interval = 1,
+   max_number_of_values_per_iteration = max_values, init_seed = mcmc_seed)

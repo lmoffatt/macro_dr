@@ -62,6 +62,15 @@ class save_Evidence {
     std::ofstream f;
     std::size_t sampling_interval;
     std::size_t max_number_of_values_per_iteration;
+    // Telescopic (stepping-stone) online accumulators, one slot per
+    // adjacent-rung tramo k: streaming log-sum-exp of exp(dbeta_k * logL)
+    // over the walkers of the lower rung (up) and of exp(-dbeta_k * logL)
+    // over the upper rung (down). Reset whenever the beta ladder changes
+    // (beta adaptation); see report(). Assumes the ascending (dts) ladder.
+    by_beta<double> ss_betas;
+    std::vector<double> ss_max_up, ss_s1_up, ss_s2_up;
+    std::vector<double> ss_max_dn, ss_s1_dn, ss_s2_dn;
+    std::vector<std::size_t> ss_n;
     save_Evidence(std::string const& path, std::size_t t_sampling_interval,
                   std::size_t t_max_number_of_values_per_iteration)
         : fname{path},
@@ -100,6 +109,12 @@ class save_Evidence {
             << s.sep << "deltaEvidence_variance" << s.sep << "Acceptance_variance" << s.sep
             << "emcee_stat_count" << s.sep << "emcee_stat_rate" << s.sep << "thermo_jump_stat_count"
             << s.sep << "thermo_jump_rate" << s.sep << "deltaBeta_deltalogL"
+
+            << s.sep << "plog_Evidence_ss" << s.sep << "log_Evidence_ss" << s.sep
+            << "plog_Evidence_ss_dn" << s.sep << "log_Evidence_ss_dn" << s.sep
+            << "mean_plog_Evidence_ss" << s.sep << "mean_log_Evidence_ss" << s.sep
+            << "mean_plog_Evidence_ss_dn" << s.sep << "mean_log_Evidence_ss_dn" << s.sep
+            << "ss_ess_up" << s.sep << "ss_ess_dn" << s.sep << "ss_count"
             << "\n";
     }
 
@@ -120,6 +135,88 @@ class save_Evidence {
 
             auto dBdL = calculate_deltaBeta_deltaL(data);
 
+            // --- telescopic (stepping-stone) online accumulation ---
+            // ln Z = sum_k ln E_{beta_k}[L^{dbeta_k}]: exact for the finite
+            // ladder, includes the [0, beta_min] tramo the trapezoid skips.
+            // Two lifetimes, mirroring log_Evidence vs mean_log_Evidence:
+            // per-event (this report's walkers; heavy-tail-biased low, use as
+            // diagnostic) and windowed (accumulated across report events,
+            // reset on ladder change; the estimator). Both directions.
+            auto n_tramos_ss = data.beta.size() > 0 ? data.beta.size() - 1 : 0;
+            std::vector<double> ev_max_up(n_tramos_ss,
+                                          -std::numeric_limits<double>::infinity());
+            std::vector<double> ev_s1_up(n_tramos_ss, 0.0);
+            std::vector<double> ev_s2_up(n_tramos_ss, 0.0);
+            std::vector<double> ev_max_dn(n_tramos_ss,
+                                          -std::numeric_limits<double>::infinity());
+            std::vector<double> ev_s1_dn(n_tramos_ss, 0.0);
+            std::vector<double> ev_s2_dn(n_tramos_ss, 0.0);
+            std::vector<std::size_t> ev_n(n_tramos_ss, 0ul);
+            {
+                auto n_beta_ss = data.beta.size();
+                // Tolerant ladder comparison: late beta adaptations move the
+                // ladder by cosmetic amounts (the adaptation gain decays as
+                // t0/(t0+iter) but never reaches zero), and resetting the
+                // windows on every such jiggle would keep them permanently
+                // empty. Mixing samples across a relative beta drift of 1e-8
+                // biases a factor by ~ dbeta*|logL| ~ 1e-4 nats at
+                // |logL| ~ 1e4: negligible. The snapshot stays fixed until a
+                // reset, so drift ACCUMULATED beyond the tolerance still
+                // triggers one.
+                constexpr double ladder_rtol = 1e-8;
+                bool ladder_changed = (s.ss_betas.size() != n_beta_ss);
+                if (!ladder_changed)
+                    for (std::size_t k = 0; k < n_beta_ss; ++k)
+                        if (std::abs(s.ss_betas[k] - data.beta[k]) >
+                            ladder_rtol *
+                                std::max(std::abs(s.ss_betas[k]), std::abs(data.beta[k]))) {
+                            ladder_changed = true;
+                            break;
+                        }
+                if (ladder_changed) {
+                    s.ss_betas = data.beta;
+                    s.ss_max_up.assign(n_tramos_ss,
+                                       -std::numeric_limits<double>::infinity());
+                    s.ss_s1_up.assign(n_tramos_ss, 0.0);
+                    s.ss_s2_up.assign(n_tramos_ss, 0.0);
+                    s.ss_max_dn.assign(n_tramos_ss,
+                                       -std::numeric_limits<double>::infinity());
+                    s.ss_s1_dn.assign(n_tramos_ss, 0.0);
+                    s.ss_s2_dn.assign(n_tramos_ss, 0.0);
+                    s.ss_n.assign(n_tramos_ss, 0ul);
+                }
+                auto stream_lse = [](double z, double& m, double& s1, double& s2) {
+                    if (z > m) {
+                        if (std::isfinite(m)) {
+                            auto r = std::exp(m - z);
+                            s1 *= r;
+                            s2 *= r * r;
+                        }
+                        m = z;
+                    }
+                    s1 += std::exp(z - m);
+                    s2 += std::exp(2.0 * (z - m));
+                };
+                for (std::size_t k = 0; k + 1 < n_beta_ss; ++k) {
+                    auto db = data.beta[k + 1] - data.beta[k];
+                    auto nw = data.walkers[k].size();
+                    for (std::size_t iw = 0; iw < nw; ++iw) {
+                        auto lo = get<logL>(data.walkers[k][iw].logL)();
+                        auto hi = get<logL>(data.walkers[k + 1][iw].logL)();
+                        if (std::isfinite(lo)) {
+                            stream_lse(db * lo, ev_max_up[k], ev_s1_up[k], ev_s2_up[k]);
+                            stream_lse(db * lo, s.ss_max_up[k], s.ss_s1_up[k], s.ss_s2_up[k]);
+                        }
+                        if (std::isfinite(hi)) {
+                            stream_lse(-db * hi, ev_max_dn[k], ev_s1_dn[k], ev_s2_dn[k]);
+                            stream_lse(-db * hi, s.ss_max_dn[k], s.ss_s1_dn[k], s.ss_s2_dn[k]);
+                        }
+                    }
+                    ev_n[k] = nw;
+                    s.ss_n[k] += nw;
+                }
+            }
+
             auto meanLik = mean_logL(data);
             auto meanPrior = mean_logP(data);
 
@@ -129,6 +226,10 @@ class save_Evidence {
             logL_statistics m_logL = {};
             logLs log_Evidence = {};
             logL_statistics m_log_Evidence = {};
+            double log_Evidence_ss = 0.0;
+            double log_Evidence_ss_dn = 0.0;
+            double mean_log_Evidence_ss = 0.0;
+            double mean_log_Evidence_ss_dn = 0.0;
             for (std::size_t i_beta = 0; i_beta < data.get_Beta().size(); ++i_beta) {
                 auto logL0 = r_logL;
                 auto m_logL0 = m_logL;
@@ -142,6 +243,29 @@ class save_Evidence {
                     log_Evidence = log_Evidence + plog_Evidence;
 
                     m_log_Evidence = m_log_Evidence + m_plog_Evidence;
+                }
+                double plog_ss = 0.0;
+                double plog_ss_dn = 0.0;
+                double m_plog_ss = 0.0;
+                double m_plog_ss_dn = 0.0;
+                double ess_ss_up = 0.0;
+                double ess_ss_dn = 0.0;
+                std::size_t ss_count = 0;
+                if ((i_beta > 0) && (i_beta - 1 < s.ss_n.size()) && (s.ss_n[i_beta - 1] > 0)) {
+                    auto k = i_beta - 1;
+                    ss_count = s.ss_n[k];
+                    if (ev_n[k] > 0) {
+                        plog_ss = ev_max_up[k] + std::log(ev_s1_up[k] / ev_n[k]);
+                        plog_ss_dn = -(ev_max_dn[k] + std::log(ev_s1_dn[k] / ev_n[k]));
+                        log_Evidence_ss += plog_ss;
+                        log_Evidence_ss_dn += plog_ss_dn;
+                    }
+                    m_plog_ss = s.ss_max_up[k] + std::log(s.ss_s1_up[k] / ss_count);
+                    m_plog_ss_dn = -(s.ss_max_dn[k] + std::log(s.ss_s1_dn[k] / ss_count));
+                    ess_ss_up = s.ss_s1_up[k] * s.ss_s1_up[k] / s.ss_s2_up[k];
+                    ess_ss_dn = s.ss_s1_dn[k] * s.ss_s1_dn[k] / s.ss_s2_dn[k];
+                    mean_log_Evidence_ss += m_plog_ss;
+                    mean_log_Evidence_ss_dn += m_plog_ss_dn;
                 }
                 auto emcee_count = data.emcee_stat[i_beta]().count();
                 auto emcee_rate = data.emcee_stat[i_beta]().rate();
@@ -159,7 +283,12 @@ class save_Evidence {
                     << deltaEvidence_variance[std::max(1ul, i_beta) - 1] << s.sep
                     << Acceptance_variance[std::max(1ul, i_beta) - 1] << s.sep << emcee_count
                     << s.sep << emcee_rate << s.sep << thermo_count << s.sep << thermo_rate << s.sep
-                    << dBdL[std::max(1ul, i_beta) - 1] << "\n";
+                    << dBdL[std::max(1ul, i_beta) - 1]
+
+                    << s.sep << plog_ss << s.sep << log_Evidence_ss << s.sep << plog_ss_dn << s.sep
+                    << log_Evidence_ss_dn << s.sep << m_plog_ss << s.sep << mean_log_Evidence_ss
+                    << s.sep << m_plog_ss_dn << s.sep << mean_log_Evidence_ss_dn << s.sep
+                    << ess_ss_up << s.sep << ess_ss_dn << s.sep << ss_count << "\n";
             }
         }
     }

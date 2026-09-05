@@ -1,0 +1,71 @@
+# figure_1_evidence.macroir — paired evidence for one Figure 1 replica:
+# fits BOTH models (scheme_CCO and scheme_COC) to the SAME recording, so the
+# per-replica Delta logZ is paired and the shared dataset noise cancels.
+#
+# Uses the inline-Experiment overload of thermo_evidence_dts (2026-09-04):
+# the experiment object flows straight in, so the dispatcher can sweep the
+# protocol via injected segments, exactly like the eLife figure lanes.
+# Likelihood member: the canonical IR of the paper (post 2026-09-02 retarget:
+# adaptive=0, recursive=1, averaging=2, variance_approximation=1,
+# variance_correction_approximation=0). Any other combo fails at runtime by
+# domain check.
+#
+# FILE CONTRACT — this script must NOT define the injected names:
+#   exp_n_step_1, exp_n_step_2, exp_n_step_3, exp_n_samp, agonist_2, agonist_3
+#       (MUST match the segments the recording was simulated with)
+#   observations_file        (absolute path to the, possibly nan-masked, recording csv)
+#   prior_cco_file, prior_coc_file   (absolute paths; COC prior = twin-centered)
+#   idname_cco, idname_coc   (unique per job and fit)
+#   num_scouts               (walkers per rung)
+#   beta_size                (rung count; positions self-adapt)
+#   max_iter                 (>= ~30000 so ~300 full-ladder score events accrue)
+#   adapt_beta_every         (large, e.g. 256: the telescopic windows and the
+#                             per-temperature score statistics need stable
+#                             ladders between resets)
+#   max_values               (max_number_of_values_per_iteration; 128 makes the
+#                             score saver land every ~110 iterations, ~8% cost)
+#   seed_cco, seed_coc       (nonzero; 0 means random_device)
+
+experiment = create_experiment(
+   experiment_structure = [
+      {exp_n_step_1, exp_n_samp, 0.0},
+      {exp_n_step_2, exp_n_samp, agonist_2},
+      {exp_n_step_3, exp_n_samp, agonist_3}],
+   frequency_of_sampling = 50e3,
+   initial_agonist = 0.0,
+   initial_time = 0.0)
+
+likelihood_algorithm = set_Likelihood_algorithm(
+   adaptive_aproximation = 0, recursive_approximation = 1,
+   averaging_approximation = 2, variance_correction_approximation = 0,
+   variance_approximation = 1, n_sub_dt = 1000)
+
+thermo_algorithm_dts = set_ThermoAlgorithm_dts(
+   num_scouts_per_ensemble = num_scouts,
+   number_trials_until_give_up = 100000,
+   max_iter_equilibrium = max_iter,
+   beta_size = beta_size,
+   thermo_jumps_every = 1,
+   save_every_param_size_factor = 1,
+   adapt_beta_every = adapt_beta_every,
+   adapt_beta_equalizer = "deltaBeta_deltaL_vfm",
+   adapt_beta_controler = "s",
+   adapt_beta_variance = "variance",
+   adapt_beta_nu = 0.5,
+   adapt_beta_t0 = 3000,
+   adjust_beta = 1,
+   acceptance_upper_limit = 1.95,
+   acceptance_lower_limit = 0.25,
+   desired_acceptance = 0.25)
+
+thermo_evidence_dts(idname = idname_cco, model = "scheme_CCO",
+   prior = prior_cco_file, likelihood_algorithm = likelihood_algorithm,
+   data = observations_file, experiment = experiment,
+   thermo_algorithm = thermo_algorithm_dts, sampling_interval = 1,
+   max_number_of_values_per_iteration = max_values, init_seed = seed_cco)
+
+thermo_evidence_dts(idname = idname_coc, model = "scheme_COC",
+   prior = prior_coc_file, likelihood_algorithm = likelihood_algorithm,
+   data = observations_file, experiment = experiment,
+   thermo_algorithm = thermo_algorithm_dts, sampling_interval = 1,
+   max_number_of_values_per_iteration = max_values, init_seed = seed_coc)

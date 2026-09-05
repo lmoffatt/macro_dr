@@ -1,0 +1,9 @@
+model_name,i_par,parameter_name,parameter_transformation,parameter_value,transformed_mean,transformed_variance
+scheme_COC,0,on,Log10,6.73000000000000043,0.82801506422397686,2
+scheme_COC,1,off,Log10,165.999999999999972,2.22010808804005499,2
+scheme_COC,2,inactivating_on,Log10,743.000000000000341,2.87098881376057546,2
+scheme_COC,3,inactivating_off,Log10,45.2999999999999972,1.65609820201283187,2
+scheme_COC,4,unitary_current,Log10,1,0,2
+scheme_COC,5,Current_Noise,Log10,0.00100000000000000002,-3,2
+scheme_COC,6,Current_Baseline,Log10,1,0,2
+scheme_COC,7,Num_ch_mean,Log10,4999.99999999999909,3.69897000433601875,2

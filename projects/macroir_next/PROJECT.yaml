@@ -1,0 +1,22 @@
+id: macroir_next
+name: MacroIR Next Execution
+type: project
+program: macroir
+status: active
+stage: setup
+created: 2026-09-04
+publication_relevance: direct
+summary: >
+  Execution project for the post-eLife MacroIR program: validated Bayesian
+  evidence (trapezoid and stepping-stone from the same runs), the CCO/COC
+  equilibrium null test, the Bessel acquisition filter, and conformational
+  models with inter-subunit interaction.
+
+purpose: >
+  Own the operational path from models and experiments to evidence runs,
+  calibration diagnostics, and figure-ready datasets for the next paper.
+
+conventions:
+  cwd: project directory; all script paths relative to it
+  runs: created by macrodr_cli --env-save
+  hygiene: no outputs at project top level

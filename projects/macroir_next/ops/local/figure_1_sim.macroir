@@ -1,0 +1,36 @@
+# figure_1_sim.macroir — simulate one replica recording for Figure 1
+# (evidence confusion matrix, {CCO, COC truth} x {episodic, stationary}).
+#
+# FILE CONTRACT — this script must NOT define the injected names (they are
+# passed as --name = expression arguments by dispatch_figure_1_local.sh):
+#   exp_n_step_1, exp_n_step_2, exp_n_step_3   (steps per segment)
+#   exp_n_samp                                  (sub-samples per step, all segments)
+#   agonist_2, agonist_3                        (uM; episodic: 10, 0 / stationary: 10, 10)
+#   truth_model                                 ("scheme_CCO" | "scheme_COC")
+#   truth_par_file                              (absolute path to the truth par csv)
+#   observations_template                       (absolute path, i_step,patch_current zeros)
+#   sim_prefix                                  (unique per job; output csv name derives from it)
+#   sim_seed                                    (nonzero: 0 means random_device)
+#
+# Output: <sim_prefix>_<model>_<time>_<seed>_simulation.csv in the working
+# directory (i_step,patch_current). The dispatcher globs it by prefix, and for
+# the stationary protocol masks the equilibration segment with nan afterwards
+# (the simulation itself fills every step; the nan gating lives in the
+# likelihood, qmodel isnan(y): predict without update, zero logL).
+
+experiment = create_experiment(
+   experiment_structure = [
+      {exp_n_step_1, exp_n_samp, 0.0},
+      {exp_n_step_2, exp_n_samp, agonist_2},
+      {exp_n_step_3, exp_n_samp, agonist_3}],
+   frequency_of_sampling = 50e3,
+   initial_agonist = 0.0,
+   initial_time = 0.0)
+
+truth_parameters = load_Parameter(filename = truth_par_file, separator = ",")
+
+sim_algo = simulation_algorithm(include_N_states = 0, number_of_substeps = 1000)
+
+simulate(filename_prefix = sim_prefix, recording = observations_template,
+   experiment = experiment, init_seed = sim_seed, modelName = truth_model,
+   parameter_values = truth_parameters, simulation_algorithm = sim_algo)

@@ -195,3 +195,7 @@ runs/
 # ----------------------------------------------------------------------------
 # End of .gitignore
 # ----------------------------------------------------------------------------
+
+# macroir_next inputs are versioned (the global *.csv rule would silently drop them)
+!projects/macroir_next/data/models/*.csv
+!projects/macroir_next/data/experiments/*.txt

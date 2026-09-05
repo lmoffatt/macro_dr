@@ -603,7 +603,26 @@ auto calculate_initial_logL0(thermo_mcmc<Parameters> const& initial_data) {
 template <class Parameters>
 auto initial_beta_dts(thermo_mcmc<Parameters>& initial_data) {
     auto initial_logL0 = calculate_initial_logL0(initial_data);
-    double log_beta_min = std::log10(1.0 / -get<mean<logL>>(initial_logL0()())());
+    // beta_min from the VARIANCE of logL over the prior samples (2026-09-05,
+    // Luciano). Both the quality of the first stepping-stone factor
+    // E_0[L^beta_min] (importance weights exp(beta*logL) over prior draws)
+    // and the acceptance of the bottom swap are governed by
+    // beta_min * sd_0(logL) ~ 1, which is the same dbeta*dlogL criterion the
+    // ladder equalizer holds constant on the rungs above; this makes the
+    // initial bottom rung consistent with the equalizer. The old anchor
+    // 1/|E_0[logL]| misplaces it exactly when the prior is informative
+    // (sd << |mean|, e.g. truth-centered priors), wasting ladder decades.
+    // Fallback to the mean rule when the variance is degenerate; cap at 0.5
+    // so a geometric ladder below beta=1 always exists.
+    double v_logL0 = get<variance<logL>>(initial_logL0()())();
+    double m_logL0 = get<mean<logL>>(initial_logL0()())();
+    double beta_min;
+    if (std::isfinite(v_logL0) && (v_logL0 > 0.0))
+        beta_min = 1.0 / std::sqrt(v_logL0);
+    else
+        beta_min = 1.0 / -m_logL0;
+    beta_min = std::min(beta_min, 0.5);
+    double log_beta_min = std::log10(beta_min);
     auto n = initial_data.beta.size();
     double dlog_beta = log_beta_min / (n - 2);
     std::vector<double> beta(n, 0.0);
@@ -1515,7 +1534,7 @@ void adjust_beta(FunctionTable& f, std::size_t iter, std::size_t adapt_beta_ever
                  thermo_mcmc<Parameters>& current, by_beta<double>& beta, ensemble<mt_64i>& mt,
                  Prior const& prior, Likelihood const& lik, const DataType& y, const Variables& x) {
     if ((iter > 0) && (current.num_samples() > 0) && (iter % adapt_beta_every == 0)) {
-        assert(beta[beta.size() - 1] = 1);
+        assert(beta[beta.size() - 1] == 1);
         std::size_t tested_index = 1;
         // auto A=calculate_Acceptance(current);
         auto A = calculate_deltaBeta_deltaL(current);
@@ -1548,12 +1567,17 @@ void adapt_beta(std::size_t iter, thermo_mcmc<Parameters>& current, by_beta<doub
                 std::string controlling_parameter, std::string variance_approximation,
                 double desired_acceptance, double nu, double t0) {
     if ((iter > 0) && (current.num_samples() > 0) && (iter % adapt_beta_every == 0)) {
-        assert(beta[beta.size() - 1] = 1);
+        assert(beta[beta.size() - 1] == 1);
         std::size_t tested_index = 1;
         double kappa = 1.0 / nu * t0 / (t0 + iter);
 
         auto d = calculate_controler_step(current, beta, equalizing_paramter, desired_acceptance,
                                           variance_approximation);
+        if (d.empty()) {
+            std::cerr << "adapt_beta: unknown equalizing parameter '" << equalizing_paramter
+                      << "', beta ladder left unchanged\n";
+            return;
+        }
         if (controlling_parameter == "s") {
             std::vector<double> T(beta.size() - (beta[0] == 0 ? 1 : 0));
             for (std::size_t i = 0; i < T.size(); ++i)
@@ -1974,6 +1998,46 @@ auto extract_parameters_last(const std::string& fname, std::size_t& iter, Durati
         std::swap(data, candidate);
     }
     return data;
+}
+
+// Score/FIM saver: per-walker d logL / d theta and Gauss-Newton FIM at save
+// time. The real report overload lives in qmodel.h (needs dlogLikelihood);
+// here only the class, titles and the report_model no-op. Diagnostics it
+// enables offline: Bartlett-1 per temperature (mean of beta*dlogL + dlogPrior
+// = 0), Cov(score) vs E[beta*GFI] + prior precision (the F/J check), and
+// control variates for E_beta[logL].
+template <class Parameters>
+class save_Score {
+   public:
+    std::string sep = ",";
+    std::ofstream f;
+    std::ofstream g;
+    std::size_t sampling_interval;
+    std::size_t max_number_of_values_per_iteration;
+
+    save_Score(std::string const& path, std::size_t t_sampling_interval,
+               std::size_t t_max_number_of_values_per_iteration)
+        : f{std::ofstream(path + "__i_beta__i_walker__i_par_score.csv")},
+          g{std::ofstream(path + "__i_beta__i_walker__i_par_j_par_fim.csv")},
+          sampling_interval{t_sampling_interval},
+          max_number_of_values_per_iteration{t_max_number_of_values_per_iteration} {
+        f << std::setprecision(std::numeric_limits<double>::digits10 + 1);
+        g << std::setprecision(std::numeric_limits<double>::digits10 + 1);
+    }
+
+    friend void report_title(save_Score& s, thermo_mcmc<Parameters> const&, ...) {
+        s.f << "iter" << s.sep << "iter_time" << s.sep << "i_beta" << s.sep << "num_beta" << s.sep
+            << "beta" << s.sep << "i_walker" << s.sep << "id_walker" << s.sep << "logL" << s.sep
+            << "i_par" << s.sep << "dlogL"
+            << "\n";
+        s.g << "iter" << s.sep << "iter_time" << s.sep << "i_beta" << s.sep << "num_beta" << s.sep
+            << "beta" << s.sep << "i_walker" << s.sep << "id_walker" << s.sep << "i_par" << s.sep
+            << "j_par" << s.sep << "gfi"
+            << "\n";
+    }
+};
+
+inline void report_model(save_Score<var::Parameters_transformed>&, ...) {
 }
 
 template <class Parameters>

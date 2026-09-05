@@ -37,24 +37,18 @@ inline auto set_ThermoAlgorithm_dts(
 using thermo_algo_dts_type =
     typename return_type<std::decay_t<decltype(&set_ThermoAlgorithm_dts)>>::type;
 
-inline void calc_thermo_evidence_dts(std::string id, std::string model, std::string prior,
-                                     likelihood_algo_type likelihood, std::string recording,
-                                     experiment_file_type experiment_file,
-                                     thermo_algo_dts_type thermo_algorithm,
-                                     std::size_t sampling_interval,
-                                     std::size_t max_number_of_values_per_iteration,
-                                     std::size_t myseed) {
-    myseed = calc_seed(myseed);
-    std::string filename = id + "_" + model + "_" + time_now() + "_" + std::to_string(myseed);
-
-    if (true) {
-        std::ofstream f("thermo_evidence_dts_" + id + ".txt");
-        save_vars(f, filename, model, prior, likelihood, recording, experiment_file,
-                  thermo_algorithm, sampling_interval, max_number_of_values_per_iteration, myseed);
-    }
+// Core evidence run over an in-memory Experiment. Both entry points below
+// (file-based, and inline as the eLife_2025 likelihood commands take it)
+// funnel here; `filename` is the already-composed output prefix and `myseed`
+// the already-resolved seed.
+inline void run_thermo_evidence_dts(std::string filename, std::string model, std::string prior,
+                                    likelihood_algo_type likelihood, std::string recording,
+                                    const Experiment& experiment,
+                                    thermo_algo_dts_type thermo_algorithm,
+                                    std::size_t sampling_interval,
+                                    std::size_t max_number_of_values_per_iteration,
+                                    std::size_t myseed) {
     using namespace macrodr;
-    auto experiment = get_Experiment(std::get<0>(experiment_file), std::get<1>(experiment_file),
-                                     std::get<2>(experiment_file));
 
     auto ftbl3 = cmd::get_function_Table_maker_St(filename, sampling_interval,
                                                   max_number_of_values_per_iteration)();
@@ -124,9 +118,9 @@ inline void calc_thermo_evidence_dts(std::string id, std::string model, std::str
                                 var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
                                 var::constexpr_Var_domain<bool, uses_recursive_aproximation, true>,
                                 var::constexpr_Var_domain<int, uses_averaging_aproximation, 2>,
-                                var::constexpr_Var_domain<bool, uses_variance_aproximation, false>,
+                                var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
                                 var::constexpr_Var_domain<
-                                    bool, uses_taylor_variance_correction_aproximation, true>,
+                                    bool, uses_taylor_variance_correction_aproximation, false>,
                                 var::constexpr_Var_domain<int, uses_family_aproximation, family_macro>,
                                 decltype(model0)>(
                                 model0, Simulation_n_sub_dt(n_sub_dt),
@@ -158,6 +152,52 @@ inline void calc_thermo_evidence_dts(std::string id, std::string model, std::str
             },
             model_v);
     }
+}
+
+// File-based entry: loads the experiment from disk and writes the
+// thermo_evidence_dts_<id>.txt restart file that the continuation commands
+// reload. Unchanged behavior relative to the original command.
+inline void calc_thermo_evidence_dts(std::string id, std::string model, std::string prior,
+                                     likelihood_algo_type likelihood, std::string recording,
+                                     experiment_file_type experiment_file,
+                                     thermo_algo_dts_type thermo_algorithm,
+                                     std::size_t sampling_interval,
+                                     std::size_t max_number_of_values_per_iteration,
+                                     std::size_t myseed) {
+    myseed = calc_seed(myseed);
+    std::string filename = id + "_" + model + "_" + time_now() + "_" + std::to_string(myseed);
+
+    if (true) {
+        std::ofstream f("thermo_evidence_dts_" + id + ".txt");
+        save_vars(f, filename, model, prior, likelihood, recording, experiment_file,
+                  thermo_algorithm, sampling_interval, max_number_of_values_per_iteration, myseed);
+    }
+    auto experiment = get_Experiment(std::get<0>(experiment_file), std::get<1>(experiment_file),
+                                     std::get<2>(experiment_file));
+    run_thermo_evidence_dts(filename, model, prior, likelihood, recording, experiment,
+                            thermo_algorithm, sampling_interval,
+                            max_number_of_values_per_iteration, myseed);
+}
+
+// Inline-Experiment entry, same shape as the eLife_2025 likelihood commands
+// (calc_dlikelihood_predictions and friends): the Experiment built with
+// create_experiment in the .macroir flows straight into the run, no file
+// round-trip, so the evidence lanes can sweep the experiment via
+// dispatch-injected segments exactly like the figure lanes did. Stateless
+// like those commands: it does NOT write the restart txt, so
+// thermo_evidence_dts_continuation applies to file-based runs only.
+inline void calc_thermo_evidence_dts(std::string id, std::string model, std::string prior,
+                                     likelihood_algo_type likelihood, std::string recording,
+                                     const Experiment& experiment,
+                                     thermo_algo_dts_type thermo_algorithm,
+                                     std::size_t sampling_interval,
+                                     std::size_t max_number_of_values_per_iteration,
+                                     std::size_t myseed) {
+    myseed = calc_seed(myseed);
+    std::string filename = id + "_" + model + "_" + time_now() + "_" + std::to_string(myseed);
+    run_thermo_evidence_dts(filename, model, prior, likelihood, recording, experiment,
+                            thermo_algorithm, sampling_interval,
+                            max_number_of_values_per_iteration, myseed);
 }
 
 inline void calc_thermo_evidence_dts_2(std::string id, std::string model, std::string prior,
@@ -249,7 +289,7 @@ inline void calc_thermo_evidence_dts_2(std::string id, std::string model, std::s
                                 var::constexpr_Var_domain<int, uses_averaging_aproximation, 2>,
                                 var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
                                 var::constexpr_Var_domain<
-                                    bool, uses_taylor_variance_correction_aproximation, true>,
+                                    bool, uses_taylor_variance_correction_aproximation, false>,
                                 var::constexpr_Var_domain<int, uses_family_aproximation, family_macro>,
                                 decltype(model0)>(
                                 model0, Simulation_n_sub_dt(n_sub_dt),
@@ -379,12 +419,12 @@ inline void calc_thermo_evidence_dts_continuation(std::string id, std::size_t it
 
                         auto maybe_modelLikelihood =
                             Likelihood_Model_regular<
-                                var::constexpr_Var_domain<bool, uses_adaptive_aproximation, true>,
+                                var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
                                 var::constexpr_Var_domain<bool, uses_recursive_aproximation, true>,
                                 var::constexpr_Var_domain<int, uses_averaging_aproximation, 2>,
                                 var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
                                 var::constexpr_Var_domain<
-                                    bool, uses_taylor_variance_correction_aproximation, true>,
+                                    bool, uses_taylor_variance_correction_aproximation, false>,
                                 var::constexpr_Var_domain<int, uses_family_aproximation, family_macro>,
                                 decltype(model0)>(
                                 model0, Simulation_n_sub_dt(n_sub_dt),
@@ -515,12 +555,12 @@ inline void calc_thermo_evidence_dts_continuation_2(std::string id, std::size_t 
 
                         auto maybe_modelLikelihood =
                             Likelihood_Model_regular<
-                                var::constexpr_Var_domain<bool, uses_adaptive_aproximation, true>,
+                                var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
                                 var::constexpr_Var_domain<bool, uses_recursive_aproximation, true>,
                                 var::constexpr_Var_domain<int, uses_averaging_aproximation, 2>,
                                 var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
                                 var::constexpr_Var_domain<
-                                    bool, uses_taylor_variance_correction_aproximation, true>,
+                                    bool, uses_taylor_variance_correction_aproximation, false>,
                                 var::constexpr_Var_domain<int, uses_family_aproximation, family_macro>,
                                 decltype(model0)>(
                                 model0, Simulation_n_sub_dt(n_sub_dt),
@@ -573,9 +613,23 @@ inline dsl::Compiler<dsl::Lexer> make_dts_compiler() {
         dsl::to_typed_function<std::string, std::string, std::string, likelihood_algo_type,
                                std::string, experiment_file_type, thermo_algo_dts_type, std::size_t,
                                std::size_t, std::size_t>(
-            &calc_thermo_evidence_dts, "idname", "model", "prior", "likelihood_algorithm", "data",
-            "experiment", "thermo_algorithm", "sampling_interval",
-            "max_number_of_values_per_iteration", "init_seed"));
+            static_cast<void (*)(std::string, std::string, std::string, likelihood_algo_type,
+                                 std::string, experiment_file_type, thermo_algo_dts_type,
+                                 std::size_t, std::size_t, std::size_t)>(&calc_thermo_evidence_dts),
+            "idname", "model", "prior", "likelihood_algorithm", "data", "experiment",
+            "thermo_algorithm", "sampling_interval", "max_number_of_values_per_iteration",
+            "init_seed"));
+    cm.push_function(
+        "thermo_evidence_dts",
+        dsl::to_typed_function<std::string, std::string, std::string, likelihood_algo_type,
+                               std::string, const Experiment&, thermo_algo_dts_type, std::size_t,
+                               std::size_t, std::size_t>(
+            static_cast<void (*)(std::string, std::string, std::string, likelihood_algo_type,
+                                 std::string, const Experiment&, thermo_algo_dts_type, std::size_t,
+                                 std::size_t, std::size_t)>(&calc_thermo_evidence_dts),
+            "idname", "model", "prior", "likelihood_algorithm", "data", "experiment",
+            "thermo_algorithm", "sampling_interval", "max_number_of_values_per_iteration",
+            "init_seed"));
     cm.push_function(
         "thermo_evidence_dts_2",
         dsl::to_typed_function<std::string, std::string, std::string, likelihood_algo_type,

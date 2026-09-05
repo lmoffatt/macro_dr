@@ -9294,6 +9294,81 @@ void report(FunctionTable& f, std::size_t iter, const Duration& dur,
     }
 }
 
+// save_Score: score (d logL / d theta) and Gauss-Newton FIM per walker per
+// rung, evaluated at save time. Calls dlogLikelihood DIRECTLY on the incoming
+// (concrete-model) likelihood: its internal selfDerivative lifts the
+// parameters and the concrete model's templated operator() propagates the
+// Derivative types, so no load_dmodel/interface hop is needed in the
+// tempering world (the modern commands need it only because their lik wraps
+// the single-signature type-erased IModel). Extraction idiom is the canonical
+// one from evaluate_likelihood_as_dlogPs_impl (likelihood.cpp).
+// Cadence: same output-bandwidth budget as every saver. Every event
+// evaluates the FULL ladder (2026-09-04: the score/FIM identity tests are
+// per temperature, so all rungs are the measurement; with 10 rungs, 32
+// walkers, k=8 and max_values=128 events land every ~110 iterations,
+// ~8% compute overhead).
+template <class FunctionTable, class Duration, class Prior, class t_logLikelihood, class Data,
+          class Variables>
+    requires(is_of_this_template_type_v<std::decay_t<FunctionTable>, FuncMap_St>)
+void report(FunctionTable& f, std::size_t iter, const Duration& dur,
+            save_Score<var::Parameters_transformed>& s,
+            thermo_mcmc<var::Parameters_transformed> const& data, Prior const&,
+            t_logLikelihood const& lik, const Data& y, const Variables& x, ...) {
+    auto n_par = num_Parameters(data);
+    auto beta = data.get_Beta();
+    std::size_t num_values = 1 + n_par + n_par * (n_par + 1) / 2;
+    std::size_t point_size = num_values * beta.size() * data.get_Walkers_number();
+    std::size_t sampling_interval =
+        std::max(s.sampling_interval, point_size / s.max_number_of_values_per_iteration);
+    if ((iter == 0) || (iter % sampling_interval != 0))
+        return;
+
+    auto ff = f.fork(omp_get_max_threads());
+    using dscore_type =
+        std::decay_t<decltype(dlogLikelihood(ff[0], lik, data.get_Parameter(0, 0), y, x))>;
+    auto all_scores = std::vector<std::vector<dscore_type>>(data.get_Walkers_number());
+
+#pragma omp parallel for
+    for (std::size_t i_walker = 0; i_walker < data.get_Walkers_number(); ++i_walker) {
+        for (std::size_t i_b = 0; i_b < beta.size(); ++i_b) {
+            auto i_th = omp_get_thread_num();
+            all_scores[i_walker].push_back(
+                dlogLikelihood(ff[i_th], lik, data.get_Parameter(i_walker, i_b), y, x));
+        }
+    }
+    f += ff;
+
+    for (std::size_t i_walker = 0; i_walker < data.get_Walkers_number(); ++i_walker) {
+        for (std::size_t i_b = 0; i_b < beta.size(); ++i_b) {
+            auto const& Maybe_d = all_scores[i_walker][i_b];
+            if (!Maybe_d) {
+                std::cerr << "save_Score: dlogLikelihood failed at iter " << iter << " i_beta "
+                          << i_b << " i_walker " << i_walker << ": " << Maybe_d.error()() << "\n";
+                continue;
+            }
+            auto const& dml = Maybe_d.value();
+            // primitive(logL) must equal the sampler's logLik for the same
+            // (iter, i_beta, i_walker) in save_likelihood's csv: free
+            // row-by-row validation of the derivative instantiation.
+            auto v_logL = primitive(get<logL>(dml))();
+            auto const& grad = derivative(get<logL>(dml))();
+            auto const& G = get<Gaussian_Fisher_Information>(dml)().value();
+            auto walker_id = data.get_Walker(i_walker, i_b);
+            for (std::size_t i_par = 0; i_par < grad.size(); ++i_par)
+                s.f << iter << s.sep << dur.count() << s.sep << i_b << s.sep << beta.size()
+                    << s.sep << beta[i_b] << s.sep << i_walker << s.sep << walker_id << s.sep
+                    << v_logL << s.sep << i_par << s.sep << grad[i_par] << "\n";
+            for (std::size_t i_par = 0; i_par < G.nrows(); ++i_par)
+                for (std::size_t j_par = 0; j_par <= i_par; ++j_par)
+                    s.g << iter << s.sep << dur.count() << s.sep << i_b << s.sep << beta.size()
+                        << s.sep << beta[i_b] << s.sep << i_walker << s.sep << walker_id << s.sep
+                        << i_par << s.sep << j_par << s.sep << G(i_par, j_par) << "\n";
+        }
+    }
+    s.f.flush();
+    s.g.flush();
+}
+
 template <class Parameters>
 void report_title(save_Predictions<Parameters>& s, thermo_levenberg_mcmc const&, ...) {
     s.f << "iter" << s.sep << "iter_time" << s.sep << "beta" << s.sep << "walker_id" << s.sep
@@ -9616,10 +9691,12 @@ inline auto new_thermo_Model_by_max_iter_dts(
                   save_likelihood<var::Parameters_transformed>,
                   save_Parameter<var::Parameters_transformed>,
                   save_RateParameter<var::Parameters_transformed>, save_Evidence,
-                  save_Predictions<var::Parameters_transformed>>(
+                  save_Predictions<var::Parameters_transformed>,
+                  save_Score<var::Parameters_transformed>>(
             path, filename, std::pair(1ul, 1ul), get<Save_Likelihood_every>(sint())(),
             get<Save_Parameter_every>(sint())(), get<Save_RateParameter_every>(sint())(),
-            get<Save_Evidence_every>(sint())(), get<Save_Predictions_every>(sint())()),
+            get<Save_Evidence_every>(sint())(), get<Save_Predictions_every>(sint())(),
+            get<Save_Evidence_every>(sint())()),
         num_scouts_per_ensemble, thermo_jumps_every, beta_size, initseed, t_adapt_beta_every,
         t_adapt_beta_equalizer, t_adapt_beta_constroler, t_adapt_beta_variance, t_adapt_beta_nu,
         t_adapt_beta_t0, t_adapt_beta_threshold, t_adjust_beta, t_acceptance_upper_limit,
