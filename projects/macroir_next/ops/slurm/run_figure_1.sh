@@ -43,7 +43,10 @@ set +e
 source "$MACRODR_PROFILE"
 set -e
 
-export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK:-16}"
+# THREADS_PER_FIT overrides the allocation size: under run_figure_1_pack.sh
+# several of these payloads share one whole-node allocation, and each must
+# use its slice, not SLURM_CPUS_PER_TASK (= the whole node).
+export OMP_NUM_THREADS="${THREADS_PER_FIT:-${SLURM_CPUS_PER_TASK:-16}}"
 export OPENBLAS_NUM_THREADS=1
 export MKL_NUM_THREADS=1
 export BLIS_NUM_THREADS=1

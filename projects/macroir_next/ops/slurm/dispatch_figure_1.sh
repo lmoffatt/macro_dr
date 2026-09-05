@@ -22,13 +22,18 @@
 # Tunables via env: TRUTHS, PROTOCOLS, REPLICAS, NCH, TAU_MS, INTERVAL_IN_TAU,
 # PRE_TAUS, PULSE_TAUS, POST_TAUS, GAP_TAUS, MEAS_TAUS, SCOUTS, BETA_SIZE,
 # MAX_ITER, ADAPT_EVERY, MAX_VALUES, BASE_SEED, CPUS, MEM, TIME, PARTITION,
-# ACCOUNT, BIN, DEPEND, RUN_DIR.
+# ACCOUNT, BIN, DEPEND, RUN_DIR; and for the whole-node packing mode (the
+# default, because dirac runs at most 4 jobs per user): PACK (pairs per node,
+# default JOBS_PER_NODE from tuning.env else 8; PACK=1 = one pair per job),
+# THREADS_PER_FIT (default CPUS_RECOMMENDED from tuning.env else 4),
+# NODE_CPUS (default 32).
 
 set -eo pipefail
 
 HERE="$(dirname "$(readlink -f "$0")")"             # .../macroir_next/ops/slurm
 PROJ="$(readlink -f "$HERE/../..")"                 # .../projects/macroir_next
 PAYLOAD="$HERE/run_figure_1.sh"
+PACK_PAYLOAD="$HERE/run_figure_1_pack.sh"
 SIM_SCRIPT="$(readlink -f "$HERE/../local/figure_1_sim.macroir")"
 EVI_SCRIPT="$(readlink -f "$HERE/../local/figure_1_evidence.macroir")"
 
@@ -128,8 +133,23 @@ if [ -f "$TUNE_FILE" ]; then
     fi
 fi
 BETA_SIZE="${BETA_SIZE:-16}"
+
+# ---- packing: several pairs per whole-node job -------------------------------
+# dirac's QOS runs at most 4 jobs per user (MaxJobsPU=4, verified 2026-07-12),
+# so one-pair-per-job caps the campaign at 4 x CPUS cores in flight. PACK > 1
+# groups PACK pairs into ONE exclusive whole-node job (run_figure_1_pack.sh
+# runs them concurrently, THREADS_PER_FIT threads each): 4 job slots then
+# carry 4 whole nodes. Defaults come from figure_0's tuning (JOBS_PER_NODE,
+# CPUS_RECOMMENDED); PACK=1 restores the one-pair-per-job submission.
+PACK="${PACK:-${JOBS_PER_NODE:-8}}"
+THREADS_PER_FIT="${THREADS_PER_FIT:-${CPUS_RECOMMENDED:-4}}"
+NODE_CPUS="${NODE_CPUS:-32}"
+
 echo "[fig1] commit=$commit  run=$run  WORKDIR=$WORKDIR"
 echo "[fig1] tau=${TAU_MS}ms  interval=${INTERVAL_IN_TAU}tau  n_samp=$N_SAMP  intervals/tau=$IPT  NCH=$NCH"
+if [ "$PACK" -gt 1 ]; then
+    echo "[fig1] packing: $PACK pairs/job x $THREADS_PER_FIT threads/fit (whole node, $NODE_CPUS cpus)"
+fi
 
 # ---- N-channel variants of the model inputs (same generator as local) -------
 python3 - "$PROJ" "$WORKDIR" "$NCH" << 'EOF'
@@ -151,6 +171,34 @@ PAR_CCO="$WORKDIR/data/scheme_CCO_par_N${NCH}.csv"
 PRIOR_CCO="$WORKDIR/data/scheme_CCO_prior_N${NCH}.csv"
 PAR_COC="$WORKDIR/data/scheme_COC_twin_par_N${NCH}.csv"
 PRIOR_COC="$WORKDIR/data/scheme_COC_twin_prior_N${NCH}.csv"
+
+# manifest plumbing for PACK > 1: cells accumulate into manifests/pack_<k>.txt
+# and every PACK lines one whole-node job is submitted for that manifest.
+mkdir -p "$WORKDIR/manifests"
+pack_idx=0
+pack_count=0
+pack_manifest=""
+
+submit_pack() {
+    [ "$pack_count" -gt 0 ] || return 0
+    pack_idx=$((pack_idx + 1))
+    local jobid
+    jobid=$(sbatch --parsable \
+        --partition="${PARTITION:-batch}" \
+        ${ACCOUNT:+--account="$ACCOUNT"} \
+        ${DEPEND:+--dependency="$DEP_SPEC"} \
+        --exclusive \
+        --cpus-per-task="$NODE_CPUS" \
+        --mem="${MEM:-0}" \
+        --time="${TIME:-1-00:00:00}" \
+        --job-name="f1pack_${pack_idx}" \
+        --output="$WORKDIR/logs/pack_${pack_idx}_slurm-%j.out" \
+        --export=ALL,CLUSTER="$CLUSTER",BIN="$BIN",WORKDIR="$WORKDIR",MACRODR_PROFILE="$PROFILE",SIM_SCRIPT="$SIM_SCRIPT",EVI_SCRIPT="$EVI_SCRIPT",RUN_ONE="$PAYLOAD",MANIFEST="$pack_manifest",THREADS_PER_FIT="$THREADS_PER_FIT",PRIOR_CCO="$PRIOR_CCO",PRIOR_COC="$PRIOR_COC",NSAMP="$N_SAMP",SCOUTS="$SCOUTS",BETA_SIZE="$BETA_SIZE",MAX_ITER="$MAX_ITER",ADAPT_EVERY="$ADAPT_EVERY",MAX_VALUES="$MAX_VALUES" \
+        "$PACK_PAYLOAD")
+    echo "[fig1] pack $pack_idx ($pack_count pairs) -> job $jobid"
+    pack_count=0
+    pack_manifest=""
+}
 
 job=0
 for truth in "${TRUTHS[@]}"; do
@@ -186,19 +234,35 @@ with open(path, "w") as f:
         f.write(f"{i},0\n")
 EOF
 
-    jobid=$(sbatch --parsable \
-        --partition="${PARTITION:-batch}" \
-        ${ACCOUNT:+--account="$ACCOUNT"} \
-        ${DEPEND:+--dependency="$DEP_SPEC"} \
-        --cpus-per-task="${CPUS:-32}" \
-        --mem="${MEM:-16G}" \
-        --time="${TIME:-1-00:00:00}" \
-        --job-name="f1_${truth}_${prot}_r${rep}" \
-        --output="$WORKDIR/logs/${label}_slurm-%j.out" \
-        --export=ALL,CLUSTER="$CLUSTER",BIN="$BIN",WORKDIR="$WORKDIR",MACRODR_PROFILE="$PROFILE",SIM_SCRIPT="$SIM_SCRIPT",EVI_SCRIPT="$EVI_SCRIPT",LABEL="$label",PROT="$prot",TRUTH_MODEL="$truth_model",TRUTH_PAR="$truth_par",TEMPLATE="$template",PRIOR_CCO="$PRIOR_CCO",PRIOR_COC="$PRIOR_COC",N1="$n1",N2="$n2",N3="$n3",NSAMP="$N_SAMP",AG2="$ag2",AG3="$ag3",SEED_SIM="$seed_sim",SEED_CCO="$seed_cco",SEED_COC="$seed_coc",SCOUTS="$SCOUTS",BETA_SIZE="$BETA_SIZE",MAX_ITER="$MAX_ITER",ADAPT_EVERY="$ADAPT_EVERY",MAX_VALUES="$MAX_VALUES" \
-        "$PAYLOAD")
-    echo "[fig1] ($job) $label -> job $jobid"
+    if [ "$PACK" -gt 1 ]; then
+        if [ -z "$pack_manifest" ]; then
+            pack_manifest="$WORKDIR/manifests/pack_$((pack_idx + 1)).txt"
+            : > "$pack_manifest"
+        fi
+        echo "$label $prot $truth_model $truth_par $template $n1 $n2 $n3 $ag2 $ag3 $seed_sim $seed_cco $seed_coc" >> "$pack_manifest"
+        pack_count=$((pack_count + 1))
+        echo "[fig1] ($job) $label -> pack $((pack_idx + 1))"
+        [ "$pack_count" -lt "$PACK" ] || submit_pack
+    else
+        jobid=$(sbatch --parsable \
+            --partition="${PARTITION:-batch}" \
+            ${ACCOUNT:+--account="$ACCOUNT"} \
+            ${DEPEND:+--dependency="$DEP_SPEC"} \
+            --cpus-per-task="${CPUS:-32}" \
+            --mem="${MEM:-16G}" \
+            --time="${TIME:-1-00:00:00}" \
+            --job-name="f1_${truth}_${prot}_r${rep}" \
+            --output="$WORKDIR/logs/${label}_slurm-%j.out" \
+            --export=ALL,CLUSTER="$CLUSTER",BIN="$BIN",WORKDIR="$WORKDIR",MACRODR_PROFILE="$PROFILE",SIM_SCRIPT="$SIM_SCRIPT",EVI_SCRIPT="$EVI_SCRIPT",LABEL="$label",PROT="$prot",TRUTH_MODEL="$truth_model",TRUTH_PAR="$truth_par",TEMPLATE="$template",PRIOR_CCO="$PRIOR_CCO",PRIOR_COC="$PRIOR_COC",N1="$n1",N2="$n2",N3="$n3",NSAMP="$N_SAMP",AG2="$ag2",AG3="$ag3",SEED_SIM="$seed_sim",SEED_CCO="$seed_cco",SEED_COC="$seed_coc",SCOUTS="$SCOUTS",BETA_SIZE="$BETA_SIZE",MAX_ITER="$MAX_ITER",ADAPT_EVERY="$ADAPT_EVERY",MAX_VALUES="$MAX_VALUES" \
+            "$PAYLOAD")
+        echo "[fig1] ($job) $label -> job $jobid"
+    fi
 done
 done
 done
-echo "[fig1] submitted $job jobs to $CLUSTER, outputs under $WORKDIR"
+if [ "$PACK" -gt 1 ]; then
+    submit_pack
+    echo "[fig1] submitted $job pairs in $pack_idx whole-node jobs to $CLUSTER, outputs under $WORKDIR"
+else
+    echo "[fig1] submitted $job jobs to $CLUSTER, outputs under $WORKDIR"
+fi
