@@ -172,10 +172,30 @@ TEST_CASE("dd1 near-coincidence is smooth and exact", "[acqf][dd]") {
     }
 }
 
+TEST_CASE("dd1 stays finite and exact for widely separated arguments", "[acqf][dd]") {
+    // Filter poles over long windows reach |p|Δ ≈ 10³ (10 kHz Bessel, 10 ms);
+    // there the sinhc form alone gave 0·inf = NaN (2026-09-06, found through
+    // tests/macroir/test_qdtf_member.cpp). Reference: the defining integral,
+    // sampled finely enough for a decay length of 1/|y|.
+    const double xs[] = {0.0, -1.0};
+    const cdouble ys[] = {{-99.9, 0.0}, {-100.1, 0.0}, {-120.0, 40.0}, {-860.0, 790.0},
+                          {-1721.0, 0.0}, {-1721.0, 1580.0}};
+    for (double x : xs)
+        for (cdouble y : ys) {
+            const cdouble v = dd1(cdouble(x, 0.0), y);
+            REQUIRE(std::isfinite(v.real()));
+            REQUIRE(std::isfinite(v.imag()));
+            const cdouble quad = simpson_c(
+                [&](double s) { return std::exp(x * s) * std::exp(y * (1.0 - s)); }, 0.0, 1.0,
+                400000);
+            CHECK(abs(v - quad) < 1e-8 * abs(quad));
+        }
+}
+
 TEST_CASE("dd1_pair (real-pair algebra) equals complex dd1", "[acqf][dd]") {
     const double xs[] = {-6.0, -1.0, 0.0, -0.001};
-    const double yrs[] = {-3.0, -0.5, 0.0};
-    const double yis[] = {0.0, 1e-9, 0.4, 5.0, -2.7};
+    const double yrs[] = {-3.0, -0.5, 0.0, -120.0, -1721.0};
+    const double yis[] = {0.0, 1e-9, 0.4, 5.0, -2.7, 1580.0};
     for (double x : xs)
         for (double yr : yrs)
             for (double yi : yis) {

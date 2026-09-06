@@ -130,8 +130,20 @@ inline cdouble sinhc(cdouble d) {
     return std::sinh(d) / d;
 }
 
+// Wide real separation: the sinhc form multiplies e^{(x+y)/2} (underflowing
+// to 0) by sinh((x−y)/2) (overflowing to inf once |Re(x−y)/2| ≳ 710) and
+// yields 0·inf = NaN, although the value itself, ≈ e^{max(x,y)}/(x−y), is
+// representable. Beyond |Re d| = 50 the two exponentials differ by e^{100}, so
+// the direct quotient has no cancellation and is used instead. Reached by
+// the filter poles over long windows: |p|Δ ≈ 10³ for a 10 kHz Bessel over a
+// 10 ms window (tests/macroir/test_qdtf_member.cpp, 2026-09-06).
+inline constexpr double dd1_direct_threshold = 50.0;
+
 inline cdouble dd1(cdouble x, cdouble y) {
-    return std::exp(0.5 * (x + y)) * sinhc(0.5 * (x - y));
+    const cdouble d = 0.5 * (x - y);
+    if (std::abs(d.real()) > dd1_direct_threshold)
+        return (std::exp(x) - std::exp(y)) / (x - y);
+    return std::exp(0.5 * (x + y)) * sinhc(d);
 }
 
 // dd2[x,y,z]: second divided difference of exp. Opitz: it is the (0,2)
@@ -189,6 +201,17 @@ inline cdouble dd2(cdouble x, cdouble y, cdouble z) {
 inline void dd1_pair(double x, double y_re, double y_im, double& out_re, double& out_im) {
     const double m_re = 0.5 * (x + y_re), m_im = 0.5 * y_im;
     const double d_re = 0.5 * (x - y_re), d_im = -0.5 * y_im;
+
+    if (std::abs(d_re) > dd1_direct_threshold) {
+        // wide separation: (e^x − e^y)/(x − y) in real-pair arithmetic (see dd1)
+        const double ey = std::exp(y_re);
+        const double n_re = std::exp(x) - ey * std::cos(y_im), n_im = -ey * std::sin(y_im);
+        const double q_re = x - y_re, q_im = -y_im;
+        const double q2 = q_re * q_re + q_im * q_im;
+        out_re = (n_re * q_re + n_im * q_im) / q2;
+        out_im = (n_im * q_re - n_re * q_im) / q2;
+        return;
+    }
 
     // e^m
     const double em = std::exp(m_re);

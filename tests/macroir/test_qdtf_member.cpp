@@ -45,9 +45,13 @@ inline var::Parameters_transformed build_theta_sim(var::Parameters_Transformatio
     return theta.create(std::move(vec));
 }
 
+// par_T lives here because Parameters_transformed keeps a raw pointer to its
+// Parameters_Transformations and IModel::parameters_transformations() returns
+// by value: theta must be built from bundle.par_T once the bundle is in place
+// (same arrangement as test_dlogLikelihood_equivalence.cpp).
 struct Setup {
     macrodr::cmd::ModelPtr model;
-    var::Parameters_transformed theta;
+    var::Parameters_Transformations par_T;
     macrodr::Experiment experiment;
     macrodr::Recording recording;
 };
@@ -58,19 +62,21 @@ Maybe_error<Setup> make_setup() {
         return maybe_model.error();
     auto model = std::move(maybe_model.value());
 
-    auto theta = build_theta_sim(model->parameters_transformations());
+    auto par_T = model->parameters_transformations();
+    auto theta_sim_local = build_theta_sim(par_T);
 
     auto experiment = macrodr::cmd::create_experiment(
         {{2, 500, 0.0}, {4, 500, 10.0}, {4, 500, 0.0}}, 50e3, 0.0, 0.0);
     auto observations = macrodr::cmd::define_recording(std::vector<double>(5000, 0.0));
 
-    auto maybe_sim = macrodr::cmd::run_simulations(model, theta, experiment, observations,
-                                                   std::string("uniformization"), 1000, 0);
+    auto maybe_sim = macrodr::cmd::run_simulations(model, theta_sim_local, experiment,
+                                                   observations, std::string("uniformization"),
+                                                   1000, 0);
     if (!maybe_sim)
         return maybe_sim.error();
     auto recording = get<macrodr::Recording>(maybe_sim.value()());
 
-    return Setup{std::move(model), std::move(theta), std::move(experiment),
+    return Setup{std::move(model), std::move(par_T), std::move(experiment),
                  std::move(recording)};
 }
 
@@ -84,6 +90,7 @@ TEST_CASE("qdtf box configuration matches the established av=2 member",
     }
     REQUIRE(maybe_bundle);
     auto const& bundle = maybe_bundle.value();
+    const auto theta = build_theta_sim(bundle.par_T);
 
     auto maybe_lik = macrodr::cmd::build_likelihood_function(
         bundle.model, /*adaptive=*/false, /*recursive=*/true, /*averaging=*/2,
@@ -91,7 +98,7 @@ TEST_CASE("qdtf box configuration matches the established av=2 member",
         /*taylor_qdt=*/false);
     REQUIRE(maybe_lik);
 
-    auto maybe_ref = macrodr::cmd::calculate_mlikelihood(maybe_lik.value(), bundle.theta,
+    auto maybe_ref = macrodr::cmd::calculate_mlikelihood(maybe_lik.value(), theta,
                                                          bundle.experiment, bundle.recording);
     if (!maybe_ref) {
         UNSCOPED_INFO("reference member failed: " << maybe_ref.error()());
@@ -100,7 +107,7 @@ TEST_CASE("qdtf box configuration matches the established av=2 member",
     const double logL_ref = get<logL>(maybe_ref.value())();
 
     auto maybe_box = macrodr::cmd::calculate_qdtf_likelihood(
-        bundle.model, bundle.theta, bundle.experiment, bundle.recording, 0, 0.0);
+        bundle.model, theta, bundle.experiment, bundle.recording, 0, 0.0);
     if (!maybe_box) {
         UNSCOPED_INFO("qdtf box failed: " << maybe_box.error()());
     }
@@ -117,9 +124,10 @@ TEST_CASE("qdtf Bessel configuration runs and is deterministic", "[qdtf][member]
     auto maybe_bundle = make_setup();
     REQUIRE(maybe_bundle);
     auto const& bundle = maybe_bundle.value();
+    const auto theta = build_theta_sim(bundle.par_T);
 
     auto maybe_b4 = macrodr::cmd::calculate_qdtf_likelihood(
-        bundle.model, bundle.theta, bundle.experiment, bundle.recording, 4, 10e3);
+        bundle.model, theta, bundle.experiment, bundle.recording, 4, 10e3);
     if (!maybe_b4) {
         UNSCOPED_INFO("qdtf bessel-4 failed: " << maybe_b4.error()());
     }
@@ -128,13 +136,13 @@ TEST_CASE("qdtf Bessel configuration runs and is deterministic", "[qdtf][member]
     CHECK(std::isfinite(l1));
 
     auto maybe_b4b = macrodr::cmd::calculate_qdtf_likelihood(
-        bundle.model, bundle.theta, bundle.experiment, bundle.recording, 4, 10e3);
+        bundle.model, theta, bundle.experiment, bundle.recording, 4, 10e3);
     REQUIRE(maybe_b4b);
     CHECK(get<logL>(maybe_b4b.value())() == l1);
 
     // 8-pole variant constructs and runs too
     auto maybe_b8 = macrodr::cmd::calculate_qdtf_likelihood(
-        bundle.model, bundle.theta, bundle.experiment, bundle.recording, 8, 10e3);
+        bundle.model, theta, bundle.experiment, bundle.recording, 8, 10e3);
     REQUIRE(maybe_b8);
     CHECK(std::isfinite(get<logL>(maybe_b8.value())()));
 }
