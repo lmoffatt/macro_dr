@@ -483,6 +483,19 @@ TODO (future, needs recompile, expect ≤2-3×, decided 2026-09-05):
 The big lever stays the CADENCE (how many score samples per temperature
 are actually needed), which is a design decision, not code.
 
+SECOND, DEEPER FORM OF THE SAME DEFECT, ALSO FIXED 2026-09-06 (same rebuild):
+the savers derived their cadences independently as point_size/max_values,
+yielding mutually incommensurate integers (measured in the figure_1
+campaign: parameters every 128, score every 180; other savers land on
+220/310/4960 depending on settings), so ANY cross-saver join only met at
+rare common multiples. Fix:
+aligned_sampling_interval() (parallel_tempering.h, used by every saver in
+the live dts path) rounds each budget UP to the next power of two, making
+every pair of cadences nested by construction and aligned with the
+adapt_beta windows (adapt_beta_every is a power of two in the lanes). At
+campaign settings score and parameters both land on 256. cuevi/levenberg/
+fraction savers deliberately left untouched (outside the live path).
+
 DESIGN DEFECT FOUND AND FIXED IN CODE 2026-09-06 (needs the next rebuild):
 the score csv carried dlogL but not theta, so the tempered-target identity
 test Var(beta*dlogL + dlogprior) = E[beta*GFI + I_prior] could only use the

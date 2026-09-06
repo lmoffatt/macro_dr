@@ -41,7 +41,7 @@ class save_Iter {
                        save_Iter& s, ...) {
         std::size_t point_size = 2;
         std::size_t sampling_interval =
-            std::max(s.sampling_interval, point_size / s.max_number_of_values_per_iteration);
+            aligned_sampling_interval(s.sampling_interval, point_size / s.max_number_of_values_per_iteration);
 
         if (iter % sampling_interval == 0) {
             s.f << iter << s.sep << dur.count() << s.sep << (dur - s.m_prev_dur).count() << "\n";
@@ -124,7 +124,7 @@ class save_Evidence {
         std::size_t num_values = 32;
         std::size_t point_size = num_values * num_betas(data);
         std::size_t sampling_interval =
-            std::max(s.sampling_interval, point_size / s.max_number_of_values_per_iteration);
+            aligned_sampling_interval(s.sampling_interval, point_size / s.max_number_of_values_per_iteration);
         if ((iter > 0) && (data.num_samples() > 0) && (iter % sampling_interval == 0)) {
             auto across = calculate_across_sta(data.walkers_sta);
             auto within = calculate_within_sta(data.walkers_sta);
@@ -300,7 +300,7 @@ class save_Evidence {
         std::size_t point_size = num_values * num_betas(data);
         if ((iter > 0) && (data.num_samples() > 0) &&
             (iter %
-                 std::max(s.sampling_interval, point_size / s.max_number_of_values_per_iteration) ==
+                 aligned_sampling_interval(s.sampling_interval, point_size / s.max_number_of_values_per_iteration) ==
              0)) {
             auto meanLik = mean_logL(data);
             auto meanPrior = mean_logP(data);

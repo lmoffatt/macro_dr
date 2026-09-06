@@ -9199,7 +9199,7 @@ void report(FunctionTable& f, std::size_t iter, const Duration& dur,
     std::size_t point_size =
         num_values * num_beta_portions * data.get_Walkers_number() * num_samples_a;
     std::size_t sampling_interval =
-        std::max(s.sampling_interval, point_size / s.max_number_of_values_per_iteration);
+        aligned_sampling_interval(s.sampling_interval, point_size / s.max_number_of_values_per_iteration);
 
     std::size_t state_num_values = 1;
     std::size_t num_moments = 2;
@@ -9207,7 +9207,7 @@ void report(FunctionTable& f, std::size_t iter, const Duration& dur,
                                    data.get_Walkers_number() * num_samples_a * num_states_a *
                                    num_moments;
     std::size_t state_sampling_interval =
-        std::max(s.sampling_interval, state_point_size / s.max_number_of_values_per_iteration);
+        aligned_sampling_interval(s.sampling_interval, state_point_size / s.max_number_of_values_per_iteration);
 
     if ((iter == 0) || (iter % sampling_interval != 0))
         return;
@@ -9319,7 +9319,7 @@ void report(FunctionTable& f, std::size_t iter, const Duration& dur,
     std::size_t num_values = 1 + n_par + n_par * (n_par + 1) / 2;
     std::size_t point_size = num_values * beta.size() * data.get_Walkers_number();
     std::size_t sampling_interval =
-        std::max(s.sampling_interval, point_size / s.max_number_of_values_per_iteration);
+        aligned_sampling_interval(s.sampling_interval, point_size / s.max_number_of_values_per_iteration);
     if ((iter == 0) || (iter % sampling_interval != 0))
         return;
 
@@ -9391,7 +9391,7 @@ void report(FunctionTable& f, std::size_t iter, const Duration& dur,
     std::size_t point_size = num_values * size(y) * t_beta.size();
 
     if ((iter == 0) ||
-        (iter % std::max(s.sampling_interval, point_size / s.max_number_of_values_per_iteration) !=
+        (iter % aligned_sampling_interval(s.sampling_interval, point_size / s.max_number_of_values_per_iteration) !=
          0))
         return;
     // std::cerr<<"report save_Predictions\n";
@@ -9530,7 +9530,7 @@ void report(FunctionTable&, std::size_t iter, const Duration& dur,
     std::size_t point_size =
         num_values * num_beta_portions * data.get_Walkers_number() * num_states * num_states;
     std::size_t sampling_interval =
-        std::max(s.sampling_interval, point_size / s.max_number_of_values_per_iteration);
+        aligned_sampling_interval(s.sampling_interval, point_size / s.max_number_of_values_per_iteration);
 
     if ((iter == 0) || (iter % sampling_interval != 0))
         return;
@@ -9778,7 +9778,7 @@ void report(FunctionTable& f, std::size_t iter, const Duration& dur,
     std::size_t point_size =
         num_values * data.get_Walkers_number() * num_fr * data.get_Parameters_number();
     std::size_t sampling_interval =
-        std::max(s.sampling_interval, point_size / s.max_number_of_values_per_iteration);
+        aligned_sampling_interval(s.sampling_interval, point_size / s.max_number_of_values_per_iteration);
 
     if ((iter == 0) || (iter % sampling_interval != 0)) {
         return;

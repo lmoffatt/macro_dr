@@ -1635,6 +1635,24 @@ auto push_back_new_beta(FunctionTable& f, std::size_t& iter, thermo_mcmc<Paramet
     return current;
 }
 
+// Saver cadences are COMMENSURATE BY CONSTRUCTION: each saver's bandwidth
+// budget (point_size / max_values) is rounded UP to the next power of two,
+// so any two savers' event sets are nested (the coarser one fires only at
+// iterations where the finer one also fires) and both align with the
+// adapt_beta window boundaries (adapt_beta_every is a power of two in the
+// lanes). Without this the budgets produced mutually incommensurate
+// intervals (128, 180, 220, 310...) and cross-saver joins only met at rare
+// common multiples: the score/parameter join kept 5 of 166 score events
+// (2026-09-06). Rounding up never exceeds the bandwidth budget.
+inline std::size_t aligned_sampling_interval(std::size_t floor_interval, std::size_t budget) {
+    std::size_t wanted = std::max(floor_interval, budget);
+    if (wanted <= 1)
+        return 1;
+    std::size_t p = 1;
+    while (p < wanted) p <<= 1;
+    return p;
+}
+
 template <class Parameters>
 class save_likelihood {
    public:
@@ -1676,7 +1694,7 @@ class save_likelihood {
         auto num_beta = size(data.beta);
         std::size_t point_size = num_values * num_beta * data.get_Walkers_number();
         std::size_t sampling_interval =
-            std::max(s.sampling_interval, point_size / s.max_number_of_values_per_iteration);
+            aligned_sampling_interval(s.sampling_interval, point_size / s.max_number_of_values_per_iteration);
 
         if ((iter > 0) && (data.num_samples() > 0) && (iter % sampling_interval == 0)) {
             for (std::size_t i_walker = 0; i_walker < num_walkers(data); ++i_walker) {
@@ -1792,7 +1810,7 @@ class save_Parameter {
         std::size_t point_size =
             num_values * num_beta * data.get_Walkers_number() * num_Parameters(data);
         std::size_t sampling_interval =
-            std::max(s.sampling_interval, point_size / s.max_number_of_values_per_iteration);
+            aligned_sampling_interval(s.sampling_interval, point_size / s.max_number_of_values_per_iteration);
 
         if ((iter > 0) && (data.num_samples() > 0) && (iter % sampling_interval == 0)) {
             for (std::size_t i_beta = 0; i_beta < num_betas(data); ++i_beta)
