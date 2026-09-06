@@ -80,6 +80,15 @@ class save_Evidence {
         f << std::setprecision(std::numeric_limits<double>::digits10 + 1);
     }
 
+    // COLUMN ORDER CONTRACT: every Moment_statistics field emitted below
+    // through .sep() writes its Vector_Space order, which is
+    // <count, mean, variance> (moment_statistics.h:1090) — NOT mean, var,
+    // count. The titles said mean/var/count until 2026-09-06, so every
+    // statistics triple in files written before that date is mislabeled:
+    // read them as count, mean, variance (that is why "mean_log_Evidence"
+    // read 0 — it was the count — while the windowed trapezoid sat in the
+    // column labeled "var_log_Evidence"). The windowed logL triple is
+    // suffixed _w to end the name clash with the varLik triple above.
     template <class Parameters>
     friend void report_title(save_Evidence& s, thermo_mcmc<Parameters> const&, ...) {
         s.f << "iter" << s.sep << "iter_time" << s.sep << "i_beta" << s.sep << "num_beta" << s.sep
@@ -91,8 +100,8 @@ class save_Evidence {
 
             << s.sep << "var_logL" << s.sep << "var_elogL" << s.sep << "var_vlogL"
 
-            << s.sep << "mean_logL_across" << s.sep << "var_logL_across" << s.sep
-            << "count_logL_across"
+            << s.sep << "count_logL_across" << s.sep << "mean_logL_across" << s.sep
+            << "var_logL_across"
 
             << s.sep << "var_logL_within"
 
@@ -100,11 +109,11 @@ class save_Evidence {
 
             << s.sep << "log_Evidence" << s.sep << "elog_Evidence" << s.sep << "vlog_Evidence"
 
-            << s.sep << "mean_logL" << s.sep << "var_logL" << s.sep << "count_logL"
+            << s.sep << "count_logL_w" << s.sep << "mean_logL_w" << s.sep << "var_logL_w"
 
-            << s.sep << "mean_plog_Evidence" << s.sep << "var_plog_Evidence" << s.sep
-            << "count_plog_Evidence" << s.sep << "mean_log_Evidence" << s.sep << "var_log_Evidence"
-            << s.sep << "count_log_Evidence"
+            << s.sep << "count_plog_Evidence" << s.sep << "mean_plog_Evidence" << s.sep
+            << "var_plog_Evidence" << s.sep << "count_log_Evidence" << s.sep << "mean_log_Evidence"
+            << s.sep << "var_log_Evidence"
 
             << s.sep << "deltaEvidence_variance" << s.sep << "Acceptance_variance" << s.sep
             << "emcee_stat_count" << s.sep << "emcee_stat_rate" << s.sep << "thermo_jump_stat_count"

@@ -508,10 +508,28 @@ figure_2 v1) remain limited to the coincident events for this test.
 
 Also measured 2026-09-05: the trapezoid-vs-telescopic bracket closes on
 first real data (windowed ss_up −352.90 vs ss_dn −352.82 at iter 888 of
-the discovery run). Open check: the pre-existing windowed trapezoid
-column `mean_log_Evidence` prints 0 at every rung while the
-instantaneous `log_Evidence` accumulates normally — verify its
-accumulation before using it in R readers.
+the discovery run).
+
+THIRD DEFECT OF THE SAME FAMILY, FOUND AND FIXED 2026-09-06 — COLUMN
+LABELS PERMUTED. `Moment_statistics` is `Vector_Space<count, mean,
+variance>` (moment_statistics.h:1090), so every statistics triple written
+through `.sep()` emits count, mean, variance; both save_Evidence and
+save_likelihood titled those triples mean, var, count. Consequence: in
+every csv written before this fix, each statistics triple must be read
+as count, mean, variance. This RETRACTS the "open check" noted on
+2026-09-05 (that the windowed trapezoid `mean_log_Evidence` printed 0):
+it was not a broken accumulation, it was the count column under the
+mean's name. Verified on the campaign (rep2 s910121, cold rung, last
+iteration): the column labeled mean_logL holds 32 (the walker count),
+var_logL holds −319.3 (the mean logL), count_logL holds 2.0 (its
+variance); the windowed trapezoid is −343.00, sitting in the column
+labeled var_log_Evidence, 3.4 nats below the telescopic bracket
+(−339.9/−339.3) exactly as its O(dbeta^2) discretization bias predicts.
+The telescopic columns added on 2026-09-02 are plain scalars emitted in
+title order and ARE correctly labeled, so the figure_1 estimates (built
+on mean_log_Evidence_ss / _ss_dn) are unaffected. Fix: titles now say
+count, mean, variance; the windowed logL triple is renamed *_logL_w to
+end its pre-existing name clash with the varLik triple.
 
 ## save_Score design (Bartlett/FIM at save time), original plan 2026-09-02
 

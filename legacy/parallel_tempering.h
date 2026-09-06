@@ -1668,15 +1668,20 @@ class save_likelihood {
         f << std::setprecision(std::numeric_limits<double>::digits10 + 1);
     }
 
+    // COLUMN ORDER CONTRACT: the Moment_statistics fields emitted through
+    // .sep() write their Vector_Space order <count, mean, variance>
+    // (moment_statistics.h:1090). The titles said mean/var/count until
+    // 2026-09-06, so those triples are mislabeled in every file written
+    // before that date: read them as count, mean, variance.
     friend void report_title(save_likelihood& s, thermo_mcmc<Parameters> const&, ...) {
         s.f << "iter" << s.sep << "iter_time" << s.sep << "i_beta" << s.sep << "num_beta" << s.sep
             << "beta" << s.sep << "i_walker" << s.sep << "id_walker" << s.sep << "logP" << s.sep
             << "logLik" << s.sep << "elogLik" << s.sep << "vlogLik" << s.sep << "plog_Evidence"
             << s.sep << "pelog_Evidence" << s.sep << "pvlog_Evidence" << s.sep << "log_Evidence"
-            << s.sep << "elog_Evidence" << s.sep << "vlog_Evidence" << s.sep << "mean_logL" << s.sep
-            << "var_logL" << s.sep << "count_logL" << s.sep << "mean_plog_Evidence" << s.sep
-            << "var_plog_Evidence" << s.sep << "count_plog_Evidence" << s.sep << "mean_log_Evidence"
-            << s.sep << "var_log_Evidence" << s.sep << "count_log_Evidence"
+            << s.sep << "elog_Evidence" << s.sep << "vlog_Evidence" << s.sep << "count_logL" << s.sep
+            << "mean_logL" << s.sep << "var_logL" << s.sep << "count_plog_Evidence" << s.sep
+            << "mean_plog_Evidence" << s.sep << "var_plog_Evidence" << s.sep << "count_log_Evidence"
+            << s.sep << "mean_log_Evidence" << s.sep << "var_log_Evidence"
             << "\n";
     }
     template <class Prior, class Likelihood, class Variables, class DataType>
