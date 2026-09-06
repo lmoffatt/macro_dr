@@ -1,0 +1,73 @@
+---
+title: "Ladder diagnostics — telescopic ESS, acceptance, per-rung evidence variance"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+suppressMessages({library(data.table); library(ggplot2); library(patchwork)})
+DIG <- "data/e743fd5"
+theme_fig <- theme_classic(base_size = 8) +
+    theme(strip.background = element_blank(),
+          legend.key.size = unit(0.3, "cm"),
+          plot.tag = element_text(face = "bold", size = 10))
+## five representative rungs: all 16 traces overlap into a solid band
+SEL <- c(0, 4, 8, 12, 15)
+pal <- setNames(viridisLite::viridis(length(SEL), end = 0.92), as.character(SEL))
+col_rung <- scale_colour_manual(name = "rung", values = pal)
+```
+
+```{r panels, fig.width=7.2, fig.height=8}
+d <- fread(file.path(DIG, "ladder_diag.csv"))[i_beta %in% SEL]
+d[, rung := factor(i_beta, levels = SEL)]
+
+## (a) telescopic ESS, both directions ---------------------------------------
+## The sawtooth is the finding: every time the ladder moves past the
+## tolerance the window is discarded and the ESS restarts from zero, so the
+## estimator never accumulates more than ~1-2 thousand of the ~830 thousand
+## samples the production tail holds.
+es <- melt(d[, .(iter, rung, up = ess_up, down = ess_dn)],
+           id.vars = c("iter", "rung"), variable.name = "direction",
+           value.name = "ess")
+pa <- ggplot(es[is.finite(ess)], aes(iter, ess, colour = rung)) +
+    geom_line(linewidth = 0.22, alpha = 0.85) +
+    facet_wrap(~direction, ncol = 2) + col_rung +
+    labs(x = "iteration", y = "telescopic ESS",
+         subtitle = "each collapse to zero is a window discarded by a ladder move") +
+    theme_fig
+
+## (b) acceptance: within-rung stretch vs between-rung swap -------------------
+acc <- melt(d[, .(iter, rung, within = acc_within, between = acc_between)],
+            id.vars = c("iter", "rung"), variable.name = "move", value.name = "rate")
+pb <- ggplot(acc[is.finite(rate)], aes(iter, rate, colour = rung)) +
+    geom_hline(yintercept = 0.25, linetype = 2, linewidth = 0.3, colour = "grey55") +
+    geom_line(linewidth = 0.22, alpha = 0.85) +
+    facet_wrap(~move, ncol = 2) + col_rung +
+    coord_cartesian(ylim = c(0, 1)) +
+    labs(x = "iteration", y = "acceptance rate",
+         subtitle = "dashed: the 0.25 limit adjust_beta tests against (hot end only)") +
+    theme_fig
+
+## (c) variance of each rung's contribution to the evidence -------------------
+## (dbeta/2)^2 (Var_i logL + Var_{i+1} logL): the trapezoid tramo variance
+pc <- ggplot(d[deltaEvidence_variance > 0], aes(iter, deltaEvidence_variance, colour = rung)) +
+    geom_line(linewidth = 0.22, alpha = 0.85) + col_rung +
+    scale_y_log10() +
+    labs(x = "iteration", y = expression("Var of tramo contribution (nats"^2*")"),
+         subtitle = "cold rungs carry the evidence AND its variance") +
+    theme_fig
+
+fig <- pa / pb / pc + plot_annotation(tag_levels = "a")
+ggsave("Ladder_diagnostics.pdf", fig, width = 7.2, height = 8, device = pdf)
+fig
+```
+
+```{r tail_table}
+dd <- fread(file.path(DIG, "ladder_diag.csv"))
+tl <- dd[iter >= 24000,
+         .(ess_up = round(median(ess_up)), ess_dn = round(median(ess_dn)),
+           within = round(median(acc_within), 3), between = round(median(acc_between), 3),
+           var_tramo = signif(median(deltaEvidence_variance), 3)),
+         by = i_beta][order(i_beta)]
+knitr::kable(tl, caption = "Tail medians (iterations >= 24000), all 16 rungs")
+```
