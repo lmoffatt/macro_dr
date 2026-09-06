@@ -29,3 +29,10 @@ Audio transcription tooling exists outside this repository under:
 
 This repository keeps the resulting transcripts as source material, not as
 final documentation.
+
+## Idea distillation pipeline
+
+`scripts/` (extract_ideas.py, consolidate_ideas.py, mentor.py) distills the
+audio transcripts into idea ecosystems under `audios/ideas/`, driven by the
+prompts in `prompts/`. Adapted 2026-09-01 from `~/Projects/luthier/scripts/`;
+see `scripts/README.md`.

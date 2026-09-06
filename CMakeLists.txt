@@ -14,6 +14,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Optional: integrate clang-tidy if available
 option(MACRODR_ENABLE_CLANG_TIDY "Run clang-tidy during build" OFF)
+option(MACRODR_SERIAL_HEAVY_TARGETS
+       "Compile macrodr_core and macrodr_cli one translation unit at a time (memory-limited builders such as CI)" OFF)
 if (MACRODR_ENABLE_CLANG_TIDY)
     find_program(CLANG_TIDY_EXE NAMES clang-tidy)
     if (CLANG_TIDY_EXE)
@@ -274,6 +276,19 @@ target_include_directories(macrodr_cli SYSTEM PRIVATE
     ${PROJECT_SOURCE_DIR}/legacy)
 
 target_link_libraries(macrodr_cli PRIVATE macrodr_core macrodr_cli_helpers)
+
+# Memory guard for small builders (Ninja only). likelihood.cpp and
+# command_manager.cpp are by far the heaviest translation units (8 and 18 min
+# on a 4-vCPU GitHub runner; ninja log of the 2026-08-29 run). Compiled side by
+# side they exhaust the runner's 16 GB and the build receives SIGTERM (exit
+# code 143). A depth-1 job pool on their targets keeps them sequential while
+# every other target still compiles in parallel. Off by default so local
+# builds keep full parallelism.
+if (MACRODR_SERIAL_HEAVY_TARGETS)
+    set_property(GLOBAL APPEND PROPERTY JOB_POOLS macrodr_heavy=1)
+    set_target_properties(macrodr_core macrodr_cli
+        PROPERTIES JOB_POOL_COMPILE macrodr_heavy)
+endif()
 
 # -------------------------------------------------------
 # 9) Data-file groups for Qt Creator (unchanged)

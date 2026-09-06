@@ -24,11 +24,16 @@ jobs:
         run: sudo apt-get install -y libblas-dev liblapack-dev libgsl-dev
 
       - name: Configure
-        run: cmake --preset ${{ matrix.preset }}
+        # MACRODR_SERIAL_HEAVY_TARGETS: likelihood.cpp and command_manager.cpp
+        # never compile at the same time (see CMakeLists.txt). Together they
+        # exceed the runner's 16 GB and the build dies with exit code 143.
+        run: cmake --preset ${{ matrix.preset }} -DMACRODR_SERIAL_HEAVY_TARGETS=ON
 
       - name: Build
         # -j 2 caps parallelism: the heavy template TUs (macroir/micro derivative
         # tests) each use several GB, and the default nproc+2 jobs OOM the 16 GB runner.
+        # With the job pool above the build takes about 28 min: core (9 min) and
+        # cli (18 min) run one TU at a time, tests fill the second slot.
         run: cmake --build --preset ${{ matrix.preset }} --clean-first -j 2
 
       - name: Run tests
