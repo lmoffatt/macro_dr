@@ -1,0 +1,94 @@
+---
+title: "Figure 1 — How the evidence is computed (CCO/COC confusion)"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+suppressMessages({library(data.table); library(ggplot2); library(patchwork)})
+DIG <- "data/e743fd5"
+theme_fig <- theme_classic(base_size = 8) +
+    theme(strip.background = element_blank(),
+          legend.key.size = unit(0.32, "cm"),
+          plot.tag = element_text(face = "bold", size = 10))
+col_truth <- c(CCO = "#0072B2", COC = "#D55E00")
+```
+
+```{r panels}
+## (a) protocols and example recordings ---------------------------------------
+rec <- fread(file.path(DIG, "recordings.csv"))
+rec[, protocol := factor(protocol, c("episodic", "stationary"),
+                         c("episodic (eLife-like)", "stationary (masked equilibration)"))]
+ago <- data.table(protocol = levels(rec$protocol),
+                  xmin = 1, xmax = c(6, 31))          # agonist-on span, in tau
+pa <- ggplot(rec, aes(time_tau, current)) +
+    geom_rect(data = ago, aes(xmin = xmin, xmax = xmax, ymin = Inf, ymax = -Inf),
+              inherit.aes = FALSE, fill = "#0072B2", alpha = 0.08) +
+    geom_line(linewidth = 0.25, colour = "grey25", na.rm = TRUE) +
+    facet_wrap(~protocol, ncol = 1, scales = "free_x") +
+    labs(x = expression("time ("*tau*")"), y = "current (pA)",
+         subtitle = "shaded: agonist 10 µM; gap: masked (NaN) equilibration") +
+    theme_fig
+## (b) convergence dashboard of one run ---------------------------------------
+tr <- fread(file.path(DIG, "trace_example.csv"))
+pb <- ggplot(tr, aes(iter)) +
+    geom_ribbon(aes(ymin = mean_log_Evidence_ss, ymax = mean_log_Evidence_ss_dn),
+                fill = "#009E73", alpha = 0.25) +
+    geom_line(aes(y = log_Evidence, colour = "trapezoid (instant)"), linewidth = 0.2) +
+    geom_line(aes(y = mean_log_Evidence_ss, colour = "stepping-stone up (window)"),
+              linewidth = 0.35) +
+    geom_line(aes(y = mean_log_Evidence_ss_dn, colour = "stepping-stone down (window)"),
+              linewidth = 0.35) +
+    geom_line(aes(y = logL, colour = "logL at beta = 1"), linewidth = 0.35) +
+    scale_colour_manual(NULL, values = c("logL at beta = 1" = "grey30",
+                                         "stepping-stone up (window)" = "#0072B2",
+                                         "stepping-stone down (window)" = "#D55E00",
+                                         "trapezoid (instant)" = "grey65")) +
+    coord_cartesian(ylim = c(-372, -326)) +
+    guides(colour = guide_legend(override.aes = list(linewidth = 1))) +
+    labs(x = "iteration", y = "nats",
+         subtitle = "one fit (CCO truth, episodic protocol, CCO arm)") +
+    theme_fig + theme(legend.position = c(0.70, 0.28),
+                      legend.background = element_blank())
+## (c) confusion matrix --------------------------------------------------------
+conf <- fread(file.path(DIG, "confusion.csv"))
+conf[, cell := factor(paste(truth, prot),
+                      c("CCO stationary", "COC stationary", "CCO episodic", "COC episodic"))]
+cs <- conf[, .(m = mean(dlnZ), se = sd(dlnZ) / sqrt(.N), n = .N), by = .(cell, truth)]
+pc <- ggplot(conf, aes(cell, dlnZ, colour = truth)) +
+    geom_hline(yintercept = 0, linetype = 2, linewidth = 0.3, colour = "grey50") +
+    geom_jitter(width = 0.12, size = 0.9, alpha = 0.7) +
+    geom_crossbar(data = cs, aes(y = m, ymin = m - se, ymax = m + se),
+                  width = 0.4, linewidth = 0.35, fatten = 1.2) +
+    geom_text(data = cs, aes(y = 10.5, label = paste0("n=", n)), size = 2.4,
+              show.legend = FALSE) +
+    scale_colour_manual(values = col_truth, guide = "none") +
+    labs(x = NULL, y = expression(Delta*"ln Z  (CCO - COC)"),
+         subtitle = "evidence per recording; stationary: indistinguishable (theorem)") +
+    theme_fig + theme(axis.text.x = element_text(angle = 20, hjust = 1))
+## (d) score/FIM identity per temperature -------------------------------------
+bart <- fread(file.path(DIG, "bartlett.csv"))
+# fread refuses to auto-type the ~1e+180 prior-rung magnitudes; they are
+# valid doubles, coerce explicitly
+bart[, mean_gfi := as.numeric(mean_gfi)]
+bart[, var_score := as.numeric(var_score)]
+pd <- ggplot(bart, aes(i_beta, var_score / mean_gfi,
+                       colour = log10(beta + 1e-12), group = i_par)) +
+    geom_hline(yintercept = 1, linetype = 2, linewidth = 0.3, colour = "grey50") +
+    geom_point(size = 1.1, alpha = 0.85) +
+    scale_y_log10() +
+    scale_colour_viridis_c(name = expression(log[10]~beta)) +
+    labs(x = "rung (cold to the right)",
+         y = "Var(score) / mean GFI (diagonal)",
+         subtitle = "identity holds where the chain samples the likelihood") +
+    theme_fig
+fig <- (pa | pb) / (pc | pd) + plot_annotation(tag_levels = "a")
+ggsave("Figure_1.pdf", fig, width = 7, height = 5.6, device = pdf)
+fig
+```
+
+```{r table}
+knitr::kable(conf[, .(pairs = .N, mean_dlnZ = round(mean(dlnZ), 2),
+                      se = round(sd(dlnZ) / sqrt(.N), 2)), by = .(truth, prot)],
+             caption = "Confusion matrix summary (dlnZ = lnZ_CCO - lnZ_COC)")
+```
