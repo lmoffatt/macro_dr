@@ -1,0 +1,83 @@
+---
+title: "Figure 2 — The thermodynamic ladder"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+suppressMessages({library(data.table); library(ggplot2); library(patchwork)})
+DIG <- "data/e743fd5"
+theme_fig <- theme_classic(base_size = 8) +
+    theme(strip.background = element_blank(),
+          legend.key.size = unit(0.32, "cm"),
+          plot.tag = element_text(face = "bold", size = 10))
+```
+
+```{r panels}
+tr  <- fread(file.path(DIG, "ladder_trace.csv"))
+st  <- fread(file.path(DIG, "ladder_settled.csv"))
+sz  <- fread(file.path(DIG, "ladder_sizes.csv"))
+INS <- tr[num_beta == max(num_beta), min(iter)]      # rung-insertion event
+
+## (a) every rung's beta along the run --------------------------------------
+## rung 0 is pinned at beta = 0 (the prior) and cannot be drawn on a log
+## axis; the 15-16 finite rungs are the ones that move.
+pa <- ggplot(tr[beta > 0], aes(iter, beta, group = i_beta, colour = i_beta)) +
+    geom_vline(xintercept = INS, linetype = 3, linewidth = 0.3, colour = "grey40") +
+    geom_line(linewidth = 0.3) +
+    annotate("text", x = INS, y = 3e-11, hjust = -0.08, size = 2.2, colour = "grey30",
+             label = "rung inserted") +
+    scale_y_log10(breaks = 10^seq(-10, 0, 2)) +
+    scale_colour_viridis_c(name = "rung", guide = guide_colourbar(barheight = 3)) +
+    labs(x = "iteration", y = expression(beta),
+         subtitle = "ladder positions adapt; rung 0 stays at beta = 0") +
+    theme_fig
+
+## (b) the thermodynamic path ------------------------------------------------
+## E_beta[logL] runs from the prior (~1e8 nats below) to the posterior
+## (~3e2): six decades, which is why the rungs must be geometric in beta.
+pb <- ggplot(st[beta > 0], aes(beta, -mean_logL)) +
+    geom_line(linewidth = 0.3, colour = "grey55") +
+    geom_point(aes(colour = i_beta), size = 1.3) +
+    scale_x_log10() + scale_y_log10() +
+    scale_colour_viridis_c(name = "rung", guide = "none") +
+    labs(x = expression(beta), y = expression(-E[beta]*"[log L]"),
+         subtitle = "path from prior to posterior, rungs marked") +
+    theme_fig
+
+## (c) where the evidence actually accumulates -------------------------------
+cc <- melt(st[, .(i_beta, trapezoid = plog, `stepping-stone` = plog_ss)],
+           id.vars = "i_beta", variable.name = "estimator", value.name = "nats")
+pc <- ggplot(cc, aes(i_beta, nats, fill = estimator)) +
+    geom_col(position = position_dodge(width = 0.7), width = 0.6) +
+    scale_fill_manual(NULL, values = c(trapezoid = "grey65",
+                                       `stepping-stone` = "#0072B2")) +
+    labs(x = "rung (cold to the right)", y = "contribution to ln Z (nats)",
+         subtitle = "per-tramo contributions; both estimators agree") +
+    theme_fig + theme(legend.position = c(0.28, 0.22),
+                      legend.background = element_blank())
+
+## (d) whether the bridge is crossable ---------------------------------------
+mm <- melt(st[, .(i_beta, `swap between rungs` = acc_jump,
+                  `within-rung stretch` = acc_emcee)],
+           id.vars = "i_beta", variable.name = "move", value.name = "rate")
+pd <- ggplot(mm, aes(i_beta, rate, colour = move)) +
+    geom_hline(yintercept = 0.25, linetype = 2, linewidth = 0.3, colour = "grey50") +
+    geom_line(linewidth = 0.35) + geom_point(size = 1) +
+    scale_colour_manual(NULL, values = c(`swap between rungs` = "#D55E00",
+                                         `within-rung stretch` = "#009E73")) +
+    coord_cartesian(ylim = c(0, 1)) +
+    labs(x = "rung (cold to the right)", y = "acceptance rate",
+         subtitle = "dashed: the 0.25 target the ladder is adapted to") +
+    theme_fig + theme(legend.position = c(0.30, 0.22),
+                      legend.background = element_blank())
+
+fig <- (pa | pb) / (pc | pd) + plot_annotation(tag_levels = "a")
+ggsave("Figure_2_ladder.pdf", fig, width = 7, height = 5.6, device = pdf)
+fig
+```
+
+```{r table}
+knitr::kable(sz[, .(runs = .N), by = .(started = first, ended = last)],
+             caption = "Ladder size across the 72 campaign fits")
+```
