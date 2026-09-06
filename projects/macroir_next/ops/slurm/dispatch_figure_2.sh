@@ -45,18 +45,38 @@ source "$PROFILE"
 set -e
 export MACRODR_PROFILE="$PROFILE"
 
-BIN="${BIN:-$(readlink -f "build/macrodr_cli-${CLUSTER}-current")}"
-[ -x "$BIN" ] || {
-    echo "[fig2] binary not found: $BIN" >&2
-    echo "       build first: projects/eLife_2025/ops/build_cluster.sh ${CLUSTER}" >&2
-    exit 1
-}
-
-if ! commit="$("$BIN" --commit)"; then
-    echo "[fig2] could not query commit hash: '$BIN --commit' failed" >&2
-    exit 1
+# Deferred-binary mode: with DEPEND set (e.g. afterok:<build job>) the
+# dispatcher may run BEFORE the build finishes. The commit is already frozen
+# by git at submission (build_cluster.sh tags the build with `git rev-parse
+# --short HEAD`), so both the WORKDIR name and the future binary path are
+# derivable without the binary. The jobs only touch BIN at RUN time, after
+# the dependency released them. Requires a CLEAN tree (a dirty tree would
+# stamp "<hash>-dirty" and the WORKDIR name would lie).
+BIN_DEFAULT="build/macrodr_cli-${CLUSTER}-current"
+if [ -n "${BIN:-}" ] || [ -x "$BIN_DEFAULT" ] || [ -z "${DEPEND:-}" ]; then
+    BIN="${BIN:-$(readlink -f "$BIN_DEFAULT")}"
+    [ -x "$BIN" ] || {
+        echo "[fig2] binary not found: $BIN" >&2
+        echo "       build first: projects/eLife_2025/ops/build_cluster.sh ${CLUSTER}" >&2
+        echo "       or submit the build and chain: DEPEND=afterok:<build_jobid> $0 ${CLUSTER}" >&2
+        exit 1
+    }
+    if ! commit="$("$BIN" --commit)"; then
+        echo "[fig2] could not query commit hash: '$BIN --commit' failed" >&2
+        exit 1
+    fi
+    [ -n "$commit" ] || { echo "[fig2] '$BIN --commit' returned empty" >&2; exit 1; }
+else
+    commit="$(git rev-parse --short HEAD)"
+    if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
+        echo "[fig2] ERROR: deferred-binary dispatch needs a CLEAN tree (the build" >&2
+        echo "       would stamp ${commit}-dirty and the WORKDIR name would not match)." >&2
+        exit 1
+    fi
+    BIN="$(pwd)/build/${CLUSTER}-${commit}/macrodr_cli"
+    echo "[fig2] deferred binary: $BIN (does not exist yet; jobs run behind $DEPEND)"
+    echo "[fig2] make sure the depended-on build job was submitted at THIS commit ($commit)."
 fi
-[ -n "$commit" ] || { echo "[fig2] '$BIN --commit' returned empty" >&2; exit 1; }
 run="${RUN_DIR:-$commit}"
 
 DEP_SPEC=""
