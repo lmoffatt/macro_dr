@@ -1,0 +1,78 @@
+---
+title: "Per-tramo evidence contributions — trapezoid vs telescopic up/down"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+suppressMessages({library(data.table); library(ggplot2); library(patchwork)})
+DIG <- "data/e743fd5"
+theme_fig <- theme_classic(base_size = 8) +
+    theme(strip.background = element_blank(),
+          legend.key.size = unit(0.3, "cm"),
+          plot.tag = element_text(face = "bold", size = 10))
+## Row k is the TRAMO between rungs k-1 and k; tramo 15 closes at beta = 1.
+## Lines are medians over blocks of 1536 iterations = 6 adaptation cycles
+## (the raw series is a sawtooth of period 256, one reset per adaptation).
+BLK <- 1536
+scale_tramo <- scale_colour_viridis_c(name = "tramo", breaks = c(1, 5, 10, 15),
+                                      guide = guide_colourbar(barheight = 3))
+```
+
+```{r panels, fig.width=7.2, fig.height=6.8}
+d <- fread(file.path(DIG, "evidence_contrib.csv"))
+d[, blk := (as.integer(iter / BLK) + 0.5) * BLK]
+b <- d[, lapply(.SD, median), by = .(i_beta, blk),
+       .SDcols = c("trap_win", "up_win", "dn_win")]
+
+## (a) the three estimators, per tramo, over iterations ----------------------
+## all contributions are negative and span four decades, so the axis is the
+## magnitude on a log scale
+m <- melt(b, id.vars = c("i_beta", "blk"), variable.name = "estimator",
+          value.name = "contrib")
+m[, estimator := factor(estimator, c("trap_win", "up_win", "dn_win"),
+                        c("trapezoid", "stepping-stone up", "stepping-stone down"))]
+pa <- ggplot(m[contrib < 0], aes(blk, -contrib, group = i_beta, colour = i_beta)) +
+    geom_line(linewidth = 0.4) +
+    facet_wrap(~estimator, ncol = 3) + scale_tramo +
+    scale_y_log10() +
+    labs(x = "iteration", y = "-contribution to ln Z (nats)",
+         subtitle = "cold tramos on top: the last three carry 93% of the evidence") +
+    theme_fig
+
+## (b) how far the trapezoid sits from the telescopic bracket ----------------
+## per tramo: the discretization bias of the trapezoid, tramo by tramo
+b[, trap_minus_ss := trap_win - (up_win + dn_win) / 2]
+pb <- ggplot(b[blk > 4000], aes(blk, trap_minus_ss, group = i_beta, colour = i_beta)) +
+    geom_hline(yintercept = 0, linetype = 2, linewidth = 0.3, colour = "grey55") +
+    geom_line(linewidth = 0.4) + scale_tramo +
+    labs(x = "iteration", y = "trapezoid - telescopic (nats)",
+         subtitle = "the trapezoid's O(dbeta^2) bias, tramo by tramo (post burn-in)") +
+    theme_fig
+
+## (c) the bracket width per tramo -------------------------------------------
+## dn - up: where the 0.5-nat gap of the total estimate is generated
+b[, bracket := dn_win - up_win]
+pc <- ggplot(b[blk > 4000], aes(blk, bracket, group = i_beta, colour = i_beta)) +
+    geom_hline(yintercept = 0, linetype = 2, linewidth = 0.3, colour = "grey55") +
+    geom_line(linewidth = 0.4) + scale_tramo +
+    labs(x = "iteration", y = "down - up (nats)",
+         subtitle = "bracket width per tramo, post burn-in; sums to the total") +
+    theme_fig
+
+fig <- pa / (pb | pc) + plot_annotation(tag_levels = "a")
+ggsave("Evidence_contributions.pdf", fig, width = 7.2, height = 6.8, device = pdf)
+fig
+```
+
+```{r table}
+tl <- d[iter >= 24000, .(trapezoid = round(median(trap_win), 3),
+                         ss_up = round(median(up_win), 3),
+                         ss_dn = round(median(dn_win), 3),
+                         bracket = round(median(dn_win - up_win), 3),
+                         trap_bias = round(median(trap_win - (up_win + dn_win)/2), 3)),
+        by = i_beta][order(i_beta)]
+tot <- tl[, lapply(.SD, sum), .SDcols = -"i_beta"]
+knitr::kable(rbind(tl, data.table(i_beta = NA, tot)),
+             caption = "Tail medians per tramo (last row: sum over tramos)")
+```
