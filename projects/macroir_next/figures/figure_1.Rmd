@@ -44,7 +44,7 @@ pb <- ggplot(tr, aes(iter)) +
                                          "stepping-stone up (window)" = "#0072B2",
                                          "stepping-stone down (window)" = "#D55E00",
                                          "trapezoid (instant)" = "grey65")) +
-    coord_cartesian(ylim = c(-372, -326)) +
+    coord_cartesian(ylim = c(-372, -312)) +
     guides(colour = guide_legend(override.aes = list(linewidth = 1))) +
     labs(x = "iteration", y = "nats",
          subtitle = "one fit (CCO truth, episodic protocol, CCO arm)") +
@@ -66,21 +66,19 @@ pc <- ggplot(conf, aes(cell, dlnZ, colour = truth)) +
     labs(x = NULL, y = expression(Delta*"ln Z  (CCO - COC)"),
          subtitle = "evidence per recording; stationary: indistinguishable (theorem)") +
     theme_fig + theme(axis.text.x = element_text(angle = 20, hjust = 1))
-## (d) score/FIM identity per temperature -------------------------------------
-bart <- fread(file.path(DIG, "bartlett.csv"))
-# fread refuses to auto-type the ~1e+180 prior-rung magnitudes; they are
-# valid doubles, coerce explicitly
-bart[, mean_gfi := as.numeric(mean_gfi)]
-bart[, var_score := as.numeric(var_score)]
-pd <- ggplot(bart, aes(i_beta, var_score / mean_gfi,
-                       colour = log10(beta + 1e-12), group = i_par)) +
+## (d) tempered information identity per temperature ---------------------------
+## Var_beta(beta*dlogL + dlogprior) vs E_beta[beta*GFI + FIM_prior]: equals 1
+## at every equilibrated rung (Luciano's formulation, 2026-09-06)
+bart <- fread(file.path(DIG, "bartlett_tempered.csv"))
+bart[, ratio := as.numeric(ratio)]
+pd <- ggplot(bart, aes(i_beta, ratio, colour = log10(beta + 1e-12))) +
     geom_hline(yintercept = 1, linetype = 2, linewidth = 0.3, colour = "grey50") +
     geom_point(size = 1.1, alpha = 0.85) +
-    scale_y_log10() +
+    scale_y_log10(breaks = c(0.01, 0.1, 1, 10)) +
     scale_colour_viridis_c(name = expression(log[10]~beta)) +
     labs(x = "rung (cold to the right)",
-         y = "Var(score) / mean GFI (diagonal)",
-         subtitle = "identity holds where the chain samples the likelihood") +
+         y = expression("Var("*beta*s[L]+s[pi]*") / E["*beta*"GFI + I"[pi]*"]"),
+         subtitle = "tempered-target identity: 1 at every equilibrated rung") +
     theme_fig
 fig <- (pa | pb) / (pc | pd) + plot_annotation(tag_levels = "a")
 ggsave("Figure_1.pdf", fig, width = 7, height = 5.6, device = pdf)

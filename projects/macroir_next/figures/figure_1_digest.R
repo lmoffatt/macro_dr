@@ -80,20 +80,41 @@ sc_f  <- list.files(RUN, pattern = "^fig1_CCO_episodic_rep2_s910121_fit_CCO_.*_s
                     full.names = TRUE)[1]
 fim_f <- list.files(RUN, pattern = "^fig1_CCO_episodic_rep2_s910121_fit_CCO_.*_fim\\.csv$",
                     full.names = TRUE)[1]
-# At low beta the walkers roam the prior, where dlogL and the FIM are
-# astronomically large and occasionally emitted as inf/nan (which also turns
-# the csv column into character): coerce to numeric and keep finite rows only,
-# so each (rung, parameter) statistic is over its finite samples.
-sc <- fread(sc_f)[iter >= TAIL_FROM]
-fm <- fread(fim_f)[iter >= TAIL_FROM & i_par == j_par]
+# The per-temperature identity is for the TEMPERED TARGET p_beta ~ prior*L^beta
+# (Luciano, 2026-09-06): its score is s_beta = beta*dlogL + dlogprior and the
+# information equality gives Var_beta(s_beta) = E_beta[beta*GFI + FIM_prior]
+# at EVERY rung once that rung equilibrated (up to the Gauss-Newton gap).
+# Comparing the bare likelihood score to the bare GFI conflates
+# prior-dominance with failure. The prior is Gaussian and diagonal in the
+# transformed space, so dlogprior_j = -(theta_j - mu_j)/var_j and
+# FIM_prior_jj = 1/var_j.
+# theta comes from save_Parameter, whose cadence (every ~220 iters) differs
+# from save_Score's (~180): only their COMMON events can be joined, ~8 events
+# x 32 walkers per rung. A future recompile should emit theta (or dlogprior)
+# in the score csv itself.
+# Low-beta magnitudes reach ~1e180 and are occasionally emitted as inf/nan
+# (which turns csv columns into character): coerce and keep finite rows.
+sc <- fread(sc_f)
+fm <- fread(fim_f)[i_par == j_par]
+pp_f <- list.files(RUN, pattern = "^fig1_CCO_episodic_rep2_s910121_fit_CCO_.*__i_beta__i_walker__i_par\\.csv$",
+                   full.names = TRUE)[1]
+pp  <- fread(pp_f)
+pri <- fread(file.path(RUN, "data", "scheme_CCO_prior_N1000.csv"))
 sc[, dlogL := suppressWarnings(as.numeric(dlogL))]
 fm[, gfi := suppressWarnings(as.numeric(gfi))]
-sc <- sc[is.finite(dlogL)]
-fm <- fm[is.finite(gfi)]
-bart <- merge(
-    sc[, .(beta = last(beta), var_score = var(dlogL), n = .N), by = .(i_beta, i_par)],
-    fm[, .(mean_gfi = mean(gfi), n_gfi = .N), by = .(i_beta, i_par)],
-    by = c("i_beta", "i_par"))
-bart <- bart[is.finite(var_score) & is.finite(mean_gfi) & mean_gfi > 0]
-fwrite(bart, file.path(OUT, "bartlett.csv"))
+common <- intersect(unique(sc$iter), unique(pp$iter))
+common <- common[common >= 15000]   # post-equilibrium (logL flat well before)
+j <- merge(merge(sc[iter %in% common, .(iter, i_beta, beta, i_walker, i_par, dlogL)],
+                 fm[iter %in% common, .(iter, i_beta, i_walker, i_par, gfi)],
+                 by = c("iter", "i_beta", "i_walker", "i_par")),
+           pp[iter %in% common, .(iter, i_beta, i_walker, i_par, par_value)],
+           by = c("iter", "i_beta", "i_walker", "i_par"))
+j <- merge(j, pri[, .(i_par, mu = transformed_mean, v = transformed_variance)], by = "i_par")
+j[, s_full := beta * dlogL - (par_value - mu) / v]
+j[, info   := beta * gfi + 1 / v]
+j <- j[is.finite(s_full) & is.finite(info)]
+bart <- j[, .(beta = last(beta), n = .N, var_s = var(s_full), mean_info = mean(info)),
+          by = .(i_beta, i_par)]
+bart[, ratio := var_s / mean_info]
+fwrite(bart, file.path(OUT, "bartlett_tempered.csv"))
 cat("digests written to", OUT, "\n")
