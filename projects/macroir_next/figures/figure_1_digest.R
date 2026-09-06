@@ -80,8 +80,10 @@ sc_f  <- list.files(RUN, pattern = "^fig1_CCO_episodic_rep2_s910121_fit_CCO_.*_s
                     full.names = TRUE)[1]
 fim_f <- list.files(RUN, pattern = "^fig1_CCO_episodic_rep2_s910121_fit_CCO_.*_fim\\.csv$",
                     full.names = TRUE)[1]
-# The per-temperature identity is for the TEMPERED TARGET p_beta ~ prior*L^beta
-# (Luciano, 2026-09-06): its score is s_beta = beta*dlogL + dlogprior and the
+# The per-temperature identity is the information equality of the TEMPERED
+# TARGET p_beta ~ prior*L^beta (E_q[grad log q grad log q^T] = E_q[-hess log q],
+# valid for any normalized density):
+# its score is s_beta = beta*dlogL + dlogprior and the
 # information equality gives Var_beta(s_beta) = E_beta[beta*GFI + FIM_prior]
 # at EVERY rung once that rung equilibrated (up to the Gauss-Newton gap).
 # Comparing the bare likelihood score to the bare GFI conflates

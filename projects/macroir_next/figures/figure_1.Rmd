@@ -68,7 +68,7 @@ pc <- ggplot(conf, aes(cell, dlnZ, colour = truth)) +
     theme_fig + theme(axis.text.x = element_text(angle = 20, hjust = 1))
 ## (d) tempered information identity per temperature ---------------------------
 ## Var_beta(beta*dlogL + dlogprior) vs E_beta[beta*GFI + FIM_prior]: equals 1
-## at every equilibrated rung (Luciano's formulation, 2026-09-06)
+## at every equilibrated rung (information equality of the tempered target)
 bart <- fread(file.path(DIG, "bartlett_tempered.csv"))
 bart[, ratio := as.numeric(ratio)]
 pd <- ggplot(bart, aes(i_beta, ratio, colour = log10(beta + 1e-12))) +
