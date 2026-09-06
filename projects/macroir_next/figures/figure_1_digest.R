@@ -115,8 +115,16 @@ j <- merge(j, pri[, .(i_par, mu = transformed_mean, v = transformed_variance)], 
 j[, s_full := beta * dlogL - (par_value - mu) / v]
 j[, info   := beta * gfi + 1 / v]
 j <- j[is.finite(s_full) & is.finite(info)]
-bart <- j[, .(beta = last(beta), n = .N, var_s = var(s_full), mean_info = mean(info)),
-          by = .(i_beta, i_par)]
-bart[, ratio := var_s / mean_info]
+# Both sides of the identity are heavy-tailed at mid beta: a single walker
+# visiting a FIM-divergent corner (info jumping to 1e25+ for one event at one
+# rung, seen 2026-09-06 at iter 28800) poisons a pooled mean and crushes the
+# ratio by orders of magnitude. Same medicine as the evidence windows:
+# compute the ratio PER EVENT and take the median across events.
+per_event <- j[, .(var_s = var(s_full), mean_info = mean(info)),
+               by = .(i_beta, i_par, iter)]
+per_event[, ratio := var_s / mean_info]
+bart <- per_event[, .(beta = j[i_beta == .BY$i_beta, last(beta)],
+                      n_events = .N, ratio = median(ratio)),
+                  by = .(i_beta, i_par)]
 fwrite(bart, file.path(OUT, "bartlett_tempered.csv"))
 cat("digests written to", OUT, "\n")
