@@ -52,8 +52,13 @@ export MACRODR_PROFILE="$PROFILE"
 # derivable without the binary. The jobs only touch BIN at RUN time, after
 # the dependency released them. Requires a CLEAN tree (a dirty tree would
 # stamp "<hash>-dirty" and the WORKDIR name would lie).
+# With DEPEND set and no explicit BIN, never fall back to the -current symlink:
+# it points at whatever was built LAST, which by construction is not the build
+# being waited for. On 2026-09-06 it resolved to the 2026-09-05 16:43 binary
+# (older than the qdtf DSL names), the packs waited for the new build and then
+# ran the old one; all five packs failed within a minute of starting.
 BIN_DEFAULT="build/macrodr_cli-${CLUSTER}-current"
-if [ -n "${BIN:-}" ] || [ -x "$BIN_DEFAULT" ] || [ -z "${DEPEND:-}" ]; then
+if [ -n "${BIN:-}" ] || [ -z "${DEPEND:-}" ]; then
     BIN="${BIN:-$(readlink -f "$BIN_DEFAULT")}"
     [ -x "$BIN" ] || {
         echo "[fig2] binary not found: $BIN" >&2
