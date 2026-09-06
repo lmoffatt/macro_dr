@@ -9354,10 +9354,12 @@ void report(FunctionTable& f, std::size_t iter, const Duration& dur,
             auto const& grad = derivative(get<logL>(dml))();
             auto const& G = get<Gaussian_Fisher_Information>(dml)().value();
             auto walker_id = data.get_Walker(i_walker, i_b);
+            auto t_par = data.get_Parameter(i_walker, i_b);
             for (std::size_t i_par = 0; i_par < grad.size(); ++i_par)
                 s.f << iter << s.sep << dur.count() << s.sep << i_b << s.sep << beta.size()
                     << s.sep << beta[i_b] << s.sep << i_walker << s.sep << walker_id << s.sep
-                    << v_logL << s.sep << i_par << s.sep << grad[i_par] << "\n";
+                    << v_logL << s.sep << i_par << s.sep << grad[i_par] << s.sep
+                    << t_par[i_par] << "\n";
             for (std::size_t i_par = 0; i_par < G.nrows(); ++i_par)
                 for (std::size_t j_par = 0; j_par <= i_par; ++j_par)
                     s.g << iter << s.sep << dur.count() << s.sep << i_b << s.sep << beta.size()

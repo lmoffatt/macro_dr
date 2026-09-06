@@ -483,6 +483,16 @@ TODO (future, needs recompile, expect ≤2-3×, decided 2026-09-05):
 The big lever stays the CADENCE (how many score samples per temperature
 are actually needed), which is a design decision, not code.
 
+DESIGN DEFECT FOUND AND FIXED IN CODE 2026-09-06 (needs the next rebuild):
+the score csv carried dlogL but not theta, so the tempered-target identity
+test Var(beta*dlogL + dlogprior) = E[beta*GFI + I_prior] could only use the
+iterations where save_Parameter's cadence (128) happened to coincide with
+save_Score's (180): 5 of 166 events, wasting ~97% of the expensive dlogL
+data. Fixed by appending a par_value column to each score row
+(parallel_tempering.h report_title + qmodel.h report): every score event is
+now self-sufficient. Campaigns run before the rebuild (figure_1 v1,
+figure_2 v1) remain limited to the coincident events for this test.
+
 Also measured 2026-09-05: the trapezoid-vs-telescopic bracket closes on
 first real data (windowed ss_up −352.90 vs ss_dn −352.82 at iter 888 of
 the discovery run). Open check: the pre-existing windowed trapezoid

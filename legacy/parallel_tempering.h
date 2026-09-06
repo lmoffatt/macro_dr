@@ -2026,9 +2026,14 @@ class save_Score {
     }
 
     friend void report_title(save_Score& s, thermo_mcmc<Parameters> const&, ...) {
+        // par_value rides along so every score row is self-sufficient for the
+        // tempered-target identity test (score of prior needs theta): without
+        // it only the rare iterations where save_Parameter's cadence happens
+        // to coincide were usable, wasting ~97% of the expensive dlogL data
+        // (2026-09-06).
         s.f << "iter" << s.sep << "iter_time" << s.sep << "i_beta" << s.sep << "num_beta" << s.sep
             << "beta" << s.sep << "i_walker" << s.sep << "id_walker" << s.sep << "logL" << s.sep
-            << "i_par" << s.sep << "dlogL"
+            << "i_par" << s.sep << "dlogL" << s.sep << "par_value"
             << "\n";
         s.g << "iter" << s.sep << "iter_time" << s.sep << "i_beta" << s.sep << "num_beta" << s.sep
             << "beta" << s.sep << "i_walker" << s.sep << "id_walker" << s.sep << "i_par" << s.sep
