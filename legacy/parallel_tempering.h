@@ -1686,7 +1686,9 @@ inline ladder_phase ladder_phase_at(std::size_t iter, ladder_schedule const& s) 
     if (P > 0 && off < s.n_cycles * P) {
         auto c = off / P;
         auto o = off % P;
-        return {false, o == s.hold % P, o == 0, c + 1, o < s.hold && o >= s.hold_burnin};
+        // the report at o == hold is taken BEFORE that iteration's step (report_all
+        // precedes the adaptation in the loop), so it still belongs to the hold
+        return {false, o == s.hold % P, o == 0, c + 1, o <= s.hold && o >= s.hold_burnin};
     }
     auto rest = off - s.n_cycles * P;
     return {false, false, rest == 0, s.n_cycles + 1, rest >= s.hold_burnin};
