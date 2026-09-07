@@ -17,13 +17,18 @@
 # the .macroir files must not define them.
 #
 # Design defaults (override via env):
-#   NCH=1000 channels; TAU_MS=16 (slow relaxation of scheme_CCO at 10 uM,
-#   ~1/63 s); INTERVAL_IN_TAU=0.1 (measurement step = 0.1 tau);
+#   NCH=1000 channels; TAU_MS=100 (the recording's slow relaxation is ~6.2
+#   nominal tau, 2026-09-05, so the segments are laid out on the slow scale);
+#   INTERVAL_IN_TAU=0.1 (measurement step = 0.1 tau);
 #   episodic  = PRE_TAUS 1 | PULSE_TAUS 5  (10 uM) | POST_TAUS 5 (0 uM)
 #   stationary= PRE_TAUS 1 | GAP_TAUS  20  (10 uM, nan-masked) | MEAS_TAUS 10 (10 uM)
 #   REPLICAS=10; MAX_ITER=30000 (~300 full-ladder score events at MAX_VALUES=128);
-#   ADAPT_EVERY=256 (stable ladders between window resets); BETA_SIZE=16 with
-#   adjust_beta trimming; SCOUTS=32.
+#   ADAPT_EVERY=256 and ADAPT_T0=3000 (phase-1 adaptation); BETA_SIZE=4, grown
+#   by adjust_beta during phase 1; SCOUTS=32; and the drift-and-hold ladder
+#   schedule PHASE1_END=5000, DRIFT=300, HOLD=3000, HOLD_BURNIN=100,
+#   N_CYCLES=4, CYCLE_GAIN=0.3 (set_Ladder_schedule; theory in
+#   legacy/parallel_tempering.h). Regression check of the schedule: N_CYCLES=0
+#   PHASE1_END=$MAX_ITER HOLD_BURNIN=0 reproduces the pre-schedule run.
 #
 # Prereq: a local build (the user compiles): build/gcc-release/macrodr_cli.
 # Usage: projects/macroir_next/ops/local/dispatch_figure_1_local.sh
@@ -51,7 +56,7 @@ PROTOCOLS=(${PROTOCOLS:-stationary episodic})
 REPLICAS="${REPLICAS:-10}"
 
 NCH="${NCH:-1000}"
-TAU_MS="${TAU_MS:-16}"
+TAU_MS="${TAU_MS:-100}"
 INTERVAL_IN_TAU="${INTERVAL_IN_TAU:-0.1}"
 PRE_TAUS="${PRE_TAUS:-1}"
 PULSE_TAUS="${PULSE_TAUS:-5}"       # episodic 10 uM segment
@@ -64,6 +69,13 @@ SCOUTS="${SCOUTS:-32}"
 BETA_SIZE="${BETA_SIZE:-}"
 MAX_ITER="${MAX_ITER:-30000}"
 ADAPT_EVERY="${ADAPT_EVERY:-256}"
+ADAPT_T0="${ADAPT_T0:-3000}"
+PHASE1_END="${PHASE1_END:-5000}"
+DRIFT="${DRIFT:-300}"
+HOLD="${HOLD:-3000}"
+HOLD_BURNIN="${HOLD_BURNIN:-100}"
+N_CYCLES="${N_CYCLES:-4}"
+CYCLE_GAIN="${CYCLE_GAIN:-0.3}"
 MAX_VALUES="${MAX_VALUES:-128}"
 BASE_SEED="${BASE_SEED:-910000}"    # nonzero; 0 would mean random_device
 
@@ -89,10 +101,10 @@ if [ -f "$TUNE_FILE" ]; then
     # shellcheck source=/dev/null
     source "$TUNE_FILE"
     THREADS="${THREADS:-${CPUS_RECOMMENDED:-$(nproc)}}"
-    BETA_SIZE="${BETA_SIZE:-${BETA_EFF:-}}"
-    echo "[fig1] tuning.env: THREADS=$THREADS beta_size=${BETA_SIZE:-16} s/iter=${SECONDS_PER_ITER:-?}"
+    # the ladder starts SMALL and adjust_beta grows it in phase 1; BETA_EFF is ignored
+    echo "[fig1] tuning.env: THREADS=$THREADS beta_size=${BETA_SIZE:-4} s/iter=${SECONDS_PER_ITER:-?}"
 fi
-BETA_SIZE="${BETA_SIZE:-16}"
+BETA_SIZE="${BETA_SIZE:-4}"
 
 export OMP_NUM_THREADS="${THREADS:-$(nproc)}"
 export OPENBLAS_NUM_THREADS="${BLAS_THREADS:-1}"
@@ -229,6 +241,13 @@ EOF
         "$(printf -- '--beta_size = get_number(n=%s)' "$BETA_SIZE")" \
         "$(printf -- '--max_iter = get_number(n=%s)' "$MAX_ITER")" \
         "$(printf -- '--adapt_beta_every = get_number(n=%s)' "$ADAPT_EVERY")" \
+        "$(printf -- '--adapt_beta_t0 = %s' "$ADAPT_T0")" \
+        "$(printf -- '--phase1_end = get_number(n=%s)' "$PHASE1_END")" \
+        "$(printf -- '--drift_iters = get_number(n=%s)' "$DRIFT")" \
+        "$(printf -- '--hold_iters = get_number(n=%s)' "$HOLD")" \
+        "$(printf -- '--hold_burnin = get_number(n=%s)' "$HOLD_BURNIN")" \
+        "$(printf -- '--n_cycles = get_number(n=%s)' "$N_CYCLES")" \
+        "$(printf -- '--cycle_gain = %s' "$CYCLE_GAIN")" \
         "$(printf -- '--max_values = get_number(n=%s)' "$MAX_VALUES")" \
         "$(printf -- '--seed_cco = get_number(n=%s)' "$seed_cco")" \
         "$(printf -- '--seed_coc = get_number(n=%s)' "$seed_coc")" \

@@ -73,14 +73,21 @@ on/off/inactivating_on/inactivating_off). The root copies match the
 current names.
 
 - `scheme_CCO_par.csv`, `scheme_CCO_prior.csv`: kon 6.73, koff 166,
-  gating_on 743, gating_off 45.3 (log10-normal priors, variance 2).
+  gating_on 157, gating_off 45.3 (log10-normal priors, variance 2).
+  gating_on was 743 until 2026-09-07 (the e743fd5 campaign): that puts
+  P_open at 0.826 at 10 uM and saturates the occupancy; 157 gives 0.50, the
+  design value of the eLife figures. Both files and the twin pair below
+  are written by `make_cco_coc_twin.py` in this directory.
 - `scheme_COC_par.csv`, `scheme_COC_prior.csv`: placeholder values
   (copied from CCO historically), kept for reference.
 - `scheme_COC_twin_par.csv`, `scheme_COC_twin_prior.csv`: the COC exactly
-  equivalent to scheme_CCO at 10 uM agonist (on 5.423005, off 9.347195,
-  inactivating_on 35.952805, inactivating_off 922.069949), from the
-  closed-form twin map; equilibrium equivalence verified to 1e-15
-  (tmp/twin_coc_from_cco.py, 2026-09-01). Prior centered on the twin,
+  equivalent to scheme_CCO at 10 uM agonist (on 2.926624, off 27.859054,
+  inactivating_on 17.440946, inactivating_off 361.033762 for gating_on
+  157; for 743 it was on 5.423005, off 9.347195, inactivating_on
+  35.952805, inactivating_off 922.069949), from the closed-form twin map;
+  equilibrium equivalence checked by the generator before writing
+  (P_open and K_out coincide; the full check to 1e-15 is
+  tmp/twin_coc_from_cco.py, 2026-09-01). Prior centered on the twin,
   variance 2, mirroring the CCO prior shape.
 
 Open detail to settle at the smoke test: Current_Baseline is 0 in the

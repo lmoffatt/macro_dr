@@ -17,11 +17,21 @@
 #   prior_cco_file, prior_coc_file   (absolute paths; COC prior = twin-centered)
 #   idname_cco, idname_coc   (unique per job and fit)
 #   num_scouts               (walkers per rung)
-#   beta_size                (rung count; positions self-adapt)
+#   beta_size                (INITIAL rung count; adjust_beta grows the ladder
+#                             during phase 1, so start small, e.g. 4)
 #   max_iter                 (>= ~30000 so ~300 full-ladder score events accrue)
-#   adapt_beta_every         (large, e.g. 256: the telescopic windows and the
-#                             per-temperature score statistics need stable
-#                             ladders between resets)
+#   adapt_beta_every         (phase-1 adaptation and statistics window, e.g. 256)
+#   adapt_beta_t0            (phase-1 Robbins-Monro time constant, e.g. 3000)
+#   phase1_end, drift_iters, hold_iters, hold_burnin, n_cycles, cycle_gain
+#                            (the drift-and-hold ladder schedule, 2026-09-07:
+#                             continuous adaptation until phase1_end, then
+#                             n_cycles of [hold | one adaptation step of gain
+#                             cycle_gain + drift settling], then a permanent
+#                             hold. The telescopic evidence pools only inside
+#                             holds, after hold_burnin iterations; each hold is
+#                             an independent estimate of log Z. Values from
+#                             tau_int(logL) ~ 34 iterations at the cold rungs:
+#                             drift 300, hold_burnin 100, hold 3000.)
 #   max_values               (max_number_of_values_per_iteration; 128 makes the
 #                             score saver land every ~110 iterations, ~8% cost)
 #   seed_cco, seed_coc       (nonzero; 0 means random_device)
@@ -52,20 +62,26 @@ thermo_algorithm_dts = set_ThermoAlgorithm_dts(
    adapt_beta_controler = "s",
    adapt_beta_variance = "variance",
    adapt_beta_nu = 0.5,
-   adapt_beta_t0 = 3000,
+   adapt_beta_t0 = adapt_beta_t0,
    adjust_beta = 1,
    acceptance_upper_limit = 1.95,
    acceptance_lower_limit = 0.25,
    desired_acceptance = 0.25)
 
+ladder_schedule = set_Ladder_schedule(
+   phase1_end = phase1_end, drift = drift_iters, hold = hold_iters,
+   hold_burnin = hold_burnin, n_cycles = n_cycles, cycle_gain = cycle_gain)
+
 thermo_evidence_dts(idname = idname_cco, model = "scheme_CCO",
    prior = prior_cco_file, likelihood_algorithm = likelihood_algorithm,
    data = observations_file, experiment = experiment,
-   thermo_algorithm = thermo_algorithm_dts, sampling_interval = 1,
+   thermo_algorithm = thermo_algorithm_dts, ladder_schedule = ladder_schedule,
+   sampling_interval = 1,
    max_number_of_values_per_iteration = max_values, init_seed = seed_cco)
 
 thermo_evidence_dts(idname = idname_coc, model = "scheme_COC",
    prior = prior_coc_file, likelihood_algorithm = likelihood_algorithm,
    data = observations_file, experiment = experiment,
-   thermo_algorithm = thermo_algorithm_dts, sampling_interval = 1,
+   thermo_algorithm = thermo_algorithm_dts, ladder_schedule = ladder_schedule,
+   sampling_interval = 1,
    max_number_of_values_per_iteration = max_values, init_seed = seed_coc)

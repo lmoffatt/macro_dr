@@ -11,7 +11,9 @@
 # Required: CLUSTER, BIN, WORKDIR, MACRODR_PROFILE, SIM_SCRIPT, EVI_SCRIPT,
 #   LABEL, PROT, TRUTH_MODEL, TRUTH_PAR, TEMPLATE, PRIOR_CCO, PRIOR_COC,
 #   N1, N2, N3, NSAMP, AG2, AG3, SEED_SIM, SEED_CCO, SEED_COC,
-#   SCOUTS, BETA_SIZE, MAX_ITER, ADAPT_EVERY, MAX_VALUES.
+#   SCOUTS, BETA_SIZE, MAX_ITER, ADAPT_EVERY, ADAPT_T0, MAX_VALUES, and the
+#   drift-and-hold ladder schedule PHASE1_END, DRIFT, HOLD, HOLD_BURNIN,
+#   N_CYCLES, CYCLE_GAIN.
 #
 # Seeds are baked into LABEL by the dispatcher, so every output filename
 # carries the seed and pairs with the local run of the same BASE_SEED.
@@ -31,6 +33,8 @@ set -eo pipefail
 : "${N1:?}" ; : "${N2:?}" ; : "${N3:?}" ; : "${NSAMP:?}" ; : "${AG2:?}" ; : "${AG3:?}"
 : "${SEED_SIM:?}" ; : "${SEED_CCO:?}" ; : "${SEED_COC:?}"
 : "${SCOUTS:?}" ; : "${BETA_SIZE:?}" ; : "${MAX_ITER:?}" ; : "${ADAPT_EVERY:?}"
+: "${ADAPT_T0:?}" ; : "${PHASE1_END:?}" ; : "${DRIFT:?}" ; : "${HOLD:?}"
+: "${HOLD_BURNIN:?}" ; : "${N_CYCLES:?}" ; : "${CYCLE_GAIN:?}"
 : "${MAX_VALUES:?}"
 
 # Same env dance as run_macroir.sh: drop inherited Lmod tracking, then source
@@ -108,6 +112,13 @@ echo "[fig1-job] paired evidence on $(basename "$obs")"
     "$(printf -- '--beta_size = get_number(n=%s)' "$BETA_SIZE")" \
     "$(printf -- '--max_iter = get_number(n=%s)' "$MAX_ITER")" \
     "$(printf -- '--adapt_beta_every = get_number(n=%s)' "$ADAPT_EVERY")" \
+    "$(printf -- '--adapt_beta_t0 = %s' "$ADAPT_T0")" \
+    "$(printf -- '--phase1_end = get_number(n=%s)' "$PHASE1_END")" \
+    "$(printf -- '--drift_iters = get_number(n=%s)' "$DRIFT")" \
+    "$(printf -- '--hold_iters = get_number(n=%s)' "$HOLD")" \
+    "$(printf -- '--hold_burnin = get_number(n=%s)' "$HOLD_BURNIN")" \
+    "$(printf -- '--n_cycles = get_number(n=%s)' "$N_CYCLES")" \
+    "$(printf -- '--cycle_gain = %s' "$CYCLE_GAIN")" \
     "$(printf -- '--max_values = get_number(n=%s)' "$MAX_VALUES")" \
     "$(printf -- '--seed_cco = get_number(n=%s)' "$SEED_CCO")" \
     "$(printf -- '--seed_coc = get_number(n=%s)' "$SEED_COC")" \

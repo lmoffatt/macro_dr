@@ -19,6 +19,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <iomanip>
+#include <limits>
 #include <numeric>
 #include <sstream>
 #include <string>
@@ -1561,54 +1562,117 @@ void adjust_beta(FunctionTable& f, std::size_t iter, std::size_t adapt_beta_ever
     }
 }
 
+// One adaptation step of the beta ladder with an explicit gain. This is the
+// body adapt_beta always had, split out so that a ladder_schedule can apply a
+// step whose gain is a fraction of a well-measured correction rather than
+// the Robbins-Monro kappa(iter) computed in adapt_beta below.
+template <class Parameters>
+void adapt_beta_step(thermo_mcmc<Parameters>& current, by_beta<double>& beta, double kappa,
+                     std::string equalizing_paramter, std::string controlling_parameter,
+                     std::string variance_approximation, double desired_acceptance) {
+    assert(beta[beta.size() - 1] == 1);
+    std::size_t tested_index = 1;
+
+    auto d = calculate_controler_step(current, beta, equalizing_paramter, desired_acceptance,
+                                      variance_approximation);
+    if (d.empty()) {
+        std::cerr << "adapt_beta: unknown equalizing parameter '" << equalizing_paramter
+                  << "', beta ladder left unchanged\n";
+        return;
+    }
+    if (controlling_parameter == "s") {
+        std::vector<double> T(beta.size() - (beta[0] == 0 ? 1 : 0));
+        for (std::size_t i = 0; i < T.size(); ++i)
+            T[i] = 1.0 / beta[i + (beta[0] == 0 ? 1 : 0)];
+        std::vector<double> S(T.size() - 1);
+
+        for (std::size_t i = 0; i < S.size(); ++i)
+            S[S.size() - 1 - i] = std::log(T[T.size() - 2 - i] - T[T.size() - 1 - i]);
+        if (equalizing_paramter.ends_with("vfm")) {
+            for (std::size_t i = 0; i < S.size(); ++i) {
+                S[i] += kappa * d[i];
+            }
+        } else {
+            auto dbds = calculate_d_beta_d_s(beta);
+            for (std::size_t i = 0; i < S.size(); ++i) {
+                S[i] += kappa * d[i] / dbds[i];
+            }
+        }
+
+        for (std::size_t i = 0; i < S.size() - tested_index; ++i)
+            T[T.size() - 2 - i] = T[T.size() - 1 - i] + std::exp(S[S.size() - 1 - i]);
+
+        for (std::size_t i = 0; i < T.size(); ++i)
+            beta[i + (beta[0] == 0 ? 1 : 0)] = 1.0 / T[i];
+    } else if (controlling_parameter == "beta") {
+        for (std::size_t i = 0; i < d.size(); ++i) {
+            beta[i + 1] += kappa * d[i];
+        }
+    }
+    current.beta = beta;
+}
+
 template <class Parameters>
 void adapt_beta(std::size_t iter, thermo_mcmc<Parameters>& current, by_beta<double>& beta,
                 std::size_t adapt_beta_every, std::string equalizing_paramter,
                 std::string controlling_parameter, std::string variance_approximation,
                 double desired_acceptance, double nu, double t0) {
     if ((iter > 0) && (current.num_samples() > 0) && (iter % adapt_beta_every == 0)) {
-        assert(beta[beta.size() - 1] == 1);
-        std::size_t tested_index = 1;
         double kappa = 1.0 / nu * t0 / (t0 + iter);
-
-        auto d = calculate_controler_step(current, beta, equalizing_paramter, desired_acceptance,
-                                          variance_approximation);
-        if (d.empty()) {
-            std::cerr << "adapt_beta: unknown equalizing parameter '" << equalizing_paramter
-                      << "', beta ladder left unchanged\n";
-            return;
-        }
-        if (controlling_parameter == "s") {
-            std::vector<double> T(beta.size() - (beta[0] == 0 ? 1 : 0));
-            for (std::size_t i = 0; i < T.size(); ++i)
-                T[i] = 1.0 / beta[i + (beta[0] == 0 ? 1 : 0)];
-            std::vector<double> S(T.size() - 1);
-
-            for (std::size_t i = 0; i < S.size(); ++i)
-                S[S.size() - 1 - i] = std::log(T[T.size() - 2 - i] - T[T.size() - 1 - i]);
-            if (equalizing_paramter.ends_with("vfm")) {
-                for (std::size_t i = 0; i < S.size(); ++i) {
-                    S[i] += kappa * d[i];
-                }
-            } else {
-                auto dbds = calculate_d_beta_d_s(beta);
-                for (std::size_t i = 0; i < S.size(); ++i) {
-                    S[i] += kappa * d[i] / dbds[i];
-                }
-            }
-
-            for (std::size_t i = 0; i < S.size() - tested_index; ++i)
-                T[T.size() - 2 - i] = T[T.size() - 1 - i] + std::exp(S[S.size() - 1 - i]);
-
-            for (std::size_t i = 0; i < T.size(); ++i)
-                beta[i + (beta[0] == 0 ? 1 : 0)] = 1.0 / T[i];
-        } else if (controlling_parameter == "beta") {
-            for (std::size_t i = 0; i < d.size(); ++i) {
-                beta[i + 1] += kappa * d[i];
-            }
-        }
-        current.beta = beta;
+        adapt_beta_step(current, beta, kappa, equalizing_paramter, controlling_parameter,
+                        variance_approximation, desired_acceptance);
     }
+}
+
+// ── Drift-and-hold schedule for the beta ladder (2026-09-07) ──────────────────
+// The telescopic evidence estimator needs the ladder FIXED while it pools
+// samples (its windows are discarded whenever a beta moves), and the ladder
+// adaptation needs the ladder to MOVE. The two are separated in time:
+//   phase 1  iter < phase1_end : continuous adaptation as before (adapt_beta,
+//            adjust_beta and the statistics reset every adapt_beta_every);
+//   phase 2  n_cycles cycles of [hold | step + drift]: the ladder stays fixed
+//            for `hold` iterations while the statistics and the telescopic
+//            windows accumulate; then ONE adaptation step with gain
+//            cycle_gain, computed from the whole hold's statistics, followed
+//            by `drift` iterations for the walkers to settle to the moved
+//            ladder;
+//   phase 3  a permanent hold to the end of the run.
+// Every step thus reads a full hold's statistics (thousands of iterations
+// instead of one phase-1 window), so cycle_gain is a fraction of a
+// well-measured correction, not a Robbins-Monro gain: 0.3 applies 30% of the
+// measured correction per cycle. Each hold yields an independent estimate of
+// log Z, so the spread across holds is an empirical standard error.
+// The default (phase1_end = max) reproduces the pre-schedule run exactly.
+struct ladder_schedule {
+    std::size_t phase1_end = std::numeric_limits<std::size_t>::max();
+    std::size_t drift = 0;
+    std::size_t hold = 0;
+    std::size_t hold_burnin = 0;  // hold iterations the evidence windows skip after a move
+    std::size_t n_cycles = 0;
+    double cycle_gain = 0.0;
+    std::size_t period() const {
+        return drift + hold;
+    }
+};
+
+struct ladder_phase {
+    bool phase1;       // the pre-schedule adaptation path
+    bool cycle_start;  // this iteration takes the cycle's adaptation step
+    bool hold_start;   // this iteration opens a hold: the statistics restart
+};
+
+// Pure function of the iteration: no state to carry across the loop, and the
+// R digests can recompute the phase from the iter column alone.
+inline ladder_phase ladder_phase_at(std::size_t iter, ladder_schedule const& s) {
+    if (iter < s.phase1_end)
+        return {true, false, false};
+    auto P = s.period();
+    auto off = iter - s.phase1_end;
+    if (P > 0 && off < s.n_cycles * P) {
+        auto o = off % P;
+        return {false, o == s.hold % P, o == 0};
+    }
+    return {false, false, off == s.n_cycles * P};
 }
 
 template <class FunctionTable, class Prior, class Likelihood, class Variables, class DataType,

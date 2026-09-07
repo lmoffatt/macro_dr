@@ -21,7 +21,8 @@
 #   projects/macroir_next/ops/slurm/dispatch_figure_1.sh <cluster>   # e.g. dirac
 # Tunables via env: TRUTHS, PROTOCOLS, REPLICAS, NCH, TAU_MS, INTERVAL_IN_TAU,
 # PRE_TAUS, PULSE_TAUS, POST_TAUS, GAP_TAUS, MEAS_TAUS, SCOUTS, BETA_SIZE,
-# MAX_ITER, ADAPT_EVERY, MAX_VALUES, BASE_SEED, CPUS, MEM, TIME, PARTITION,
+# MAX_ITER, ADAPT_EVERY, ADAPT_T0, PHASE1_END, DRIFT, HOLD, HOLD_BURNIN,
+# N_CYCLES, CYCLE_GAIN, MAX_VALUES, BASE_SEED, CPUS, MEM, TIME, PARTITION,
 # ACCOUNT, BIN, DEPEND, RUN_DIR; and for the whole-node packing mode (the
 # default, because dirac runs at most 4 jobs per user): PACK (pairs per node,
 # default JOBS_PER_NODE from tuning.env else 8; PACK=1 = one pair per job),
@@ -78,7 +79,10 @@ PROTOCOLS=(${PROTOCOLS:-stationary episodic})
 REPLICAS="${REPLICAS:-10}"
 
 NCH="${NCH:-1000}"
-TAU_MS="${TAU_MS:-16}"
+# tau = 1/(kon*x + koff) is the burst time scale; the recording's slow
+# relaxation is ~6.2 tau (2026-09-05), so the segments are laid out on the
+# slow scale: 100 ms, not the nominal 16.
+TAU_MS="${TAU_MS:-100}"
 INTERVAL_IN_TAU="${INTERVAL_IN_TAU:-0.1}"
 PRE_TAUS="${PRE_TAUS:-1}"
 PULSE_TAUS="${PULSE_TAUS:-5}"
@@ -92,6 +96,19 @@ SCOUTS="${SCOUTS:-32}"
 BETA_SIZE="${BETA_SIZE:-}"
 MAX_ITER="${MAX_ITER:-30000}"
 ADAPT_EVERY="${ADAPT_EVERY:-256}"
+ADAPT_T0="${ADAPT_T0:-3000}"
+# Drift-and-hold ladder schedule (set_Ladder_schedule; theory in
+# parallel_tempering.h). Phase 1 adapts continuously until PHASE1_END; then
+# N_CYCLES of [HOLD iterations fixed | one step of gain CYCLE_GAIN + DRIFT
+# settling]; then a permanent hold. With MAX_ITER=30000: 5000 + 4*3300 =
+# 18200, so the final hold runs 11800 iterations. tau_int(logL) is ~34
+# iterations at the cold rungs (2026-09-07): DRIFT ~ 10 tau, HOLD_BURNIN ~ 3 tau.
+PHASE1_END="${PHASE1_END:-5000}"
+DRIFT="${DRIFT:-300}"
+HOLD="${HOLD:-3000}"
+HOLD_BURNIN="${HOLD_BURNIN:-100}"
+N_CYCLES="${N_CYCLES:-4}"
+CYCLE_GAIN="${CYCLE_GAIN:-0.3}"
 MAX_VALUES="${MAX_VALUES:-128}"
 BASE_SEED="${BASE_SEED:-910000}"
 
@@ -125,7 +142,9 @@ if [ -f "$TUNE_FILE" ]; then
     # Start the campaign at the DISCOVERED ladder size: the probe measured
     # s/iter there, and starting where the ladder settles avoids the churn
     # (and the load mis-prediction) of growing from a small nominal count.
-    BETA_SIZE="${BETA_SIZE:-${BETA_EFF:-16}}"
+    # the ladder starts SMALL and adjust_beta grows it in phase 1 (a 16-rung
+    # start can neither shrink nor grow, 2026-09-06); BETA_EFF is ignored.
+    BETA_SIZE="${BETA_SIZE:-4}"
     echo "[fig1] tuning.env: CPUS=$CPUS beta_size=$BETA_SIZE jobs/node=${JOBS_PER_NODE:-?} s/iter=${SECONDS_PER_ITER:-?}"
     if [ -n "${SECONDS_PER_ITER:-}" ]; then
         est=$(python3 -c "print(round($SECONDS_PER_ITER*${MAX_ITER:-30000}/3600, 2))")
@@ -133,7 +152,7 @@ if [ -f "$TUNE_FILE" ]; then
         echo "[fig1] predicted wall-clock: ~${est} h per fit, ~${est2} h per pair (= packed-job wall)"
     fi
 fi
-BETA_SIZE="${BETA_SIZE:-16}"
+BETA_SIZE="${BETA_SIZE:-4}"
 
 # ---- packing: several pairs per whole-node job -------------------------------
 # dirac's QOS runs at most 4 jobs per user (MaxJobsPU=4, verified 2026-07-12),
@@ -194,7 +213,7 @@ submit_pack() {
         --time="${TIME:-2-00:00:00}" \
         --job-name="f1pack_${pack_idx}" \
         --output="$WORKDIR/logs/pack_${pack_idx}_slurm-%j.out" \
-        --export=ALL,CLUSTER="$CLUSTER",BIN="$BIN",WORKDIR="$WORKDIR",MACRODR_PROFILE="$PROFILE",SIM_SCRIPT="$SIM_SCRIPT",EVI_SCRIPT="$EVI_SCRIPT",RUN_ONE="$PAYLOAD",MANIFEST="$pack_manifest",THREADS_PER_FIT="$THREADS_PER_FIT",PRIOR_CCO="$PRIOR_CCO",PRIOR_COC="$PRIOR_COC",NSAMP="$N_SAMP",SCOUTS="$SCOUTS",BETA_SIZE="$BETA_SIZE",MAX_ITER="$MAX_ITER",ADAPT_EVERY="$ADAPT_EVERY",MAX_VALUES="$MAX_VALUES" \
+        --export=ALL,CLUSTER="$CLUSTER",BIN="$BIN",WORKDIR="$WORKDIR",MACRODR_PROFILE="$PROFILE",SIM_SCRIPT="$SIM_SCRIPT",EVI_SCRIPT="$EVI_SCRIPT",RUN_ONE="$PAYLOAD",MANIFEST="$pack_manifest",THREADS_PER_FIT="$THREADS_PER_FIT",PRIOR_CCO="$PRIOR_CCO",PRIOR_COC="$PRIOR_COC",NSAMP="$N_SAMP",SCOUTS="$SCOUTS",BETA_SIZE="$BETA_SIZE",MAX_ITER="$MAX_ITER",ADAPT_EVERY="$ADAPT_EVERY",ADAPT_T0="$ADAPT_T0",PHASE1_END="$PHASE1_END",DRIFT="$DRIFT",HOLD="$HOLD",HOLD_BURNIN="$HOLD_BURNIN",N_CYCLES="$N_CYCLES",CYCLE_GAIN="$CYCLE_GAIN",MAX_VALUES="$MAX_VALUES" \
         "$PACK_PAYLOAD")
     echo "[fig1] pack $pack_idx ($pack_count pairs) -> job $jobid"
     pack_count=0
@@ -254,7 +273,7 @@ EOF
             --time="${TIME:-2-00:00:00}" \
             --job-name="f1_${truth}_${prot}_r${rep}" \
             --output="$WORKDIR/logs/${label}_slurm-%j.out" \
-            --export=ALL,CLUSTER="$CLUSTER",BIN="$BIN",WORKDIR="$WORKDIR",MACRODR_PROFILE="$PROFILE",SIM_SCRIPT="$SIM_SCRIPT",EVI_SCRIPT="$EVI_SCRIPT",LABEL="$label",PROT="$prot",TRUTH_MODEL="$truth_model",TRUTH_PAR="$truth_par",TEMPLATE="$template",PRIOR_CCO="$PRIOR_CCO",PRIOR_COC="$PRIOR_COC",N1="$n1",N2="$n2",N3="$n3",NSAMP="$N_SAMP",AG2="$ag2",AG3="$ag3",SEED_SIM="$seed_sim",SEED_CCO="$seed_cco",SEED_COC="$seed_coc",SCOUTS="$SCOUTS",BETA_SIZE="$BETA_SIZE",MAX_ITER="$MAX_ITER",ADAPT_EVERY="$ADAPT_EVERY",MAX_VALUES="$MAX_VALUES" \
+            --export=ALL,CLUSTER="$CLUSTER",BIN="$BIN",WORKDIR="$WORKDIR",MACRODR_PROFILE="$PROFILE",SIM_SCRIPT="$SIM_SCRIPT",EVI_SCRIPT="$EVI_SCRIPT",LABEL="$label",PROT="$prot",TRUTH_MODEL="$truth_model",TRUTH_PAR="$truth_par",TEMPLATE="$template",PRIOR_CCO="$PRIOR_CCO",PRIOR_COC="$PRIOR_COC",N1="$n1",N2="$n2",N3="$n3",NSAMP="$N_SAMP",AG2="$ag2",AG3="$ag3",SEED_SIM="$seed_sim",SEED_CCO="$seed_cco",SEED_COC="$seed_coc",SCOUTS="$SCOUTS",BETA_SIZE="$BETA_SIZE",MAX_ITER="$MAX_ITER",ADAPT_EVERY="$ADAPT_EVERY",ADAPT_T0="$ADAPT_T0",PHASE1_END="$PHASE1_END",DRIFT="$DRIFT",HOLD="$HOLD",HOLD_BURNIN="$HOLD_BURNIN",N_CYCLES="$N_CYCLES",CYCLE_GAIN="$CYCLE_GAIN",MAX_VALUES="$MAX_VALUES" \
             "$PAYLOAD")
         echo "[fig1] ($job) $label -> job $jobid"
     fi

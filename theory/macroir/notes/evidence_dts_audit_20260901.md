@@ -764,3 +764,69 @@ Same day: Current_Baseline settled (Luciano): log-scale like everything,
 mean 1 pA (log10 = 0). The six seeded csvs in
 projects/macroir_next/data/models were fixed from the root copies'
 0/-inf to 1/0. The -inf prior question from the audit is closed.
+
+## 2026-09-07: the ladder adaptation and the drift-and-hold schedule
+
+Source of the adaptive ladder: Miasojedow, Moulines & Vihola 2013 (JCGS
+22:649, "An adaptive parallel tempering algorithm") on top of Atchade,
+Roberts & Rosenthal 2011 (Stat Comput 21:555, swap acceptance 0.234). Both
+PDFs in docs/bibliography/adaptive_tempering/, entries in biblio.bib. Our
+adapt_beta is that scheme (log temperature gaps, Robbins-Monro gain) with
+three departures: adaptation every 256 iterations instead of every one; a
+windowed neighbour-difference signal (deltaBeta_deltaL_vfm) instead of the
+instantaneous single-swap acceptance minus 0.234 (the published criterion
+is Acceptance_fixed_vfm with desired_acceptance 0.234, already
+implemented); and gain t0/(t0+iter), the xi = 1 edge of the (1/2, 1)
+range they use. Consequence measured on e743fd5: the ladder migrates all
+30000 iterations without converging, and the adaptation total scales as
+1/adapt_beta_every because kappa is indexed by iter, not by adaptation
+events.
+
+Measured tau_int of logL per rung (i_iter file at 4-iteration cadence,
+ladder drift removed by loess): 6-10 iterations at the hot and middle
+rungs, 27-34 at the coldest five. Without detrending the same series gives
+100-250: that is the ladder drift, not relaxation (it tracks cv(beta) per
+rung; rung 15, pinned at beta = 1, is the least autocorrelated). With k = 8
+parameters and stretch acceptance ~0.25 the k/(2a) heuristic gives 16.
+
+The 0.52-nat gap between the up and down telescopic estimates is finite
+sampling with autocorrelation, not ladder drift: per tramo it correlates
+with 1/ESS (Spearman +0.51) and not with the gap's drift (+0.08); the
+Kish ESS ignores autocorrelation (~8.5 saver events per tau_int at the
+cold rungs), and correcting for it moves the 1/(2 ESS) Jensen prediction
+from 0.089 to ~0.76 nats against 0.52 observed. Pooling more samples under
+a FIXED ladder is therefore the whole fix; the bias per hold goes as 1/ESS
+and the variance across holds as 1/T, which sets the design below.
+
+Implemented (this commit): ladder_schedule in parallel_tempering.h, a pure
+function of the iteration. Phase 1 (iter < phase1_end) is the old path
+verbatim; then n_cycles of [hold | one adaptation step of gain cycle_gain
+from the whole hold's statistics + drift settling]; then a permanent
+hold. adapt_beta was split into the gate (adapt_beta, unchanged
+behaviour) and adapt_beta_step(kappa). The statistics reset at every hold
+start; the telescopic windows pool only hold_burnin iterations after a
+ladder move (drift + hold_burnin outside phase 1). New save_Evidence
+columns ss_jensen_up/dn = 1/(2 ESS) per tramo (lower bounds of the bias:
+Kish ESS). DSL: set_Ladder_schedule + a thermo_evidence_dts overload
+taking it (box and qdtf); set_ThermoAlgorithm_dts untouched, so every
+older script still runs, and the default schedule reproduces the old run.
+Campaign values: phase1_end 5000, drift 300 (~10 tau), hold 3000,
+hold_burnin 100 (~3 tau), n_cycles 4 (final hold 11800), cycle_gain 0.3;
+beta_size 4 with adjust_beta growing the ladder in phase 1 (a 16-rung
+start can neither shrink nor grow); adapt_beta_t0 injectable; TAU_MS 100;
+gating_on 743 -> 157 (P_open 0.83 -> 0.50) with the COC twin regenerated
+by data/models/make_cco_coc_twin.py.
+
+Deferred, in order of value: adapt every iteration in phase 1 with the
+gain rescaled (kappa indexed by adaptation events, constant of order 1
+instead of 2*t0 = 6000); control on mu instead of exp(-mu) in
+calculate_controler_step (18x gain compression at the cold end), or the
+one-string switch to Acceptance_fixed_vfm at 0.234; acceptance_upper_limit
+1.95 (the removal branch never fires); save_Score cadence (24-30% of the
+wall time); GFI += in place, all_scores preallocation, canary rate limit.
+
+Gates before dirac: a local run with N_CYCLES=0 PHASE1_END=MAX_ITER
+HOLD_BURNIN=0 byte-identical to the current binary; a short cycled run
+(PHASE1_END=500 DRIFT=100 HOLD=400 N_CYCLES=2) showing the holds produce
+estimates and ss_count restarts at each ladder move and stays flat inside
+holds.

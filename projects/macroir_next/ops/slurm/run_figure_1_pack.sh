@@ -17,6 +17,7 @@
 #   LABEL PROT TRUTH_MODEL TRUTH_PAR TEMPLATE N1 N2 N3 AG2 AG3 SEED_SIM
 #   SEED_CCO SEED_COC — no field may contain spaces), THREADS_PER_FIT,
 #   PRIOR_CCO, PRIOR_COC, NSAMP, SCOUTS, BETA_SIZE, MAX_ITER, ADAPT_EVERY,
+#   ADAPT_T0, PHASE1_END, DRIFT, HOLD, HOLD_BURNIN, N_CYCLES, CYCLE_GAIN,
 #   MAX_VALUES.
 #
 # Each pair writes its own log to $WORKDIR/logs/<label>_pair.out. If any pair
@@ -34,6 +35,8 @@ set -eo pipefail
 : "${SIM_SCRIPT:?}" ; : "${EVI_SCRIPT:?}" ; : "${RUN_ONE:?}" ; : "${MANIFEST:?}"
 : "${THREADS_PER_FIT:?}" ; : "${PRIOR_CCO:?}" ; : "${PRIOR_COC:?}" ; : "${NSAMP:?}"
 : "${SCOUTS:?}" ; : "${BETA_SIZE:?}" ; : "${MAX_ITER:?}" ; : "${ADAPT_EVERY:?}"
+: "${ADAPT_T0:?}" ; : "${PHASE1_END:?}" ; : "${DRIFT:?}" ; : "${HOLD:?}"
+: "${HOLD_BURNIN:?}" ; : "${N_CYCLES:?}" ; : "${CYCLE_GAIN:?}"
 : "${MAX_VALUES:?}"
 
 [ -f "$MANIFEST" ] || { echo "[fig1-pack] manifest not found: $MANIFEST" >&2; exit 1; }

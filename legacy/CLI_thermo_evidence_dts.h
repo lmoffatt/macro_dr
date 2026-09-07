@@ -4,7 +4,9 @@
 #include <cstddef>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <string>
+#include <tuple>
 
 #include "CLI_function_table.h"
 #include "experiment.h"
@@ -38,6 +40,41 @@ inline auto set_ThermoAlgorithm_dts(
 using thermo_algo_dts_type =
     typename return_type<std::decay_t<decltype(&set_ThermoAlgorithm_dts)>>::type;
 
+// Drift-and-hold schedule for the beta ladder (ladder_schedule in
+// parallel_tempering.h). Its own DSL object, like set_Acquisition_filter, so
+// set_ThermoAlgorithm_dts and every script that calls it stay untouched: the
+// thermo_evidence_dts overloads that take a ladder_schedule are its only
+// consumers.
+inline auto set_Ladder_schedule(std::size_t phase1_end, std::size_t drift, std::size_t hold,
+                                std::size_t hold_burnin, std::size_t n_cycles,
+                                double cycle_gain) {
+    return std::tuple(phase1_end, drift, hold, hold_burnin, n_cycles, cycle_gain);
+}
+using ladder_schedule_type =
+    typename return_type<std::decay_t<decltype(&set_Ladder_schedule)>>::type;
+
+// No schedule: the ladder adapts all run long (the pre-2026-09-07 run).
+inline ladder_schedule_type no_ladder_schedule() {
+    return std::tuple(std::numeric_limits<std::size_t>::max(), std::size_t{0}, std::size_t{0},
+                      std::size_t{0}, std::size_t{0}, 0.0);
+}
+
+inline ladder_schedule to_ladder_schedule(ladder_schedule_type const& t) {
+    ladder_schedule s;
+    std::tie(s.phase1_end, s.drift, s.hold, s.hold_burnin, s.n_cycles, s.cycle_gain) = t;
+    return s;
+}
+
+// The schedule is read in two places: the tempering loop (when the ladder
+// moves, when the statistics restart) and the evidence saver (when its
+// telescopic windows may pool again after a move).
+template <class Tmi>
+void apply_ladder_schedule(Tmi& tmi, ladder_schedule_type const& t) {
+    auto s = to_ladder_schedule(t);
+    tmi.set_beta_schedule(s);
+    std::get<save_Evidence>(tmi.reporter().m_m).ss_schedule = s;
+}
+
 // Core evidence run over an in-memory Experiment. Both entry points below
 // (file-based, and inline as the eLife_2025 likelihood commands take it)
 // funnel here; `filename` is the already-composed output prefix and `myseed`
@@ -46,7 +83,7 @@ inline void run_thermo_evidence_dts(std::string filename, std::string model, std
                                     likelihood_algo_type likelihood, std::string recording,
                                     const Experiment& experiment,
                                     thermo_algo_dts_type thermo_algorithm,
-                                    std::size_t sampling_interval,
+                                    ladder_schedule_type schedule, std::size_t sampling_interval,
                                     std::size_t max_number_of_values_per_iteration,
                                     std::size_t myseed) {
     using namespace macrodr;
@@ -63,7 +100,8 @@ inline void run_thermo_evidence_dts(std::string filename, std::string model, std
         return std::visit(
 
             [&filename, &ftbl3, &experiment, &recording, &prior, &likelihood, &thermo_algorithm,
-             &myseed, sampling_interval, max_number_of_values_per_iteration](auto model0ptr) {
+             &schedule, &myseed, sampling_interval,
+             max_number_of_values_per_iteration](auto model0ptr) {
                 std::string sep = ",";
                 auto& model0 = *model0ptr;
                 mt_64i mt(myseed);
@@ -113,6 +151,7 @@ inline void run_thermo_evidence_dts(std::string filename, std::string model, std
                             t_adapt_beta_variance, t_adapt_beta_nu, t_adapt_beta_t0, 0.0,
                             t_adjust_beta, t_acceptance_upper_limit, t_acceptance_lower_limit,
                             t_desired_acceptance);
+                        apply_ladder_schedule(tmi, schedule);
 
                         auto maybe_modelLikelihood =
                             Likelihood_Model_regular<
@@ -153,6 +192,19 @@ inline void run_thermo_evidence_dts(std::string filename, std::string model, std
             },
             model_v);
     }
+}
+
+// Pre-schedule entry, same signature as before: the ladder adapts all run long.
+inline void run_thermo_evidence_dts(std::string filename, std::string model, std::string prior,
+                                    likelihood_algo_type likelihood, std::string recording,
+                                    const Experiment& experiment,
+                                    thermo_algo_dts_type thermo_algorithm,
+                                    std::size_t sampling_interval,
+                                    std::size_t max_number_of_values_per_iteration,
+                                    std::size_t myseed) {
+    run_thermo_evidence_dts(filename, model, prior, likelihood, recording, experiment,
+                            thermo_algorithm, no_ladder_schedule(), sampling_interval,
+                            max_number_of_values_per_iteration, myseed);
 }
 
 // File-based entry: loads the experiment from disk and writes the
@@ -198,6 +250,23 @@ inline void calc_thermo_evidence_dts(std::string id, std::string model, std::str
     std::string filename = id + "_" + model + "_" + time_now() + "_" + std::to_string(myseed);
     run_thermo_evidence_dts(filename, model, prior, likelihood, recording, experiment,
                             thermo_algorithm, sampling_interval,
+                            max_number_of_values_per_iteration, myseed);
+}
+
+// Inline-Experiment entry with a drift-and-hold ladder schedule
+// (set_Ladder_schedule). Same DSL name; the extra named argument selects it.
+inline void calc_thermo_evidence_dts(std::string id, std::string model, std::string prior,
+                                     likelihood_algo_type likelihood, std::string recording,
+                                     const Experiment& experiment,
+                                     thermo_algo_dts_type thermo_algorithm,
+                                     ladder_schedule_type ladder_schedule,
+                                     std::size_t sampling_interval,
+                                     std::size_t max_number_of_values_per_iteration,
+                                     std::size_t myseed) {
+    myseed = calc_seed(myseed);
+    std::string filename = id + "_" + model + "_" + time_now() + "_" + std::to_string(myseed);
+    run_thermo_evidence_dts(filename, model, prior, likelihood, recording, experiment,
+                            thermo_algorithm, ladder_schedule, sampling_interval,
                             max_number_of_values_per_iteration, myseed);
 }
 
@@ -647,6 +716,7 @@ inline void run_thermo_evidence_dts_qdtf(std::string filename, std::string model
                                          std::string recording, const Experiment& experiment,
                                          thermo_algo_dts_type thermo_algorithm,
                                          acquisition_filter_type acquisition_filter,
+                                         ladder_schedule_type schedule,
                                          std::size_t sampling_interval,
                                          std::size_t max_number_of_values_per_iteration,
                                          std::size_t myseed) {
@@ -663,7 +733,7 @@ inline void run_thermo_evidence_dts_qdtf(std::string filename, std::string model
         auto model_v = std::move(Maybe_model_v.value());
         return std::visit(
             [&filename, &ftbl3, &experiment, &recording, &prior, &likelihood, &thermo_algorithm,
-             &acquisition_filter, &myseed, sampling_interval,
+             &acquisition_filter, &schedule, &myseed, sampling_interval,
              max_number_of_values_per_iteration](auto model0ptr) {
                 std::string sep = ",";
                 auto& model0 = *model0ptr;
@@ -707,6 +777,7 @@ inline void run_thermo_evidence_dts_qdtf(std::string filename, std::string model
                             t_adapt_beta_variance, t_adapt_beta_nu, t_adapt_beta_t0, 0.0,
                             t_adjust_beta, t_acceptance_upper_limit, t_acceptance_lower_limit,
                             t_desired_acceptance);
+                        apply_ladder_schedule(tmi, schedule);
 
                         auto lik = Qdtf_Likelihood_Model<std::decay_t<decltype(model0)>>{
                             model0, Simulation_n_sub_dt(n_sub_dt),
@@ -720,6 +791,20 @@ inline void run_thermo_evidence_dts_qdtf(std::string filename, std::string model
             },
             model_v);
     }
+}
+
+// Pre-schedule qdtf entry, same signature as before.
+inline void run_thermo_evidence_dts_qdtf(std::string filename, std::string model,
+                                         std::string prior, likelihood_algo_type likelihood,
+                                         std::string recording, const Experiment& experiment,
+                                         thermo_algo_dts_type thermo_algorithm,
+                                         acquisition_filter_type acquisition_filter,
+                                         std::size_t sampling_interval,
+                                         std::size_t max_number_of_values_per_iteration,
+                                         std::size_t myseed) {
+    run_thermo_evidence_dts_qdtf(filename, model, prior, likelihood, recording, experiment,
+                                 thermo_algorithm, acquisition_filter, no_ladder_schedule(),
+                                 sampling_interval, max_number_of_values_per_iteration, myseed);
 }
 
 // Inline-Experiment entry for the qdtf member, stateless like the inline box
@@ -737,6 +822,23 @@ inline void calc_thermo_evidence_dts_qdtf(std::string id, std::string model, std
     run_thermo_evidence_dts_qdtf(filename, model, prior, likelihood, recording, experiment,
                                  thermo_algorithm, acquisition_filter, sampling_interval,
                                  max_number_of_values_per_iteration, myseed);
+}
+
+// Same, with a drift-and-hold ladder schedule (set_Ladder_schedule).
+inline void calc_thermo_evidence_dts_qdtf(std::string id, std::string model, std::string prior,
+                                          likelihood_algo_type likelihood, std::string recording,
+                                          const Experiment& experiment,
+                                          thermo_algo_dts_type thermo_algorithm,
+                                          acquisition_filter_type acquisition_filter,
+                                          ladder_schedule_type ladder_schedule,
+                                          std::size_t sampling_interval,
+                                          std::size_t max_number_of_values_per_iteration,
+                                          std::size_t myseed) {
+    myseed = calc_seed(myseed);
+    std::string filename = id + "_" + model + "_" + time_now() + "_" + std::to_string(myseed);
+    run_thermo_evidence_dts_qdtf(filename, model, prior, likelihood, recording, experiment,
+                                 thermo_algorithm, acquisition_filter, ladder_schedule,
+                                 sampling_interval, max_number_of_values_per_iteration, myseed);
 }
 
 // Bessel-filtered simulation entry (the plan's M1 truth generator), mirroring
@@ -833,6 +935,25 @@ inline dsl::Compiler<dsl::Lexer> make_dts_compiler() {
     cm.push_function("set_Acquisition_filter",
                      dsl::to_typed_function<std::size_t, double>(&set_Acquisition_filter,
                                                                  "n_poles", "cutoff_hz"));
+    cm.push_function("set_Ladder_schedule",
+                     dsl::to_typed_function<std::size_t, std::size_t, std::size_t, std::size_t,
+                                            std::size_t, double>(
+                         &set_Ladder_schedule, "phase1_end", "drift", "hold", "hold_burnin",
+                         "n_cycles", "cycle_gain"));
+    // Same DSL name, one extra named argument (ladder_schedule) selects the
+    // drift-and-hold run; inline-Experiment form only (stateless).
+    cm.push_function(
+        "thermo_evidence_dts",
+        dsl::to_typed_function<std::string, std::string, std::string, likelihood_algo_type,
+                               std::string, const Experiment&, thermo_algo_dts_type,
+                               ladder_schedule_type, std::size_t, std::size_t, std::size_t>(
+            static_cast<void (*)(std::string, std::string, std::string, likelihood_algo_type,
+                                 std::string, const Experiment&, thermo_algo_dts_type,
+                                 ladder_schedule_type, std::size_t, std::size_t, std::size_t)>(
+                &calc_thermo_evidence_dts),
+            "idname", "model", "prior", "likelihood_algorithm", "data", "experiment",
+            "thermo_algorithm", "ladder_schedule", "sampling_interval",
+            "max_number_of_values_per_iteration", "init_seed"));
     // Same DSL name as the legacy 7-arg simulate; the extra named argument
     // (acquisition_filter) selects the Bessel-filtered truth generator.
     cm.push_function(
@@ -849,8 +970,26 @@ inline dsl::Compiler<dsl::Lexer> make_dts_compiler() {
         dsl::to_typed_function<std::string, std::string, std::string, likelihood_algo_type,
                                std::string, const Experiment&, thermo_algo_dts_type,
                                acquisition_filter_type, std::size_t, std::size_t, std::size_t>(
-            &calc_thermo_evidence_dts_qdtf, "idname", "model", "prior", "likelihood_algorithm",
-            "data", "experiment", "thermo_algorithm", "acquisition_filter", "sampling_interval",
+            static_cast<void (*)(std::string, std::string, std::string, likelihood_algo_type,
+                                 std::string, const Experiment&, thermo_algo_dts_type,
+                                 acquisition_filter_type, std::size_t, std::size_t, std::size_t)>(
+                &calc_thermo_evidence_dts_qdtf),
+            "idname", "model", "prior", "likelihood_algorithm", "data", "experiment",
+            "thermo_algorithm", "acquisition_filter", "sampling_interval",
+            "max_number_of_values_per_iteration", "init_seed"));
+    // qdtf member with a drift-and-hold ladder schedule.
+    cm.push_function(
+        "thermo_evidence_dts",
+        dsl::to_typed_function<std::string, std::string, std::string, likelihood_algo_type,
+                               std::string, const Experiment&, thermo_algo_dts_type,
+                               acquisition_filter_type, ladder_schedule_type, std::size_t,
+                               std::size_t, std::size_t>(
+            static_cast<void (*)(std::string, std::string, std::string, likelihood_algo_type,
+                                 std::string, const Experiment&, thermo_algo_dts_type,
+                                 acquisition_filter_type, ladder_schedule_type, std::size_t,
+                                 std::size_t, std::size_t)>(&calc_thermo_evidence_dts_qdtf),
+            "idname", "model", "prior", "likelihood_algorithm", "data", "experiment",
+            "thermo_algorithm", "acquisition_filter", "ladder_schedule", "sampling_interval",
             "max_number_of_values_per_iteration", "init_seed"));
     cm.push_function(
         "thermo_evidence_dts_continuation",

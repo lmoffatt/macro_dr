@@ -71,6 +71,13 @@ class save_Evidence {
     std::vector<double> ss_max_up, ss_s1_up, ss_s2_up;
     std::vector<double> ss_max_dn, ss_s1_dn, ss_s2_dn;
     std::vector<std::size_t> ss_n;
+    // Drift-and-hold schedule (ladder_schedule): after a ladder move the
+    // windows skip `settle` iterations before pooling again, settle =
+    // hold_burnin in phase 1 and drift + hold_burnin afterwards (the walkers
+    // are still relaxing to the moved ladder; tau_int of logL is ~34
+    // iterations at the coldest rungs, 2026-09-07). Default: no skipping.
+    ladder_schedule ss_schedule{};
+    std::size_t ss_change_iter = 0;
     save_Evidence(std::string const& path, std::size_t t_sampling_interval,
                   std::size_t t_max_number_of_values_per_iteration)
         : fname{path},
@@ -124,6 +131,14 @@ class save_Evidence {
             << "mean_plog_Evidence_ss" << s.sep << "mean_log_Evidence_ss" << s.sep
             << "mean_plog_Evidence_ss_dn" << s.sep << "mean_log_Evidence_ss_dn" << s.sep
             << "ss_ess_up" << s.sep << "ss_ess_dn" << s.sep << "ss_count"
+            // First-order Jensen bias of each pooled telescopic factor,
+            // 1/(2 ESS): the up estimate ln mean(w) is biased DOWN by it, the
+            // down estimate -ln mean(w') is biased UP, so the corrected
+            // factors are mean_plog_Evidence_ss + ss_jensen_up and
+            // mean_plog_Evidence_ss_dn - ss_jensen_dn. The Kish ESS ignores
+            // the walkers' autocorrelation (tau_int ~ 8.5 saver events at the
+            // cold rungs, 2026-09-07), so these are LOWER bounds of the bias.
+            << s.sep << "ss_jensen_up" << s.sep << "ss_jensen_dn"
             << "\n";
     }
 
@@ -184,6 +199,7 @@ class save_Evidence {
                         }
                 if (ladder_changed) {
                     s.ss_betas = data.beta;
+                    s.ss_change_iter = iter;
                     s.ss_max_up.assign(n_tramos_ss,
                                        -std::numeric_limits<double>::infinity());
                     s.ss_s1_up.assign(n_tramos_ss, 0.0);
@@ -206,6 +222,11 @@ class save_Evidence {
                     s1 += std::exp(z - m);
                     s2 += std::exp(2.0 * (z - m));
                 };
+                auto ph_ss = ladder_phase_at(iter, s.ss_schedule);
+                std::size_t settle = ph_ss.phase1
+                                         ? s.ss_schedule.hold_burnin
+                                         : s.ss_schedule.drift + s.ss_schedule.hold_burnin;
+                bool pool = (iter - s.ss_change_iter >= settle);
                 for (std::size_t k = 0; k + 1 < n_beta_ss; ++k) {
                     auto db = data.beta[k + 1] - data.beta[k];
                     auto nw = data.walkers[k].size();
@@ -214,15 +235,18 @@ class save_Evidence {
                         auto hi = get<logL>(data.walkers[k + 1][iw].logL)();
                         if (std::isfinite(lo)) {
                             stream_lse(db * lo, ev_max_up[k], ev_s1_up[k], ev_s2_up[k]);
-                            stream_lse(db * lo, s.ss_max_up[k], s.ss_s1_up[k], s.ss_s2_up[k]);
+                            if (pool)
+                                stream_lse(db * lo, s.ss_max_up[k], s.ss_s1_up[k], s.ss_s2_up[k]);
                         }
                         if (std::isfinite(hi)) {
                             stream_lse(-db * hi, ev_max_dn[k], ev_s1_dn[k], ev_s2_dn[k]);
-                            stream_lse(-db * hi, s.ss_max_dn[k], s.ss_s1_dn[k], s.ss_s2_dn[k]);
+                            if (pool)
+                                stream_lse(-db * hi, s.ss_max_dn[k], s.ss_s1_dn[k], s.ss_s2_dn[k]);
                         }
                     }
                     ev_n[k] = nw;
-                    s.ss_n[k] += nw;
+                    if (pool)
+                        s.ss_n[k] += nw;
                 }
             }
 
@@ -259,6 +283,8 @@ class save_Evidence {
                 double m_plog_ss_dn = 0.0;
                 double ess_ss_up = 0.0;
                 double ess_ss_dn = 0.0;
+                double jensen_up = 0.0;
+                double jensen_dn = 0.0;
                 std::size_t ss_count = 0;
                 if ((i_beta > 0) && (i_beta - 1 < s.ss_n.size()) && (s.ss_n[i_beta - 1] > 0)) {
                     auto k = i_beta - 1;
@@ -273,6 +299,8 @@ class save_Evidence {
                     m_plog_ss_dn = -(s.ss_max_dn[k] + std::log(s.ss_s1_dn[k] / ss_count));
                     ess_ss_up = s.ss_s1_up[k] * s.ss_s1_up[k] / s.ss_s2_up[k];
                     ess_ss_dn = s.ss_s1_dn[k] * s.ss_s1_dn[k] / s.ss_s2_dn[k];
+                    jensen_up = ess_ss_up > 0 ? 0.5 / ess_ss_up : 0.0;
+                    jensen_dn = ess_ss_dn > 0 ? 0.5 / ess_ss_dn : 0.0;
                     mean_log_Evidence_ss += m_plog_ss;
                     mean_log_Evidence_ss_dn += m_plog_ss_dn;
                 }
@@ -297,7 +325,8 @@ class save_Evidence {
                     << s.sep << plog_ss << s.sep << log_Evidence_ss << s.sep << plog_ss_dn << s.sep
                     << log_Evidence_ss_dn << s.sep << m_plog_ss << s.sep << mean_log_Evidence_ss
                     << s.sep << m_plog_ss_dn << s.sep << mean_log_Evidence_ss_dn << s.sep
-                    << ess_ss_up << s.sep << ess_ss_dn << s.sep << ss_count << "\n";
+                    << ess_ss_up << s.sep << ess_ss_dn << s.sep << ss_count << s.sep
+                    << jensen_up << s.sep << jensen_dn << "\n";
             }
         }
     }
@@ -546,6 +575,9 @@ class new_thermodynamic_integration {
     double acceptance_upper_limit_;
     double acceptance_lower_limit_;
     double desired_acceptance_;
+    // Drift-and-hold ladder schedule (parallel_tempering.h). Default: none,
+    // i.e. the ladder adapts all run long exactly as before.
+    ladder_schedule beta_schedule_{};
 
    public:
     new_thermodynamic_integration(Algorithm&& alg, Reporter&& rep,
@@ -674,6 +706,12 @@ class new_thermodynamic_integration {
     }
     auto& acceptance_upper_limit() const {
         return acceptance_upper_limit_;
+    }
+    auto& beta_schedule() const {
+        return beta_schedule_;
+    }
+    void set_beta_schedule(ladder_schedule const& s) {
+        beta_schedule_ = s;
     }
 };
 
@@ -838,15 +876,35 @@ auto thermo_evidence_loop(FunctionTable&& f,
 
         report_all(f, iter, dur, rep, current, prior, lik, y, x, mts, mcmc_run.first);
         if constexpr (Adapt_beta) {
-            adapt_beta(iter, current, beta_run, therm.adapt_beta_every(),
-                       therm.adapt_beta_equalizer(), therm.adapt_beta_controler(),
-                       therm.adapt_beta_variance(), therm.desired_acceptance(),
-                       therm.adapt_beta_nu(), therm.adapt_beta_t0());
-            if (therm.adjust_beta())
-                adjust_beta(f, iter, therm.adapt_beta_every(), therm.acceptance_upper_limit(),
-                            therm.acceptance_lower_limit(), current, beta_run, mts, prior, lik, y,
-                            x);
-            if (iter % therm.adapt_beta_every() == 0)
+            // Drift-and-hold schedule (ladder_schedule, parallel_tempering.h).
+            // Phase 1 is the pre-schedule path verbatim. Afterwards the ladder
+            // moves only at a cycle's step, from the statistics of the hold
+            // that just ended (adapt_beta_step reads walkers_sta; nothing is
+            // reset until the next hold opens), and the statistics restart at
+            // every hold so each hold is measured under a fixed ladder.
+            auto ph = ladder_phase_at(iter, therm.beta_schedule());
+            if (ph.phase1) {
+                adapt_beta(iter, current, beta_run, therm.adapt_beta_every(),
+                           therm.adapt_beta_equalizer(), therm.adapt_beta_controler(),
+                           therm.adapt_beta_variance(), therm.desired_acceptance(),
+                           therm.adapt_beta_nu(), therm.adapt_beta_t0());
+                if (therm.adjust_beta())
+                    adjust_beta(f, iter, therm.adapt_beta_every(), therm.acceptance_upper_limit(),
+                                therm.acceptance_lower_limit(), current, beta_run, mts, prior, lik,
+                                y, x);
+                if (iter % therm.adapt_beta_every() == 0)
+                    current.reset_statistics();
+            } else if (ph.cycle_start) {
+                if (current.num_samples() > 0)
+                    adapt_beta_step(current, beta_run, therm.beta_schedule().cycle_gain,
+                                    therm.adapt_beta_equalizer(), therm.adapt_beta_controler(),
+                                    therm.adapt_beta_variance(), therm.desired_acceptance());
+                if (therm.adjust_beta())
+                    adjust_beta(f, iter, 1, therm.acceptance_upper_limit(),
+                                therm.acceptance_lower_limit(), current, beta_run, mts, prior, lik,
+                                y, x);
+            }
+            if (ph.hold_start)
                 current.reset_statistics();
         }
         step_stretch_thermo_mcmc(f, iter, even_dur, current, rep, beta_run, mts, prior, lik, y, x);
