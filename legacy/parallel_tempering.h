@@ -1671,9 +1671,10 @@ struct ladder_phase {
     bool cycle_start;     // this iteration takes the cycle's adaptation step
     bool hold_start;      // this iteration opens a hold: the statistics restart
     std::size_t hold_id;  // 0 in phase 1, c + 1 in cycle c, n_cycles + 1 in the final hold
-    bool pooling;         // the evidence windows may pool: inside a hold, past hold_burnin
-                          // (always true in phase 1, where the saver applies its own
-                          // burn-in after each ladder move)
+    bool pooling;         // the evidence windows may pool: inside a hold, past hold_burnin,
+                          // up to and including the cycle-start report, which precedes the
+                          // ladder move (always true in phase 1, where the saver applies
+                          // its own burn-in after each ladder move)
 };
 
 // Pure function of the iteration: no state to carry across the loop, and the
