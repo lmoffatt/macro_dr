@@ -13,7 +13,8 @@
 #   N1, N2, N3, NSAMP, AG2, AG3, SEED_SIM, SEED_CCO, SEED_COC,
 #   SCOUTS, BETA_SIZE, MAX_ITER, ADAPT_EVERY, ADAPT_T0, MAX_VALUES, and the
 #   drift-and-hold ladder schedule PHASE1_END, DRIFT, HOLD, HOLD_BURNIN,
-#   N_CYCLES, CYCLE_GAIN.
+#   N_CYCLES, CYCLE_GAIN, and the ladder criterion EQUALIZER, DESIRED_ACC,
+#   ADAPT_BETA_MIN.
 #
 # Seeds are baked into LABEL by the dispatcher, so every output filename
 # carries the seed and pairs with the local run of the same BASE_SEED.
@@ -35,6 +36,7 @@ set -eo pipefail
 : "${SCOUTS:?}" ; : "${BETA_SIZE:?}" ; : "${MAX_ITER:?}" ; : "${ADAPT_EVERY:?}"
 : "${ADAPT_T0:?}" ; : "${PHASE1_END:?}" ; : "${DRIFT:?}" ; : "${HOLD:?}"
 : "${HOLD_BURNIN:?}" ; : "${N_CYCLES:?}" ; : "${CYCLE_GAIN:?}"
+: "${EQUALIZER:?}" ; : "${DESIRED_ACC:?}" ; : "${ADAPT_BETA_MIN:?}"
 : "${MAX_VALUES:?}"
 
 # Same env dance as run_macroir.sh: drop inherited Lmod tracking, then source
@@ -119,6 +121,9 @@ echo "[fig1-job] paired evidence on $(basename "$obs")"
     "$(printf -- '--hold_burnin = get_number(n=%s)' "$HOLD_BURNIN")" \
     "$(printf -- '--n_cycles = get_number(n=%s)' "$N_CYCLES")" \
     "$(printf -- '--cycle_gain = %s' "$CYCLE_GAIN")" \
+    "$(printf -- '--adapt_beta_equalizer = "%s"' "$EQUALIZER")" \
+    "$(printf -- '--desired_acceptance = %s' "$DESIRED_ACC")" \
+    "$(printf -- '--adapt_beta_min = get_number(n=%s)' "$ADAPT_BETA_MIN")" \
     "$(printf -- '--max_values = get_number(n=%s)' "$MAX_VALUES")" \
     "$(printf -- '--seed_cco = get_number(n=%s)' "$SEED_CCO")" \
     "$(printf -- '--seed_coc = get_number(n=%s)' "$SEED_COC")" \

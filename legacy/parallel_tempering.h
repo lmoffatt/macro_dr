@@ -1566,12 +1566,22 @@ void adjust_beta(FunctionTable& f, std::size_t iter, std::size_t adapt_beta_ever
 // body adapt_beta always had, split out so that a ladder_schedule can apply a
 // step whose gain is a fraction of a well-measured correction rather than
 // the Robbins-Monro kappa(iter) computed in adapt_beta below.
+// tested_index = number of hot finite rungs the reconstruction leaves in
+// place: 1 pins beta_min (the pre-2026-09-07 behaviour), 0 lets the hottest
+// gap S[0] move it too. Pinning was needed by the trapezoid (its bottom term
+// multiplies the heavy-tailed prior mean of logL by beta_min); the telescopic
+// factor E_0[L^beta_min] weights those draws by ~0 and is governed by
+// beta_min*sd_0(logL) instead, the same criterion the equalizer imposes on
+// every other tramo. But the CONTROL signal must be tail-robust as well: with
+// deltaBeta_deltaL_vfm the tramo-0 term uses E_0[logL] and one extreme draw
+// makes exp(-mu_0) ~ 0, which drives beta_min to 0; use a measured-acceptance
+// equalizer (Acceptance_vfm, Acceptance_fixed_vfm) when unpinning.
 template <class Parameters>
 void adapt_beta_step(thermo_mcmc<Parameters>& current, by_beta<double>& beta, double kappa,
                      std::string equalizing_paramter, std::string controlling_parameter,
-                     std::string variance_approximation, double desired_acceptance) {
+                     std::string variance_approximation, double desired_acceptance,
+                     std::size_t tested_index = 1) {
     assert(beta[beta.size() - 1] == 1);
-    std::size_t tested_index = 1;
 
     auto d = calculate_controler_step(current, beta, equalizing_paramter, desired_acceptance,
                                       variance_approximation);
@@ -1616,11 +1626,11 @@ template <class Parameters>
 void adapt_beta(std::size_t iter, thermo_mcmc<Parameters>& current, by_beta<double>& beta,
                 std::size_t adapt_beta_every, std::string equalizing_paramter,
                 std::string controlling_parameter, std::string variance_approximation,
-                double desired_acceptance, double nu, double t0) {
+                double desired_acceptance, double nu, double t0, std::size_t tested_index = 1) {
     if ((iter > 0) && (current.num_samples() > 0) && (iter % adapt_beta_every == 0)) {
         double kappa = 1.0 / nu * t0 / (t0 + iter);
         adapt_beta_step(current, beta, kappa, equalizing_paramter, controlling_parameter,
-                        variance_approximation, desired_acceptance);
+                        variance_approximation, desired_acceptance, tested_index);
     }
 }
 
@@ -1650,6 +1660,7 @@ struct ladder_schedule {
     std::size_t hold_burnin = 0;  // hold iterations the evidence windows skip after a move
     std::size_t n_cycles = 0;
     double cycle_gain = 0.0;
+    bool adapt_beta_min = false;  // let the hottest finite rung move with the rest (see adapt_beta_step)
     std::size_t period() const {
         return drift + hold;
     }

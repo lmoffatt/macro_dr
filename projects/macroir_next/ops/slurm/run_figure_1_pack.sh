@@ -46,13 +46,16 @@ echo "[fig1-pack] $(wc -l < "$MANIFEST") pairs x ${THREADS_PER_FIT} threads on $
 
 pids=()
 labels=()
+# manifest line: 16 fields; the last three are the ladder criterion of the
+# cell (the dispatcher's LADDER_COMBOS sweep varies them per cell).
 while read -r LABEL PROT TRUTH_MODEL TRUTH_PAR TEMPLATE N1 N2 N3 AG2 AG3 \
-              SEED_SIM SEED_CCO SEED_COC; do
+              SEED_SIM SEED_CCO SEED_COC EQUALIZER DESIRED_ACC ADAPT_BETA_MIN; do
     [ -n "$LABEL" ] || continue
     env LABEL="$LABEL" PROT="$PROT" TRUTH_MODEL="$TRUTH_MODEL" \
         TRUTH_PAR="$TRUTH_PAR" TEMPLATE="$TEMPLATE" \
         N1="$N1" N2="$N2" N3="$N3" AG2="$AG2" AG3="$AG3" \
         SEED_SIM="$SEED_SIM" SEED_CCO="$SEED_CCO" SEED_COC="$SEED_COC" \
+        EQUALIZER="$EQUALIZER" DESIRED_ACC="$DESIRED_ACC" ADAPT_BETA_MIN="$ADAPT_BETA_MIN" \
         THREADS_PER_FIT="$THREADS_PER_FIT" \
         bash "$RUN_ONE" > "$WORKDIR/logs/${LABEL}_pair.out" 2>&1 &
     pids+=($!)

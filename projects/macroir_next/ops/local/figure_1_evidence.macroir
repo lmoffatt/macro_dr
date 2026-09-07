@@ -22,6 +22,15 @@
 #   max_iter                 (>= ~30000 so ~300 full-ladder score events accrue)
 #   adapt_beta_every         (phase-1 adaptation and statistics window, e.g. 256)
 #   adapt_beta_t0            (phase-1 Robbins-Monro time constant, e.g. 3000)
+#   adapt_beta_equalizer     ("deltaBeta_deltaL_vfm": equalize dbeta*dE[logL]
+#                             between neighbouring tramos; "Acceptance_vfm":
+#                             equalize the measured swap acceptance;
+#                             "Acceptance_fixed_vfm": drive every tramo to
+#                             desired_acceptance, the published algorithm)
+#   desired_acceptance       (target of the _fixed equalizer, e.g. 0.234)
+#   adapt_beta_min           (0 pins beta_min, 1 lets it adapt; only the
+#                             acceptance-based equalizers are tail-robust
+#                             there, see adapt_beta_step)
 #   phase1_end, drift_iters, hold_iters, hold_burnin, n_cycles, cycle_gain
 #                            (the drift-and-hold ladder schedule, 2026-09-07:
 #                             continuous adaptation until phase1_end, then
@@ -58,7 +67,7 @@ thermo_algorithm_dts = set_ThermoAlgorithm_dts(
    thermo_jumps_every = 1,
    save_every_param_size_factor = 1,
    adapt_beta_every = adapt_beta_every,
-   adapt_beta_equalizer = "deltaBeta_deltaL_vfm",
+   adapt_beta_equalizer = adapt_beta_equalizer,
    adapt_beta_controler = "s",
    adapt_beta_variance = "variance",
    adapt_beta_nu = 0.5,
@@ -66,11 +75,12 @@ thermo_algorithm_dts = set_ThermoAlgorithm_dts(
    adjust_beta = 1,
    acceptance_upper_limit = 1.95,
    acceptance_lower_limit = 0.25,
-   desired_acceptance = 0.25)
+   desired_acceptance = desired_acceptance)
 
 ladder_schedule = set_Ladder_schedule(
    phase1_end = phase1_end, drift = drift_iters, hold = hold_iters,
-   hold_burnin = hold_burnin, n_cycles = n_cycles, cycle_gain = cycle_gain)
+   hold_burnin = hold_burnin, n_cycles = n_cycles, cycle_gain = cycle_gain,
+   adapt_beta_min = adapt_beta_min)
 
 thermo_evidence_dts(idname = idname_cco, model = "scheme_CCO",
    prior = prior_cco_file, likelihood_algorithm = likelihood_algorithm,

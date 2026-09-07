@@ -45,10 +45,14 @@ using thermo_algo_dts_type =
 // set_ThermoAlgorithm_dts and every script that calls it stay untouched: the
 // thermo_evidence_dts overloads that take a ladder_schedule are its only
 // consumers.
+// adapt_beta_min (0/1; the DSL cannot inject a bool) unpins beta_min so the
+// hottest gap adapts like the others; see adapt_beta_step for the caveat on
+// the equalizer.
 inline auto set_Ladder_schedule(std::size_t phase1_end, std::size_t drift, std::size_t hold,
                                 std::size_t hold_burnin, std::size_t n_cycles,
-                                double cycle_gain) {
-    return std::tuple(phase1_end, drift, hold, hold_burnin, n_cycles, cycle_gain);
+                                double cycle_gain, std::size_t adapt_beta_min) {
+    return std::tuple(phase1_end, drift, hold, hold_burnin, n_cycles, cycle_gain,
+                      adapt_beta_min);
 }
 using ladder_schedule_type =
     typename return_type<std::decay_t<decltype(&set_Ladder_schedule)>>::type;
@@ -56,12 +60,15 @@ using ladder_schedule_type =
 // No schedule: the ladder adapts all run long (the pre-2026-09-07 run).
 inline ladder_schedule_type no_ladder_schedule() {
     return std::tuple(std::numeric_limits<std::size_t>::max(), std::size_t{0}, std::size_t{0},
-                      std::size_t{0}, std::size_t{0}, 0.0);
+                      std::size_t{0}, std::size_t{0}, 0.0, std::size_t{0});
 }
 
 inline ladder_schedule to_ladder_schedule(ladder_schedule_type const& t) {
     ladder_schedule s;
-    std::tie(s.phase1_end, s.drift, s.hold, s.hold_burnin, s.n_cycles, s.cycle_gain) = t;
+    std::size_t adapt_beta_min = 0;
+    std::tie(s.phase1_end, s.drift, s.hold, s.hold_burnin, s.n_cycles, s.cycle_gain,
+             adapt_beta_min) = t;
+    s.adapt_beta_min = adapt_beta_min != 0;
     return s;
 }
 
@@ -937,9 +944,9 @@ inline dsl::Compiler<dsl::Lexer> make_dts_compiler() {
                                                                  "n_poles", "cutoff_hz"));
     cm.push_function("set_Ladder_schedule",
                      dsl::to_typed_function<std::size_t, std::size_t, std::size_t, std::size_t,
-                                            std::size_t, double>(
+                                            std::size_t, double, std::size_t>(
                          &set_Ladder_schedule, "phase1_end", "drift", "hold", "hold_burnin",
-                         "n_cycles", "cycle_gain"));
+                         "n_cycles", "cycle_gain", "adapt_beta_min"));
     // Same DSL name, one extra named argument (ladder_schedule) selects the
     // drift-and-hold run; inline-Experiment form only (stateless).
     cm.push_function(

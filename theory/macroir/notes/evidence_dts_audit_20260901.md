@@ -830,3 +830,41 @@ HOLD_BURNIN=0 byte-identical to the current binary; a short cycled run
 (PHASE1_END=500 DRIFT=100 HOLD=400 N_CYCLES=2) showing the holds produce
 estimates and ss_count restarts at each ladder move and stays flat inside
 holds.
+
+Same day, later: beta_min becomes adaptable and the ladder criterion becomes
+a sweep. Luciano's point: beta_min was pinned because the trapezoid's bottom
+term multiplies the heavy-tailed prior mean of logL by beta_min; the
+telescopic factor E_0[L^beta_min] weights those draws by ~0, so with the
+stepping-stone estimator the objection is gone. What remains is the RIGHT
+tail: that factor's ESS degrades as exp(beta_min^2 Var_0) - 1, i.e. it needs
+beta_min*sd_0 <~ 1, which is the same criterion the equalizer imposes on
+every other tramo, so adapting beta_min under it removes the one special
+rule of the ladder (initial_beta_dts's 1/sd_0 stays as the starting point).
+Mechanism: the reconstruction in adapt_beta_step leaves tested_index = 1 hot
+rung in place; with 0 it also sets T[0] = T[1] + exp(S[0]), and S[0] already
+receives kappa*d[0], where d[0] reads A[0], the swap acceptance of the tramo
+[0, beta_min], which thermo_stat already measures. Caveat that is probably
+the real reason the pin worked: with deltaBeta_deltaL_vfm the tramo-0 signal
+is mu_0 = beta_min*(E_beta_min[logL] - E_0[logL]) and E_0[logL] is the same
+heavy tail; one extreme prior draw in the window gives exp(-mu_0) ~ 0, the
+controller reads "tramo 0 accepts nothing", widens S[0] and pushes beta_min
+to zero without end. Unpinning needs a measured-acceptance equalizer
+(Acceptance_vfm or the published Acceptance_fixed_vfm at 0.234); with the
+holds, A is measured to +-0.002 per tramo, so the old objection to the
+measured acceptance being noisy no longer applies.
+
+Implemented: adapt_beta_min (0/1) as the seventh field of set_Ladder_schedule
+(tested_index parameter of adapt_beta_step/adapt_beta, default 1); the
+equalizer, desired_acceptance and adapt_beta_min are injected names of
+figure_1_evidence.macroir; both dispatchers take LADDER_COMBOS="eq/acc/min/tag
+..." and run every combo on the SAME recordings (seeds are per cell, the tag
+goes into the label; the manifest carries 16 fields). Exploration plan,
+replicas traded for alternatives: TRUTHS=CCO PROTOCOLS=episodic REPLICAS=2
+with the six combos {deltaBeta_deltaL_vfm, Acceptance_vfm,
+Acceptance_fixed_vfm 0.234} x {pinned, free} = 24 fits, plus one control
+dispatch without schedule (N_CYCLES=0 PHASE1_END=30000 HOLD_BURNIN=0,
+tag=control). Prediction to test: mu-free diverges (beta_min -> 0); the
+acceptance-based free combos settle beta_min at a finite value with the
+bottom factor's Kish ESS (ss_ess_up at i_beta = 1) comparable to the other
+tramos'. Metrics per combo: hold-to-hold spread of log Z, up/down bracket,
+acceptance profile, beta_min trajectory, rung count.

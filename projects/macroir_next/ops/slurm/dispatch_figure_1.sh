@@ -22,7 +22,8 @@
 # Tunables via env: TRUTHS, PROTOCOLS, REPLICAS, NCH, TAU_MS, INTERVAL_IN_TAU,
 # PRE_TAUS, PULSE_TAUS, POST_TAUS, GAP_TAUS, MEAS_TAUS, SCOUTS, BETA_SIZE,
 # MAX_ITER, ADAPT_EVERY, ADAPT_T0, PHASE1_END, DRIFT, HOLD, HOLD_BURNIN,
-# N_CYCLES, CYCLE_GAIN, MAX_VALUES, BASE_SEED, CPUS, MEM, TIME, PARTITION,
+# N_CYCLES, CYCLE_GAIN, EQUALIZER, DESIRED_ACC, ADAPT_BETA_MIN, LADDER_COMBOS,
+# MAX_VALUES, BASE_SEED, CPUS, MEM, TIME, PARTITION,
 # ACCOUNT, BIN, DEPEND, RUN_DIR; and for the whole-node packing mode (the
 # default, because dirac runs at most 4 jobs per user): PACK (pairs per node,
 # default JOBS_PER_NODE from tuning.env else 8; PACK=1 = one pair per job),
@@ -109,6 +110,20 @@ HOLD="${HOLD:-3000}"
 HOLD_BURNIN="${HOLD_BURNIN:-100}"
 N_CYCLES="${N_CYCLES:-4}"
 CYCLE_GAIN="${CYCLE_GAIN:-0.3}"
+# Ladder criterion (injected into set_ThermoAlgorithm_dts / set_Ladder_schedule):
+# EQUALIZER (deltaBeta_deltaL_vfm | Acceptance_vfm | Acceptance_fixed_vfm),
+# DESIRED_ACC (target of the _fixed one), ADAPT_BETA_MIN (0 pins beta_min, 1
+# adapts it). LADDER_COMBOS="eq/acc/min/tag ..." sweeps several criteria on
+# the SAME recordings (seeds are per cell, not per submission; the tag goes
+# into the label), e.g. the six-way sweep of 2026-09-07:
+#   LADDER_COMBOS="deltaBeta_deltaL_vfm/0.25/0/mu-pin deltaBeta_deltaL_vfm/0.25/1/mu-free \
+#                  Acceptance_vfm/0.25/0/acc-pin Acceptance_vfm/0.25/1/acc-free \
+#                  Acceptance_fixed_vfm/0.234/0/fix-pin Acceptance_fixed_vfm/0.234/1/fix-free" \
+#   TRUTHS=CCO PROTOCOLS=episodic REPLICAS=2 ...
+EQUALIZER="${EQUALIZER:-deltaBeta_deltaL_vfm}"
+DESIRED_ACC="${DESIRED_ACC:-0.25}"
+ADAPT_BETA_MIN="${ADAPT_BETA_MIN:-0}"
+LADDER_COMBOS=(${LADDER_COMBOS:-"${EQUALIZER}/${DESIRED_ACC}/${ADAPT_BETA_MIN}/"})
 MAX_VALUES="${MAX_VALUES:-128}"
 BASE_SEED="${BASE_SEED:-910000}"
 
@@ -221,14 +236,20 @@ submit_pack() {
 }
 
 job=0
+cell=0
 for truth in "${TRUTHS[@]}"; do
 for prot in "${PROTOCOLS[@]}"; do
 for rep in $(seq 1 "$REPLICAS"); do
+    # seeds are per (truth, protocol, replica) CELL, not per submission, so
+    # every ladder combo below fits the SAME recording (paired comparison)
+    cell=$((cell + 1))
+    seed_sim=$((BASE_SEED + 10 * cell + 1))
+    seed_cco=$((BASE_SEED + 10 * cell + 2))
+    seed_coc=$((BASE_SEED + 10 * cell + 3))
+for combo in "${LADDER_COMBOS[@]}"; do
+    IFS='/' read -r eq acc bmin tag <<< "$combo"
     job=$((job + 1))
-    seed_sim=$((BASE_SEED + 10 * job + 1))
-    seed_cco=$((BASE_SEED + 10 * job + 2))
-    seed_coc=$((BASE_SEED + 10 * job + 3))
-    label="fig1_${truth}_${prot}_rep${rep}_s${seed_sim}"
+    label="fig1_${tag:+${tag}_}${truth}_${prot}_rep${rep}_s${seed_sim}"
 
     case "$truth" in
         CCO) truth_model="scheme_CCO"; truth_par="$PAR_CCO" ;;
@@ -259,7 +280,7 @@ EOF
             pack_manifest="$WORKDIR/manifests/pack_$((pack_idx + 1)).txt"
             : > "$pack_manifest"
         fi
-        echo "$label $prot $truth_model $truth_par $template $n1 $n2 $n3 $ag2 $ag3 $seed_sim $seed_cco $seed_coc" >> "$pack_manifest"
+        echo "$label $prot $truth_model $truth_par $template $n1 $n2 $n3 $ag2 $ag3 $seed_sim $seed_cco $seed_coc $eq $acc $bmin" >> "$pack_manifest"
         pack_count=$((pack_count + 1))
         echo "[fig1] ($job) $label -> pack $((pack_idx + 1))"
         [ "$pack_count" -lt "$PACK" ] || submit_pack
@@ -273,10 +294,11 @@ EOF
             --time="${TIME:-2-00:00:00}" \
             --job-name="f1_${truth}_${prot}_r${rep}" \
             --output="$WORKDIR/logs/${label}_slurm-%j.out" \
-            --export=ALL,CLUSTER="$CLUSTER",BIN="$BIN",WORKDIR="$WORKDIR",MACRODR_PROFILE="$PROFILE",SIM_SCRIPT="$SIM_SCRIPT",EVI_SCRIPT="$EVI_SCRIPT",LABEL="$label",PROT="$prot",TRUTH_MODEL="$truth_model",TRUTH_PAR="$truth_par",TEMPLATE="$template",PRIOR_CCO="$PRIOR_CCO",PRIOR_COC="$PRIOR_COC",N1="$n1",N2="$n2",N3="$n3",NSAMP="$N_SAMP",AG2="$ag2",AG3="$ag3",SEED_SIM="$seed_sim",SEED_CCO="$seed_cco",SEED_COC="$seed_coc",SCOUTS="$SCOUTS",BETA_SIZE="$BETA_SIZE",MAX_ITER="$MAX_ITER",ADAPT_EVERY="$ADAPT_EVERY",ADAPT_T0="$ADAPT_T0",PHASE1_END="$PHASE1_END",DRIFT="$DRIFT",HOLD="$HOLD",HOLD_BURNIN="$HOLD_BURNIN",N_CYCLES="$N_CYCLES",CYCLE_GAIN="$CYCLE_GAIN",MAX_VALUES="$MAX_VALUES" \
+            --export=ALL,CLUSTER="$CLUSTER",BIN="$BIN",WORKDIR="$WORKDIR",MACRODR_PROFILE="$PROFILE",SIM_SCRIPT="$SIM_SCRIPT",EVI_SCRIPT="$EVI_SCRIPT",LABEL="$label",PROT="$prot",TRUTH_MODEL="$truth_model",TRUTH_PAR="$truth_par",TEMPLATE="$template",PRIOR_CCO="$PRIOR_CCO",PRIOR_COC="$PRIOR_COC",N1="$n1",N2="$n2",N3="$n3",NSAMP="$N_SAMP",AG2="$ag2",AG3="$ag3",SEED_SIM="$seed_sim",SEED_CCO="$seed_cco",SEED_COC="$seed_coc",SCOUTS="$SCOUTS",BETA_SIZE="$BETA_SIZE",MAX_ITER="$MAX_ITER",ADAPT_EVERY="$ADAPT_EVERY",ADAPT_T0="$ADAPT_T0",PHASE1_END="$PHASE1_END",DRIFT="$DRIFT",HOLD="$HOLD",HOLD_BURNIN="$HOLD_BURNIN",N_CYCLES="$N_CYCLES",CYCLE_GAIN="$CYCLE_GAIN",EQUALIZER="$eq",DESIRED_ACC="$acc",ADAPT_BETA_MIN="$bmin",MAX_VALUES="$MAX_VALUES" \
             "$PAYLOAD")
         echo "[fig1] ($job) $label -> job $jobid"
     fi
+done
 done
 done
 done

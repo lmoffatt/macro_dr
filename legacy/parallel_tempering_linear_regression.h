@@ -887,7 +887,8 @@ auto thermo_evidence_loop(FunctionTable&& f,
                 adapt_beta(iter, current, beta_run, therm.adapt_beta_every(),
                            therm.adapt_beta_equalizer(), therm.adapt_beta_controler(),
                            therm.adapt_beta_variance(), therm.desired_acceptance(),
-                           therm.adapt_beta_nu(), therm.adapt_beta_t0());
+                           therm.adapt_beta_nu(), therm.adapt_beta_t0(),
+                           therm.beta_schedule().adapt_beta_min ? 0ul : 1ul);
                 if (therm.adjust_beta())
                     adjust_beta(f, iter, therm.adapt_beta_every(), therm.acceptance_upper_limit(),
                                 therm.acceptance_lower_limit(), current, beta_run, mts, prior, lik,
@@ -898,7 +899,8 @@ auto thermo_evidence_loop(FunctionTable&& f,
                 if (current.num_samples() > 0)
                     adapt_beta_step(current, beta_run, therm.beta_schedule().cycle_gain,
                                     therm.adapt_beta_equalizer(), therm.adapt_beta_controler(),
-                                    therm.adapt_beta_variance(), therm.desired_acceptance());
+                                    therm.adapt_beta_variance(), therm.desired_acceptance(),
+                                    therm.beta_schedule().adapt_beta_min ? 0ul : 1ul);
                 if (therm.adjust_beta())
                     adjust_beta(f, iter, 1, therm.acceptance_upper_limit(),
                                 therm.acceptance_lower_limit(), current, beta_run, mts, prior, lik,

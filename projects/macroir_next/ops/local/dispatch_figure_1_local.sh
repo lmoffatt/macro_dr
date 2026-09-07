@@ -29,6 +29,16 @@
 #   N_CYCLES=4, CYCLE_GAIN=0.3 (set_Ladder_schedule; theory in
 #   legacy/parallel_tempering.h). Regression check of the schedule: N_CYCLES=0
 #   PHASE1_END=$MAX_ITER HOLD_BURNIN=0 reproduces the pre-schedule run.
+# Ladder criterion (injected into set_ThermoAlgorithm_dts / set_Ladder_schedule):
+# EQUALIZER (deltaBeta_deltaL_vfm | Acceptance_vfm | Acceptance_fixed_vfm),
+# DESIRED_ACC (target of the _fixed one), ADAPT_BETA_MIN (0 pins beta_min, 1
+# adapts it). LADDER_COMBOS="eq/acc/min/tag ..." sweeps several criteria on
+# the SAME recordings (seeds are per cell, not per submission; the tag goes
+# into the label), e.g. the six-way sweep of 2026-09-07:
+#   LADDER_COMBOS="deltaBeta_deltaL_vfm/0.25/0/mu-pin deltaBeta_deltaL_vfm/0.25/1/mu-free \
+#                  Acceptance_vfm/0.25/0/acc-pin Acceptance_vfm/0.25/1/acc-free \
+#                  Acceptance_fixed_vfm/0.234/0/fix-pin Acceptance_fixed_vfm/0.234/1/fix-free" \
+#   TRUTHS=CCO PROTOCOLS=episodic REPLICAS=2 ...
 #
 # Prereq: a local build (the user compiles): build/gcc-release/macrodr_cli.
 # Usage: projects/macroir_next/ops/local/dispatch_figure_1_local.sh
@@ -76,6 +86,10 @@ HOLD="${HOLD:-3000}"
 HOLD_BURNIN="${HOLD_BURNIN:-100}"
 N_CYCLES="${N_CYCLES:-4}"
 CYCLE_GAIN="${CYCLE_GAIN:-0.3}"
+EQUALIZER="${EQUALIZER:-deltaBeta_deltaL_vfm}"
+DESIRED_ACC="${DESIRED_ACC:-0.25}"
+ADAPT_BETA_MIN="${ADAPT_BETA_MIN:-0}"
+LADDER_COMBOS=(${LADDER_COMBOS:-"${EQUALIZER}/${DESIRED_ACC}/${ADAPT_BETA_MIN}/"})
 MAX_VALUES="${MAX_VALUES:-128}"
 BASE_SEED="${BASE_SEED:-910000}"    # nonzero; 0 would mean random_device
 
@@ -152,20 +166,26 @@ echo "[fig1] cwd=$WORKDIR  threads=$OMP_NUM_THREADS"
 echo "[fig1] tau=${TAU_MS}ms  interval=${INTERVAL_IN_TAU}tau  n_samp=$N_SAMP  intervals/tau=$IPT  NCH=$NCH"
 
 job=0
+cell=0
 for truth in "${TRUTHS[@]}"; do
 for prot in "${PROTOCOLS[@]}"; do
 for rep in $(seq 1 "$REPLICAS"); do
+    # Seeds are deterministic from BASE_SEED and the (truth, protocol,
+    # replica) CELL index, and the sim seed goes INTO the label (hence into
+    # every output filename), so a local run and a dirac run with the same
+    # BASE_SEED pair up file by file for verification, and every ladder combo
+    # below fits the SAME recording. Byte-identical results additionally
+    # require the same THREADS on both machines (one RNG stream per OMP
+    # thread) and a numerically identical BLAS; otherwise expect float-level
+    # differences.
+    cell=$((cell + 1))
+    seed_sim=$((BASE_SEED + 10 * cell + 1))
+    seed_cco=$((BASE_SEED + 10 * cell + 2))
+    seed_coc=$((BASE_SEED + 10 * cell + 3))
+for combo in "${LADDER_COMBOS[@]}"; do
+    IFS='/' read -r eq acc bmin tag <<< "$combo"
     job=$((job + 1))
-    # Seeds are deterministic from BASE_SEED and the job index, and the sim
-    # seed goes INTO the label (hence into every output filename), so a local
-    # run and a dirac run with the same BASE_SEED pair up file by file for
-    # verification. Byte-identical results additionally require the same
-    # THREADS on both machines (one RNG stream per OMP thread) and a
-    # numerically identical BLAS; otherwise expect float-level differences.
-    seed_sim=$((BASE_SEED + 10 * job + 1))
-    seed_cco=$((BASE_SEED + 10 * job + 2))
-    seed_coc=$((BASE_SEED + 10 * job + 3))
-    label="fig1_${truth}_${prot}_rep${rep}_s${seed_sim}"
+    label="fig1_${tag:+${tag}_}${truth}_${prot}_rep${rep}_s${seed_sim}"
     log="$WORKDIR/logs/${label}.log"
 
     case "$truth" in
@@ -248,10 +268,14 @@ EOF
         "$(printf -- '--hold_burnin = get_number(n=%s)' "$HOLD_BURNIN")" \
         "$(printf -- '--n_cycles = get_number(n=%s)' "$N_CYCLES")" \
         "$(printf -- '--cycle_gain = %s' "$CYCLE_GAIN")" \
+        "$(printf -- '--adapt_beta_equalizer = "%s"' "$eq")" \
+        "$(printf -- '--desired_acceptance = %s' "$acc")" \
+        "$(printf -- '--adapt_beta_min = get_number(n=%s)' "$bmin")" \
         "$(printf -- '--max_values = get_number(n=%s)' "$MAX_VALUES")" \
         "$(printf -- '--seed_cco = get_number(n=%s)' "$seed_cco")" \
         "$(printf -- '--seed_coc = get_number(n=%s)' "$seed_coc")" \
         "$EVI_SCRIPT" 2>&1 | filter_warns | tee -a "$log"
+done
 done
 done
 done
