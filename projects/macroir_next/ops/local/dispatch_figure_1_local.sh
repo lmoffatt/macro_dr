@@ -28,7 +28,8 @@
 #   schedule PHASE1_END=5000, DRIFT=300, HOLD=3000, HOLD_BURNIN=100,
 #   N_CYCLES=4, CYCLE_GAIN=0.3 (set_Ladder_schedule; theory in
 #   legacy/parallel_tempering.h). Regression check of the schedule: N_CYCLES=0
-#   PHASE1_END=$MAX_ITER HOLD_BURNIN=0 reproduces the pre-schedule run.
+#   HOLD_BURNIN=0 and PHASE1_END above MAX_ITER (the loop body runs for
+#   iter = MAX_ITER too, e.g. PHASE1_END=40000) reproduces the pre-schedule run.
 # Ladder criterion (injected into set_ThermoAlgorithm_dts / set_Ladder_schedule):
 # EQUALIZER (deltaBeta_deltaL_vfm | Acceptance_vfm | Acceptance_fixed_vfm),
 # DESIRED_ACC (target of the _fixed one), ADAPT_BETA_MIN (0 pins beta_min, 1

@@ -71,13 +71,16 @@ class save_Evidence {
     std::vector<double> ss_max_up, ss_s1_up, ss_s2_up;
     std::vector<double> ss_max_dn, ss_s1_dn, ss_s2_dn;
     std::vector<std::size_t> ss_n;
-    // Drift-and-hold schedule (ladder_schedule): after a ladder move the
-    // windows skip `settle` iterations before pooling again, settle =
-    // hold_burnin in phase 1 and drift + hold_burnin afterwards (the walkers
-    // are still relaxing to the moved ladder; tau_int of logL is ~34
-    // iterations at the coldest rungs, 2026-09-07). Default: no skipping.
+    // Drift-and-hold schedule (ladder_schedule). In phase 1 the windows skip
+    // hold_burnin iterations after each ladder move; afterwards they pool
+    // only inside a hold, hold_burnin iterations after it opened, and every
+    // hold opens a fresh window whether or not the ladder moved (the phase-1
+    // to first-hold boundary). The walkers need the burn-in to relax to the
+    // moved ladder: tau_int of logL is ~34 iterations at the coldest rungs
+    // (2026-09-07). Default schedule: phase 1 forever, no skipping.
     ladder_schedule ss_schedule{};
     std::size_t ss_change_iter = 0;
+    std::size_t ss_hold_id = 0;
     save_Evidence(std::string const& path, std::size_t t_sampling_interval,
                   std::size_t t_max_number_of_values_per_iteration)
         : fname{path},
@@ -197,9 +200,12 @@ class save_Evidence {
                             ladder_changed = true;
                             break;
                         }
-                if (ladder_changed) {
+                auto ph_ss = ladder_phase_at(iter, s.ss_schedule);
+                bool hold_changed = (ph_ss.hold_id != s.ss_hold_id);
+                if (ladder_changed || hold_changed) {
                     s.ss_betas = data.beta;
                     s.ss_change_iter = iter;
+                    s.ss_hold_id = ph_ss.hold_id;
                     s.ss_max_up.assign(n_tramos_ss,
                                        -std::numeric_limits<double>::infinity());
                     s.ss_s1_up.assign(n_tramos_ss, 0.0);
@@ -222,11 +228,8 @@ class save_Evidence {
                     s1 += std::exp(z - m);
                     s2 += std::exp(2.0 * (z - m));
                 };
-                auto ph_ss = ladder_phase_at(iter, s.ss_schedule);
-                std::size_t settle = ph_ss.phase1
-                                         ? s.ss_schedule.hold_burnin
-                                         : s.ss_schedule.drift + s.ss_schedule.hold_burnin;
-                bool pool = (iter - s.ss_change_iter >= settle);
+                bool pool = ph_ss.phase1 ? (iter - s.ss_change_iter >= s.ss_schedule.hold_burnin)
+                                         : ph_ss.pooling;
                 for (std::size_t k = 0; k + 1 < n_beta_ss; ++k) {
                     auto db = data.beta[k + 1] - data.beta[k];
                     auto nw = data.walkers[k].size();
@@ -286,15 +289,19 @@ class save_Evidence {
                 double jensen_up = 0.0;
                 double jensen_dn = 0.0;
                 std::size_t ss_count = 0;
+                // per-event factors: this report's walkers alone, so they are
+                // defined even while the pooled window is not accumulating
+                if ((i_beta > 0) && (i_beta - 1 < ev_n.size()) && (ev_n[i_beta - 1] > 0)) {
+                    auto k = i_beta - 1;
+                    plog_ss = ev_max_up[k] + std::log(ev_s1_up[k] / ev_n[k]);
+                    plog_ss_dn = -(ev_max_dn[k] + std::log(ev_s1_dn[k] / ev_n[k]));
+                    log_Evidence_ss += plog_ss;
+                    log_Evidence_ss_dn += plog_ss_dn;
+                }
+                // pooled factors: the window since the last ladder move / hold start
                 if ((i_beta > 0) && (i_beta - 1 < s.ss_n.size()) && (s.ss_n[i_beta - 1] > 0)) {
                     auto k = i_beta - 1;
                     ss_count = s.ss_n[k];
-                    if (ev_n[k] > 0) {
-                        plog_ss = ev_max_up[k] + std::log(ev_s1_up[k] / ev_n[k]);
-                        plog_ss_dn = -(ev_max_dn[k] + std::log(ev_s1_dn[k] / ev_n[k]));
-                        log_Evidence_ss += plog_ss;
-                        log_Evidence_ss_dn += plog_ss_dn;
-                    }
                     m_plog_ss = s.ss_max_up[k] + std::log(s.ss_s1_up[k] / ss_count);
                     m_plog_ss_dn = -(s.ss_max_dn[k] + std::log(s.ss_s1_dn[k] / ss_count));
                     ess_ss_up = s.ss_s1_up[k] * s.ss_s1_up[k] / s.ss_s2_up[k];

@@ -1,11 +1,13 @@
 #!/bin/bash
 # SLURM dispatcher for Figure 1 on a cluster (e.g. dirac): same grid and same
 # three-stage functionality as ops/local/dispatch_figure_1_local.sh, one SLURM
-# job per (truth, protocol, replica). The payload ops/slurm/run_figure_1.sh
-# runs sim -> nan-mask -> paired evidence inside the allocation.
+# job per (truth, protocol, replica) cell and ladder combo (LADDER_COMBOS; one
+# per cell by default). The payload ops/slurm/run_figure_1.sh runs sim ->
+# nan-mask -> paired evidence inside the allocation.
 #
-# Seeds are deterministic from BASE_SEED and the job index, and the sim seed
-# is baked into the label (hence into every output filename), IDENTICALLY to
+# Seeds are deterministic from BASE_SEED and the (truth, protocol, replica)
+# cell index, shared by every ladder combo of the cell so the combos fit the
+# same recording, and the sim seed is baked into the label, IDENTICALLY to
 # the local dispatcher: a local run and a dirac run with the same BASE_SEED
 # pair up file by file. Byte-identical results additionally require the same
 # thread count on both machines (one RNG stream per OMP thread: CPUS here must
@@ -292,7 +294,7 @@ EOF
             --cpus-per-task="${CPUS:-32}" \
             --mem="${MEM:-16G}" \
             --time="${TIME:-2-00:00:00}" \
-            --job-name="f1_${truth}_${prot}_r${rep}" \
+            --job-name="f1_${tag:+${tag}_}${truth}_${prot}_r${rep}" \
             --output="$WORKDIR/logs/${label}_slurm-%j.out" \
             --export=ALL,CLUSTER="$CLUSTER",BIN="$BIN",WORKDIR="$WORKDIR",MACRODR_PROFILE="$PROFILE",SIM_SCRIPT="$SIM_SCRIPT",EVI_SCRIPT="$EVI_SCRIPT",LABEL="$label",PROT="$prot",TRUTH_MODEL="$truth_model",TRUTH_PAR="$truth_par",TEMPLATE="$template",PRIOR_CCO="$PRIOR_CCO",PRIOR_COC="$PRIOR_COC",N1="$n1",N2="$n2",N3="$n3",NSAMP="$N_SAMP",AG2="$ag2",AG3="$ag3",SEED_SIM="$seed_sim",SEED_CCO="$seed_cco",SEED_COC="$seed_coc",SCOUTS="$SCOUTS",BETA_SIZE="$BETA_SIZE",MAX_ITER="$MAX_ITER",ADAPT_EVERY="$ADAPT_EVERY",ADAPT_T0="$ADAPT_T0",PHASE1_END="$PHASE1_END",DRIFT="$DRIFT",HOLD="$HOLD",HOLD_BURNIN="$HOLD_BURNIN",N_CYCLES="$N_CYCLES",CYCLE_GAIN="$CYCLE_GAIN",EQUALIZER="$eq",DESIRED_ACC="$acc",ADAPT_BETA_MIN="$bmin",MAX_VALUES="$MAX_VALUES" \
             "$PAYLOAD")

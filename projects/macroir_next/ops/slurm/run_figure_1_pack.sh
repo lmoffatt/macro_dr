@@ -15,7 +15,8 @@
 #   RUN_ONE (path to run_figure_1.sh: $0 is spooled by sbatch, so the real
 #   path must come from the dispatcher), MANIFEST (file, one pair per line:
 #   LABEL PROT TRUTH_MODEL TRUTH_PAR TEMPLATE N1 N2 N3 AG2 AG3 SEED_SIM
-#   SEED_CCO SEED_COC — no field may contain spaces), THREADS_PER_FIT,
+#   SEED_CCO SEED_COC EQUALIZER DESIRED_ACC ADAPT_BETA_MIN, 16 fields, none
+#   may contain spaces), THREADS_PER_FIT,
 #   PRIOR_CCO, PRIOR_COC, NSAMP, SCOUTS, BETA_SIZE, MAX_ITER, ADAPT_EVERY,
 #   ADAPT_T0, PHASE1_END, DRIFT, HOLD, HOLD_BURNIN, N_CYCLES, CYCLE_GAIN,
 #   MAX_VALUES.

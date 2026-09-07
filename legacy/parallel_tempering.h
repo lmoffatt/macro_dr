@@ -1667,23 +1667,29 @@ struct ladder_schedule {
 };
 
 struct ladder_phase {
-    bool phase1;       // the pre-schedule adaptation path
-    bool cycle_start;  // this iteration takes the cycle's adaptation step
-    bool hold_start;   // this iteration opens a hold: the statistics restart
+    bool phase1;          // the pre-schedule adaptation path
+    bool cycle_start;     // this iteration takes the cycle's adaptation step
+    bool hold_start;      // this iteration opens a hold: the statistics restart
+    std::size_t hold_id;  // 0 in phase 1, c + 1 in cycle c, n_cycles + 1 in the final hold
+    bool pooling;         // the evidence windows may pool: inside a hold, past hold_burnin
+                          // (always true in phase 1, where the saver applies its own
+                          // burn-in after each ladder move)
 };
 
 // Pure function of the iteration: no state to carry across the loop, and the
 // R digests can recompute the phase from the iter column alone.
 inline ladder_phase ladder_phase_at(std::size_t iter, ladder_schedule const& s) {
     if (iter < s.phase1_end)
-        return {true, false, false};
+        return {true, false, false, 0, true};
     auto P = s.period();
     auto off = iter - s.phase1_end;
     if (P > 0 && off < s.n_cycles * P) {
+        auto c = off / P;
         auto o = off % P;
-        return {false, o == s.hold % P, o == 0};
+        return {false, o == s.hold % P, o == 0, c + 1, o < s.hold && o >= s.hold_burnin};
     }
-    return {false, false, off == s.n_cycles * P};
+    auto rest = off - s.n_cycles * P;
+    return {false, false, rest == 0, s.n_cycles + 1, rest >= s.hold_burnin};
 }
 
 template <class FunctionTable, class Prior, class Likelihood, class Variables, class DataType,

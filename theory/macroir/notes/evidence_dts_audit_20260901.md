@@ -804,8 +804,10 @@ verbatim; then n_cycles of [hold | one adaptation step of gain cycle_gain
 from the whole hold's statistics + drift settling]; then a permanent
 hold. adapt_beta was split into the gate (adapt_beta, unchanged
 behaviour) and adapt_beta_step(kappa). The statistics reset at every hold
-start; the telescopic windows pool only hold_burnin iterations after a
-ladder move (drift + hold_burnin outside phase 1). New save_Evidence
+start; the telescopic windows pool, in phase 1, hold_burnin iterations after
+a ladder move and, afterwards, only inside a hold from hold_burnin on, every
+hold opening a fresh window (the per-event telescopic columns stay defined
+throughout; review of 2026-09-07). New save_Evidence
 columns ss_jensen_up/dn = 1/(2 ESS) per tramo (lower bounds of the bias:
 Kish ESS). DSL: set_Ladder_schedule + a thermo_evidence_dts overload
 taking it (box and qdtf); set_ThermoAlgorithm_dts untouched, so every
@@ -825,8 +827,9 @@ one-string switch to Acceptance_fixed_vfm at 0.234; acceptance_upper_limit
 1.95 (the removal branch never fires); save_Score cadence (24-30% of the
 wall time); GFI += in place, all_scores preallocation, canary rate limit.
 
-Gates before dirac: a local run with N_CYCLES=0 PHASE1_END=MAX_ITER
-HOLD_BURNIN=0 byte-identical to the current binary; a short cycled run
+Gates before dirac: a local run with N_CYCLES=0 HOLD_BURNIN=0 and
+PHASE1_END above MAX_ITER (the loop body also runs at iter = MAX_ITER)
+byte-identical to the current binary; a short cycled run
 (PHASE1_END=500 DRIFT=100 HOLD=400 N_CYCLES=2) showing the holds produce
 estimates and ss_count restarts at each ladder move and stays flat inside
 holds.
