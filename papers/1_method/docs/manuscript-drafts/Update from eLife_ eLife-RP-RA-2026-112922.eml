@@ -1,0 +1,123 @@
+Delivered-To: lmoffatt@gmail.com
+Received: by 2002:a05:6358:404d:b0:2b2:b2fe:266c with SMTP id a13csp7970929rwa;
+        Thu, 3 Sep 2026 12:56:56 -0700 (PDT)
+X-Forwarded-Encrypted: i=1; AKwUvBzJbnbZcDKApQPHM35jlRuH9nIR9GyXz0oG9S54ESeP9ioKhelUAo1uP6DK2PUBwN71ahWKoIkILA==@gmail.com
+X-Received: by 2002:ac8:7dcc:0:b0:51c:4f35:81b8 with SMTP id d75a77b69052e-530560f90ffmr2074691cf.7.1788465410832;
+        Thu, 03 Sep 2026 12:56:50 -0700 (PDT)
+Authentication-Results: mx.google.com;
+       spf=pass (google.com: domain of editorial@elifesciences.org designates 205.159.76.91 as permitted sender) smtp.mailfrom=editorial@elifesciences.org;
+       dkim=pass header.i=@elifesciences.org header.s=ejournalpress header.b="vE/T1McO"
+Received-SPF: pass (google.com: domain of editorial@elifesciences.org designates 205.159.76.91 as permitted sender) client-ip=205.159.76.91;
+Received: by 2002:a05:622a:8c01:b0:526:d78f:c5d0 with POP3 id d75a77b69052e-530431197d3mf20750851cf.1;
+        Thu, 03 Sep 2026 12:56:50 -0700 (PDT)
+X-Gmail-Fetch-Info: lmoffatt@qi.fcen.uba.ar 1 pop.qi.fcen.uba.ar 995 lmoffatt
+Return-Path: <editorial@elifesciences.org>
+Delivered-To: qi.fcen.uba.ar-lmoffatt@qi.fcen.uba.ar
+Received: (qmail 13933 invoked by uid 89); 3 Sep 2026 16:44:54 -0300
+Received: (simscan 1.4.1 ppid 13926 pid 13928 t 2.6193s)
+ (scanners:  spam: 3.4.2 attach: 1.4.1 clamav: 0.103.9/m:62/d:27778); 03 Sep 0126 19:44:51 -0000
+X-Spam-Checker-Version: SpamAssassin 3.4.6 (2021-04-09) on cuca.q1.fcen.uba.ar
+X-Spam-Level: 
+X-Spam-Status: No, score=-1.9 required=10.0 tests=BAYES_00,DMARC_REJECT,
+	RCVD_IN_MSPIKE_H3,SPF_HELO_NONE,TXREP,URIBL_BLOCKED autolearn=no
+	autolearn_force=no version=3.4.6
+X-Spam-Report: 
+	* -5.0 BAYES_00 BODY: Bayes spam probability is 0 to 1%
+	*      [score: 0.0000]
+	*  0.5 SPF_HELO_NONE SPF: HELO does not publish an SPF Record
+	*  0.0 URIBL_BLOCKED ADMINISTRATOR NOTICE: The query to URIBL was
+	*      blocked.  See
+	*      http://wiki.apache.org/spamassassin/DnsBlocklists#dnsbl-block
+	*      for more information.
+	*      [URIs: peercommunityin.org]
+	* -0.5 RCVD_IN_MSPIKE_H3 RBL: Good reputation (+3)
+	*      [205.159.76.91 listed in wl.mailspike.net]
+	*  3.0 DMARC_REJECT No description available.
+	*  0.1 TXREP TXREP: Score normalizing based on sender's reputation
+Received: from mail6.ejpress.com (205.159.76.91)
+  by cuca.q1.fcen.uba.ar with ESMTPS (TLS_AES_256_GCM_SHA384 encrypted); 3 Sep 2026 16:44:51 -0300
+Received-SPF: pass (cuca.q1.fcen.uba.ar: SPF record at msubmit.net designates 205.159.76.91 as permitted sender)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=elifesciences.org;
+	s=ejournalpress; t=1788464588;
+	bh=RxyP534AtImyYji3mL/v4ms9RDkb6WVDllWVa/ZNhNM=;
+	h=Date:To:Subject:From:Reply-To:From;
+	b=vE/T1McO5Eymkxnrm/045qv8zSNqqnu9Wz+xz/MduvcMUyM/uMoQrUXDHuJbwgb8K
+	 HhqMCSt6CzYwBtf2idlG/tUzzsRTSsWArih1sptoCI1ZCiceAU32ANvvtdJSIXl7Xo
+	 b870dyC2+VGWlC/KXIjMPhB3pD2/LDghrr8Y+dNI=
+Received: from localhost.localdomain (unknown [10.10.6.17])
+	by mail6.ejpress.com (Postfix) with ESMTPA id F28E6400F1;
+	Thu,  3 Sep 2026 15:43:08 -0400 (EDT)
+Content-Transfer-Encoding: binary
+Content-Type: multipart/alternative; boundary="_----------=_17884645884874341"; charset="UTF-8"
+MIME-Version: 1.0
+X-Mailer: MIME::Lite 3.033 (F2.86; T2.28; A2.22; B3.16_01; Q3.16_01)
+Date: Thu, 3 Sep 2026 15:43:08 -0400
+Message-Id: <94178846458842@d12-vmweb17.ejpress.com>
+To: lmoffatt@qi.fcen.uba.ar
+Subject: Update from eLife: eLife-RP-RA-2026-112922
+From: editorial@elifesciences.org
+Reply-To: editorial@elifesciences.org
+
+This is a multi-part message in MIME format.
+
+--_----------=_17884645884874341
+Content-Disposition: inline
+Content-Transfer-Encoding: 8bit
+Content-Type: text/plain
+
+Dear Dr Moffatt,
+
+Thank you for submitting your paper, "Likelihood approximations distort the ion channel kinetic information in macroscopic currents", to eLife. Your submission has been considered by the editors. Since we receive more submissions than our editors can handle, we prioritise ones for which we can produce high-quality public reviews that will be of significant value to the community. 
+
+Unfortunately in this case we are unable to proceed as we believe the submission would be better served being peer reviewed within a more specialized community.
+
+We appreciate your interest in a public review process: other services that offer public reviews include Review Commons (https://www.reviewcommons.org/) and Peer Community In (https://peercommunityin.org/). We wish you good luck with this work and we hope you will consider eLife for future submissions.
+
+Best wishes,
+
+Kenton Swartz
+Senior Editor, eLife
+
+-----
+eLife Sciences Publications, Ltd is a limited liability non-profit non-stock corporation incorporated in the State of Delaware, USA, with company number 5030732, and is registered in the UK with company number FC030576 and branch number BR015634 at the address 95 Regent Street, Cambridge, CB2 1AW, UK.
+-----
+
+--_----------=_17884645884874341
+Content-Disposition: inline
+Content-Transfer-Encoding: base64
+Content-Type: text/html
+
+CiAgICAgICAgPEhUTUw+CiAgICAgICAgPGhlYWQ+CiAgICAgICAgICA8bWV0YSBodHRwLWVxdWl2
+PSJDb250ZW50LVR5cGUiIGNvbnRlbnQ9InRleHQvaHRtbDsgY2hhcnNldD1VVEYtOCI+CiAgICAg
+ICAgICA8bWV0YSBuYW1lPSJBdXRob3IiIGNvbnRlbnQ9ImtvIj4KICAgICAgICAgIDxtZXRhIG5h
+bWU9IkdFTkVSQVRPUiIgY29udGVudD0iTW96aWxsYS80LjcgW2VuXSAoV2luTlQ7IEkpIFtOZXRz
+Y2FwZV0iPgogICAgICAgIDwvaGVhZD4KICAgICAgICA8Ym9keSB0ZXh0PSIjMDAwMDAwIiBiZ2Nv
+bG9yPSIjRkZGRkZGIiBsaW5rPSIjRUUwMDAwIiB2bGluaz0iI0NDMDAwMCIgYWxpbms9IiNFRTAw
+MDAiPgogICAgRGVhciBEciBNb2ZmYXR0LDxicj4KPGJyPgpUaGFuayB5b3UgZm9yIHN1Ym1pdHRp
+bmcgeW91ciBwYXBlciwgIkxpa2VsaWhvb2QgYXBwcm94aW1hdGlvbnMgZGlzdG9ydCB0aGUgaW9u
+IGNoYW5uZWwga2luZXRpYyBpbmZvcm1hdGlvbiBpbiBtYWNyb3Njb3BpYyBjdXJyZW50cyIsIHRv
+IGVMaWZlLiBZb3VyIHN1Ym1pc3Npb24gaGFzIGJlZW4gY29uc2lkZXJlZCBieSB0aGUgZWRpdG9y
+cy4gU2luY2Ugd2UgcmVjZWl2ZSBtb3JlIHN1Ym1pc3Npb25zIHRoYW4gb3VyIGVkaXRvcnMgY2Fu
+IGhhbmRsZSwgd2UgcHJpb3JpdGlzZSBvbmVzIGZvciB3aGljaCB3ZSBjYW4gcHJvZHVjZSBoaWdo
+LXF1YWxpdHkgcHVibGljIHJldmlld3MgdGhhdCB3aWxsIGJlIG9mIHNpZ25pZmljYW50IHZhbHVl
+IHRvIHRoZSBjb21tdW5pdHkuIDxicj4KPGJyPgpVbmZvcnR1bmF0ZWx5IGluIHRoaXMgY2FzZSB3
+ZSBhcmUgdW5hYmxlIHRvIHByb2NlZWQgYXMgd2UgYmVsaWV2ZSB0aGUgc3VibWlzc2lvbiB3b3Vs
+ZCBiZSBiZXR0ZXIgc2VydmVkIGJlaW5nIHBlZXIgcmV2aWV3ZWQgd2l0aGluIGEgbW9yZSBzcGVj
+aWFsaXplZCBjb21tdW5pdHkuPGJyPgo8YnI+CldlIGFwcHJlY2lhdGUgeW91ciBpbnRlcmVzdCBp
+biBhIHB1YmxpYyByZXZpZXcgcHJvY2Vzczogb3RoZXIgc2VydmljZXMgdGhhdCBvZmZlciBwdWJs
+aWMgcmV2aWV3cyBpbmNsdWRlIFJldmlldyBDb21tb25zICg8YSBocmVmPSJodHRwczovL3d3dy5y
+ZXZpZXdjb21tb25zLm9yZyI+aHR0cHM6Ly93d3cucmV2aWV3Y29tbW9ucy5vcmc8L2E+LykgYW5k
+IFBlZXIgQ29tbXVuaXR5IEluICg8YSBocmVmPSJodHRwczovL3BlZXJjb21tdW5pdHlpbi5vcmci
+Pmh0dHBzOi8vcGVlcmNvbW11bml0eWluLm9yZzwvYT4vKS4gV2Ugd2lzaCB5b3UgZ29vZCBsdWNr
+IHdpdGggdGhpcyB3b3JrIGFuZCB3ZSBob3BlIHlvdSB3aWxsIGNvbnNpZGVyIGVMaWZlIGZvciBm
+dXR1cmUgc3VibWlzc2lvbnMuPGJyPgo8YnI+CkJlc3Qgd2lzaGVzLDxicj4KPGJyPgpLZW50b24g
+U3dhcnR6PGJyPgpTZW5pb3IgRWRpdG9yLCBlTGlmZTxicj4KPGJyPgotLS0tLTxicj4KZUxpZmUg
+U2NpZW5jZXMgUHVibGljYXRpb25zLCBMdGQgaXMgYSBsaW1pdGVkIGxpYWJpbGl0eSBub24tcHJv
+Zml0IG5vbi1zdG9jayBjb3Jwb3JhdGlvbiBpbmNvcnBvcmF0ZWQgaW4gdGhlIFN0YXRlIG9mIERl
+bGF3YXJlLCBVU0EsIHdpdGggY29tcGFueSBudW1iZXIgNTAzMDczMiwgYW5kIGlzIHJlZ2lzdGVy
+ZWQgaW4gdGhlIFVLIHdpdGggY29tcGFueSBudW1iZXIgRkMwMzA1NzYgYW5kIGJyYW5jaCBudW1i
+ZXIgQlIwMTU2MzQgYXQgdGhlIGFkZHJlc3MgOTUgUmVnZW50IFN0cmVldCwgQ2FtYnJpZGdlLCBD
+QjIgMUFXLCBVSy48YnI+Ci0tLS0tPGJyPgo8L2JvZHk+CjwvSFRNTD4K
+
+--_----------=_17884645884874341--
+
