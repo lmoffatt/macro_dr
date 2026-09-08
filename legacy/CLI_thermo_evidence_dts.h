@@ -48,11 +48,14 @@ using thermo_algo_dts_type =
 // adapt_beta_min (0/1; the DSL cannot inject a bool) unpins beta_min so the
 // hottest gap adapts like the others; see adapt_beta_step for the caveat on
 // the equalizer.
+// phase1_step_every is the ladder's rate of construction in phase 1 (1 = an
+// adaptation step per iteration); see ladder_schedule.
 inline auto set_Ladder_schedule(std::size_t phase1_end, std::size_t drift, std::size_t hold,
                                 std::size_t hold_burnin, std::size_t n_cycles,
-                                double cycle_gain, std::size_t adapt_beta_min) {
+                                double cycle_gain, std::size_t adapt_beta_min,
+                                std::size_t phase1_step_every) {
     return std::tuple(phase1_end, drift, hold, hold_burnin, n_cycles, cycle_gain,
-                      adapt_beta_min);
+                      adapt_beta_min, phase1_step_every);
 }
 using ladder_schedule_type =
     typename return_type<std::decay_t<decltype(&set_Ladder_schedule)>>::type;
@@ -60,16 +63,14 @@ using ladder_schedule_type =
 // No schedule: the ladder adapts all run long (the pre-2026-09-07 run).
 inline ladder_schedule_type no_ladder_schedule() {
     return std::tuple(std::numeric_limits<std::size_t>::max(), std::size_t{0}, std::size_t{0},
-                      std::size_t{0}, std::size_t{0}, 0.0, std::size_t{0});
+                      std::size_t{0}, std::size_t{0}, 0.0, std::size_t{0}, std::size_t{1});
 }
 
-inline ladder_schedule to_ladder_schedule(ladder_schedule_type const& t) {
-    ladder_schedule s;
-    std::size_t adapt_beta_min = 0;
-    std::tie(s.phase1_end, s.drift, s.hold, s.hold_burnin, s.n_cycles, s.cycle_gain,
-             adapt_beta_min) = t;
-    s.adapt_beta_min = adapt_beta_min != 0;
-    return s;
+inline Ladder_Schedule to_ladder_schedule(ladder_schedule_type const& t) {
+    auto [phase1_end, drift, hold, hold_burnin, n_cycles, cycle_gain, adapt_beta_min,
+          phase1_step_every] = t;
+    return make_Ladder_Schedule(phase1_end, phase1_step_every, drift, hold, hold_burnin, n_cycles,
+                                cycle_gain, adapt_beta_min != 0);
 }
 
 // The schedule is read in two places: the tempering loop (when the ladder
@@ -944,9 +945,9 @@ inline dsl::Compiler<dsl::Lexer> make_dts_compiler() {
                                                                  "n_poles", "cutoff_hz"));
     cm.push_function("set_Ladder_schedule",
                      dsl::to_typed_function<std::size_t, std::size_t, std::size_t, std::size_t,
-                                            std::size_t, double, std::size_t>(
+                                            std::size_t, double, std::size_t, std::size_t>(
                          &set_Ladder_schedule, "phase1_end", "drift", "hold", "hold_burnin",
-                         "n_cycles", "cycle_gain", "adapt_beta_min"));
+                         "n_cycles", "cycle_gain", "adapt_beta_min", "phase1_step_every"));
     // Same DSL name, one extra named argument (ladder_schedule) selects the
     // drift-and-hold run; inline-Experiment form only (stateless).
     cm.push_function(

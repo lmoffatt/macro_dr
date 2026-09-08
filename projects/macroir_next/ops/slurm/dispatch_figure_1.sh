@@ -23,7 +23,8 @@
 #   projects/macroir_next/ops/slurm/dispatch_figure_1.sh <cluster>   # e.g. dirac
 # Tunables via env: TRUTHS, PROTOCOLS, REPLICAS, NCH, TAU_MS, INTERVAL_IN_TAU,
 # PRE_TAUS, PULSE_TAUS, POST_TAUS, GAP_TAUS, MEAS_TAUS, SCOUTS, BETA_SIZE,
-# MAX_ITER, ADAPT_EVERY, ADAPT_T0, PHASE1_END, DRIFT, HOLD, HOLD_BURNIN,
+# MAX_ITER, ADAPT_EVERY, STEP_EVERY, ADAPT_NU, ADAPT_T0, PHASE1_END, DRIFT,
+# HOLD, HOLD_BURNIN,
 # N_CYCLES, CYCLE_GAIN, EQUALIZER, DESIRED_ACC, ADAPT_BETA_MIN, LADDER_COMBOS,
 # MAX_VALUES, BASE_SEED, CPUS, MEM, TIME, PARTITION,
 # ACCOUNT, BIN, DEPEND, RUN_DIR; and for the whole-node packing mode (the
@@ -98,8 +99,15 @@ SCOUTS="${SCOUTS:-32}"
 # ladder size (BETA_EFF) can supply it; an explicit env value still wins.
 BETA_SIZE="${BETA_SIZE:-}"
 MAX_ITER="${MAX_ITER:-30000}"
+# Period of the phase-1 logL statistics window: how often the statistics that
+# the adaptation step reads are restarted. Since 2026-09-08 the rate of
+# adaptation is STEP_EVERY, not this.
 ADAPT_EVERY="${ADAPT_EVERY:-256}"
 ADAPT_T0="${ADAPT_T0:-3000}"
+# Phase-1 adaptation: STEP_EVERY iterations between steps (the ladder's rate of
+# construction) and the gain kappa(iter) = (1/ADAPT_NU)*ADAPT_T0/(ADAPT_T0+iter).
+STEP_EVERY="${STEP_EVERY:-1}"
+ADAPT_NU="${ADAPT_NU:-0.5}"
 # Drift-and-hold ladder schedule (set_Ladder_schedule; theory in
 # parallel_tempering.h). Phase 1 adapts continuously until PHASE1_END; then
 # N_CYCLES of [HOLD iterations fixed | one step of gain CYCLE_GAIN + DRIFT
@@ -230,7 +238,7 @@ submit_pack() {
         --time="${TIME:-2-00:00:00}" \
         --job-name="f1pack_${pack_idx}" \
         --output="$WORKDIR/logs/pack_${pack_idx}_slurm-%j.out" \
-        --export=ALL,CLUSTER="$CLUSTER",BIN="$BIN",WORKDIR="$WORKDIR",MACRODR_PROFILE="$PROFILE",SIM_SCRIPT="$SIM_SCRIPT",EVI_SCRIPT="$EVI_SCRIPT",RUN_ONE="$PAYLOAD",MANIFEST="$pack_manifest",THREADS_PER_FIT="$THREADS_PER_FIT",PRIOR_CCO="$PRIOR_CCO",PRIOR_COC="$PRIOR_COC",NSAMP="$N_SAMP",SCOUTS="$SCOUTS",BETA_SIZE="$BETA_SIZE",MAX_ITER="$MAX_ITER",ADAPT_EVERY="$ADAPT_EVERY",ADAPT_T0="$ADAPT_T0",PHASE1_END="$PHASE1_END",DRIFT="$DRIFT",HOLD="$HOLD",HOLD_BURNIN="$HOLD_BURNIN",N_CYCLES="$N_CYCLES",CYCLE_GAIN="$CYCLE_GAIN",MAX_VALUES="$MAX_VALUES" \
+        --export=ALL,CLUSTER="$CLUSTER",BIN="$BIN",WORKDIR="$WORKDIR",MACRODR_PROFILE="$PROFILE",SIM_SCRIPT="$SIM_SCRIPT",EVI_SCRIPT="$EVI_SCRIPT",RUN_ONE="$PAYLOAD",MANIFEST="$pack_manifest",THREADS_PER_FIT="$THREADS_PER_FIT",PRIOR_CCO="$PRIOR_CCO",PRIOR_COC="$PRIOR_COC",NSAMP="$N_SAMP",SCOUTS="$SCOUTS",BETA_SIZE="$BETA_SIZE",MAX_ITER="$MAX_ITER",ADAPT_EVERY="$ADAPT_EVERY",STEP_EVERY="$STEP_EVERY",ADAPT_NU="$ADAPT_NU",ADAPT_T0="$ADAPT_T0",PHASE1_END="$PHASE1_END",DRIFT="$DRIFT",HOLD="$HOLD",HOLD_BURNIN="$HOLD_BURNIN",N_CYCLES="$N_CYCLES",CYCLE_GAIN="$CYCLE_GAIN",MAX_VALUES="$MAX_VALUES" \
         "$PACK_PAYLOAD")
     echo "[fig1] pack $pack_idx ($pack_count pairs) -> job $jobid"
     pack_count=0
@@ -296,7 +304,7 @@ EOF
             --time="${TIME:-2-00:00:00}" \
             --job-name="f1_${tag:+${tag}_}${truth}_${prot}_r${rep}" \
             --output="$WORKDIR/logs/${label}_slurm-%j.out" \
-            --export=ALL,CLUSTER="$CLUSTER",BIN="$BIN",WORKDIR="$WORKDIR",MACRODR_PROFILE="$PROFILE",SIM_SCRIPT="$SIM_SCRIPT",EVI_SCRIPT="$EVI_SCRIPT",LABEL="$label",PROT="$prot",TRUTH_MODEL="$truth_model",TRUTH_PAR="$truth_par",TEMPLATE="$template",PRIOR_CCO="$PRIOR_CCO",PRIOR_COC="$PRIOR_COC",N1="$n1",N2="$n2",N3="$n3",NSAMP="$N_SAMP",AG2="$ag2",AG3="$ag3",SEED_SIM="$seed_sim",SEED_CCO="$seed_cco",SEED_COC="$seed_coc",SCOUTS="$SCOUTS",BETA_SIZE="$BETA_SIZE",MAX_ITER="$MAX_ITER",ADAPT_EVERY="$ADAPT_EVERY",ADAPT_T0="$ADAPT_T0",PHASE1_END="$PHASE1_END",DRIFT="$DRIFT",HOLD="$HOLD",HOLD_BURNIN="$HOLD_BURNIN",N_CYCLES="$N_CYCLES",CYCLE_GAIN="$CYCLE_GAIN",EQUALIZER="$eq",DESIRED_ACC="$acc",ADAPT_BETA_MIN="$bmin",MAX_VALUES="$MAX_VALUES" \
+            --export=ALL,CLUSTER="$CLUSTER",BIN="$BIN",WORKDIR="$WORKDIR",MACRODR_PROFILE="$PROFILE",SIM_SCRIPT="$SIM_SCRIPT",EVI_SCRIPT="$EVI_SCRIPT",LABEL="$label",PROT="$prot",TRUTH_MODEL="$truth_model",TRUTH_PAR="$truth_par",TEMPLATE="$template",PRIOR_CCO="$PRIOR_CCO",PRIOR_COC="$PRIOR_COC",N1="$n1",N2="$n2",N3="$n3",NSAMP="$N_SAMP",AG2="$ag2",AG3="$ag3",SEED_SIM="$seed_sim",SEED_CCO="$seed_cco",SEED_COC="$seed_coc",SCOUTS="$SCOUTS",BETA_SIZE="$BETA_SIZE",MAX_ITER="$MAX_ITER",ADAPT_EVERY="$ADAPT_EVERY",STEP_EVERY="$STEP_EVERY",ADAPT_NU="$ADAPT_NU",ADAPT_T0="$ADAPT_T0",PHASE1_END="$PHASE1_END",DRIFT="$DRIFT",HOLD="$HOLD",HOLD_BURNIN="$HOLD_BURNIN",N_CYCLES="$N_CYCLES",CYCLE_GAIN="$CYCLE_GAIN",EQUALIZER="$eq",DESIRED_ACC="$acc",ADAPT_BETA_MIN="$bmin",MAX_VALUES="$MAX_VALUES" \
             "$PAYLOAD")
         echo "[fig1] ($job) $label -> job $jobid"
     fi

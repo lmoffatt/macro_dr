@@ -1653,46 +1653,99 @@ void adapt_beta(std::size_t iter, thermo_mcmc<Parameters>& current, by_beta<doub
 // measured correction per cycle. Each hold yields an independent estimate of
 // log Z, so the spread across holds is an empirical standard error.
 // The default (phase1_end = max) reproduces the pre-schedule run exactly.
-struct ladder_schedule {
-    std::size_t phase1_end = std::numeric_limits<std::size_t>::max();
-    std::size_t drift = 0;
-    std::size_t hold = 0;
-    std::size_t hold_burnin = 0;  // hold iterations the evidence windows skip after a move
-    std::size_t n_cycles = 0;
-    double cycle_gain = 0.0;
-    bool adapt_beta_min = false;  // let the hottest finite rung move with the rest (see adapt_beta_step)
-    std::size_t period() const {
-        return drift + hold;
-    }
+// One type per quantity, so the schedule reads by name wherever it travels
+// (the tempering loop, the evidence saver) and no use site can take the drift
+// for the hold.
+class Phase1_End : public var::Var<Phase1_End, std::size_t> {};
+// Iterations between phase-1 adaptation steps: the ladder's rate of
+// construction. Each step redistributes the rungs by at most kappa(iter) in
+// log temperature increment and adds at most one rung, so the ladder's whole
+// travel in phase 1 is bounded by Phase1_End / Phase1_Step_Every steps
+// (2026-09-08). 1 = a step per iteration. It is deliberately NOT
+// adapt_beta_every, which sets how often the logL statistics that the step
+// reads are restarted: one knob doing both jobs ties the rate of adaptation to
+// the length of the window it measures.
+class Phase1_Step_Every : public var::Var<Phase1_Step_Every, std::size_t> {};
+class Ladder_Drift : public var::Var<Ladder_Drift, std::size_t> {};
+class Ladder_Hold : public var::Var<Ladder_Hold, std::size_t> {};
+// Hold iterations the evidence windows skip after a ladder move.
+class Ladder_Hold_Burnin : public var::Var<Ladder_Hold_Burnin, std::size_t> {};
+class Ladder_Cycles : public var::Var<Ladder_Cycles, std::size_t> {};
+class Ladder_Cycle_Gain : public var::Var<Ladder_Cycle_Gain, double> {};
+// Let the hottest finite rung move with the rest (see adapt_beta_step).
+class Adapt_Beta_Min : public var::Var<Adapt_Beta_Min, bool> {};
+
+class Ladder_Schedule
+    : public var::Var<Ladder_Schedule,
+                      var::Vector_Space<Phase1_End, Phase1_Step_Every, Ladder_Drift, Ladder_Hold,
+                                        Ladder_Hold_Burnin, Ladder_Cycles, Ladder_Cycle_Gain,
+                                        Adapt_Beta_Min>> {};
+
+inline Ladder_Schedule make_Ladder_Schedule(std::size_t phase1_end, std::size_t phase1_step_every,
+                                            std::size_t drift, std::size_t hold,
+                                            std::size_t hold_burnin, std::size_t n_cycles,
+                                            double cycle_gain, bool adapt_beta_min) {
+    return Ladder_Schedule(var::Vector_Space(
+        Phase1_End(phase1_end),
+        Phase1_Step_Every(phase1_step_every == 0 ? std::size_t{1} : phase1_step_every),
+        Ladder_Drift(drift), Ladder_Hold(hold), Ladder_Hold_Burnin(hold_burnin),
+        Ladder_Cycles(n_cycles), Ladder_Cycle_Gain(cycle_gain), Adapt_Beta_Min(adapt_beta_min)));
+}
+
+// No schedule: phase 1 lasts the whole run, one adaptation step per iteration.
+inline Ladder_Schedule default_Ladder_Schedule() {
+    return make_Ladder_Schedule(std::numeric_limits<std::size_t>::max(), 1, 0, 0, 0, 0, 0.0, false);
+}
+
+inline std::size_t ladder_period(Ladder_Schedule const& s) {
+    return get<Ladder_Drift>(s())() + get<Ladder_Hold>(s())();
+}
+
+// The pre-schedule adaptation path.
+class In_Phase1 : public var::Var<In_Phase1, bool> {};
+// This iteration takes the cycle's adaptation step.
+class Cycle_Start : public var::Var<Cycle_Start, bool> {};
+// This iteration opens a hold: the statistics restart.
+class Hold_Start : public var::Var<Hold_Start, bool> {};
+// 0 in phase 1, c + 1 in cycle c, Ladder_Cycles + 1 in the final hold.
+class Hold_Id : public var::Var<Hold_Id, std::size_t> {};
+// The evidence windows may pool: inside a hold, past Ladder_Hold_Burnin, up to
+// and including the cycle-start report, which precedes the ladder move (always
+// true in phase 1, where the saver applies its own burn-in after each move).
+class Pooling : public var::Var<Pooling, bool> {};
+
+class Ladder_Phase : public var::Var<Ladder_Phase, var::Vector_Space<In_Phase1, Cycle_Start,
+                                                                     Hold_Start, Hold_Id, Pooling>> {
 };
 
-struct ladder_phase {
-    bool phase1;          // the pre-schedule adaptation path
-    bool cycle_start;     // this iteration takes the cycle's adaptation step
-    bool hold_start;      // this iteration opens a hold: the statistics restart
-    std::size_t hold_id;  // 0 in phase 1, c + 1 in cycle c, n_cycles + 1 in the final hold
-    bool pooling;         // the evidence windows may pool: inside a hold, past hold_burnin,
-                          // up to and including the cycle-start report, which precedes the
-                          // ladder move (always true in phase 1, where the saver applies
-                          // its own burn-in after each ladder move)
-};
+inline Ladder_Phase make_Ladder_Phase(bool phase1, bool cycle_start, bool hold_start,
+                                      std::size_t hold_id, bool pooling) {
+    return Ladder_Phase(var::Vector_Space(In_Phase1(phase1), Cycle_Start(cycle_start),
+                                          Hold_Start(hold_start), Hold_Id(hold_id),
+                                          Pooling(pooling)));
+}
 
 // Pure function of the iteration: no state to carry across the loop, and the
 // R digests can recompute the phase from the iter column alone.
-inline ladder_phase ladder_phase_at(std::size_t iter, ladder_schedule const& s) {
-    if (iter < s.phase1_end)
-        return {true, false, false, 0, true};
-    auto P = s.period();
-    auto off = iter - s.phase1_end;
-    if (P > 0 && off < s.n_cycles * P) {
+inline Ladder_Phase ladder_phase_at(std::size_t iter, Ladder_Schedule const& sc) {
+    auto phase1_end = get<Phase1_End>(sc())();
+    auto hold = get<Ladder_Hold>(sc())();
+    auto hold_burnin = get<Ladder_Hold_Burnin>(sc())();
+    auto n_cycles = get<Ladder_Cycles>(sc())();
+    if (iter < phase1_end)
+        return make_Ladder_Phase(true, false, false, 0, true);
+    auto P = ladder_period(sc);
+    auto off = iter - phase1_end;
+    if (P > 0 && off < n_cycles * P) {
         auto c = off / P;
         auto o = off % P;
         // the report at o == hold is taken BEFORE that iteration's step (report_all
         // precedes the adaptation in the loop), so it still belongs to the hold
-        return {false, o == s.hold % P, o == 0, c + 1, o <= s.hold && o >= s.hold_burnin};
+        return make_Ladder_Phase(false, o == hold % P, o == 0, c + 1,
+                                 o <= hold && o >= hold_burnin);
     }
-    auto rest = off - s.n_cycles * P;
-    return {false, false, rest == 0, s.n_cycles + 1, rest >= s.hold_burnin};
+    auto rest = off - n_cycles * P;
+    return make_Ladder_Phase(false, false, rest == 0, n_cycles + 1, rest >= hold_burnin);
 }
 
 template <class FunctionTable, class Prior, class Likelihood, class Variables, class DataType,

@@ -20,8 +20,22 @@
 #   beta_size                (INITIAL rung count; adjust_beta grows the ladder
 #                             during phase 1, so start small, e.g. 4)
 #   max_iter                 (>= ~30000 so ~300 full-ladder score events accrue)
-#   adapt_beta_every         (phase-1 adaptation and statistics window, e.g. 256)
-#   adapt_beta_t0            (phase-1 Robbins-Monro time constant, e.g. 3000)
+#   adapt_beta_every         (period of the logL statistics window in phase 1,
+#                             e.g. 256: how often the statistics the adaptation
+#                             step reads are restarted. It stopped being the
+#                             rate of adaptation on 2026-09-08, when that became
+#                             phase1_step_every)
+#   phase1_step_every        (iterations between phase-1 adaptation steps, 1 =
+#                             one per iteration. This is the ladder's rate of
+#                             construction: a step redistributes the rungs and
+#                             adds at most one, so phase1_end/phase1_step_every
+#                             bounds the whole ladder's travel. 256 left 19 steps
+#                             in a 5000-iteration phase 1 and the ladder never
+#                             reached beta = 1)
+#   adapt_beta_nu, adapt_beta_t0
+#                            (the phase-1 gain: kappa(iter) = (1/nu)*t0/(t0+iter)
+#                             multiplies each step, so nu scales it and t0 sets
+#                             how fast it decays. nu 0.5, t0 3000.)
 #   adapt_beta_equalizer     ("deltaBeta_deltaL_vfm": equalize dbeta*dE[logL]
 #                             between neighbouring tramos; "Acceptance_vfm":
 #                             equalize the measured swap acceptance;
@@ -70,7 +84,7 @@ thermo_algorithm_dts = set_ThermoAlgorithm_dts(
    adapt_beta_equalizer = adapt_beta_equalizer,
    adapt_beta_controler = "s",
    adapt_beta_variance = "variance",
-   adapt_beta_nu = 0.5,
+   adapt_beta_nu = adapt_beta_nu,
    adapt_beta_t0 = adapt_beta_t0,
    adjust_beta = 1,
    acceptance_upper_limit = 1.95,
@@ -78,7 +92,8 @@ thermo_algorithm_dts = set_ThermoAlgorithm_dts(
    desired_acceptance = desired_acceptance)
 
 ladder_schedule = set_Ladder_schedule(
-   phase1_end = phase1_end, drift = drift_iters, hold = hold_iters,
+   phase1_end = phase1_end, phase1_step_every = phase1_step_every,
+   drift = drift_iters, hold = hold_iters,
    hold_burnin = hold_burnin, n_cycles = n_cycles, cycle_gain = cycle_gain,
    adapt_beta_min = adapt_beta_min)
 

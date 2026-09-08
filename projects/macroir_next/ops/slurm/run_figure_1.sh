@@ -11,7 +11,8 @@
 # Required: CLUSTER, BIN, WORKDIR, MACRODR_PROFILE, SIM_SCRIPT, EVI_SCRIPT,
 #   LABEL, PROT, TRUTH_MODEL, TRUTH_PAR, TEMPLATE, PRIOR_CCO, PRIOR_COC,
 #   N1, N2, N3, NSAMP, AG2, AG3, SEED_SIM, SEED_CCO, SEED_COC,
-#   SCOUTS, BETA_SIZE, MAX_ITER, ADAPT_EVERY, ADAPT_T0, MAX_VALUES, and the
+#   SCOUTS, BETA_SIZE, MAX_ITER, ADAPT_EVERY, STEP_EVERY, ADAPT_NU, ADAPT_T0,
+#   MAX_VALUES, and the
 #   drift-and-hold ladder schedule PHASE1_END, DRIFT, HOLD, HOLD_BURNIN,
 #   N_CYCLES, CYCLE_GAIN, and the ladder criterion EQUALIZER, DESIRED_ACC,
 #   ADAPT_BETA_MIN.
@@ -34,7 +35,8 @@ set -eo pipefail
 : "${N1:?}" ; : "${N2:?}" ; : "${N3:?}" ; : "${NSAMP:?}" ; : "${AG2:?}" ; : "${AG3:?}"
 : "${SEED_SIM:?}" ; : "${SEED_CCO:?}" ; : "${SEED_COC:?}"
 : "${SCOUTS:?}" ; : "${BETA_SIZE:?}" ; : "${MAX_ITER:?}" ; : "${ADAPT_EVERY:?}"
-: "${ADAPT_T0:?}" ; : "${PHASE1_END:?}" ; : "${DRIFT:?}" ; : "${HOLD:?}"
+: "${ADAPT_T0:?}" ; : "${ADAPT_NU:?}" ; : "${STEP_EVERY:?}"
+: "${PHASE1_END:?}" ; : "${DRIFT:?}" ; : "${HOLD:?}"
 : "${HOLD_BURNIN:?}" ; : "${N_CYCLES:?}" ; : "${CYCLE_GAIN:?}"
 : "${EQUALIZER:?}" ; : "${DESIRED_ACC:?}" ; : "${ADAPT_BETA_MIN:?}"
 : "${MAX_VALUES:?}"
@@ -114,7 +116,9 @@ echo "[fig1-job] paired evidence on $(basename "$obs")"
     "$(printf -- '--beta_size = get_number(n=%s)' "$BETA_SIZE")" \
     "$(printf -- '--max_iter = get_number(n=%s)' "$MAX_ITER")" \
     "$(printf -- '--adapt_beta_every = get_number(n=%s)' "$ADAPT_EVERY")" \
+    "$(printf -- '--adapt_beta_nu = %s' "$ADAPT_NU")" \
     "$(printf -- '--adapt_beta_t0 = %s' "$ADAPT_T0")" \
+    "$(printf -- '--phase1_step_every = get_number(n=%s)' "$STEP_EVERY")" \
     "$(printf -- '--phase1_end = get_number(n=%s)' "$PHASE1_END")" \
     "$(printf -- '--drift_iters = get_number(n=%s)' "$DRIFT")" \
     "$(printf -- '--hold_iters = get_number(n=%s)' "$HOLD")" \

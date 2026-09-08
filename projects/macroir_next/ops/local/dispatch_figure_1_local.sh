@@ -23,7 +23,9 @@
 #   episodic  = PRE_TAUS 1 | PULSE_TAUS 5  (10 uM) | POST_TAUS 5 (0 uM)
 #   stationary= PRE_TAUS 1 | GAP_TAUS  20  (10 uM, nan-masked) | MEAS_TAUS 10 (10 uM)
 #   REPLICAS=10; MAX_ITER=30000 (~300 full-ladder score events at MAX_VALUES=128);
-#   ADAPT_EVERY=256 and ADAPT_T0=3000 (phase-1 adaptation); BETA_SIZE=4, grown
+#   ADAPT_EVERY=256 (period of the phase-1 statistics window), STEP_EVERY=1
+#   (an adaptation step per iteration), ADAPT_NU=0.5 and ADAPT_T0=3000 (the
+#   phase-1 gain kappa); BETA_SIZE=4, grown
 #   by adjust_beta during phase 1; SCOUTS=32; and the drift-and-hold ladder
 #   schedule PHASE1_END=5000, DRIFT=300, HOLD=3000, HOLD_BURNIN=100,
 #   N_CYCLES=4, CYCLE_GAIN=0.3 (set_Ladder_schedule; theory in
@@ -81,6 +83,10 @@ BETA_SIZE="${BETA_SIZE:-}"
 MAX_ITER="${MAX_ITER:-30000}"
 ADAPT_EVERY="${ADAPT_EVERY:-256}"
 ADAPT_T0="${ADAPT_T0:-3000}"
+# Phase-1 adaptation: STEP_EVERY iterations between steps (the ladder's rate of
+# construction) and the gain kappa(iter) = (1/ADAPT_NU)*ADAPT_T0/(ADAPT_T0+iter).
+STEP_EVERY="${STEP_EVERY:-1}"
+ADAPT_NU="${ADAPT_NU:-0.5}"
 PHASE1_END="${PHASE1_END:-5000}"
 DRIFT="${DRIFT:-300}"
 HOLD="${HOLD:-3000}"
@@ -262,7 +268,9 @@ EOF
         "$(printf -- '--beta_size = get_number(n=%s)' "$BETA_SIZE")" \
         "$(printf -- '--max_iter = get_number(n=%s)' "$MAX_ITER")" \
         "$(printf -- '--adapt_beta_every = get_number(n=%s)' "$ADAPT_EVERY")" \
+        "$(printf -- '--adapt_beta_nu = %s' "$ADAPT_NU")" \
         "$(printf -- '--adapt_beta_t0 = %s' "$ADAPT_T0")" \
+        "$(printf -- '--phase1_step_every = get_number(n=%s)' "$STEP_EVERY")" \
         "$(printf -- '--phase1_end = get_number(n=%s)' "$PHASE1_END")" \
         "$(printf -- '--drift_iters = get_number(n=%s)' "$DRIFT")" \
         "$(printf -- '--hold_iters = get_number(n=%s)' "$HOLD")" \

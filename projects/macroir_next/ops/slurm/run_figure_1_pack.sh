@@ -18,7 +18,8 @@
 #   SEED_CCO SEED_COC EQUALIZER DESIRED_ACC ADAPT_BETA_MIN, 16 fields, none
 #   may contain spaces), THREADS_PER_FIT,
 #   PRIOR_CCO, PRIOR_COC, NSAMP, SCOUTS, BETA_SIZE, MAX_ITER, ADAPT_EVERY,
-#   ADAPT_T0, PHASE1_END, DRIFT, HOLD, HOLD_BURNIN, N_CYCLES, CYCLE_GAIN,
+#   STEP_EVERY, ADAPT_NU, ADAPT_T0, PHASE1_END, DRIFT, HOLD, HOLD_BURNIN,
+#   N_CYCLES, CYCLE_GAIN,
 #   MAX_VALUES.
 #
 # Each pair writes its own log to $WORKDIR/logs/<label>_pair.out. If any pair
@@ -36,7 +37,8 @@ set -eo pipefail
 : "${SIM_SCRIPT:?}" ; : "${EVI_SCRIPT:?}" ; : "${RUN_ONE:?}" ; : "${MANIFEST:?}"
 : "${THREADS_PER_FIT:?}" ; : "${PRIOR_CCO:?}" ; : "${PRIOR_COC:?}" ; : "${NSAMP:?}"
 : "${SCOUTS:?}" ; : "${BETA_SIZE:?}" ; : "${MAX_ITER:?}" ; : "${ADAPT_EVERY:?}"
-: "${ADAPT_T0:?}" ; : "${PHASE1_END:?}" ; : "${DRIFT:?}" ; : "${HOLD:?}"
+: "${ADAPT_T0:?}" ; : "${ADAPT_NU:?}" ; : "${STEP_EVERY:?}"
+: "${PHASE1_END:?}" ; : "${DRIFT:?}" ; : "${HOLD:?}"
 : "${HOLD_BURNIN:?}" ; : "${N_CYCLES:?}" ; : "${CYCLE_GAIN:?}"
 : "${MAX_VALUES:?}"
 

@@ -71,14 +71,14 @@ class save_Evidence {
     std::vector<double> ss_max_up, ss_s1_up, ss_s2_up;
     std::vector<double> ss_max_dn, ss_s1_dn, ss_s2_dn;
     std::vector<std::size_t> ss_n;
-    // Drift-and-hold schedule (ladder_schedule). In phase 1 the windows skip
+    // Drift-and-hold schedule (Ladder_Schedule). In phase 1 the windows skip
     // hold_burnin iterations after each ladder move; afterwards they pool
     // only inside a hold, hold_burnin iterations after it opened, and every
     // hold opens a fresh window whether or not the ladder moved (the phase-1
     // to first-hold boundary). The walkers need the burn-in to relax to the
     // moved ladder: tau_int of logL is ~34 iterations at the coldest rungs
     // (2026-09-07). Default schedule: phase 1 forever, no skipping.
-    ladder_schedule ss_schedule{};
+    Ladder_Schedule ss_schedule = default_Ladder_Schedule();
     std::size_t ss_change_iter = 0;
     std::size_t ss_hold_id = 0;
     save_Evidence(std::string const& path, std::size_t t_sampling_interval,
@@ -201,11 +201,11 @@ class save_Evidence {
                             break;
                         }
                 auto ph_ss = ladder_phase_at(iter, s.ss_schedule);
-                bool hold_changed = (ph_ss.hold_id != s.ss_hold_id);
+                bool hold_changed = (get<Hold_Id>(ph_ss())() != s.ss_hold_id);
                 if (ladder_changed || hold_changed) {
                     s.ss_betas = data.beta;
                     s.ss_change_iter = iter;
-                    s.ss_hold_id = ph_ss.hold_id;
+                    s.ss_hold_id = get<Hold_Id>(ph_ss())();
                     s.ss_max_up.assign(n_tramos_ss,
                                        -std::numeric_limits<double>::infinity());
                     s.ss_s1_up.assign(n_tramos_ss, 0.0);
@@ -228,8 +228,10 @@ class save_Evidence {
                     s1 += std::exp(z - m);
                     s2 += std::exp(2.0 * (z - m));
                 };
-                bool pool = ph_ss.phase1 ? (iter - s.ss_change_iter >= s.ss_schedule.hold_burnin)
-                                         : ph_ss.pooling;
+                bool pool = get<In_Phase1>(ph_ss())()
+                                ? (iter - s.ss_change_iter >=
+                                   get<Ladder_Hold_Burnin>(s.ss_schedule())())
+                                : get<Pooling>(ph_ss())();
                 for (std::size_t k = 0; k + 1 < n_beta_ss; ++k) {
                     auto db = data.beta[k + 1] - data.beta[k];
                     auto nw = data.walkers[k].size();
@@ -584,7 +586,7 @@ class new_thermodynamic_integration {
     double desired_acceptance_;
     // Drift-and-hold ladder schedule (parallel_tempering.h). Default: none,
     // i.e. the ladder adapts all run long exactly as before.
-    ladder_schedule beta_schedule_{};
+    Ladder_Schedule beta_schedule_ = default_Ladder_Schedule();
 
    public:
     new_thermodynamic_integration(Algorithm&& alg, Reporter&& rep,
@@ -717,7 +719,7 @@ class new_thermodynamic_integration {
     auto& beta_schedule() const {
         return beta_schedule_;
     }
-    void set_beta_schedule(ladder_schedule const& s) {
+    void set_beta_schedule(Ladder_Schedule const& s) {
         beta_schedule_ = s;
     }
 };
@@ -883,37 +885,79 @@ auto thermo_evidence_loop(FunctionTable&& f,
 
         report_all(f, iter, dur, rep, current, prior, lik, y, x, mts, mcmc_run.first);
         if constexpr (Adapt_beta) {
-            // Drift-and-hold schedule (ladder_schedule, parallel_tempering.h).
+            // Drift-and-hold schedule (Ladder_Schedule, parallel_tempering.h).
             // Phase 1 is the pre-schedule path verbatim. Afterwards the ladder
             // moves only at a cycle's step, from the statistics of the hold
             // that just ended (adapt_beta_step reads walkers_sta; nothing is
             // reset until the next hold opens), and the statistics restart at
             // every hold so each hold is measured under a fixed ladder.
             auto ph = ladder_phase_at(iter, therm.beta_schedule());
-            if (ph.phase1) {
-                adapt_beta(iter, current, beta_run, therm.adapt_beta_every(),
-                           therm.adapt_beta_equalizer(), therm.adapt_beta_controler(),
-                           therm.adapt_beta_variance(), therm.desired_acceptance(),
-                           therm.adapt_beta_nu(), therm.adapt_beta_t0(),
-                           therm.beta_schedule().adapt_beta_min ? 0ul : 1ul);
-                if (therm.adjust_beta())
-                    adjust_beta(f, iter, therm.adapt_beta_every(), therm.acceptance_upper_limit(),
+            if (get<In_Phase1>(ph())()) {
+                // Phase 1 takes an adaptation step every phase1_step_every
+                // iterations, 1 by default (2026-09-08). The ladder is seeded
+                // with beta_size rungs geometric between beta_min and 1 and has
+                // to find its own length: the equalizer's correction is a
+                // difference of swap
+                // acceptances, so it only has a signal where the acceptance is
+                // measurable. It tightens the gaps at that frontier, the slack
+                // accumulates in the hottest gap (pinned beta_min, so the
+                // reconstruction in adapt_beta_step leaves it as the reservoir),
+                // and adjust_beta puts one new rung in that reservoir when the
+                // first gap above it falls below the acceptance limit. The
+                // frontier then advances by one gap. So building the ladder is
+                // counted in ADAPTATION STEPS, not in iterations, and a seed of
+                // 4 rungs across nine decades of beta needs of the order of
+                // hundreds of them.
+                //
+                // Taking one step per adapt_beta_every left 19 steps in a
+                // 5000-iteration phase 1 and the ladder never reached beta = 1:
+                // in the runs of 2026-09-08 it stopped at 7 rungs, no swap was
+                // ever accepted into the beta = 1 rung, and the telescopic
+                // bracket there stayed 30 to 80 nats wide.
+                //
+                // adapt_beta_every keeps its other job, the period of the logL
+                // statistics that the step reads: the window now grows from one
+                // sample per walker up to adapt_beta_every, and each step is
+                // taken on whatever the window holds so far, scaled by the
+                // Robbins-Monro kappa(iter).
+                adapt_beta(iter, current, beta_run,
+                           get<Phase1_Step_Every>(therm.beta_schedule()())(),
+                           therm.adapt_beta_equalizer(),
+                           therm.adapt_beta_controler(), therm.adapt_beta_variance(),
+                           therm.desired_acceptance(), therm.adapt_beta_nu(),
+                           therm.adapt_beta_t0(),
+                           get<Adapt_Beta_Min>(therm.beta_schedule()())() ? 0ul : 1ul);
+                if (therm.adjust_beta()) {
+                    auto n_rungs_before = beta_run.size();
+                    adjust_beta(f, iter, get<Phase1_Step_Every>(therm.beta_schedule()())(),
+                                therm.acceptance_upper_limit(),
                                 therm.acceptance_lower_limit(), current, beta_run, mts, prior, lik,
                                 y, x);
+                    // insert_high_temperture_beta adds the fresh prior-sampled
+                    // walkers at beta = 0 and shifts every existing ensemble one
+                    // rung colder, so after an insertion each rung's accumulated
+                    // statistics belong to the rung below it and the gaps the
+                    // step compares are no longer the same gaps. Restart the
+                    // window whenever the rung count changes. A move needs no
+                    // restart: the count is intact and the rungs barely shift.
+                    if (beta_run.size() != n_rungs_before)
+                        current.reset_statistics();
+                }
                 if (iter % therm.adapt_beta_every() == 0)
                     current.reset_statistics();
-            } else if (ph.cycle_start) {
+            } else if (get<Cycle_Start>(ph())()) {
                 if (current.num_samples() > 0)
-                    adapt_beta_step(current, beta_run, therm.beta_schedule().cycle_gain,
+                    adapt_beta_step(current, beta_run,
+                                    get<Ladder_Cycle_Gain>(therm.beta_schedule()())(),
                                     therm.adapt_beta_equalizer(), therm.adapt_beta_controler(),
                                     therm.adapt_beta_variance(), therm.desired_acceptance(),
-                                    therm.beta_schedule().adapt_beta_min ? 0ul : 1ul);
+                                    get<Adapt_Beta_Min>(therm.beta_schedule()())() ? 0ul : 1ul);
                 if (therm.adjust_beta())
                     adjust_beta(f, iter, 1, therm.acceptance_upper_limit(),
                                 therm.acceptance_lower_limit(), current, beta_run, mts, prior, lik,
                                 y, x);
             }
-            if (ph.hold_start)
+            if (get<Hold_Start>(ph())())
                 current.reset_statistics();
         }
         step_stretch_thermo_mcmc(f, iter, even_dur, current, rep, beta_run, mts, prior, lik, y, x);
