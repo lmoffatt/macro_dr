@@ -91,11 +91,14 @@ thermo_algorithm_dts = set_ThermoAlgorithm_dts(
    acceptance_lower_limit = 0.25,
    desired_acceptance = desired_acceptance)
 
+# The DSL matches arguments BY POSITION even though they are written by name:
+# this list must follow the declaration order of set_Ladder_schedule
+# (CLI_thermo_evidence_dts.h), or the run dies at parse time saying it expected
+# one id and found the next.
 ladder_schedule = set_Ladder_schedule(
-   phase1_end = phase1_end, phase1_step_every = phase1_step_every,
-   drift = drift_iters, hold = hold_iters,
+   phase1_end = phase1_end, drift = drift_iters, hold = hold_iters,
    hold_burnin = hold_burnin, n_cycles = n_cycles, cycle_gain = cycle_gain,
-   adapt_beta_min = adapt_beta_min)
+   adapt_beta_min = adapt_beta_min, phase1_step_every = phase1_step_every)
 
 thermo_evidence_dts(idname = idname_cco, model = "scheme_CCO",
    prior = prior_cco_file, likelihood_algorithm = likelihood_algorithm,
