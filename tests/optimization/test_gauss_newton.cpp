@@ -113,10 +113,13 @@ Maybe_error<TestSetup> make_setup() {
 
     // 4. Simulate one recording at theta_sim_local using figure_2's uniformization
     //    with number_of_substeps=1000 (per projects/eLife_2025/ops/local/figure_2.macroir).
-    //    seed=0 matches figure_2; reproducible per Catch2 run.
+    //    seed 42 (the header's documented seed): run_simulations passes the seed
+    //    through calc_seed, and calc_seed(0) draws from std::random_device, so a
+    //    seed of 0 gave a DIFFERENT recording on every run and the stationarity
+    //    check below failed intermittently (CI 2026-09-07, 1/2 newton_dec^2 = 5e-5).
     auto maybe_sim = macrodr::cmd::run_simulations(
         model, theta_sim_local, experiment, observations,
-        std::string("uniformization"), 1000, 0);
+        std::string("uniformization"), 1000, 42);
     if (!maybe_sim) return maybe_sim.error();
     auto recording = get<macrodr::Recording>(maybe_sim.value()());
 
